@@ -225,6 +225,27 @@ describe("bounty service: calculateBountyRecommendation / finalizeBounty / adjus
     expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("BOUNTY_ALREADY_FINALIZED");
   });
 
+  // Phase 7, Turn 3 -- "award attempt on a non-resolved report rejected." There is no
+  // separate "award" RPC in this schema: calculateBountyRecommendation is the real
+  // precondition gate (finalizeBounty itself requires a 'calculated' decision to already
+  // exist -- see docs/decisions/0013's own "Calculation is a recommendation; finalization
+  // is the actual decision" section), and calculate_bounty_recommendation is the RPC that
+  // actually enforces "the report must be resolved first," reusing the existing
+  // report-status state machine's own REPORT_NOT_FINALIZED rejection rather than a second,
+  // bounty-specific status check.
+  it("calculateBountyRecommendation maps REPORT_NOT_FINALIZED onto OrganizationServiceError with that exact code -- a report not yet resolved cannot have a bounty calculated (and therefore cannot be finalized) at all", async () => {
+    const { OrganizationServiceError } = await import("../../services/rpc-error");
+    fakeClient.query.mockImplementation(async () => {
+      throw new Error("REPORT_NOT_FINALIZED: this report has not yet reached a final decision");
+    });
+    const { calculateBountyRecommendation } = await import("../../services/bounty");
+
+    const error: unknown = await calculateBountyRecommendation("report-still-triaging").catch((thrown) => thrown);
+
+    expect(error).toBeInstanceOf(OrganizationServiceError);
+    expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("REPORT_NOT_FINALIZED");
+  });
+
   it("adjustBounty sends the new amount and reason in the RPC's exact parameter order", async () => {
     const adjustedRow = { ...DECISION_ROW, state: "finalized", final_amount_minor_units: 75000, finalized_at: "2026-08-28T02:00:00Z", finalization_note: "Exceptional impact" };
     let captured: unknown[] | undefined;
