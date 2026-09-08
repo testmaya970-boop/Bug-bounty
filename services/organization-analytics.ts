@@ -38,10 +38,11 @@ export async function getOrganizationSeverityStatusBreakdown(organizationId: str
   }));
 }
 
-// week_start is a SQL `date` column -- `pg` auto-parses it into a JS Date, not a string
-// (unlike every timestamptz column elsewhere in this codebase), so the type here is
-// intentionally `string | Date` at the raw-row boundary and normalized via
-// toDateOnlyString below. See that helper's own comment.
+// week_start is a SQL `date` column. lib/db/type-parsers.ts's global fix makes `pg`
+// return it as a full ISO timestamp STRING (not a Date object) -- the type here stays
+// `string | Date` defensively (either shape is handled correctly), normalized via
+// toDateOnlyString below, which truncates either one to a real YYYY-MM-DD date-only
+// string. See that helper's own comment for the real bug this fixed.
 type WeeklyVolumeRow = { week_start: string | Date; submitted_count: number; resolved_count: number; other_closed_count: number };
 
 export async function getOrganizationWeeklyReportVolume(organizationId: string): Promise<OrganizationWeeklyReportVolume[]> {
