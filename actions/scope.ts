@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
-import { addScopeEntry, removeScopeEntry, updateScopeEntry } from "@/services/scope";
+import { addScopeEntry, listActiveScopeEntriesForOrganization, removeScopeEntry, updateScopeEntry } from "@/services/scope";
+import { linkReportToScopeEntry } from "@/services/reports";
+import type { ScopeEntry } from "@/types/scope";
+import type { Page } from "@/types/pagination";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
@@ -36,11 +39,16 @@ const addSchema = z.object({
   description: z.string().trim().max(500, "Use 500 characters or fewer.").optional(),
 });
 
+function revalidateScopePaths(organizationId: string, programId: string) {
+  revalidatePath(`/organizations/${organizationId}/programs/${programId}`);
+  revalidatePath(`/organizations/${organizationId}/assets`);
+}
+
 export async function addScopeEntryAction(input: z.infer<typeof addSchema>) {
   const parsed = addSchema.safeParse(input);
   if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
   const result = await toResult(addScopeEntry(parsed.data.programId, parsed.data.assetType, parsed.data.targetInput, parsed.data.scopeState, parsed.data.description));
-  if (result.ok) revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}`);
+  if (result.ok) revalidateScopePaths(parsed.data.organizationId, parsed.data.programId);
   return result;
 }
 
@@ -56,7 +64,7 @@ export async function updateScopeEntryAction(input: z.infer<typeof updateSchema>
   const parsed = updateSchema.safeParse(input);
   if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
   const result = await toResult(updateScopeEntry(parsed.data.entryId, parsed.data.scopeState, parsed.data.description));
-  if (result.ok) revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}`);
+  if (result.ok) revalidateScopePaths(parsed.data.organizationId, parsed.data.programId);
   return result;
 }
 
@@ -66,6 +74,49 @@ export async function removeScopeEntryAction(input: z.infer<typeof removeSchema>
   const parsed = removeSchema.safeParse(input);
   if (!parsed.success) return invalidInput();
   const result = await toResult(removeScopeEntry(parsed.data.entryId));
-  if (result.ok) revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}`);
+  if (result.ok) revalidateScopePaths(parsed.data.organizationId, parsed.data.programId);
+  return result;
+}
+
+const listOrganizationScopeEntriesSchema = z.object({
+  organizationId: uuidSchema,
+  cursor: z.string().optional(),
+  programId: uuidSchema.optional(),
+  assetType: assetTypeSchema.optional(),
+});
+
+/** The org-wide asset inventory page's own "load more" -- see
+ * actions/reports.ts's listReportsForOrganizationPageAction for the identical shape this
+ * mirrors. */
+export async function listScopeEntriesForOrganizationPageAction(input: {
+  organizationId: string;
+  cursor?: string;
+  programId?: string;
+  assetType?: z.infer<typeof assetTypeSchema>;
+}): Promise<ActionResult<Page<ScopeEntry>>> {
+  const parsed = listOrganizationScopeEntriesSchema.safeParse(input);
+  if (!parsed.success) return invalidInput();
+  return toResult(
+    listActiveScopeEntriesForOrganization(parsed.data.organizationId, parsed.data.cursor, undefined, {
+      programId: parsed.data.programId,
+      assetType: parsed.data.assetType,
+    }),
+  );
+}
+
+const linkReportAssetSchema = z.object({ organizationId: uuidSchema, programId: uuidSchema, reportId: uuidSchema, scopeEntryId: uuidSchema });
+
+/** The inbox's link picker for an unlinked report -- see services/reports.ts's
+ * linkReportToScopeEntry for the real authorization/validation (manager-only, entry must
+ * belong to the same program, matches the exact "why this can be null" case
+ * db/migrations/202608270001_report_foundation.sql's own comment documents). */
+export async function linkReportToScopeEntryAction(input: z.infer<typeof linkReportAssetSchema>) {
+  const parsed = linkReportAssetSchema.safeParse(input);
+  if (!parsed.success) return invalidInput();
+  const result = await toResult(linkReportToScopeEntry(parsed.data.reportId, parsed.data.scopeEntryId));
+  if (result.ok) {
+    revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}/inbox`);
+    revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}/reports/${parsed.data.reportId}`);
+  }
   return result;
 }

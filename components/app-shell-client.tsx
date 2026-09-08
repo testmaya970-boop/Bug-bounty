@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard,
   ShieldCheck,
+  Target,
   FileWarning,
   Award,
   Trophy,
@@ -93,6 +94,11 @@ const ORG_SECURITY_NAV: OrgNavItem[] = [
   // listReportsForOrganization) -- distinct from the per-program triage inbox at
   // .../programs/{id}/reports, which still owns triage actions/bulk operations.
   { href: (id) => `/organizations/${id}/findings` as Route, label: "Findings", icon: Bug },
+  // Assets: the flat, cross-program scope/asset inventory (extends
+  // public.program_scope_entries, docs/decisions/0006-scope-asset-model.md) -- creation/
+  // editing still happens per-engagement (scope mutation is only legal while that
+  // program is in draft), this is the read-only cross-program view.
+  { href: (id) => `/organizations/${id}/assets` as Route, label: "Assets", icon: Target },
   { href: (id) => `/organizations/${id}/researchers` as Route, label: "Researchers", icon: Trophy },
 ];
 const ORG_INSIGHTS_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}/analytics` as Route, label: "Analytics", icon: FileWarning }];

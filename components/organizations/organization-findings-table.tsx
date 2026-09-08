@@ -158,6 +158,9 @@ export function OrganizationFindingsTable({
                     <td className="px-4 py-3 text-sm text-ink-muted">{programNameById.get(report.programId) ?? "Unknown engagement"}</td>
                     <td className="px-4 py-3">
                       <span className="break-all font-mono text-sm">{report.displayTarget}</span>
+                      <p className="mt-0.5 text-xs text-ink-muted">
+                        {report.matchedScopeEntryId ? (report.matchedScopeState === "in_scope" ? "In scope asset" : "Out-of-scope asset") : "No asset linked"}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={report.status} />
@@ -188,6 +191,8 @@ export function OrganizationFindingsTable({
                   <dd className="text-ink">{programNameById.get(report.programId) ?? "Unknown engagement"}</dd>
                   <dt className="text-ink-muted">Target</dt>
                   <dd className="break-all font-mono text-xs text-ink">{report.displayTarget}</dd>
+                  <dt className="text-ink-muted">Asset</dt>
+                  <dd className="text-ink">{report.matchedScopeEntryId ? (report.matchedScopeState === "in_scope" ? "In scope" : "Out of scope") : "No asset linked"}</dd>
                   <dt className="text-ink-muted">Status</dt>
                   <dd>
                     <StatusBadge status={report.status} />

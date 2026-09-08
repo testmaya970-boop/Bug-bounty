@@ -8,6 +8,7 @@ import { Card, EmptyState, PermissionDenied } from "../../../../../components/ui
 import { AssetTypeBadge, ProgramStatusBadge, ResearcherStatusBadge } from "../../../../../components/ui/badge";
 import { AddScopeEntryDialog } from "../../../../../components/programs/add-scope-entry-dialog";
 import { ScopeEntryCard } from "../../../../../components/programs/scope-entry-card";
+import { ResearcherScopeView } from "../../../../../components/programs/researcher-scope-view";
 import { InviteResearcherDialog } from "../../../../../components/programs/invite-researcher-dialog";
 import { ResearcherTable } from "../../../../../components/programs/researcher-table";
 import { PendingProgramInvitationsPanel } from "../../../../../components/programs/pending-program-invitations-panel";
@@ -460,45 +461,55 @@ export default async function ProgramControlCenterPage({
             </p>
           )}
 
-          {scopeEntries.length > 0 && (
-            <nav aria-label="Filter scope by state" className="flex flex-wrap gap-2">
-              {SCOPE_FILTERS.map((filter) => (
-                <Link
-                  key={filter.value}
-                  href={(filter.value === "all" ? `/organizations/${organizationId}/programs/${programId}` : `/organizations/${organizationId}/programs/${programId}?scope=${filter.value}`) as Route}
-                  // A real bug, not cosmetic: without this, clicking a scope filter is a
-                  // real navigation to a new URL (different query string, same route),
-                  // and Next.js's default post-navigation behavior scrolls to the very
-                  // top of the page -- yanking the researcher away from the Scope section
-                  // they were just looking at. `scroll={false}` keeps the current scroll
-                  // position exactly where it was, since the filter buttons themselves
-                  // stay in the same place regardless of which filter is active.
-                  scroll={false}
-                  aria-current={scopeFilter === filter.value ? "true" : undefined}
-                  className={`min-h-11 inline-flex items-center rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-                    scopeFilter === filter.value ? "bg-surface-muted text-ink" : "text-ink-muted hover:bg-surface-muted hover:text-ink"
-                  }`}
-                >
-                  {filter.label}
-                </Link>
-              ))}
-            </nav>
-          )}
+          {canManageProgram ? (
+            <>
+              {scopeEntries.length > 0 && (
+                <nav aria-label="Filter scope by state" className="flex flex-wrap gap-2">
+                  {SCOPE_FILTERS.map((filter) => (
+                    <Link
+                      key={filter.value}
+                      href={(filter.value === "all" ? `/organizations/${organizationId}/programs/${programId}` : `/organizations/${organizationId}/programs/${programId}?scope=${filter.value}`) as Route}
+                      // A real bug, not cosmetic: without this, clicking a scope filter is a
+                      // real navigation to a new URL (different query string, same route),
+                      // and Next.js's default post-navigation behavior scrolls to the very
+                      // top of the page -- yanking the researcher away from the Scope section
+                      // they were just looking at. `scroll={false}` keeps the current scroll
+                      // position exactly where it was, since the filter buttons themselves
+                      // stay in the same place regardless of which filter is active.
+                      scroll={false}
+                      aria-current={scopeFilter === filter.value ? "true" : undefined}
+                      className={`min-h-11 inline-flex items-center rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                        scopeFilter === filter.value ? "bg-surface-muted text-ink" : "text-ink-muted hover:bg-surface-muted hover:text-ink"
+                      }`}
+                    >
+                      {filter.label}
+                    </Link>
+                  ))}
+                </nav>
+              )}
 
-          {scopeEntries.length === 0 ? (
-            <EmptyState title="No scope assets have been added">
-              This defines what researchers are permitted to test. {canManageScope ? "Add a domain, URL, or IP/CIDR range to get started." : "None have been added yet."}
-            </EmptyState>
-          ) : filteredScopeEntries.length === 0 ? (
-            <EmptyState title="No matching scope entries">No scope entries match this filter.</EmptyState>
+              {scopeEntries.length === 0 ? (
+                <EmptyState title="No scope assets have been added">
+                  This defines what researchers are permitted to test. {canManageScope ? "Add a domain, URL, or IP/CIDR range to get started." : "None have been added yet."}
+                </EmptyState>
+              ) : filteredScopeEntries.length === 0 ? (
+                <EmptyState title="No matching scope entries">No scope entries match this filter.</EmptyState>
+              ) : (
+                <RegistryList>
+                  {filteredScopeEntries.map((entry) => (
+                    <li key={entry.id}>
+                      <ScopeEntryCard organizationId={organizationId} programId={programId} entry={entry} canManage={canManageScope} />
+                    </li>
+                  ))}
+                </RegistryList>
+              )}
+            </>
           ) : (
-            <RegistryList>
-              {filteredScopeEntries.map((entry) => (
-                <li key={entry.id}>
-                  <ScopeEntryCard organizationId={organizationId} programId={programId} entry={entry} canManage={canManageScope} />
-                </li>
-              ))}
-            </RegistryList>
+            // The hacker-facing view: in-scope assets grouped by type with per-asset
+            // instructions, distinct from the manager's own flat/filterable registry
+            // above. See ResearcherScopeView's own comment for why these are two
+            // different components rather than one conditionally-rendered layout.
+            <ResearcherScopeView entries={scopeEntries} />
           )}
         </div>
 

@@ -160,3 +160,84 @@ describe("scope service: evaluateProgramScope", () => {
     expect(result).toEqual({ isInScope: false, matchedScopeState: null, matchedEntryId: null, matchedTarget: null });
   });
 });
+
+// Phase 7, Turn 2 -- Assets & Scope. Two tests specifically requested: cross-org read
+// denial and member-write denial. Real RLS enforcement (the actual cross-org boundary)
+// is exercised live in tests/unit/migration-security.test.ts against the migration's own
+// SQL text -- a mocked-DB-boundary unit test cannot make Postgres itself reject a query,
+// so what THIS test proves is the service layer's own contribution to that boundary: the
+// org-scoped query is genuinely predicated on the caller-supplied organization_id (never
+// a different id, never unscoped), which is the one thing a service-layer regression
+// could actually break even with RLS correctly enforced underneath.
+describe("scope service: listActiveScopeEntriesForOrganization (cross-org read denial)", () => {
+  it("scopes the query strictly to the given organization_id -- never a second organization's rows, and RLS narrows further underneath this", async () => {
+    let capturedSql = "";
+    let capturedParams: unknown[] = [];
+    fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
+      capturedSql = sql;
+      capturedParams = params;
+      return queryReturning([]);
+    });
+    const { listActiveScopeEntriesForOrganization } = await import("../../services/scope");
+
+    await listActiveScopeEntriesForOrganization("org-mine");
+
+    expect(capturedSql).toContain("e.organization_id = $1");
+    expect(capturedSql).toContain("e.status = 'active'");
+    expect(capturedParams[0]).toBe("org-mine");
+  });
+
+  it("an org this actor cannot see returns an empty page, never a thrown error -- RLS-filtered reads look identical to 'nothing here,' the same not-found-vs-not-authorized property every other read in this codebase has", async () => {
+    fakeClient.query.mockImplementation(async () => queryReturning([]));
+    const { listActiveScopeEntriesForOrganization } = await import("../../services/scope");
+
+    const result = await listActiveScopeEntriesForOrganization("org-not-mine");
+
+    expect(result).toEqual({ items: [], nextCursor: null });
+  });
+
+  it("applies the program/type filters as real WHERE predicates, never fetched-then-filtered in application code", async () => {
+    let capturedSql = "";
+    let capturedParams: unknown[] = [];
+    fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
+      capturedSql = sql;
+      capturedParams = params;
+      return queryReturning([]);
+    });
+    const { listActiveScopeEntriesForOrganization } = await import("../../services/scope");
+
+    await listActiveScopeEntriesForOrganization("org-1", undefined, undefined, { programId: "prog-1", assetType: "url" });
+
+    expect(capturedSql).toContain("e.program_id = $2");
+    expect(capturedSql).toContain("e.asset_type = $3");
+    expect(capturedParams).toEqual(["org-1", "prog-1", "url", 20]);
+  });
+});
+
+describe("services/reports: linkReportToScopeEntry (member-write denial)", () => {
+  it("maps FORBIDDEN into a typed, code-discriminated error -- a plain organization member who does not manage this report's program cannot link an asset, the identical write-authorization boundary every other triage mutation uses (private.lock_and_authorize_report_for_triage)", async () => {
+    const { OrganizationServiceError } = await import("../../services/rpc-error");
+    fakeClient.query.mockImplementation(async () => {
+      throw new Error("FORBIDDEN: actor cannot triage this report");
+    });
+    const { linkReportToScopeEntry } = await import("../../services/reports");
+
+    const error: unknown = await linkReportToScopeEntry("report-1", "entry-1").catch((thrown) => thrown);
+
+    expect(error).toBeInstanceOf(OrganizationServiceError);
+    expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("FORBIDDEN");
+  });
+
+  it("maps SCOPE_ENTRY_WRONG_PROGRAM into a typed error -- a real, database-enforced rule (the chosen asset must belong to the same program as the report), never re-validated in TypeScript", async () => {
+    const { OrganizationServiceError } = await import("../../services/rpc-error");
+    fakeClient.query.mockImplementation(async () => {
+      throw new Error("SCOPE_ENTRY_WRONG_PROGRAM: that asset belongs to a different program");
+    });
+    const { linkReportToScopeEntry } = await import("../../services/reports");
+
+    const error: unknown = await linkReportToScopeEntry("report-1", "entry-from-other-program").catch((thrown) => thrown);
+
+    expect(error).toBeInstanceOf(OrganizationServiceError);
+    expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("SCOPE_ENTRY_WRONG_PROGRAM");
+  });
+});
