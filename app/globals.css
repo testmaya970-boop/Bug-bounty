@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-canvas: var(--canvas); --color-surface: var(--surface); --color-surface-muted: var(--surface-muted); --color-surface-raised: var(--surface-raised); --color-surface-hover: var(--surface-hover); --color-ink: var(--ink); --color-ink-muted: var(--ink-muted); --color-border: var(--border); --color-border-strong: var(--border-strong); --color-action: var(--action); --color-action-hover: var(--action-hover); --color-on-action: var(--on-action); --color-focus: var(--focus); --color-info: var(--info); --color-success: var(--success); --color-warning: var(--warning); --color-danger: var(--danger); --color-on-danger: var(--on-danger); --color-severity-critical: var(--severity-critical); --color-severity-high: var(--severity-high); --color-severity-medium: var(--severity-medium); --color-severity-low: var(--severity-low); --color-severity-none: var(--severity-none);
+  --color-accent-2: var(--accent-2); --color-on-accent-2: var(--on-accent-2); --color-glass-border: var(--glass-border); --color-glass-border-strong: var(--glass-border-strong);
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --animate-enter-rise: enter-rise 0.22s ease-out both;
+  --animate-enter-fade: enter-fade 0.22s ease-out both;
+  --animate-hero-reveal: hero-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-glow-pulse: glow-pulse 1.6s ease-in-out 2;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-status-pulse: status-pulse 2s ease-in-out infinite;
+  --animate-grid-drift: grid-drift 18s linear infinite;
+}
+
+/* Monochrome black-on-white theme (docs/decisions/0073), replacing 0062's warm cream/
+   green/orange palette on direct instruction: "black and white, black letters and
+   background in white," one theme only, no dark mode. Every chrome/structural token
+   below changes; status/severity/data-visualization tokens (--info/--success/--warning/
+   --danger/--severity-*) are DELIBERATELY UNCHANGED -- explicit instruction that this is
+   a chrome/UI theme change, not a data-visualization change, so every badge, alert, and
+   chart in components/charts/* keeps its existing semantic color automatically.
+   `--glow-action`/`--glow-accent-2` become neutral low-opacity black (a soft shadow, not
+   a colored glow) so every existing hover/depth effect keeps working with zero
+   component-level edits. */
+:root {
+  color-scheme: light;
+  --canvas: #ffffff; --surface: #ffffff; --surface-muted: #f2f2f2; --surface-raised: #ffffff; --surface-hover: #e8e8e8;
+  --ink: #000000; --ink-muted: #525252;
+  --border: #dcdcdc; --border-strong: #a3a3a3;
+  --action: #000000; --action-hover: #262626; --on-action: #ffffff; --focus: #000000;
+  --accent-2: #404040; --on-accent-2: #ffffff;
+  --info: #2f6fb0; --success: #3f6b3a; --warning: #b5760f; --danger: #c1401f; --on-danger: #ffffff;
+  --severity-critical: #c1401f; --severity-high: #b5760f; --severity-medium: #8a7a1f; --severity-low: #2f6fb0; --severity-none: #5b6355;
+  --glass-border: rgba(0, 0, 0, 0.08); --glass-border-strong: rgba(0, 0, 0, 0.35);
+  --glow-action: rgba(0, 0, 0, 0.14); --glow-accent-2: rgba(0, 0, 0, 0.1);
+}
+* { box-sizing: border-box; }
+html { min-width: 320px; background: var(--canvas); }
+body {
+  min-width: 320px; margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5;
+}
+button, input, textarea, select { font: inherit; }
+code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+
+/* Shared soft-glass surface: a mostly-opaque tinted fill + a light backdrop blur + a
+   thin border, used by Card/Panel/PrimaryActionPanel instead of a flat background so the
+   ambient body gradient reads faintly through a panel. Kept subtle (68-72% opacity, a
+   short blur) rather than the heavier smoked-glass treatment a dark cockpit theme would
+   use -- on this warm light background a strong blur/translucency reads as murky, not
+   premium. A plain CSS class (not a Tailwind utility) because `backdrop-filter` plus a
+   `color-mix`-derived translucent fill isn't expressible as a one-off utility without an
+   arbitrary-value class at every call site -- one definition here, reused everywhere. */
+.glass-surface {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  border: 1px solid var(--border);
+}
+.glass-surface-raised {
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  backdrop-filter: blur(10px) saturate(125%);
+  -webkit-backdrop-filter: blur(10px) saturate(125%);
+  border: 1px solid var(--border);
+}
+
+/* A restrained dot-grid texture (docs/decisions/0062) for the app's dark `bg-ink`
+   surfaces -- the command row hero, the auth identity panel, the featured-track tile --
+   the same category of decorative background pattern HackerOne/Bugcrowd/Immunefi-style
+   security platforms use behind a dark hero, kept abstract/technical (evenly-spaced dots)
+   rather than a literal "cyber" motif (DESIGN.md Section 1 still forbids matrix rain/
+   hacker costume). Pure CSS radial-gradient tiling, no image asset; drawn at a low,
+   fixed opacity via `currentColor` so it always matches the canvas text color it's
+   painted on (`text-canvas` on a `bg-ink` panel) with zero extra tokens. Layer it
+   UNDER the existing radial glow gradients (lower in DOM order or a lower z-index), never
+   over interactive content. */
+.dot-grid {
+  background-image: radial-gradient(currentColor 1px, transparent 1px);
+  background-size: 22px 22px;
+  color: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+/* The public marketing page's one recurring graphic signature (see docs/decisions/0035):
+   a traveling pulse along the signal line's rule. Purely decorative/atmospheric (the
+   element it animates is aria-hidden) -- gated by Tailwind's `motion-safe:` variant at
+   the call site, so a reduced-motion visitor gets the static rule with no keyframe
+   applied at all, never a hidden or stripped-down version. */
+@keyframes signal-travel { 0%, 100% { top: 0%; opacity: 0.35; } 50% { top: calc(100% - 0.5rem); opacity: 1; } }
+
+/* The auth identity panel's one-shot pulse (see docs/decisions/0036, section 11): a
+   single pulse on mount, never looping -- "I am entering the same system I just saw,"
+   not another ambient marketing animation. `animation-iteration-count: 1` at the call
+   site (not `infinite`) is what makes this one-shot; the keyframe itself is reusable. */
+@keyframes signal-pulse-once { 0% { opacity: 0.4; transform: scale(0.75); } 45% { opacity: 1; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
+
+/* docs/decisions/0043 -- the authenticated product's own restrained motion vocabulary,
+   distinct from the marketing page's stronger motion. Two keyframes, reused everywhere a
+   row/panel enters because something the user did just changed state (a search result
+   set, a staged evidence item, a freshly-loaded notification) -- never looping, never
+   applied to a page that merely finished loading. Always paired with `motion-safe:` at
+   the call site so `prefers-reduced-motion` gets the final-state styles with no
+   animation property at all, not a stripped-down version of one. */
+@keyframes enter-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes enter-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* docs/decisions/0057 -- the app-wide bold-reskin's motion vocabulary. hero-reveal is a
+   stronger, staggered entrance (larger translateY, longer duration than enter-rise) for a
+   hero/marketing section or a major screen's first real paint -- the dashboard's command
+   row, a report detail header -- once per genuine mount, never on every re-render and
+   never looping. Distinct from enter-rise/enter-fade above, which stay reserved for
+   "something the user did just changed." Always paired with `motion-safe:` at the call
+   site so reduced-motion gets the fully-revealed final state with no animation property
+   at all. */
+@keyframes hero-reveal { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+/* A bounded, finite accent pulse marking a "needs attention" moment (a new-critical badge
+   appearing, a fresh notification) -- `2` iterations at the call site (never `infinite`),
+   always paired with the badge's own existing non-color text value, since motion here
+   decorates an already-legible signal and never carries meaning alone. Uses currentColor
+   so it inherits whichever semantic tone (danger/warning/action) the element already has,
+   never a hardcoded glow color. */
+@keyframes glow-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent); } }
+
+/* Loading-skeleton shimmer -- a moving highlight band over a flat skeleton fill, never
+   applied to anything but a loading placeholder. Under `prefers-reduced-motion: reduce`
+   the skeleton must render as its flat, static fill with no animation property at all
+   (never a slowed-down shimmer) -- gated by `motion-safe:` at the call site like every
+   other pattern here. */
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+/* docs/decisions/0074 -- security-operating-system visual pass. A live-state dot pulse
+   (distinct from glow-pulse above, which is a bounded 2-iteration "something just
+   changed" accent): this one loops continuously to read as "this is live/current data,"
+   reserved for a genuinely live operational signal (an active relationship, a currently-
+   open item) -- never decorative, never on a static/historical row. `motion-safe:` gated
+   at the call site; reduced motion gets the dot with no animation property at all. */
+@keyframes status-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* A restrained ambient drift for the dot-grid texture on major command surfaces only
+   (never a data table, never body text) -- large-amplitude/slow enough to read as
+   "instrument idle," not a marketing parallax effect. `motion-safe:` gated. */
+@keyframes grid-drift { 0% { background-position: 0 0; } 100% { background-position: 44px 44px; } }

@@ -1,0 +1,210 @@
+﻿/**
+ * Realistic sample data for the CTF / practice-challenges section (app/ctf/page.tsx,
+ * app/ctf/[challengeId]/page.tsx), per AGENTS.md's product-build-mode default data rule.
+ * The single richer source of truth for everything CTF -- lib/mock/researcher-dashboard.ts's
+ * own, narrower MOCK_CHALLENGE_CATEGORIES/MOCK_CHALLENGE_SPOTLIGHT exports are derived from
+ * this module (see deriveDashboardCategories/deriveDashboardSpotlight below) rather than a
+ * second, hand-maintained list that could drift out of sync.
+ *
+ * Deliberately a THIRD points vocabulary, distinct from both:
+ *  - the real reputation ledger (services/reputation.ts) -- never a score, an append-only
+ *    fact ledger of org-confirmed outcomes; and
+ *  - the existing mock gamified leaderboard (MOCK_LEADERBOARD in researcher-dashboard.ts,
+ *    used on /researchers) -- its own reputation/rank vocabulary.
+ * `MockCtfLeaderboardRow.ctfPoints` is never named or merged with either.
+ */
+
+import type { MockChallengeCategory, MockChallenge, MockResearcherLevel } from "./researcher-dashboard";
+
+export type CtfCategoryId = "web" | "crypto" | "reverse-engineering" | "binary-pwn" | "forensics" | "network";
+
+export type MockCtfCategory = {
+  id: CtfCategoryId;
+  label: string;
+  description: string;
+  challengeCount: number;
+};
+
+export type CtfDifficulty = "Easy" | "Medium" | "Hard" | "Insane";
+
+/** Points come from a fixed per-difficulty table, never hand-tuned per challenge -- so a
+ * difficulty badge and its point value can never silently contradict each other. */
+export const CTF_DIFFICULTY_POINTS: Record<CtfDifficulty, number> = { Easy: 100, Medium: 250, Hard: 500, Insane: 1000 };
+
+export type MockCtfTrack = { id: string; label: string; description: string; challengeIds: string[] };
+
+export type MockCtfChallenge = {
+  id: string;
+  slug: string;
+  title: string;
+  categoryId: CtfCategoryId;
+  difficulty: CtfDifficulty;
+  points: number;
+  prompt: string;
+  flagFormatHint: string;
+  hints: string[];
+  solveCount: number;
+  estimatedMinutes: number;
+  trackId?: string;
+  /** ISO date -- only set for challenges recent enough to earn a "New" badge; omitted
+   * means "not new," never a fabricated release date. */
+  releasedAt?: string;
+};
+// The plaintext flag is deliberately NOT a field here as of docs/decisions/0072 -- it
+// lives only, hashed, in the real `ctf_challenges.flag_hash` column
+// (supabase/migrations/202609050001_ctf_server_verification_and_reputation.sql), so no
+// code path can ever ship a plaintext flag to a client again. `submit_ctf_flag` compares
+// a server-side hash; this file has no way to reintroduce the old client-side check.
+
+function challenge(input: Omit<MockCtfChallenge, "points">): MockCtfChallenge {
+  return { ...input, points: CTF_DIFFICULTY_POINTS[input.difficulty] };
+}
+
+export const MOCK_CTF_CHALLENGES: MockCtfChallenge[] = [
+  // -- Web exploitation (7) --
+  challenge({ id: "c-web-1", slug: "cookie-jar", title: "The Cookie Jar", categoryId: "web", difficulty: "Easy", prompt: "A login page trusts a client-set cookie to decide who's an admin. Find the cookie, understand what it controls, and reach the admin panel.", flagFormatHint: "unpatched{...}", hints: ["Inspect every cookie the app sets after login, not just the session token.", "What happens if you change the cookie's value instead of just reading it?"], solveCount: 812, estimatedMinutes: 15, trackId: "trk-web-fundamentals", releasedAt: "2026-06-02T00:00:00Z" }),
+  challenge({ id: "c-web-2", slug: "search-and-destroy", title: "Search and Destroy", categoryId: "web", difficulty: "Easy", prompt: "A product search box reflects your query directly into the results page. Craft an input that runs in another user's browser.", flagFormatHint: "unpatched{...}", hints: ["Look at how the search term appears in the page's HTML source, not just the visible text."], solveCount: 764, estimatedMinutes: 15, trackId: "trk-web-fundamentals", releasedAt: "2026-06-02T00:00:00Z" }),
+  challenge({ id: "c-web-3", slug: "invoice-peeper", title: "Invoice Peeper", categoryId: "web", difficulty: "Medium", prompt: "Every invoice has a numeric ID in its download URL. Your account only owns one invoice -- see how many others you can read.", flagFormatHint: "unpatched{...}", hints: ["The ID isn't randomized. What's the smallest possible next step?"], solveCount: 501, estimatedMinutes: 25, trackId: "trk-web-fundamentals", releasedAt: "2026-06-09T00:00:00Z" }),
+  challenge({ id: "c-web-4", slug: "state-of-the-union", title: "State of the Union", categoryId: "web", difficulty: "Medium", prompt: "A funds-transfer form has no visible protection against a forged cross-site request. Prove it by building a page that transfers funds on a victim's behalf.", flagFormatHint: "unpatched{...}", hints: ["Check the transfer request for anything that ties it to the session beyond the cookie itself."], solveCount: 388, estimatedMinutes: 35 }),
+  challenge({ id: "c-web-5", slug: "the-forwarding-address", title: "The Forwarding Address", categoryId: "web", difficulty: "Medium", prompt: "An internal 'fetch preview image from URL' feature accepts any URL you give it. See what it can reach that you normally can't.", flagFormatHint: "unpatched{...}", hints: ["Cloud environments often expose an internal metadata endpoint at a well-known address."], solveCount: 297, estimatedMinutes: 40 }),
+  challenge({ id: "c-web-6", slug: "type-juggler", title: "Type Juggler", categoryId: "web", difficulty: "Hard", prompt: "A password-reset comparison uses a loose equality check on hashed values. Find the comparison and the input that defeats it.", flagFormatHint: "unpatched{...}", hints: ["Certain hash string formats are treated as numbers by loose equality in some languages."], solveCount: 143, estimatedMinutes: 55 }),
+  challenge({ id: "c-web-7", slug: "template-of-doom", title: "Template of Doom", categoryId: "web", difficulty: "Insane", prompt: "A 'generate a custom greeting' feature renders your input through a server-side template engine. Escalate from a reflected string to remote code execution.", flagFormatHint: "unpatched{...}", hints: ["First confirm the input is evaluated, not just echoed, with a simple arithmetic expression.", "Once you have expression evaluation, look for the engine's own object-introspection syntax."], solveCount: 41, estimatedMinutes: 90 }),
+
+  // -- Cryptography (6) --
+  challenge({ id: "c-crypto-1", slug: "rotten-cipher", title: "Rotten Cipher", categoryId: "crypto", difficulty: "Easy", prompt: "An internal memo was 'encrypted' by shifting every letter by the same amount. Recover the original text.", flagFormatHint: "unpatched{...}", hints: ["There are only 25 possible shifts -- try them all."], solveCount: 901, estimatedMinutes: 10, trackId: "trk-crypto-basics", releasedAt: "2026-06-05T00:00:00Z" }),
+  challenge({ id: "c-crypto-2", slug: "the-repeating-key", title: "The Repeating Key", categoryId: "crypto", difficulty: "Medium", prompt: "A short message was XORed against a short, repeating key. Recover the key and the plaintext.", flagFormatHint: "unpatched{...}", hints: ["Try guessing the key length first by looking for repeated byte patterns."], solveCount: 476, estimatedMinutes: 30, trackId: "trk-crypto-basics", releasedAt: "2026-06-05T00:00:00Z" }),
+  challenge({ id: "c-crypto-3", slug: "same-iv-twice", title: "Same IV Twice", categoryId: "crypto", difficulty: "Medium", prompt: "Two ciphertexts were produced with the exact same AES-CTR key and IV. Use that to recover both plaintexts.", flagFormatHint: "unpatched{...}", hints: ["XOR the two ciphertexts together -- the keystream cancels out."], solveCount: 262, estimatedMinutes: 40 }),
+  challenge({ id: "c-crypto-4", slug: "the-small-exponent", title: "The Small Exponent", categoryId: "crypto", difficulty: "Hard", prompt: "An RSA implementation uses a public exponent of 3 with no padding on a short message. Recover the plaintext directly from the ciphertext and modulus.", flagFormatHint: "unpatched{...}", hints: ["If the message is short enough, the ciphertext might not even wrap around the modulus."], solveCount: 118, estimatedMinutes: 55 }),
+  challenge({ id: "c-crypto-5", slug: "signed-but-not-sealed", title: "Signed, But Not Sealed", categoryId: "crypto", difficulty: "Hard", prompt: "A JWT-issuing service accepts tokens signed with 'none' as well as HMAC. Forge an admin token without ever knowing the signing secret.", flagFormatHint: "unpatched{...}", hints: ["Check exactly which algorithm values the verifier actually accepts, not just the ones it issues."], solveCount: 96, estimatedMinutes: 45 }),
+  challenge({ id: "c-crypto-6", slug: "the-shared-modulus", title: "The Shared Modulus", categoryId: "crypto", difficulty: "Insane", prompt: "The same message was encrypted to three different recipients under low-exponent RSA. Recover the plaintext using only the three ciphertexts and public keys.", flagFormatHint: "unpatched{...}", hints: ["Chinese Remainder Theorem turns three ciphertexts into one equation you can take a cube root of."], solveCount: 22, estimatedMinutes: 80 }),
+
+  // -- Reverse engineering (5) --
+  challenge({ id: "c-re-1", slug: "the-license-checker", title: "The License Checker", categoryId: "reverse-engineering", difficulty: "Easy", prompt: "A small binary asks for a license key and tells you if you're wrong. Find the key it's actually checking for.", flagFormatHint: "unpatched{...}", hints: ["Try running `strings` on the binary before opening a disassembler."], solveCount: 533, estimatedMinutes: 20, trackId: "trk-reversing-intro", releasedAt: "2026-06-11T00:00:00Z" }),
+  challenge({ id: "c-re-2", slug: "obfuscated-but-simple", title: "Obfuscated but Simple", categoryId: "reverse-engineering", difficulty: "Medium", prompt: "A validation function has been deliberately obfuscated with junk operations. Strip away the noise and recover the real check.", flagFormatHint: "unpatched{...}", hints: ["Trace which operations actually affect the final comparison -- most of the function is a decoy."], solveCount: 274, estimatedMinutes: 45, trackId: "trk-reversing-intro", releasedAt: "2026-06-11T00:00:00Z" }),
+  challenge({ id: "c-re-3", slug: "the-packed-payload", title: "The Packed Payload", categoryId: "reverse-engineering", difficulty: "Medium", prompt: "This binary unpacks itself in memory before running. Get past the packer to see the real code underneath.", flagFormatHint: "unpatched{...}", hints: ["Set a breakpoint on the memory region right after the unpacking loop finishes writing to it."], solveCount: 165, estimatedMinutes: 50 }),
+  challenge({ id: "c-re-4", slug: "the-vm-inside", title: "The VM Inside", categoryId: "reverse-engineering", difficulty: "Hard", prompt: "The real check runs inside a small custom bytecode interpreter embedded in the binary. Understand the bytecode to recover the flag.", flagFormatHint: "unpatched{...}", hints: ["Identify the interpreter's fetch-decode-execute loop first -- everything else follows from its opcode table."], solveCount: 58, estimatedMinutes: 75 }),
+  challenge({ id: "c-re-5", slug: "anti-debug-101", title: "Anti-Debug 101", categoryId: "reverse-engineering", difficulty: "Insane", prompt: "The binary detects common debuggers and silently corrupts its own logic when one is attached. Defeat the anti-debug checks before you can even start reversing the real logic.", flagFormatHint: "unpatched{...}", hints: ["Look for timing checks and known debugger-artifact checks separately -- there's more than one layer."], solveCount: 19, estimatedMinutes: 100 }),
+
+  // -- Binary exploitation / pwn (4) --
+  challenge({ id: "c-pwn-1", slug: "buffer-of-secrets", title: "Buffer of Secrets", categoryId: "binary-pwn", difficulty: "Easy", prompt: "A program reads a name into a fixed-size buffer with no length check. Overflow it to reach a hidden function.", flagFormatHint: "unpatched{...}", hints: ["Find the offset from the start of the buffer to the saved return address."], solveCount: 302, estimatedMinutes: 35 }),
+  challenge({ id: "c-pwn-2", slug: "return-oriented", title: "Return Oriented", categoryId: "binary-pwn", difficulty: "Hard", prompt: "The stack is non-executable, so a plain shellcode injection won't run. Chain existing code fragments in the binary to get a shell.", flagFormatHint: "unpatched{...}", hints: ["Look for a 'pop; ret' style gadget to control a register before calling into libc."], solveCount: 47, estimatedMinutes: 70 }),
+  challenge({ id: "c-pwn-3", slug: "use-after-goodbye", title: "Use After Goodbye", categoryId: "binary-pwn", difficulty: "Hard", prompt: "A heap object is freed but a dangling reference to it is used again later. Exploit the use-after-free to hijack control flow.", flagFormatHint: "unpatched{...}", hints: ["Allocate a new object of a similar size right after the free to land it in the same memory."], solveCount: 33, estimatedMinutes: 85 }),
+  challenge({ id: "c-pwn-4", slug: "format-string-101", title: "Format String 101", categoryId: "binary-pwn", difficulty: "Medium", prompt: "A logging function passes user input directly as a printf format string. Use that to leak a stack value you shouldn't be able to see.", flagFormatHint: "unpatched{...}", hints: ["`%x` reads a stack value without needing a matching argument -- chain a few of them."], solveCount: 121, estimatedMinutes: 40 }),
+
+  // -- Digital forensics (3) --
+  challenge({ id: "c-forensics-1", slug: "the-hidden-stream", title: "The Hidden Stream", categoryId: "forensics", difficulty: "Easy", prompt: "An image file looks ordinary, but it's larger than it should be for its dimensions. Something is appended after the real image data.", flagFormatHint: "unpatched{...}", hints: ["Check the file's actual byte length against what a normal image of that size should be."], solveCount: 415, estimatedMinutes: 20 }),
+  challenge({ id: "c-forensics-2", slug: "the-deleted-history", title: "The Deleted History", categoryId: "forensics", difficulty: "Medium", prompt: "A disk image has a deleted file whose directory entry is gone but whose data blocks weren't overwritten. Recover it.", flagFormatHint: "unpatched{...}", hints: ["Search the raw disk image for the file format's own header magic bytes, not the filesystem's index."], solveCount: 89, estimatedMinutes: 50 }),
+  challenge({ id: "c-forensics-3", slug: "the-memory-dump", title: "The Memory Dump", categoryId: "forensics", difficulty: "Hard", prompt: "A process memory dump was taken while a user had an unsaved document open in a text editor. Recover the plaintext they never saved.", flagFormatHint: "unpatched{...}", hints: ["Search the raw memory dump for a distinctive phrase you'd expect near the start of the document."], solveCount: 27, estimatedMinutes: 65 }),
+
+  // -- Network security (3) --
+  challenge({ id: "c-network-1", slug: "the-unencrypted-login", title: "The Unencrypted Login", categoryId: "network", difficulty: "Easy", prompt: "A packet capture contains a full login flow over an unencrypted protocol. Find the submitted credentials.", flagFormatHint: "unpatched{...}", hints: ["Filter the capture down to just the protocol carrying the login form submission."], solveCount: 601, estimatedMinutes: 15, trackId: "trk-network-basics", releasedAt: "2026-06-14T00:00:00Z" }),
+  challenge({ id: "c-network-2", slug: "the-hidden-channel", title: "The Hidden Channel", categoryId: "network", difficulty: "Medium", prompt: "A packet capture shows an unusual volume of DNS queries to one domain. Something is being smuggled inside them.", flagFormatHint: "unpatched{...}", hints: ["Look at the subdomain labels themselves -- they're not random hostnames."], solveCount: 154, estimatedMinutes: 40, trackId: "trk-network-basics", releasedAt: "2026-06-14T00:00:00Z" }),
+  challenge({ id: "c-network-3", slug: "the-downgrade", title: "The Downgrade", categoryId: "network", difficulty: "Hard", prompt: "A capture shows a client that supports a strong protocol version being forced onto a weaker, broken one mid-handshake. Recover the plaintext from the weakened session.", flagFormatHint: "unpatched{...}", hints: ["Compare the negotiated version in the handshake against what the client's first message actually offered."], solveCount: 41, estimatedMinutes: 60 }),
+];
+
+export const MOCK_CTF_CATEGORY_META: Record<CtfCategoryId, { label: string; description: string }> = {
+  web: { label: "Web exploitation", description: "Authentication, injection, and logic flaws in real web application patterns." },
+  crypto: { label: "Cryptography", description: "Broken ciphers, key reuse, and weak cryptographic implementations." },
+  "reverse-engineering": { label: "Reverse engineering", description: "Understand compiled binaries well enough to recover what they hide." },
+  "binary-pwn": { label: "Binary exploitation", description: "Memory corruption and control-flow hijacking in native code." },
+  forensics: { label: "Digital forensics", description: "Recover evidence from files, disk images, and memory captures." },
+  network: { label: "Network security", description: "Read and reconstruct what really happened on the wire." },
+};
+
+export const MOCK_CTF_CATEGORIES: MockCtfCategory[] = (Object.keys(MOCK_CTF_CATEGORY_META) as CtfCategoryId[]).map((id) => ({
+  id,
+  label: MOCK_CTF_CATEGORY_META[id].label,
+  description: MOCK_CTF_CATEGORY_META[id].description,
+  challengeCount: MOCK_CTF_CHALLENGES.filter((c) => c.categoryId === id).length,
+}));
+
+export const MOCK_CTF_TRACKS: MockCtfTrack[] = [
+  { id: "trk-web-fundamentals", label: "Web fundamentals", description: "Cookies, reflected input, and object-level access control -- the three bugs every web assessment starts with.", challengeIds: ["c-web-1", "c-web-2", "c-web-3"] },
+  { id: "trk-crypto-basics", label: "Cryptography basics", description: "From a classical cipher to real key-reuse failures in modern stream ciphers.", challengeIds: ["c-crypto-1", "c-crypto-2"] },
+  { id: "trk-reversing-intro", label: "Intro to reverse engineering", description: "Static strings, then a real obfuscated check -- the on-ramp to reading compiled code.", challengeIds: ["c-re-1", "c-re-2"] },
+  { id: "trk-network-basics", label: "Network fundamentals", description: "From reading plaintext credentials off the wire to spotting a covert channel.", challengeIds: ["c-network-1", "c-network-2"] },
+];
+
+/** Every real payment/reputation vocabulary in this app keeps its own numeric field name
+ * deliberately distinct (see file header) -- `ctfPoints` is this section's own, never
+ * "reputation" or "reputationPoints". */
+export type MockCtfLeaderboardRow = {
+  rank: number;
+  username: string;
+  ctfPoints: number;
+  challengesSolved: number;
+  fastestSolveMinutes: number;
+  level: MockResearcherLevel;
+};
+
+function ctfPercentileLevel(rank: number, total: number): MockResearcherLevel {
+  const pct = (total - rank + 1) / total;
+  if (pct > 0.9) return "Distinguished";
+  if (pct > 0.7) return "Expert";
+  if (pct > 0.45) return "Specialist";
+  if (pct > 0.2) return "Practitioner";
+  return "Apprentice";
+}
+
+const CTF_LEADERBOARD_USERNAMES = [
+  "kestrel_null", "vh_researcher", "greyframe", "0xdriftwood", "saltmine_sec", "north_paravail", "quietwire",
+  "faultline_dev", "ember_trace", "brackish_io", "cinder_watch", "loom_variant", "pale_signal", "ridgeback_h",
+  "verge_cast", "hollow_ping", "static_moth", "driftlock",
+];
+
+export const MOCK_CTF_LEADERBOARD: MockCtfLeaderboardRow[] = CTF_LEADERBOARD_USERNAMES.map((username, index) => {
+  const rank = index + 1;
+  const ctfPoints = Math.round(8200 - index * 420 - index * index * 6);
+  return {
+    rank,
+    username,
+    ctfPoints: Math.max(150, ctfPoints),
+    challengesSolved: Math.max(2, 24 - index),
+    fastestSolveMinutes: 6 + (index % 5) * 2,
+    level: ctfPercentileLevel(rank, CTF_LEADERBOARD_USERNAMES.length),
+  };
+});
+
+export const MOCK_MY_CTF_POSITION: MockCtfLeaderboardRow = {
+  rank: 31,
+  username: "demo.researcher",
+  ctfPoints: 1350,
+  challengesSolved: 6,
+  fastestSolveMinutes: 18,
+  level: "Apprentice",
+};
+
+export const MOCK_CTF_LEADERBOARD_TOTAL = 412;
+
+export const MOCK_CTF_TOTAL_POINTS_AVAILABLE = MOCK_CTF_CHALLENGES.reduce((sum, c) => sum + c.points, 0);
+
+export function findCtfChallengeBySlug(slug: string): MockCtfChallenge | undefined {
+  return MOCK_CTF_CHALLENGES.find((c) => c.slug === slug);
+}
+
+export function findCtfTrackById(trackId: string): MockCtfTrack | undefined {
+  return MOCK_CTF_TRACKS.find((t) => t.id === trackId);
+}
+
+/** Feeds lib/mock/researcher-dashboard.ts's own, narrower MOCK_CHALLENGE_CATEGORIES export
+ * -- same shape that file has always had, so app/page.tsx and learning-section.tsx need no
+ * changes at all. */
+export function deriveDashboardCategories(): MockChallengeCategory[] {
+  return MOCK_CTF_CATEGORIES.map((c) => ({ id: c.id, label: c.label, challengeCount: c.challengeCount }));
+}
+
+/** One curated challenge per a spread of difficulties, feeding
+ * lib/mock/researcher-dashboard.ts's MOCK_CHALLENGE_SPOTLIGHT export. */
+export function deriveDashboardSpotlight(): MockChallenge[] {
+  const picks = ["c-web-3", "c-crypto-4", "c-re-1"];
+  return picks
+    .map((id) => MOCK_CTF_CHALLENGES.find((c) => c.id === id))
+    .filter((c): c is MockCtfChallenge => c !== undefined)
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      category: MOCK_CTF_CATEGORY_META[c.categoryId].label,
+      difficulty: c.difficulty === "Insane" ? "Hard" : c.difficulty,
+      estimatedMinutes: c.estimatedMinutes,
+    }));
+}

@@ -1,0 +1,40 @@
+services:
+  sentinel-postgres:
+    image: postgres:17-alpine
+    container_name: sentinel_native_postgres
+    restart: unless-stopped
+    environment:
+      # This becomes the cluster's bootstrap superuser (unavoidable -- POSTGRES_USER
+      # always is), used only to run migrations/admin scripts, never the role the app
+      # itself connects as. See db/init/01-app-role.sql: the app connects as
+      # sentinel_app_runtime, a plain non-superuser, non-BYPASSRLS role, so RLS is
+      # actually enforced locally exactly as it would be in production -- a superuser
+      # connection silently bypasses RLS regardless of any SET ROLE, which defeated the
+      # defense-in-depth design this migration relies on (found live: every row was
+      # visible via plain SELECT with no role switch at all).
+      POSTGRES_USER: sentinel_app
+      POSTGRES_PASSWORD: sentinel_dev_password
+      POSTGRES_DB: sentinel
+    ports:
+      - "55432:5432"
+    volumes:
+      - sentinel_native_pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+
+  sentinel-minio:
+    image: minio/minio:latest
+    container_name: sentinel_native_minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: sentinel_minio
+      MINIO_ROOT_PASSWORD: sentinel_dev_password
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - sentinel_native_minio:/data
+
+volumes:
+  sentinel_native_pgdata:
+  sentinel_native_minio:

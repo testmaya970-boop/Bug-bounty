@@ -1,0 +1,600 @@
+import React from "react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import type { Route } from "next";
+import { AppShell } from "../../../../../components/app-shell";
+import { Breadcrumbs } from "../../../../../components/ui/navigation";
+import { Card, EmptyState, PermissionDenied } from "../../../../../components/ui/feedback";
+import { AssetTypeBadge, ProgramStatusBadge, ResearcherStatusBadge } from "../../../../../components/ui/badge";
+import { AddScopeEntryDialog } from "../../../../../components/programs/add-scope-entry-dialog";
+import { ScopeEntryCard } from "../../../../../components/programs/scope-entry-card";
+import { InviteResearcherDialog } from "../../../../../components/programs/invite-researcher-dialog";
+import { ResearcherTable } from "../../../../../components/programs/researcher-table";
+import { PendingProgramInvitationsPanel } from "../../../../../components/programs/pending-program-invitations-panel";
+import { BountyPolicySection, CreateBountyPolicyDialog } from "../../../../../components/programs/bounty-policy";
+import { ProgramVisibilityPanel } from "../../../../../components/programs/program-visibility-panel";
+import { ProgramKycPanel } from "../../../../../components/programs/program-kyc-panel";
+import { ProgramLifecycleControls } from "../../../../../components/programs/program-lifecycle-controls";
+import { ProgramFocusAreasPanel } from "../../../../../components/programs/program-focus-areas-panel";
+import { JoinPublicProgramButton } from "../../../../../components/programs/join-public-program-button";
+import { ProgramHealthSection } from "../../../../../components/programs/program-health-section";
+import { ProgramReportList } from "../../../../../components/reports/program-report-list";
+import { PrimaryActionPanel, RegistryList, SectionLabel } from "../../../../../components/ui/security-primitives";
+import { ProgramHeader } from "../../../../../components/programs/program-header";
+import { canCreateProgram } from "../../../../../services/authorization";
+import { getActorMembership } from "../../../../../services/organization-members";
+import { getProgram, getProgramFocusAreas, getPublicProgram, listProgramMembers, listPublicProgramScope } from "../../../../../services/programs";
+import { getProgramResolutionPerformance, getProgramSeverityStatusBreakdown, getProgramWeeklyReportVolume } from "../../../../../services/program-analytics";
+import { listActiveScopeEntries } from "../../../../../services/scope";
+import { getMyParticipation, listMyProgramParticipations, listPendingProgramInvitations, listProgramResearchers } from "../../../../../services/program-researchers";
+import { listReportsForProgram } from "../../../../../services/reports";
+import { getEffectiveBountyPolicy } from "../../../../../services/bounty";
+import { getCurrentUser } from "../../../../../lib/auth/current-user";
+import { formatDate } from "../../../../../lib/format-date";
+import type { ScopeState } from "../../../../../types/scope";
+
+const SCOPE_FILTERS: { value: "all" | ScopeState; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "in_scope", label: "In scope" },
+  { value: "out_of_scope", label: "Out of scope" },
+];
+
+export default async function ProgramControlCenterPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ organizationId: string; programId: string }>;
+  searchParams: Promise<{ scope?: string }>;
+}) {
+  const { organizationId, programId } = await params;
+  const { scope: scopeFilterParam } = await searchParams;
+  const user = await getCurrentUser();
+
+  // Anonymous visitor: only a program that is genuinely public AND active/paused is
+  // ever shown here (see docs/decisions/0041) -- get_public_program independently
+  // re-verifies visibility/status server-side, so this branch cannot be tricked into
+  // exposing a private or draft program regardless of what this page believes. Anything
+  // else (private, draft, review, closed, or a genuinely nonexistent id) falls through
+  // to the identical sign-in redirect every anonymous visitor already got before this
+  // slice -- no new information is revealed by the branch itself.
+  if (!user) {
+    const publicProgram = await getPublicProgram(programId);
+    if (!publicProgram || publicProgram.organizationId !== organizationId) {
+      redirect(`/sign-in?redirectTo=/organizations/${organizationId}/programs/${programId}` as Route);
+    }
+    const publicScope = await listPublicProgramScope(programId);
+    const inScope = publicScope.filter((entry) => entry.scopeState === "in_scope");
+    const outOfScope = publicScope.filter((entry) => entry.scopeState === "out_of_scope");
+
+    return (
+      <div className="min-h-dvh bg-canvas text-ink">
+        <header className="border-b border-border px-4 py-4 sm:px-6">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+            <Link href="/" className="text-lg font-bold tracking-tight">
+              Unpatched
+            </Link>
+            <Link href="/sign-in" className="text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+              Sign in
+            </Link>
+          </div>
+        </header>
+        <main className="mx-auto max-w-3xl space-y-9 px-4 py-12 sm:px-6">
+          <div>
+            <SectionLabel>{publicProgram.organizationName}</SectionLabel>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{publicProgram.name}</h1>
+              <ProgramStatusBadge status={publicProgram.status} />
+            </div>
+            {publicProgram.description && <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-ink-muted">{publicProgram.description}</p>}
+          </div>
+
+          {/* CAN I RESEARCH THIS — the primary action, placed immediately after identity,
+              never buried below the scope listing (see docs/decisions/0043). */}
+          <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
+            {publicProgram.status === "active" ? (
+              <>
+                <p className="mt-2 text-sm text-canvas/70">This program is open to the community. Sign in, or create a researcher account, to submit a report against the scope below.</p>
+                <Link
+                  href={`/sign-in?redirectTo=/organizations/${organizationId}/programs/${programId}` as Route}
+                  className="mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-md bg-canvas px-5 text-sm font-semibold text-ink transition hover:bg-canvas/90 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas"
+                >
+                  Sign in to participate <span aria-hidden="true">→</span>
+                </Link>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-canvas/70">This program is paused. Its scope is shown below for reference, but reports cannot be submitted while it is not active.</p>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="text-base font-semibold text-ink">Scope</h2>
+            <p className="text-sm text-ink-muted">
+              Only targets explicitly marked <span className="font-medium text-ink">in scope</span> below are authorized for testing. An unlisted asset is not implicitly in scope.
+            </p>
+            {inScope.length === 0 ? (
+              <EmptyState title="No in-scope targets listed">This program has not published any in-scope targets yet.</EmptyState>
+            ) : (
+              <RegistryList>
+                {inScope.map((entry) => (
+                  <li key={entry.id} className="p-3">
+                    <span className="break-all font-mono text-sm text-ink">{entry.displayTarget}</span>
+                    {entry.description && <p className="mt-1 text-sm text-ink-muted">{entry.description}</p>}
+                  </li>
+                ))}
+              </RegistryList>
+            )}
+          </div>
+
+          {outOfScope.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-base font-semibold text-ink">Out of scope</h2>
+              <RegistryList>
+                {outOfScope.map((entry) => (
+                  <li key={entry.id} className="p-3">
+                    <span className="break-all font-mono text-sm text-ink">{entry.displayTarget}</span>
+                    {entry.description && <p className="mt-1 text-sm text-ink-muted">{entry.description}</p>}
+                  </li>
+                ))}
+              </RegistryList>
+            </div>
+          )}
+        </main>
+        <footer className="border-t border-border px-4 py-8 sm:px-6">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 text-sm text-ink-muted">
+            <span>Unpatched</span>
+            <Link href="/sign-in" className="font-medium hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+              Sign in
+            </Link>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  const [program, myParticipation] = await Promise.all([getProgram(programId), getMyParticipation(user.id, programId)]);
+
+  // A null `program` covers "does not exist" and "exists but you have no access"
+  // identically for anyone with no relationship to it at all -- RLS already made that
+  // decision, and this must not narrow it into a distinguishing message (SECURITY.md:
+  // private program existence is not revealed). A program id that resolves under a
+  // different organization in the URL is treated the same way.
+  //
+  // But `programs`/`program_scope_entries` RLS only grants a researcher direct read
+  // access while their participation is 'active' (private.is_researcher_authorized_for_program,
+  // 202608260006) -- a suspended or revoked researcher's OWN program_researchers row is
+  // still readable to them (getMyParticipation has no such status gate), so `program` can
+  // be null here for someone who genuinely has, or once had, a real relationship to this
+  // program. Treating that identically to a total stranger would hide their own access
+  // state from them, which is exactly what section 4 of this task requires be shown.
+  // `list_my_program_participations` (used by /programs) still carries the program's name
+  // for an active-or-suspended participant; it excludes 'revoked' entirely (a disclosed
+  // backend gap -- see the final report), so a revoked researcher is shown their own
+  // known status without a fabricated program name.
+  if (!program || program.organizationId !== organizationId) {
+    if (myParticipation && myParticipation.organizationId === organizationId) {
+      const participations = await listMyProgramParticipations();
+      const recovered = participations.find((p) => p.programId === programId);
+      const { items: ownReports, nextCursor: ownReportsCursor } = await listReportsForProgram(programId);
+
+      return (
+        <AppShell title={recovered?.programName ?? "Program"} user={user}>
+          <div className="space-y-6">
+            <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: "Programs", href: "/programs" }, { label: recovered?.programName ?? "Program" }]} />
+
+            <div className="border-b border-border pb-5">
+              <div className="flex flex-wrap items-center gap-3">
+                <SectionLabel>Program</SectionLabel>
+                {recovered && <ProgramStatusBadge status={recovered.programStatus} />}
+              </div>
+              {recovered && <p className="mt-1 text-sm text-ink-muted">{recovered.organizationName}</p>}
+              <p className="mt-3 flex items-center gap-2 text-sm text-ink-muted">
+                Your access: <ResearcherStatusBadge status={myParticipation.status} />
+              </p>
+              <p className="mt-2 text-sm text-ink-muted">
+                {myParticipation.status === "suspended"
+                  ? "Your access to this program has been suspended. You cannot currently view its scope or submit new reports. Reports you already submitted remain visible below."
+                  : "You no longer have access to this program. You cannot view its scope or submit new reports. Reports you already submitted remain visible below."}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-base font-semibold text-ink">Your reports</h2>
+              {ownReports.length === 0 ? (
+                <EmptyState title="No reports yet">Reports you submitted to this program while you had access will appear here.</EmptyState>
+              ) : (
+                <ProgramReportList organizationId={organizationId} programId={programId} initialReports={ownReports} initialNextCursor={ownReportsCursor} />
+              )}
+            </div>
+          </div>
+        </AppShell>
+      );
+    }
+
+    // A signed-in visitor with no relationship at all (not org admin, not program_members,
+    // no program_researchers row) fails the same RLS predicate an anonymous visitor does
+    // -- `programs`/`program_scope_entries` RLS was deliberately not widened for this
+    // slice (see docs/decisions/0041). So a genuinely public program still needs its own
+    // check here: get_public_program is granted to `authenticated` too, and re-verifies
+    // visibility/status server-side independently of anything this branch assumes.
+    const publicProgram = await getPublicProgram(programId);
+    if (publicProgram && publicProgram.organizationId === organizationId) {
+      const publicScope = await listPublicProgramScope(programId);
+      const inScope = publicScope.filter((entry) => entry.scopeState === "in_scope");
+      const outOfScope = publicScope.filter((entry) => entry.scopeState === "out_of_scope");
+
+      return (
+        <AppShell title={publicProgram.name} user={user}>
+          <div className="mx-auto max-w-3xl space-y-8">
+            <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: "Programs", href: "/programs" }, { label: publicProgram.name }]} />
+            <div>
+              <SectionLabel>{publicProgram.organizationName}</SectionLabel>
+              <div className="mt-1 flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{publicProgram.name}</h1>
+                <ProgramStatusBadge status={publicProgram.status} />
+              </div>
+              {publicProgram.description && <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-ink-muted">{publicProgram.description}</p>}
+            </div>
+
+            {/* CAN I RESEARCH THIS — placed immediately after identity, never buried
+                below the scope listing (see docs/decisions/0043). */}
+            <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
+              <p className="mt-2 text-sm text-canvas/70">This program is open to the community.</p>
+              {publicProgram.status === "active" ? (
+                <div className="mt-4">
+                  <JoinPublicProgramButton organizationId={organizationId} programId={programId} />
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-canvas/70">Reports cannot be submitted while this program is not active.</p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-base font-semibold text-ink">Scope</h2>
+              {inScope.length === 0 ? (
+                <EmptyState title="No in-scope targets listed">This program has not published any in-scope targets yet.</EmptyState>
+              ) : (
+                <RegistryList>
+                  {inScope.map((entry) => (
+                    <li key={entry.id} className="grid grid-cols-[5.5rem_1fr] items-center gap-x-3 gap-y-1.5 p-3">
+                      <AssetTypeBadge assetType={entry.assetType} />
+                      <div className="min-w-0">
+                        <span className="break-all font-mono text-sm text-ink">{entry.displayTarget}</span>
+                        {entry.description && <p className="mt-0.5 text-sm text-ink-muted">{entry.description}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </RegistryList>
+              )}
+            </div>
+
+            {outOfScope.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-base font-semibold text-ink">Out of scope</h2>
+                <RegistryList>
+                  {outOfScope.map((entry) => (
+                    <li key={entry.id} className="grid grid-cols-[5.5rem_1fr] items-center gap-x-3 gap-y-1.5 p-3">
+                      <AssetTypeBadge assetType={entry.assetType} />
+                      <div className="min-w-0">
+                        <span className="break-all font-mono text-sm text-ink">{entry.displayTarget}</span>
+                        {entry.description && <p className="mt-0.5 text-sm text-ink-muted">{entry.description}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </RegistryList>
+              </div>
+            )}
+          </div>
+        </AppShell>
+      );
+    }
+
+    return (
+      <AppShell title="Program" user={user}>
+        <PermissionDenied>This program does not exist, or you do not have access to it.</PermissionDenied>
+      </AppShell>
+    );
+  }
+
+  // Three distinct viewers can reach this point (see docs/decisions/0007-researcher-access.md):
+  // an org owner/security admin (oversight), a program_members manager, or an active
+  // researcher. Which one determines the entire page below -- manager-facing content
+  // (the roster, invitations, other researchers' identities) is never shown to a
+  // researcher, per the task's data-confidentiality requirement.
+  const [members, actorMembership] = await Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId)]);
+  const isProgramManager = members.some((member) => member.userId === user.id);
+  const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
+  const canManageProgram = isProgramManager || isOrgAdmin;
+
+  const scopeEntries = await listActiveScopeEntries(programId);
+  // Reaching this page as a manager already proves the identical authorization predicate
+  // scope mutation uses -- the only remaining gate is the program's lifecycle state,
+  // which the database independently re-enforces regardless of this flag.
+  const canManageScope = canManageProgram && program.status === "draft";
+
+  const scopeFilter: "all" | ScopeState = scopeFilterParam === "in_scope" || scopeFilterParam === "out_of_scope" ? scopeFilterParam : "all";
+  const filteredScopeEntries = scopeFilter === "all" ? scopeEntries : scopeEntries.filter((entry) => entry.scopeState === scopeFilter);
+
+  const [researchers, pendingInvitations] = canManageProgram ? await Promise.all([listProgramResearchers(programId), listPendingProgramInvitations(programId)]) : [[], []];
+  const focusAreas = canManageProgram ? await getProgramFocusAreas(programId) : [];
+  // RLS already scopes this correctly per viewer: a manager sees every report for the
+  // program, a researcher sees only their own (researcher_id = auth.uid()) -- the same
+  // query, deliberately, rather than two different reads for the same table. A manager
+  // only ever sees a small preview here (limit 5) -- the full, filterable, paginated
+  // list lives at the dedicated triage inbox route this page links to; a researcher's
+  // own report count on one program is small enough that the default page size is fine.
+  const { items: reports, nextCursor: nextCursorPreview } = await listReportsForProgram(programId, undefined, canManageProgram ? 5 : undefined);
+  const isActiveResearcher = myParticipation?.status === "active";
+  // RLS scopes this identically for a manager or an active, authorized researcher --
+  // the same transparency every bounty program studied publishes. See
+  // docs/decisions/0013-bounty-decision-engine.md.
+  const bountyPolicy = canManageProgram || isActiveResearcher ? await getEffectiveBountyPolicy(programId) : null;
+
+  // Same two-path authorization the underlying RPCs enforce themselves
+  // (private.authorize_program_analytics_read: has_org_role(owner/security_admin) OR
+  // is_program_member) -- canManageProgram already covers is_program_member/isOrgAdmin, so
+  // this is deliberately the SAME gate as Bounty policy above (canManageProgram ||
+  // isActiveResearcher), not narrowed to owner/security_admin only. An authorized
+  // researcher sees the same read-only health signal a manager does, matching bounty
+  // policy's own existing transparency precedent on this page.
+  const [severityStatusBreakdown, weeklyVolume, resolutionPerformance] =
+    canManageProgram || isActiveResearcher
+      ? await Promise.all([getProgramSeverityStatusBreakdown(programId), getProgramWeeklyReportVolume(programId), getProgramResolutionPerformance(programId)])
+      : [[], [], null];
+
+  return (
+    // AppShell's title is the page-level landmark, not a second copy of the program
+    // name -- ProgramHeader's own h2, right below, already shows it once (matches the
+    // triage inbox's own precedent of a section title, e.g. "Triage inbox", never a
+    // repeated entity name).
+    <AppShell title="Overview" user={user}>
+      <div className="space-y-6">
+        <Breadcrumbs
+          items={[{ label: "Organizations", href: "/organizations" }, { label: "Engagements", href: `/organizations/${organizationId}/programs` }, { label: program.name }]}
+        />
+
+        <ProgramHeader organizationId={organizationId} programId={programId} programName={program.name} status={program.status} programType={program.programType} active="overview" canManage={canManageProgram} />
+
+        {canManageProgram ? (
+          <dl className="grid gap-4 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-ink-muted">Created by</dt>
+              <dd className="mt-0.5 font-medium text-ink">{program.createdByName}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">Created</dt>
+              <dd className="mt-0.5 font-medium text-ink">{formatDate(program.createdAt)}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">Program managers</dt>
+              <dd className="mt-0.5 font-medium text-ink">{members.length === 0 ? "None" : members.map((member) => member.displayName).join(", ")}</dd>
+            </div>
+          </dl>
+        ) : (
+          myParticipation && (
+            <p className="flex items-center gap-2 text-sm text-ink-muted">
+              Your access: <ResearcherStatusBadge status={myParticipation.status} />
+            </p>
+          )
+        )}
+        {isProgramManager && <p className="text-sm text-ink-muted">You manage this program.</p>}
+
+        {canManageProgram && <ProgramLifecycleControls organizationId={organizationId} programId={programId} status={program.status} />}
+        {canManageProgram && program.status === "review" && (
+          <p className="text-sm text-ink-muted">
+            Awaiting platform review before this program can go active. A platform administrator will approve or send it back to draft with feedback.
+          </p>
+        )}
+
+        {/* CAN I RESEARCH THIS — the researcher's own primary action, placed
+            immediately after identity, never buried below scope/reports (see
+            docs/decisions/0043). Never shown to a manager, who has their own
+            program-management actions instead. */}
+        {!canManageProgram && isActiveResearcher && (
+          <>
+            {program.status === "active" ? (
+              <PrimaryActionPanel
+                eyebrow="Can I research this?"
+                title="Found something? Report it."
+                description="Submit a finding against this program's in-scope targets below."
+                href={`/organizations/${organizationId}/programs/${programId}/reports/new` as Route}
+                actionLabel="Report a vulnerability"
+              />
+            ) : (
+              <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
+                <p className="mt-2 text-sm text-canvas/70">
+                  This program is currently <span className="font-semibold text-canvas">{program.status}</span> and is not accepting new reports right now.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {canManageProgram && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Public discovery</h2>
+              <p className="text-sm text-ink-muted">Independent of this program&rsquo;s status. Only takes effect once the program is Active or Paused.</p>
+            </div>
+            <ProgramVisibilityPanel organizationId={organizationId} programId={programId} visibility={program.visibility} description={program.description} />
+          </div>
+        )}
+
+        {canManageProgram && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Identity verification</h2>
+              <p className="text-sm text-ink-muted">Require a researcher to complete identity (KYC) verification before they can join or submit reports to this program.</p>
+            </div>
+            <ProgramKycPanel organizationId={organizationId} programId={programId} requiresKyc={program.requiresKyc} />
+          </div>
+        )}
+
+        {canManageProgram && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Researcher recommendations</h2>
+              <p className="text-sm text-ink-muted">Tag this program so it's recommended to researchers with matching declared interests.</p>
+            </div>
+            <ProgramFocusAreasPanel organizationId={organizationId} programId={programId} focusAreas={focusAreas} />
+          </div>
+        )}
+
+        <div id="scope" className="scroll-mt-20 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Scope</h2>
+              <p className="text-sm text-ink-muted">This defines what researchers are permitted to test.</p>
+            </div>
+            {canManageScope && <AddScopeEntryDialog organizationId={organizationId} programId={programId} />}
+          </div>
+
+          {canManageProgram && !canManageScope && <p className="text-sm text-ink-muted">Scope can only be changed while the program is in draft.</p>}
+
+          {!canManageProgram && isActiveResearcher && (
+            <p className="text-sm text-ink-muted">
+              Only targets explicitly marked <span className="font-medium text-ink">In scope</span> below are authorized for testing. A target that is not listed here is not in scope. The program does not treat an
+              unlisted asset as implicitly allowed, and a report against it will be rejected at submission.
+            </p>
+          )}
+
+          {scopeEntries.length > 0 && (
+            <nav aria-label="Filter scope by state" className="flex flex-wrap gap-2">
+              {SCOPE_FILTERS.map((filter) => (
+                <Link
+                  key={filter.value}
+                  href={(filter.value === "all" ? `/organizations/${organizationId}/programs/${programId}` : `/organizations/${organizationId}/programs/${programId}?scope=${filter.value}`) as Route}
+                  // A real bug, not cosmetic: without this, clicking a scope filter is a
+                  // real navigation to a new URL (different query string, same route),
+                  // and Next.js's default post-navigation behavior scrolls to the very
+                  // top of the page -- yanking the researcher away from the Scope section
+                  // they were just looking at. `scroll={false}` keeps the current scroll
+                  // position exactly where it was, since the filter buttons themselves
+                  // stay in the same place regardless of which filter is active.
+                  scroll={false}
+                  aria-current={scopeFilter === filter.value ? "true" : undefined}
+                  className={`min-h-11 inline-flex items-center rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                    scopeFilter === filter.value ? "bg-surface-muted text-ink" : "text-ink-muted hover:bg-surface-muted hover:text-ink"
+                  }`}
+                >
+                  {filter.label}
+                </Link>
+              ))}
+            </nav>
+          )}
+
+          {scopeEntries.length === 0 ? (
+            <EmptyState title="No scope assets have been added">
+              This defines what researchers are permitted to test. {canManageScope ? "Add a domain, URL, or IP/CIDR range to get started." : "None have been added yet."}
+            </EmptyState>
+          ) : filteredScopeEntries.length === 0 ? (
+            <EmptyState title="No matching scope entries">No scope entries match this filter.</EmptyState>
+          ) : (
+            <RegistryList>
+              {filteredScopeEntries.map((entry) => (
+                <li key={entry.id}>
+                  <ScopeEntryCard organizationId={organizationId} programId={programId} entry={entry} canManage={canManageScope} />
+                </li>
+              ))}
+            </RegistryList>
+          )}
+        </div>
+
+        {canManageProgram && (
+          <div id="researchers" className="scroll-mt-20 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-ink">Researcher access</h2>
+                <p className="text-sm text-ink-muted">Who is authorized to test this program. Invited researchers get no organization access and no access to other programs.</p>
+              </div>
+              <InviteResearcherDialog organizationId={organizationId} programId={programId} />
+            </div>
+            {pendingInvitations.length > 0 && <PendingProgramInvitationsPanel organizationId={organizationId} programId={programId} invitations={pendingInvitations} />}
+            {researchers.length === 0 ? (
+              <EmptyState title="No researchers are currently participating">Invite a researcher to get started.</EmptyState>
+            ) : (
+              <div className="rounded-lg border border-border bg-surface">
+                <ResearcherTable organizationId={organizationId} programId={programId} researchers={researchers} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {(canManageProgram || isActiveResearcher) && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-ink">Bounty policy</h2>
+                <p className="text-sm text-ink-muted">
+                  {program.programType === "vdp" ? "This is a vulnerability-disclosure-only program. It does not pay bounties." : "What severity pays what, for a resolved report in this program."}
+                </p>
+              </div>
+              {canManageProgram && program.programType !== "vdp" && <CreateBountyPolicyDialog organizationId={organizationId} programId={programId} currentPolicy={bountyPolicy} />}
+            </div>
+            {program.programType !== "vdp" && (
+              <Card className="p-5">
+                <BountyPolicySection policy={bountyPolicy} />
+              </Card>
+            )}
+          </div>
+        )}
+
+        {(canManageProgram || isActiveResearcher) && resolutionPerformance && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Program health</h2>
+              <p className="text-sm text-ink-muted">Real report activity and resolution performance for this program.</p>
+            </div>
+            {severityStatusBreakdown.length === 0 ? (
+              <EmptyState title="No analytics yet">Analytics fill in once this program has received at least one report.</EmptyState>
+            ) : (
+              <ProgramHealthSection severityStatusBreakdown={severityStatusBreakdown} weeklyVolume={weeklyVolume} resolutionPerformance={resolutionPerformance} />
+            )}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Reports</h2>
+              <p className="text-sm text-ink-muted">{canManageProgram ? "Every report submitted to this program." : "Reports you have submitted to this program."}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {canManageProgram && reports.length > 0 && (
+                <Link
+                  href={`/organizations/${organizationId}/programs/${programId}/reports` as Route}
+                  className="inline-flex min-h-11 items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  Open triage inbox
+                </Link>
+              )}
+            </div>
+          </div>
+          {reports.length === 0 ? (
+            <EmptyState title="No reports yet">
+              {canManageProgram
+                ? "Reports researchers submit against this program's scope will appear here."
+                : isActiveResearcher
+                  ? "Reports you submit against this program's scope will appear here."
+                  : "This program has no reports visible to you yet."}
+            </EmptyState>
+          ) : canManageProgram ? (
+            <Card className="p-5">
+              <p className="text-sm text-ink">
+                {reports.length} recent report{reports.length === 1 ? "" : "s"}{nextCursorPreview ? "+" : ""} on this program.{" "}
+                <Link href={`/organizations/${organizationId}/programs/${programId}/reports` as Route} className="font-medium text-action hover:text-action-hover">
+                  Open the triage inbox
+                </Link>{" "}
+                to filter, page through every report, and act on them.
+              </p>
+            </Card>
+          ) : (
+            <ProgramReportList organizationId={organizationId} programId={programId} initialReports={reports} initialNextCursor={nextCursorPreview} />
+          )}
+        </div>
+      </div>
+    </AppShell>
+  );
+}

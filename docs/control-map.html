@@ -1,0 +1,1429 @@
+<title>Sentinel Control Map</title>
+<meta name="description" content="The real, repository-verified state of Sentinel's researcher, organization, and platform systems — what's built, what's broken, what's next.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* ============================= TOKENS ============================= */
+  /* Deliberately single-theme (dark security-operations console) -- the
+     same posture Sentinel's own account-security surfaces and real ops
+     tools (a SOC console, GitHub Security Lab) commit to. Every color is
+     painted explicitly regardless of viewer theme, per artifact-design's
+     "deliberate single visual world" allowance. */
+  :root{
+    --canvas:#0a0c0d;
+    --surface:#131619;
+    --surface-2:#191d21;
+    --surface-warm:#f2ede2;
+    --ink:#e9e7e1;
+    --ink-dim:#9aa1a7;
+    --ink-faint:#5c6369;
+    --line:rgba(233,231,225,.09);
+    --line-strong:rgba(233,231,225,.18);
+    --signal:#2ad6ac;
+    --signal-dim:rgba(42,214,172,.13);
+    --signal-ink:#08211b;
+    --warn:#e3a53f;
+    --warn-dim:rgba(227,165,63,.13);
+    --danger:#e2564f;
+    --danger-dim:rgba(226,86,79,.13);
+    --info:#5b9fe0;
+    --info-dim:rgba(91,159,224,.13);
+    --violet:#9b8cf2;
+    --violet-dim:rgba(155,140,242,.13);
+    --font-display:'IBM Plex Sans',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Consolas,monospace;
+    --rail-w:248px;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;overflow-x:hidden}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0;background:var(--canvas);color:var(--ink);
+    font-family:var(--font-display);font-size:15px;line-height:1.55;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  h1,h2,h3,h4{font-family:var(--font-display);font-weight:600;letter-spacing:-.01em;text-wrap:balance;margin:0}
+  p{margin:0}
+  a{color:inherit}
+  button{font-family:inherit;cursor:pointer}
+  :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .mono{font-family:var(--font-mono)}
+  .eyebrow{
+    font-family:var(--font-mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-faint);
+  }
+  ::selection{background:var(--signal-dim);color:var(--ink)}
+
+  /* ============================= SCROLLBAR (webkit) ============================= */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px}
+
+  /* ============================= SHELL ============================= */
+  .shell{display:flex;min-height:100dvh}
+  .rail{
+    width:var(--rail-w);flex:0 0 auto;position:sticky;top:0;height:100dvh;
+    border-right:1px solid var(--line);display:flex;flex-direction:column;
+    padding:20px 16px;gap:18px;overflow-y:auto;background:var(--canvas);
+    z-index:20;
+  }
+  .rail-brand{display:flex;flex-direction:column;gap:2px;padding:2px 4px 10px;border-bottom:1px solid var(--line)}
+  .rail-brand .mark{display:flex;align-items:center;gap:8px}
+  .rail-brand .dot{width:8px;height:8px;border-radius:2px;background:var(--signal);box-shadow:0 0 0 3px var(--signal-dim)}
+  .rail-brand .name{font-weight:700;font-size:15.5px;letter-spacing:-.01em}
+  .rail-brand .sub{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase;padding-left:16px}
+  .rail-search{position:relative}
+  .rail-search input{
+    width:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;
+    color:var(--ink);font-family:var(--font-mono);font-size:12.5px;padding:9px 10px 9px 28px;
+  }
+  .rail-search input:focus{border-color:var(--signal)}
+  .rail-search svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--ink-faint)}
+  .rail-search kbd{
+    position:absolute;right:7px;top:50%;transform:translateY(-50%);font-family:var(--font-mono);
+    font-size:10px;color:var(--ink-faint);border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+  }
+  nav.railnav{display:flex;flex-direction:column;gap:1px;flex:1}
+  nav.railnav a{
+    display:flex;align-items:baseline;gap:9px;padding:7px 8px;border-radius:5px;
+    text-decoration:none;font-size:12.7px;color:var(--ink-dim);transition:background .12s,color .12s;
+  }
+  nav.railnav a:hover{background:var(--surface);color:var(--ink)}
+  nav.railnav a.active{background:var(--signal-dim);color:var(--signal)}
+  nav.railnav a .num{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);width:16px;flex:0 0 auto}
+  nav.railnav a.active .num{color:var(--signal)}
+  .rail-foot{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+  .rail-foot .stat{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint)}
+  .rail-foot .stat b{color:var(--ink-dim);font-weight:500}
+
+  .rail-toggle{
+    display:none;position:fixed;top:14px;left:14px;z-index:40;background:var(--surface-2);
+    border:1px solid var(--line-strong);border-radius:7px;padding:9px 10px;color:var(--ink);
+  }
+
+  main{flex:1;min-width:0;max-width:1180px;padding:0 40px 120px;margin:0 auto}
+  section{padding-top:64px;scroll-margin-top:20px}
+  section:first-of-type{padding-top:0}
+  .section-head{margin-bottom:28px;max-width:720px}
+  .section-head .eyebrow{margin-bottom:8px}
+  .section-head h2{font-size:26px}
+  .section-head .desc{margin-top:9px;color:var(--ink-dim);font-size:14px;max-width:620px}
+
+  /* ============================= HERO ============================= */
+  .hero{padding:56px 0 40px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .hero .eyebrow{color:var(--signal)}
+  .hero h1{font-size:44px;margin-top:10px;line-height:1.04}
+  .hero .tagline{font-size:16px;color:var(--ink-dim);max-width:640px;margin-top:16px}
+  .hero-areas{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:34px}
+  .hero-area{background:var(--surface);padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+  .hero-area .name{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--ink-dim)}
+  .hero-area .bar{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+  .hero-area .bar > span{display:block;height:100%;background:var(--signal);border-radius:3px}
+  .hero-area .pct-row{display:flex;justify-content:space-between;align-items:baseline}
+  .hero-area .pct{font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--ink)}
+  .hero-area .label{font-size:11px;color:var(--ink-faint)}
+  .hero-note{margin-top:14px;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em}
+
+  /* ============================= STATUS PILLS ============================= */
+  .pill{
+    display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10.5px;
+    font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px 3px 7px;border-radius:20px;
+    white-space:nowrap;border:1px solid transparent;
+  }
+  .pill::before{content:'';width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+  .pill-verified{background:var(--signal-dim);color:var(--signal)}.pill-verified::before{background:var(--signal)}
+  .pill-partial{background:var(--warn-dim);color:var(--warn)}.pill-partial::before{background:var(--warn)}
+  .pill-missing{background:var(--danger-dim);color:var(--danger)}.pill-missing::before{background:var(--danger)}
+  .pill-blocked{background:var(--danger-dim);color:var(--danger)}.pill-blocked::before{background:var(--danger);box-shadow:0 0 0 2px var(--danger-dim)}
+  .pill-planned{background:var(--info-dim);color:var(--info)}.pill-planned::before{background:var(--info)}
+  .pill-deferred{background:rgba(233,231,225,.08);color:var(--ink-dim)}.pill-deferred::before{background:var(--ink-faint)}
+  .pill-rejected{background:var(--surface-2);color:var(--ink-faint);text-decoration:line-through}.pill-rejected::before{background:var(--ink-faint)}
+  .pill-different{background:var(--violet-dim);color:var(--violet)}.pill-different::before{background:var(--violet)}
+
+  .prio{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--ink-faint);border:1px solid var(--line-strong);border-radius:4px;padding:1px 5px}
+  .prio-p0{color:var(--danger);border-color:rgba(226,86,79,.35)}
+  .prio-p1{color:var(--warn);border-color:rgba(227,165,63,.35)}
+
+  /* ============================= JOURNEY CHAINS ============================= */
+  .journey{display:flex;flex-direction:column;gap:0}
+  .jnode{display:flex;gap:16px;position:relative}
+  .jnode .stem{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:20px}
+  .jnode .dot{width:11px;height:11px;border-radius:50%;background:var(--surface-2);border:2px solid var(--ink-faint);margin-top:19px;flex:0 0 auto;z-index:1}
+  .jnode .wire{width:2px;flex:1;background:var(--line-strong);min-height:14px}
+  .jnode:last-child .wire{display:none}
+  .jnode[data-status="verified"] .dot{border-color:var(--signal);background:var(--signal)}
+  .jnode[data-status="partial"] .dot{border-color:var(--warn)}
+  .jnode[data-status="missing"] .dot{border-color:var(--danger)}
+  .jnode[data-status="blocked"] .dot{border-color:var(--danger);background:var(--danger)}
+  .jnode[data-status="different"] .dot{border-color:var(--violet)}
+  .jcard{
+    flex:1;background:var(--surface);border:1px solid var(--line);border-radius:9px;
+    padding:13px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:5px;
+    transition:border-color .15s,background .15s;
+  }
+  .jnode[data-status="missing"] .jcard,.jnode[data-status="blocked"] .jcard{border-style:dashed;border-color:rgba(226,86,79,.4)}
+  .jcard:hover{border-color:var(--line-strong);background:var(--surface-2)}
+  .jcard-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .jcard-name{font-weight:600;font-size:13.5px}
+  .jcard-note{font-size:12px;color:var(--ink-dim)}
+  .journey-cols{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+  @media(max-width:860px){.journey-cols{grid-template-columns:1fr}}
+
+  /* ============================= OVERVIEW GRID (03 platform etc use cards) ============================= */
+  .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .infocard{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:15px 16px;display:flex;flex-direction:column;gap:8px}
+  .infocard h4{font-size:13px}
+  .infocard p{font-size:12px;color:var(--ink-dim)}
+
+  /* ============================= FEATURE EXPLORER ============================= */
+  .explorer-controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center}
+  .chipbar{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{
+    font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);background:var(--surface);
+    border:1px solid var(--line);border-radius:20px;padding:5px 11px;transition:.12s;
+  }
+  .chip:hover{border-color:var(--line-strong);color:var(--ink)}
+  .chip.on{background:var(--signal-dim);border-color:transparent;color:var(--signal)}
+  .explorer-search{position:relative;margin-left:auto;min-width:200px}
+  .explorer-search input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:20px;color:var(--ink);font-size:12.5px;padding:7px 13px}
+  .explorer-count{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-bottom:10px}
+
+  .ftable{width:100%;border-collapse:collapse}
+  .ftable-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;overflow-x:auto}
+  .ftable thead th{
+    text-align:left;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface);
+    position:sticky;top:0;
+  }
+  .ftable tbody tr{border-bottom:1px solid var(--line);cursor:pointer;transition:background .1s}
+  .ftable tbody tr:last-child{border-bottom:none}
+  .ftable tbody tr:hover,.ftable tbody tr.sel{background:var(--surface)}
+  .ftable tbody tr.sel{background:var(--signal-dim)}
+  .ftable td{padding:10px 14px;font-size:12.7px;white-space:nowrap}
+  .ftable td.fname{white-space:normal;min-width:200px}
+  .ftable td.fname .id{display:block;font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);margin-bottom:1px}
+  .ftable td.fdeps{color:var(--ink-faint);font-family:var(--font-mono);font-size:11px;max-width:220px;white-space:normal}
+  .ftable-empty{padding:34px;text-align:center;color:var(--ink-faint);font-size:13px}
+
+  .detail-panel{
+    position:sticky;bottom:0;margin-top:16px;background:var(--surface-2);border:1px solid var(--line-strong);
+    border-radius:10px;padding:22px 24px;display:none;
+  }
+  .detail-panel.open{display:block;animation:rise .18s ease-out}
+  @media(prefers-reduced-motion:reduce){.detail-panel.open{animation:none}}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  .detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}
+  .detail-top .id{font-family:var(--font-mono);font-size:11px;color:var(--signal);letter-spacing:.04em}
+  .detail-top h3{font-size:18px;margin-top:3px}
+  .detail-close{background:none;border:1px solid var(--line-strong);border-radius:7px;color:var(--ink-dim);width:28px;height:28px;flex:0 0 auto}
+  .detail-close:hover{color:var(--ink);border-color:var(--ink-faint)}
+  .detail-badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px 22px;margin-bottom:16px}
+  .detail-field .k{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px}
+  .detail-field .v{font-size:12.7px;color:var(--ink)}
+  .detail-field .v.mono{font-family:var(--font-mono);font-size:11.7px;line-height:1.7}
+  .maturity-row{display:flex;gap:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--line)}
+  .maturity-item{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11.5px}
+  .maturity-item .mk{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;flex:0 0 auto}
+  .maturity-item .mk.yes{background:var(--signal-dim);color:var(--signal)}
+  .maturity-item .mk.no{background:var(--surface);color:var(--ink-faint);border:1px solid var(--line)}
+  .detail-note{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-dim)}
+  .deplink{font-family:var(--font-mono);font-size:11px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:2px 7px;margin:0 4px 4px 0;display:inline-block;color:var(--ink-dim)}
+  .deplink:hover{border-color:var(--signal);color:var(--signal)}
+
+  /* ============================= DEPENDENCY MAP ============================= */
+  .depchain{display:flex;flex-direction:column;gap:9px;margin-bottom:26px}
+  .depchain h4{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:4px}
+  .depnodes{display:flex;align-items:stretch;flex-wrap:wrap;gap:0}
+  .depnode{
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 13px;
+    font-size:12px;font-weight:500;display:flex;align-items:center;gap:7px;white-space:normal;
+    max-width:100%;
+  }
+  .depnode span{min-width:0}
+  .depnode .sw{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .depnode[data-status="verified"] .sw{background:var(--signal)}
+  .depnode[data-status="partial"] .sw{background:var(--warn)}
+  .depnode[data-status="missing"] .sw,.depnode[data-status="blocked"] .sw{background:var(--danger)}
+  .deparrow{display:flex;align-items:center;padding:0 8px;color:var(--ink-faint)}
+  .deparrow.blocked{color:var(--danger)}
+  .depnode.blocked-target{border-color:rgba(226,86,79,.5);border-style:dashed}
+
+  /* ============================= TIMELINE ============================= */
+  .timeline{position:relative;padding-left:26px}
+  .timeline::before{content:'';position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:var(--line-strong)}
+  .tick{position:relative;padding-bottom:18px}
+  .tick::before{content:'';position:absolute;left:-26px;top:5px;width:11px;height:11px;border-radius:50%;background:var(--canvas);border:2px solid var(--ink-faint)}
+  .tick.major::before{border-color:var(--signal);background:var(--signal)}
+  .tick-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .tick-id{font-family:var(--font-mono);font-size:11px;color:var(--signal);font-weight:600}
+  .tick-title{font-size:13px;font-weight:500}
+  .tick-tag{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-faint);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+
+  /* ============================= DECISIONS ============================= */
+  .decision-search{margin-bottom:16px}
+  .decision-search input{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:20px;color:var(--ink);font-size:12.5px;padding:8px 14px}
+  .decision{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:16px 18px;margin-bottom:10px}
+  .decision-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+  .decision-head .id{font-family:var(--font-mono);color:var(--signal);font-size:12px;font-weight:600}
+  .decision-head .t{font-weight:600;font-size:13.5px}
+  .decision-why{margin-top:8px;font-size:12.5px;color:var(--ink-dim)}
+  .decision-tags{margin-top:9px;display:flex;gap:6px;flex-wrap:wrap}
+  .dtag{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);background:var(--surface-2);border-radius:4px;padding:2px 6px}
+
+  /* ============================= BLOCKERS / REJECTED / DEFERRED ============================= */
+  .blocker{background:var(--danger-dim);border:1px solid rgba(226,86,79,.35);border-radius:10px;padding:18px 20px;margin-bottom:12px}
+  .blocker h4{font-size:14.5px;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .blocker h4::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--danger)}
+  .blocker p{margin-top:7px;font-size:12.7px;color:var(--ink-dim)}
+  .blocker .req{margin-top:10px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-dim);border-top:1px solid rgba(226,86,79,.25);padding-top:10px}
+
+  .triple{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:860px){.triple{grid-template-columns:1fr}}
+  .tripcol h4{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .tripcol h4::before{content:'';width:7px;height:7px;border-radius:50%}
+  .tripcol.rejected h4::before{background:var(--ink-faint)}
+  .tripcol.deferred h4::before{background:var(--info)}
+  .tripcol.blocked h4::before{background:var(--danger)}
+  .triprow{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:10px 12px;margin-bottom:8px;font-size:12px}
+  .triprow b{display:block;font-size:12.5px;margin-bottom:3px;color:var(--ink)}
+  .triprow span{color:var(--ink-dim)}
+
+  /* ============================= NEXT SLICE ============================= */
+  .next-card{background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--line-strong);border-radius:14px;padding:30px 32px}
+  .next-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .next-id{font-family:var(--font-mono);color:var(--signal);font-size:12px;letter-spacing:.05em}
+  .next-title{font-size:24px;margin-top:6px}
+  .next-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:22px}
+  @media(max-width:760px){.next-grid{grid-template-columns:1fr}}
+  .next-field .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:7px}
+  .next-field ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink-dim);display:flex;flex-direction:column;gap:5px}
+  .copy-btn{
+    margin-top:26px;background:var(--signal);color:var(--signal-ink);border:none;border-radius:8px;
+    padding:12px 20px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:9px;
+  }
+  .copy-btn:hover{filter:brightness(1.08)}
+  .copy-btn.copied{background:var(--ink);color:var(--canvas)}
+  .next-prompt-preview{
+    margin-top:16px;background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:14px 16px;
+    font-family:var(--font-mono);font-size:11.5px;color:var(--ink-dim);white-space:pre-wrap;line-height:1.65;
+    max-height:260px;overflow-y:auto;display:none;
+  }
+  .next-prompt-preview.open{display:block}
+
+  footer.foot{border-top:1px solid var(--line);margin-top:70px;padding-top:26px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-family:var(--font-mono);font-size:11px;color:var(--ink-faint)}
+
+  /* ============================= RESPONSIVE ============================= */
+  @media(max-width:980px){
+    .rail{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .2s;box-shadow:0 0 0 100vmax rgba(0,0,0,0)}
+    .rail.open{transform:translateX(0);box-shadow:20px 0 60px rgba(0,0,0,.5)}
+    .rail-toggle{display:flex}
+    main{padding:70px 20px 100px;max-width:100%}
+    .hero-areas{grid-template-columns:1fr}
+  }
+  @media(prefers-reduced-motion:reduce){.rail{transition:none}}
+  @media(max-width:600px){
+    .hero h1{font-size:32px}
+    section{padding-top:48px}
+    .ftable td,.ftable th{padding:8px 10px}
+    .next-top{flex-direction:column}
+  }
+</style>
+
+<div class="shell">
+  <button class="rail-toggle" id="railToggle" aria-label="Toggle navigation" aria-expanded="false">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 4h14M1 8h14M1 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  </button>
+
+  <aside class="rail" id="rail" aria-label="Section navigation">
+    <div class="rail-brand">
+      <div class="mark"><span class="dot" aria-hidden="true"></span><span class="name">SENTINEL</span></div>
+      <span class="sub">Product Control Map</span>
+    </div>
+
+    <div class="rail-search">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <input id="globalSearch" type="text" placeholder="Search features…" autocomplete="off">
+      <kbd>/</kbd>
+    </div>
+
+    <nav class="railnav" id="railnav">
+      <a href="#overview" data-sec="overview"><span class="num">01</span>Overview</a>
+      <a href="#researcher" data-sec="researcher"><span class="num">02</span>Researcher journey</a>
+      <a href="#organization" data-sec="organization"><span class="num">03</span>Organization journey</a>
+      <a href="#platform" data-sec="platform"><span class="num">04</span>Platform / SecOps</a>
+      <a href="#lifecycle" data-sec="lifecycle"><span class="num">05</span>Cross-system lifecycle</a>
+      <a href="#features" data-sec="features"><span class="num">06</span>Feature status</a>
+      <a href="#dependencies" data-sec="dependencies"><span class="num">07</span>Dependency map</a>
+      <a href="#timeline" data-sec="timeline"><span class="num">08</span>Timeline</a>
+      <a href="#decisions" data-sec="decisions"><span class="num">09</span>Decision history</a>
+      <a href="#blockers" data-sec="blockers"><span class="num">10</span>Launch blockers</a>
+      <a href="#next" data-sec="next"><span class="num">11</span>Next slice</a>
+    </nav>
+
+    <div class="rail-foot">
+      <div class="stat"><span>Features mapped</span><b id="statFeatures">—</b></div>
+      <div class="stat"><span>Verified</span><b id="statVerified">—</b></div>
+      <div class="stat"><span>Missing / blocked</span><b id="statMissing">—</b></div>
+      <div class="stat"><span>Decisions indexed</span><b id="statDecisions">—</b></div>
+    </div>
+  </aside>
+
+  <main id="main">
+
+    <!-- ============================= 01 OVERVIEW ============================= -->
+    <section id="overview">
+      <div class="hero">
+        <p class="eyebrow">Sentinel · Security research platform</p>
+        <h1>Product Control Map</h1>
+        <p class="tagline">A researcher-to-organization vulnerability disclosure platform: programs, scope, reports, triage, bounty decisions, and reputation, built end to end on Supabase/Postgres with a Next.js App Router frontend. This map is reconciled against the actual repository — migrations, RLS, RPCs, services, actions, tests, and every decision document — not against prior status claims.</p>
+
+        <div class="hero-areas" id="heroAreas"></div>
+        <p class="hero-note">PRODUCT IMPLEMENTATION COVERAGE · computed from the 06 feature registry below, not a company metric</p>
+      </div>
+
+      <div class="cardgrid" style="margin-top:8px">
+        <div class="infocard"><h4>Researcher</h4><p>Discover, join, report, evidence, communicate, get decided, build reputation. The strongest, most complete vertical.</p></div>
+        <div class="infocard"><h4>Organization</h4><p>Create programs, define scope, triage, decide, pay out. Complete except automated (non-manual) payout execution.</p></div>
+        <div class="infocard"><h4>Platform</h4><p>A real service-role-only admin tier with operational recovery tooling. No cross-organization moderation exists.</p></div>
+        <div class="infocard"><h4>Public</h4><p>Anonymous landing page and program registry — real, filterable, no login wall on discovery.</p></div>
+        <div class="infocard"><h4>Security</h4><p>RLS everywhere, RPC-only mutation, real TOTP MFA, enumeration-safe auth flows, a 12-char real password minimum.</p></div>
+        <div class="infocard"><h4>Infrastructure</h4><p>A fully real local dev stack. Zero production deployment, cloud project, or SMTP provider exist anywhere.</p></div>
+      </div>
+    </section>
+
+    <!-- ============================= 02 RESEARCHER JOURNEY ============================= -->
+    <section id="researcher">
+      <div class="section-head">
+        <p class="eyebrow">02 — Researcher journey</p>
+        <h2>From anonymous visitor to paid, reputable researcher</h2>
+        <p class="desc">The single most complete path in the product. One real, visible break: there is no retesting mechanism once a report resolves.</p>
+      </div>
+      <div class="journey-cols">
+        <div class="journey" id="journeyResearcherA"></div>
+        <div class="journey" id="journeyResearcherB"></div>
+      </div>
+    </section>
+
+    <!-- ============================= 03 ORGANIZATION JOURNEY ============================= -->
+    <section id="organization">
+      <div class="section-head">
+        <p class="eyebrow">03 — Organization journey</p>
+        <h2>From signup to paid resolution</h2>
+        <p class="desc">Complete through triage and decision. Payout execution is real but manual — a human confirms the transfer, the ledger never fakes a success.</p>
+      </div>
+      <div class="journey-cols">
+        <div class="journey" id="journeyOrgA"></div>
+        <div class="journey" id="journeyOrgB"></div>
+      </div>
+    </section>
+
+    <!-- ============================= 04 PLATFORM ============================= -->
+    <section id="platform">
+      <div class="section-head">
+        <p class="eyebrow">04 — Platform / security operations</p>
+        <h2>The third tier: service-role-only, narrow by design</h2>
+        <p class="desc">A real <code class="mono">platform_admins</code> membership table, granted only by service_role — no in-app self-escalation path exists. Operational recovery is real for the outbox; deliberately read-only for notifications and payments.</p>
+      </div>
+      <div class="journey" id="journeyPlatform" style="max-width:560px"></div>
+      <div style="margin-top:26px">
+        <p class="eyebrow" style="margin-bottom:10px">Not implemented — confirmed absent, not merely undiscussed</p>
+        <div class="cardgrid">
+          <div class="infocard"><h4>Cross-org moderation</h4><p>No dispute-handling or moderation surface spans organizations.</p></div>
+          <div class="infocard"><h4>Platform-wide researcher enforcement</h4><p>No ban/suspend capability exists above the per-organization level.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= 05 CROSS-SYSTEM LIFECYCLE ============================= -->
+    <section id="lifecycle">
+      <div class="section-head">
+        <p class="eyebrow">05 — Cross-system lifecycle</p>
+        <h2>Where researcher and organization meet</h2>
+        <p class="desc">One report, two sides. Every arrow below is a real mutation path (an RPC), not a diagram convenience.</p>
+      </div>
+      <div id="lifecycleSvgWrap"></div>
+    </section>
+
+    <!-- ============================= 06 FEATURE STATUS ============================= -->
+    <section id="features">
+      <div class="section-head">
+        <p class="eyebrow">06 — Feature status explorer</p>
+        <h2>Every capability, reconciled against the repository</h2>
+        <p class="desc">Click a row for the full frontend/backend/security/test/browser breakdown. Search matches name, ID, and area.</p>
+      </div>
+
+      <div class="explorer-controls">
+        <div class="chipbar" id="areaChips"></div>
+        <div class="explorer-search">
+          <input id="featureSearch" type="text" placeholder="Filter by name, ID, area…" autocomplete="off">
+        </div>
+      </div>
+      <div class="chipbar" id="statusChips" style="margin-bottom:14px"></div>
+      <p class="explorer-count" id="featureCount"></p>
+
+      <div class="ftable-wrap">
+        <table class="ftable">
+          <thead>
+            <tr><th>ID</th><th>Feature</th><th>Area</th><th>Status</th><th>Priority</th><th>Dependencies</th></tr>
+          </thead>
+          <tbody id="featureRows"></tbody>
+        </table>
+        <div class="ftable-empty" id="featureEmpty" style="display:none">No feature matches this filter.</div>
+      </div>
+
+      <div class="detail-panel" id="detailPanel" role="region" aria-live="polite"></div>
+    </section>
+
+    <!-- ============================= 07 DEPENDENCY MAP ============================= -->
+    <section id="dependencies">
+      <div class="section-head">
+        <p class="eyebrow">07 — Dependency map</p>
+        <h2>What blocks what</h2>
+        <p class="desc">Click any node to jump to its full record in the feature explorer above.</p>
+      </div>
+      <div id="depchains"></div>
+    </section>
+
+    <!-- ============================= 08 TIMELINE ============================= -->
+    <section id="timeline">
+      <div class="section-head">
+        <p class="eyebrow">08 — Development timeline</p>
+        <h2>Every real decision slice, in order</h2>
+        <p class="desc">Sequenced by decision-document number, the only ordering the repository actually establishes — no fabricated dates.</p>
+      </div>
+      <div class="timeline" id="timelineList"></div>
+    </section>
+
+    <!-- ============================= 09 DECISIONS ============================= -->
+    <section id="decisions">
+      <div class="section-head">
+        <p class="eyebrow">09 — Decision history</p>
+        <h2>The decisions future sessions must not silently reverse</h2>
+        <p class="desc">Every one of these was a deliberate call, with a stated reason — not an oversight to "fix" later.</p>
+      </div>
+      <div class="decision-search"><input id="decisionSearch" type="text" placeholder="Search decisions…"></div>
+      <div id="decisionList"></div>
+    </section>
+
+    <!-- ============================= 10 BLOCKERS ============================= -->
+    <section id="blockers">
+      <div class="section-head">
+        <p class="eyebrow">10 — Launch blockers</p>
+        <h2>What genuinely stands between this and a real launch</h2>
+        <p class="desc">Not inflated — a short, honest list. Everything else in this map that's incomplete is a product gap, not a launch blocker.</p>
+      </div>
+      <div id="blockerList"></div>
+
+      <div class="triple" style="margin-top:34px">
+        <div class="tripcol rejected"><h4>Rejected</h4><div id="rejectedList"></div></div>
+        <div class="tripcol deferred"><h4>Deferred</h4><div id="deferredList"></div></div>
+        <div class="tripcol blocked"><h4>Blocked</h4><div id="blockedMiniList"></div></div>
+      </div>
+    </section>
+
+    <!-- ============================= 11 NEXT SLICE ============================= -->
+    <section id="next">
+      <div class="section-head">
+        <p class="eyebrow">11 — Next implementation slice</p>
+        <h2>The single highest-value next task</h2>
+        <p class="desc">Selected from the feature registry — real dependencies satisfied, real user-visible gap, no infrastructure blocker.</p>
+      </div>
+      <div class="next-card" id="nextCard"></div>
+    </section>
+
+    <footer class="foot">
+      <span>Sentinel Product Control Map · reconciled against the repository, not prior reports</span>
+      <span id="footStamp"></span>
+    </footer>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+/* ======================================================================
+   DATA — every field below is reconciled against the actual repository
+   (migrations, RLS, RPCs, services, actions, tests, decision docs). No
+   researcher/program/bounty counts, response-rate, or ranking numbers
+   appear anywhere in this file: none are supported by real data.
+====================================================================== */
+
+const AREAS = ["RESEARCHER","ORGANIZATION","PLATFORM","SECURITY","PUBLIC","INFRASTRUCTURE"];
+const STATUSES = ["VERIFIED","PARTIAL","MISSING","BLOCKED","PLANNED","DEFERRED","REJECTED"];
+
+const FEATURES = [
+  // ---------- RESEARCHER ----------
+  {id:"RES-001",name:"Researcher signup (email + password, chosen name/username)",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/researchers/sign-up/page.tsx","components/auth/sign-up-form.tsx"],svc:["services/auth.ts"],act:["actions/auth.ts:signUpAction"],
+   rpc:["auth.signUp (Supabase Auth)"],db:["handle_new_auth_user trigger"],rls:"Signup metadata only, no direct table write from client.",
+   tests:true,browser:true,decisions:["0002","0019","0050"],deps:[],
+   note:"Username chosen at signup with a race-safe fallback to an auto-derived name; not editable after creation (see RES-005)."},
+  {id:"RES-002",name:"Email verification",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/auth/confirm/route.ts","components/auth/confirm-email-pending.tsx"],svc:["services/auth.ts:resendConfirmationEmail"],
+   act:["actions/auth.ts:resendConfirmationEmailAction"],rpc:["auth.verifyOtp / auth.resend (Supabase Auth)"],db:["—"],
+   rls:"Enumeration-safe resend, verified live against real/fake/already-confirmed emails.",
+   tests:true,browser:true,decisions:["0023","0052","0052.1"],deps:[],
+   note:"Real end-to-end locally via Mailpit, including resend with a real cooldown. Production delivery is BLOCKED — see 10, INFRA-005."},
+  {id:"RES-003",name:"TOTP MFA + backup codes",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/mfa/verify/page.tsx","components/settings/mfa-settings.tsx","components/auth/mfa-verify-form.tsx"],
+   svc:["services/mfa.ts"],act:["actions/mfa.ts"],rpc:["auth.mfa.* (Supabase Auth)","generate_my_mfa_backup_codes","redeem_mfa_backup_code","get_my_mfa_status"],
+   db:["mfa_backup_codes","mfa_verified_sessions"],rls:"Self-scoped RPCs only; backup-code regen requires a real AAL2 session.",
+   tests:true,browser:true,decisions:["0023","0052"],deps:["RES-001"],
+   note:"Built on Supabase's own real TOTP implementation, not a custom one. Middleware-enforced gate, not just a page-level check."},
+  {id:"RES-004",name:"Session / device management",area:"RESEARCHER",status:"VERIFIED",priority:"P1",
+   fe:["components/settings/sessions-settings.tsx"],svc:["services/mfa.ts:listMySessions"],act:["actions/mfa.ts"],
+   rpc:["list_my_sessions","revoke_my_session","revoke_all_other_sessions"],db:["auth.sessions (read/deleted directly)"],
+   rls:"Self-scoped only; real device revocation, not a soft flag.",
+   tests:true,browser:true,decisions:["0052"],deps:["RES-001"],
+   note:"Reads GoTrue's own real session table, including the real browser User-Agent (fixed a 'node' user-agent bug this session)."},
+  {id:"RES-005",name:"Researcher identity / permanent alias",area:"RESEARCHER",status:"PARTIAL",priority:"P1",
+   fe:["components/settings/profile-settings.tsx"],svc:["services/researcher-profiles.ts"],act:["actions/researcher-profiles.ts"],
+   rpc:["update_my_display_name"],db:["public.users"],rls:"Self-only update.",tests:true,browser:true,decisions:["0049","0050"],deps:["RES-001"],
+   note:"Display name is real and editable. Username is chosen once at signup with no post-signup edit path — deliberately deferred, not forgotten (0049)."},
+  {id:"RES-006",name:"Researcher profile (bio, professional & personal details, interests)",area:"RESEARCHER",status:"VERIFIED",priority:"P1",
+   fe:["components/settings/professional-details-settings.tsx","components/settings/personal-details-settings.tsx"],
+   svc:["services/researcher-profiles.ts"],act:["actions/researcher-profiles.ts"],
+   rpc:["upsert_my_researcher_profile","update_my_personal_info"],db:["researcher_profiles"],rls:"Self-write, org-facing read on the researcher's own submitted reports only.",
+   tests:true,browser:true,decisions:["0049","0051"],deps:["RES-001"],
+   note:"Interests/focus-areas double as the real signal for program recommendations — see RES-010."},
+  {id:"RES-007",name:"Public researcher profile / directory",area:"RESEARCHER",status:"REJECTED",priority:"—",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:["0038","0039","0049"],deps:[],
+   note:"Deliberately rejected three times over. A stranger browsing every researcher is a privacy posture Sentinel has not chosen."},
+  {id:"RES-008",name:"KYC (Aadhaar / PAN / passport, manual review)",area:"RESEARCHER",status:"VERIFIED",priority:"P2",
+   fe:["components/settings/kyc-settings.tsx"],svc:["services/researcher-profiles.ts"],act:["actions/researcher-profiles.ts"],
+   rpc:["upsert_my_kyc","get_my_kyc_status"],db:["researcher_kyc (pgcrypto-encrypted fields)"],rls:"Self-write; no automated verification — an admin marks each field verified/rejected manually.",
+   tests:true,browser:true,decisions:["0051"],deps:["RES-001"],
+   note:"No fake 'Verify via DigiLocker' button — there is no real provider behind one, so none was built."},
+  {id:"RES-009",name:"Payout details (bank / PayPal)",area:"RESEARCHER",status:"PARTIAL",priority:"P2",
+   fe:["components/settings/payout-details-settings.tsx"],svc:["services/researcher-profiles.ts"],act:["actions/researcher-profiles.ts"],
+   rpc:["upsert_my_payout_details"],db:["researcher_payout_details (pgcrypto-encrypted)"],rls:"Self-write only.",
+   tests:true,browser:true,decisions:["0051"],deps:["RES-001"],
+   note:"Stored, encrypted at rest — but nothing downstream consumes it yet (see ORG-015, the manual payment provider)."},
+  {id:"RES-010",name:"Public program discovery",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/programs/page.tsx","components/programs/public-program-list.tsx","components/programs/top-bounty-programs-list.tsx"],
+   svc:["services/programs.ts:listPublicPrograms,listTopBountyPrograms"],act:["actions/programs.ts"],
+   rpc:["list_public_programs","list_top_bounty_programs","list_recommended_programs"],db:["programs (visibility='public')"],
+   rls:"anon-granted SECURITY DEFINER RPCs only; no direct table grant to anon.",tests:true,browser:true,decisions:["0040","0041","0042","0054"],deps:[],
+   note:"Every card signal (bounty range, researcher count, resolved-report count) is a live query, never cached or fabricated."},
+  {id:"RES-011",name:"Program search / filter / sort",area:"RESEARCHER",status:"PARTIAL",priority:"P1",
+   fe:["app/programs/page.tsx"],svc:["services/programs.ts"],act:["actions/programs.ts:listPublicProgramsPageAction"],
+   rpc:["list_public_programs(p_search,p_status,p_focus_area)"],db:["—"],rls:"Server-side filtering only, never fetch-then-filter.",
+   tests:true,browser:true,decisions:["0042","0054"],deps:["RES-010"],
+   note:"Search, status, and focus-area filters are real. No generic sort-by control — would require generalizing keyset pagination across incompatible sort keys."},
+  {id:"RES-012",name:"Program detail + scope/rules",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/organizations/[organizationId]/programs/[programId]/page.tsx"],svc:["services/programs.ts:getPublicProgram","services/scope.ts"],
+   act:["actions/programs.ts"],rpc:["get_public_program","list_public_program_scope"],db:["program_scope_entries"],
+   rls:"Public-safe projection RPCs, base tables ungranted to anon.",tests:true,browser:true,decisions:["0006","0041"],deps:["RES-010"],
+   note:"Scope in/out is complete and structured. No dedicated 'ground rules / safe harbor' section beyond free-text description."},
+  {id:"RES-013",name:"Join public program",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["components/programs/join-public-program-button.tsx"],svc:["services/programs.ts:joinPublicProgram"],act:["actions/programs.ts"],
+   rpc:["join_public_program"],db:["program_researchers"],rls:"Creates the exact row submit_report already authorizes against.",
+   tests:true,browser:true,decisions:["0041"],deps:["RES-010"]},
+  {id:"RES-014",name:"Private program invitations",area:"RESEARCHER",status:"VERIFIED",priority:"P1",
+   fe:["components/programs/pending-program-invitation-card.tsx"],svc:["services/program-researchers.ts"],act:["actions/program-researchers.ts"],
+   rpc:["invite_researcher_to_program","accept_program_invitation","accept_program_invitation_by_id"],db:["program_invitations"],
+   rls:"Cold-email invitation — invitee need not have an account yet.",tests:true,browser:true,decisions:["0007"],deps:["RES-001"]},
+  {id:"RES-015",name:"My Programs / participations",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/programs/page.tsx","components/programs/program-participation-card.tsx"],svc:["services/program-researchers.ts:listMyProgramParticipations"],
+   act:[],rpc:["list_my_program_participations"],db:["program_researchers"],rls:"Self-scoped.",tests:true,browser:true,decisions:["0007","0042"],deps:["RES-013"]},
+  {id:"RES-016",name:"Saved / bookmarked programs",area:"RESEARCHER",status:"MISSING",priority:"P2",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:[],deps:["RES-010"],note:"No infrastructure of any kind exists."},
+  {id:"RES-017",name:"Researcher dashboard (consolidated)",area:"RESEARCHER",status:"PARTIAL",priority:"P2",
+   fe:["app/page.tsx"],svc:[],act:[],rpc:[],db:[],rls:"—",tests:true,browser:true,decisions:["0030"],deps:["RES-001"],
+   note:"Home + Programs pages cover most of what a dashboard would; no single consolidated widget view exists."},
+  {id:"RES-018",name:"My Reports",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/reports/page.tsx","components/reports/my-reports-list.tsx"],svc:["services/reports.ts:listMyReports"],act:[],
+   rpc:["list_my_reports"],db:["reports"],rls:"Self-scoped, real keyset pagination.",tests:true,browser:true,decisions:["0008","0042"],deps:["RES-013"]},
+  {id:"RES-019",name:"Report composer (weakness, severity, impact)",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["components/reports/create-report-form.tsx"],svc:["services/reports.ts:submitReport"],act:["actions/reports.ts"],
+   rpc:["submit_report"],db:["reports","report_weakness_type"],rls:"Requires a real, active program_researchers row.",
+   tests:true,browser:true,decisions:["0008","0047"],deps:["RES-013"],
+   note:"researcher_severity is advisory-only, read by nothing downstream — never confused with the org's confirmed_severity."},
+  {id:"RES-020",name:"Evidence & attachments",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["components/reports/*evidence*"],svc:["services/report-evidence.ts"],act:["actions/report-evidence.ts"],
+   rpc:["add_researcher_evidence"],db:["report_evidence","Supabase Storage"],rls:"Immutable once uploaded — a correction is a new entry, never an edit.",
+   tests:true,browser:true,decisions:["0010","0011","0028"],deps:["RES-019"]},
+  {id:"RES-021",name:"Organization communication",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["components/reports/report-communication*"],svc:["services/report-messages.ts"],act:["actions/report-messages.ts"],
+   rpc:["post_researcher_message","post_organization_message"],db:["report_messages"],rls:"researcher_visible/internal split enforced server-side.",
+   tests:true,browser:true,decisions:["0010"],deps:["RES-019"]},
+  {id:"RES-022",name:"Information-request workflow",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/organizations/[organizationId]/programs/[programId]/reports/[reportId]/page.tsx"],svc:["services/report-triage.ts"],
+   act:["actions/report-triage.ts"],rpc:["request_information"],db:["reports.status","report_messages"],
+   rls:"Triage-authorized org roles only.",tests:true,browser:true,decisions:["0009","0042"],deps:["RES-019"],
+   note:"A real, previously-missing notification bug on this exact path was found and fixed via live verification in 0042."},
+  {id:"RES-023",name:"Decision / resolution workflow",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/organizations/[organizationId]/programs/[programId]/reports/[reportId]/page.tsx"],svc:["services/report-triage.ts","services/bounty.ts"],
+   act:["actions/report-triage.ts","actions/bounty.ts"],rpc:["accept_report","resolve_report","mark_duplicate","mark_informative","mark_not_applicable","reject_report"],
+   db:["reports.status (real state machine)"],rls:"Triage-authorized org roles only.",tests:true,browser:true,decisions:["0009","0012"],deps:["RES-022"]},
+  {id:"RES-024",name:"Notifications",area:"RESEARCHER",status:"VERIFIED",priority:"P0",
+   fe:["app/notifications/page.tsx","components/notifications/notification-list.tsx"],svc:["services/notifications.ts"],act:[],
+   rpc:["get_my_notifications"],db:["notifications","outbox_events"],rls:"Self-scoped; delivered via the real outbox worker, not a synchronous side effect.",
+   tests:true,browser:true,decisions:["0015","0017"],deps:["RES-022"]},
+  {id:"RES-025",name:"Notification preferences",area:"RESEARCHER",status:"VERIFIED",priority:"P1",
+   fe:["components/notifications/notification-preferences.tsx"],svc:["services/notifications.ts:getMyNotificationPreferences"],act:[],
+   rpc:["get_my_notification_preferences","set_notification_preference"],db:["notification_preferences (sparse override table)"],
+   rls:"Self-scoped.",tests:true,browser:true,decisions:["0017"],deps:["RES-024"],
+   note:"A real, working backend and UI — corrected here from an earlier session report that had marked this MISSING without re-verifying."},
+  {id:"RES-026",name:"Unified inbox",area:"RESEARCHER",status:"MISSING",priority:"P2",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:[],deps:["RES-024"],
+   note:"Notifications and My Reports exist as separate surfaces; no single cross-program communication inbox merges them."},
+  {id:"RES-027",name:"Research history / reputation",area:"RESEARCHER",status:"VERIFIED",priority:"P1",
+   fe:["app/researchers/page.tsx","components/reputation/*"],svc:["services/reputation.ts"],act:[],
+   rpc:["get_my_reputation_summary","get_my_reputation_program_counts"],db:["reputation_ledger"],
+   rls:"Self-scoped; fact-based, per-outcome, no invented score.",tests:true,browser:true,decisions:["0016"],deps:["RES-023"],
+   note:"Deliberately not a leaderboard or ranking — every number traces to a real, verified event."},
+  {id:"RES-028",name:"Retesting",area:"RESEARCHER",status:"MISSING",priority:"P1",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:[],deps:["RES-023"],
+   note:"No reopen/retest RPC or state exists. The one visible break in an otherwise complete researcher lifecycle — see 11, next slice."},
+  {id:"RES-029",name:"Invitation preferences (opt out)",area:"RESEARCHER",status:"MISSING",priority:"P3",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:[],deps:["RES-014"],note:"No opt-out-of-invitations setting exists."},
+
+  // ---------- ORGANIZATION ----------
+  {id:"ORG-001",name:"Organization signup (business email only)",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["app/organizations/sign-up/page.tsx"],svc:["services/auth.ts","lib/auth/business-email.ts"],act:["actions/auth.ts"],
+   rpc:["auth.signUp"],db:["—"],rls:"Server-side re-check of the client's free-email-domain rejection (defense in depth).",
+   tests:true,browser:true,decisions:["0050"],deps:[]},
+  {id:"ORG-002",name:"Org auto-creation on signup",area:"ORGANIZATION",status:"VERIFIED",priority:"P1",
+   fe:["app/auth/confirm/route.ts"],svc:["services/organizations.ts:createOrganization"],act:["actions/auth.ts"],
+   rpc:["create_organization"],db:["organizations"],rls:"Idempotency-key protected.",tests:true,browser:true,decisions:["0003","0050","0052.1"],deps:["ORG-001"],
+   note:"Works through the real (non-immediate) email-confirmation path too, after a template bug that skipped it was found and fixed."},
+  {id:"ORG-003",name:"Organization membership & roles",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["app/organizations/[organizationId]/members/page.tsx"],svc:["services/organizations.ts"],act:["actions/organization-members.ts"],
+   rpc:["change_member_role","suspend_member","reactivate_member","remove_member"],db:["organization_members"],
+   rls:"private.has_org_role() everywhere; last-owner protection enforced server-side.",tests:true,browser:true,decisions:["0001","0003"],deps:["ORG-001"]},
+  {id:"ORG-004",name:"Member invitations",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["app/organizations/[organizationId]/members/page.tsx"],svc:["services/organizations.ts"],act:["actions/organization-members.ts"],
+   rpc:["invite_organization_member","accept_organization_invitation"],db:["organization_invitations"],
+   rls:"Token-hash only; raw token never persisted.",tests:true,browser:true,decisions:["0001"],deps:["ORG-003"]},
+  {id:"ORG-005",name:"Program creation",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["components/organizations/create-program-dialog.tsx"],svc:["services/programs.ts:createProgram"],act:["actions/programs.ts"],
+   rpc:["create_program"],db:["programs","program_members"],rls:"owner/security_admin or existing program member.",
+   tests:true,browser:true,decisions:["0004"],deps:["ORG-003"]},
+  {id:"ORG-006",name:"Program configuration (description, bounty policy)",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["components/programs/bounty-policy.tsx"],svc:["services/programs.ts","services/bounty.ts"],act:["actions/programs.ts","actions/bounty.ts"],
+   rpc:["update_program_description","create_bounty_policy_version"],db:["program_bounty_policy_versions","program_bounty_policy_severity_ranges"],
+   rls:"Versioned, never edited in place.",tests:true,browser:true,decisions:["0013"],deps:["ORG-005"]},
+  {id:"ORG-007",name:"Scope management",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["components/programs/scope-*"],svc:["services/scope.ts"],act:["actions/scope.ts"],rpc:["add_scope_entry","evaluate_program_scope"],
+   db:["program_scope_entries"],rls:"Most-specific-match authorization model.",tests:true,browser:true,decisions:["0006"],deps:["ORG-005"]},
+  {id:"ORG-008",name:"Program lifecycle",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["components/programs/program-header.tsx"],svc:["services/programs.ts"],act:["actions/programs.ts"],
+   rpc:["submit_program_for_review","activate_program","pause_program","close_program"],db:["programs.status"],
+   rls:"Real state machine, draft→review→active→paused→closed.",tests:true,browser:true,decisions:["0005","0021"],deps:["ORG-005"]},
+  {id:"ORG-009",name:"Public / private visibility",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["components/programs/program-header.tsx"],svc:["services/programs.ts"],act:["actions/programs.ts"],
+   rpc:["set_program_visibility"],db:["programs.visibility"],rls:"Active status does not imply public — a distinct, deliberate axis.",
+   tests:true,browser:true,decisions:["0037","0040"],deps:["ORG-008"]},
+  {id:"ORG-010",name:"Program focus-area tagging",area:"ORGANIZATION",status:"VERIFIED",priority:"P1",
+   fe:["components/programs/program-focus-areas-panel.tsx"],svc:["services/programs.ts:setProgramFocusAreas"],act:["actions/programs.ts"],
+   rpc:["set_program_focus_areas"],db:["programs.focus_areas"],rls:"program-manage authorization.",tests:true,browser:true,decisions:["0051","0054"],deps:["ORG-005"],
+   note:"Drives both researcher recommendations (RES-010) and the public discovery filter — one real vocabulary, two consumers."},
+  {id:"ORG-011",name:"Researcher participation management",area:"ORGANIZATION",status:"VERIFIED",priority:"P1",
+   fe:["app/organizations/[organizationId]/programs/[programId]/researchers/page.tsx"],svc:["services/program-researchers.ts"],
+   act:["actions/program-researchers.ts"],rpc:["invite_researcher_to_program"],db:["program_researchers"],
+   rls:"program-manage authorization.",tests:true,browser:true,decisions:["0007"],deps:["ORG-005"]},
+  {id:"ORG-012",name:"Report triage inbox",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["app/organizations/[organizationId]/programs/[programId]/reports/page.tsx"],svc:["services/reports.ts"],act:[],
+   rpc:["list_program_reports"],db:["reports"],rls:"Manager-only — a researcher hitting this route is a real, tested PermissionDenied.",
+   tests:true,browser:true,decisions:["0009"],deps:["ORG-005"],
+   note:"The 'Reports' nav tab was previously shown to researchers who could never use it — found and fixed this session."},
+  {id:"ORG-013",name:"Request information",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["app/organizations/[organizationId]/programs/[programId]/reports/[reportId]/page.tsx"],svc:["services/report-triage.ts"],
+   act:["actions/report-triage.ts"],rpc:["request_information"],db:["reports.status"],rls:"Triage-authorized.",
+   tests:true,browser:true,decisions:["0009"],deps:["ORG-012"]},
+  {id:"ORG-014",name:"Bounty decision engine",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["components/reports/bounty-decision*"],svc:["services/bounty.ts"],act:["actions/bounty.ts"],
+   rpc:["calculate_bounty_recommendation","finalize_bounty","adjust_bounty"],db:["report_bounty_decisions"],
+   rls:"finalize/adjust restricted to owner/security_admin — narrower than triage itself.",tests:true,browser:true,decisions:["0013"],deps:["ORG-013"]},
+  {id:"ORG-015",name:"Payment ledger + payout execution",area:"ORGANIZATION",status:"PARTIAL",priority:"P1",
+   fe:["components/payments/*"],svc:["services/payments.ts"],act:["actions/payments.ts"],
+   rpc:["—"],db:["payment_obligations","payment_attempts"],rls:"Real ledger, real idempotency; payout itself via lib/payment-provider.ts.",
+   tests:true,browser:true,decisions:["0014"],deps:["ORG-014"],
+   note:"activePaymentProvider is manualPaymentProvider — a real, honest 'requires operator action' provider. No Stripe/Razorpay adapter exists; the interface never fakes a success."},
+  {id:"ORG-016",name:"Audit log",area:"ORGANIZATION",status:"VERIFIED",priority:"P1",
+   fe:["components/organizations/audit-log*","app/organizations/[organizationId]/members/page.tsx"],svc:["services/organizations.ts"],act:[],
+   rpc:["—"],db:["audit_logs"],rls:"Org-admin read only; every mutation writes its own row in the same transaction.",
+   tests:true,browser:true,decisions:["0001"],deps:["ORG-003"]},
+  {id:"ORG-017",name:"Organization settings",area:"ORGANIZATION",status:"VERIFIED",priority:"P1",
+   fe:["app/organizations/[organizationId]/settings/page.tsx"],svc:["services/organizations.ts"],act:["actions/organizations.ts"],
+   rpc:["—"],db:["organizations"],rls:"owner/security_admin.",tests:true,browser:true,decisions:["0003"],deps:["ORG-003"]},
+  {id:"ORG-018",name:"Organization account security (MFA/sessions)",area:"ORGANIZATION",status:"VERIFIED",priority:"P0",
+   fe:["app/settings/page.tsx"],svc:["services/mfa.ts"],act:["actions/mfa.ts"],rpc:["auth.mfa.*","get_my_mfa_status"],db:["—"],
+   rls:"Same account-security layer as RES-003/004 — identity is per-account, not per-perspective.",tests:true,browser:true,decisions:["0052"],deps:["ORG-001"]},
+
+  // ---------- PLATFORM ----------
+  {id:"PLAT-001",name:"Platform admin membership",area:"PLATFORM",status:"VERIFIED",priority:"P1",
+   fe:[],svc:["services/platform-operations.ts:isPlatformAdmin"],act:[],rpc:["am_i_platform_admin","grant_platform_admin","revoke_platform_admin"],
+   db:["platform_admins"],rls:"Grant/revoke is service_role-only — no in-app self-escalation path exists at all.",
+   tests:true,browser:false,decisions:["0025","0027"],deps:[]},
+  {id:"PLAT-002",name:"Platform operations dashboard",area:"PLATFORM",status:"VERIFIED",priority:"P2",
+   fe:["app/platform/needs-recovery/page.tsx"],svc:["services/platform-operations.ts"],act:[],
+   rpc:["list_needs_recovery_outbox_events","list_needs_recovery_notification_deliveries","list_needs_recovery_payment_attempts"],
+   db:["—"],rls:"platform_admins only; a non-admin gets a real 404, not a permission-denied page.",tests:true,browser:true,decisions:["0027"],deps:["PLAT-001"]},
+  {id:"PLAT-003",name:"Outbox failure recovery (replay)",area:"PLATFORM",status:"VERIFIED",priority:"P2",
+   fe:["components/platform/replay-button.tsx"],svc:["services/platform-operations.ts"],act:["actions/platform-operations.ts"],
+   rpc:["replay_dead_lettered_outbox_event"],db:["outbox_events"],rls:"platform_admins only.",tests:true,browser:true,decisions:["0015","0027"],deps:["PLAT-002"]},
+  {id:"PLAT-004",name:"Failed notification recovery",area:"PLATFORM",status:"MISSING",priority:"P3",
+   fe:["app/platform/needs-recovery/page.tsx"],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:true,decisions:["0027"],deps:["PLAT-002"],
+   note:"Deliberately read-only, not an oversight: a permanently-failed delivery's underlying event has already reached 'succeeded' by design, so no safe re-trigger path exists."},
+  {id:"PLAT-005",name:"Failed payment recovery",area:"PLATFORM",status:"MISSING",priority:"P3",
+   fe:["app/platform/needs-recovery/page.tsx"],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:true,decisions:["0027"],deps:["PLAT-002","ORG-015"],
+   note:"Deliberately read-only: financial mutation was explicitly out of scope for the platform-operations slice."},
+  {id:"PLAT-006",name:"Cross-organization moderation / disputes",area:"PLATFORM",status:"MISSING",priority:"—",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:[],deps:[]},
+  {id:"PLAT-007",name:"Platform-wide researcher enforcement",area:"PLATFORM",status:"MISSING",priority:"—",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:[],deps:[]},
+
+  // ---------- PUBLIC ----------
+  {id:"PUB-001",name:"Public landing page",area:"PUBLIC",status:"VERIFIED",priority:"P0",
+   fe:["app/page.tsx (PublicHome)"],svc:[],act:[],rpc:[],db:[],rls:"—",tests:true,browser:true,decisions:["0030","0031","0032","0033","0034"],deps:[]},
+  {id:"PUB-002",name:"Public program registry (anonymous)",area:"PUBLIC",status:"VERIFIED",priority:"P0",
+   fe:["app/programs/page.tsx (PublicProgramsPage)"],svc:["services/programs.ts"],act:[],rpc:["list_public_programs"],db:["—"],
+   rls:"anon-granted SECURITY DEFINER RPC.",tests:true,browser:true,decisions:["0040","0041"],deps:["RES-010"]},
+  {id:"PUB-003",name:"Two-sided entry (researcher vs. organization)",area:"PUBLIC",status:"VERIFIED",priority:"P0",
+   fe:["app/researchers/sign-up/page.tsx","app/organizations/sign-up/page.tsx"],svc:[],act:[],rpc:[],db:[],rls:"—",
+   tests:true,browser:true,decisions:["0024","0030"],deps:[]},
+
+  // ---------- SECURITY ----------
+  {id:"SEC-001",name:"Row-level security coverage",area:"SECURITY",status:"VERIFIED",priority:"P0",
+   fe:[],svc:[],act:[],rpc:[],db:["every user-data table"],rls:"RLS enabled schema-wide; anon holds zero table grants anywhere (one violation found and fixed on researcher_profiles, 0049).",
+   tests:true,browser:false,decisions:["0002","0018","0049"],deps:[]},
+  {id:"SEC-002",name:"RPC-only mutation convention",area:"SECURITY",status:"VERIFIED",priority:"P0",
+   fe:[],svc:[],act:[],rpc:["(convention, not one RPC)"],db:["—"],rls:"No direct client table writes anywhere in the product; every mutation re-derives the actor from auth.uid().",
+   tests:true,browser:false,decisions:["0001","0002"],deps:[]},
+  {id:"SEC-003",name:"Rate limiting (sign-in, email)",area:"SECURITY",status:"VERIFIED",priority:"P1",
+   fe:[],svc:["services/auth.ts"],act:[],rpc:["check_sign_in_rate_limit"],db:["—"],rls:"10 attempts / 15 min (sign-in); Supabase's own email cooldown.",
+   tests:true,browser:true,decisions:["0018","0019"],deps:[]},
+  {id:"SEC-004",name:"Enumeration-safe auth flows",area:"SECURITY",status:"VERIFIED",priority:"P1",
+   fe:[],svc:["services/auth.ts"],act:["actions/auth.ts"],rpc:["auth.resetPasswordForEmail","auth.resend"],db:["—"],
+   rls:"Verified live: real and fake emails return byte-identical responses.",tests:true,browser:true,decisions:["0023","0052.1"],deps:[]},
+  {id:"SEC-005",name:"Real password minimum (12 chars)",area:"SECURITY",status:"VERIFIED",priority:"P1",
+   fe:["components/auth/password-input.tsx"],svc:["services/auth.ts"],act:["actions/auth.ts"],rpc:["—"],
+   db:["auth config: minimum_password_length=12"],rls:"Client and server verified to agree — a direct API call bypassing the client is also rejected.",
+   tests:true,browser:true,decisions:["0023","0053"],deps:[]},
+
+  // ---------- INFRASTRUCTURE ----------
+  {id:"INFRA-001",name:"Local Supabase dev stack",area:"INFRASTRUCTURE",status:"VERIFIED",priority:"P0",
+   fe:[],svc:[],act:[],rpc:[],db:["Postgres, GoTrue, PostgREST, Storage, Mailpit — all real, all local"],rls:"—",
+   tests:true,browser:true,decisions:["0002"],deps:[]},
+  {id:"INFRA-002",name:"Outbox / event delivery worker",area:"INFRASTRUCTURE",status:"VERIFIED",priority:"P1",
+   fe:[],svc:["workers/outbox/*"],act:[],rpc:["claim_outbox_events","complete_outbox_event"],db:["outbox_events"],
+   rls:"service_role-only, never imported by app/actions/services/components.",tests:true,browser:false,decisions:["0015","0017"],deps:[]},
+  {id:"INFRA-003",name:"Production deployment",area:"INFRASTRUCTURE",status:"BLOCKED",priority:"P0",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:["0053"],deps:[],
+   note:"No hosting config of any kind exists in the repository — no vercel.json, no Dockerfile, no CI/CD."},
+  {id:"INFRA-004",name:"Production Supabase Cloud project",area:"INFRASTRUCTURE",status:"BLOCKED",priority:"P0",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:["0053"],deps:["INFRA-003"],
+   note:"supabase/.temp has no project-ref file — supabase link has never been run."},
+  {id:"INFRA-005",name:"Production SMTP / real email delivery",area:"INFRASTRUCTURE",status:"BLOCKED",priority:"P0",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:["0022","0053"],deps:["INFRA-004"],
+   note:"supabase/config.toml's [auth.email.smtp] is present but fully commented out. No provider, domain, or credentials exist anywhere."},
+  {id:"INFRA-006",name:"CI/CD",area:"INFRASTRUCTURE",status:"MISSING",priority:"P2",
+   fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:[],deps:["INFRA-003"]},
+];
+
+const DECISIONS = [
+  {id:"0001",t:"RPC-based membership mutations",why:"Every membership/role mutation goes through a SECURITY DEFINER RPC, never a direct table write — the one boundary the whole schema is built on.",tags:["security","foundation"]},
+  {id:"0002",t:"Authentication and backend boundary",why:"Supabase Auth is the one identity source of truth; app code never re-implements session or credential logic.",tags:["security","auth"]},
+  {id:"0003",t:"Organization creation",why:"Idempotency-key-protected creation with slug-collision retry — a double-click can never create two organizations.",tags:["organization"]},
+  {id:"0004",t:"Program authorization",why:"Program creation restricted to owner/security_admin; program-level access is a distinct concept from org-level roles.",tags:["organization","security"]},
+  {id:"0005",t:"Program lifecycle",why:"draft→review→active→paused→closed as a real enum-backed state machine, not a status string.",tags:["organization"]},
+  {id:"0006",t:"Scope / asset model",why:"Most-specific-match authorization — the single most-specific scope entry decides what's in-scope.",tags:["security","scope"]},
+  {id:"0007",t:"Researcher access",why:"program_researchers as the one real authorization row every downstream check (submit_report included) relies on.",tags:["researcher","security"]},
+  {id:"0008",t:"Report authorization and scope snapshot",why:"A report freezes its scope match at submission time — a later scope edit never retroactively changes an already-submitted report's authorization.",tags:["researcher","security"]},
+  {id:"0009",t:"Report triage state machine",why:"A real, enum-backed status transition table — no status is reachable except through an explicit, authorized transition.",tags:["organization","researcher"]},
+  {id:"0010",t:"Report evidence and communication",why:"Evidence is immutable once uploaded; messages carry a researcher_visible/internal split enforced server-side.",tags:["researcher","organization"]},
+  {id:"0011",t:"Binary evidence storage",why:"Real Supabase Storage integration for file evidence, not a base64 blob in Postgres.",tags:["researcher","infrastructure"]},
+  {id:"0012",t:"Report resolution and classification",why:"resolve/duplicate/informative/not_applicable/reject as distinct, final classifications — never a single generic 'closed'.",tags:["organization"]},
+  {id:"0013",t:"Bounty decision engine",why:"Recommendation vs. finalization are two separate, separately-authorized steps; money is bigint minor units, never floating point.",tags:["organization","security"]},
+  {id:"0014",t:"Payment ledger and payout orchestration",why:"A provider-agnostic interface (lib/payment-provider.ts) that can never claim a payout succeeded unless a human or a real provider actually confirmed it.",tags:["organization","security"]},
+  {id:"0015",t:"Outbox event foundation",why:"Every side effect (notification, webhook) goes through a durable outbox table + worker, never a synchronous fire-and-forget call.",tags:["infrastructure"]},
+  {id:"0016",t:"Reputation ledger foundation",why:"Fact-based, per-outcome history — explicitly NOT a score or ranking. reputation_score itself was later found dead and dropped (0049).",tags:["researcher"]},
+  {id:"0017",t:"Notification routing and delivery",why:"Category-based preferences with a sparse override table — a missing row means 'use the default', never 'broken'.",tags:["researcher","infrastructure"]},
+  {id:"0018",t:"Production hardening and integration boundary",why:"Real rate limiting (check_sign_in_rate_limit) and the schema-wide anon-zero-grants posture.",tags:["security"]},
+  {id:"0019",t:"Public onboarding abuse hardening",why:"Signup abuse controls tightened before public discovery shipped.",tags:["security","public"]},
+  {id:"0021",t:"Program lifecycle transitions",why:"Explicit transition RPCs (submit_program_for_review, activate, pause, close) added once scope/policy existed to make them meaningful.",tags:["organization"]},
+  {id:"0022",t:"Real email provider integration",why:"Established the real dev-email-provider pattern this session's Mailpit/resend work builds directly on.",tags:["infrastructure"]},
+  {id:"0023",t:"Authentication experience 2026",why:"Two real, previously-shipped session bugs found and fixed live in /auth/confirm; MFA/TOTP explicitly named as the next security slice, not silently dropped.",tags:["security","auth"]},
+  {id:"0024",t:"Three-perspective product model",why:"Researcher / organization / platform as three genuinely separate perspectives sharing one account system — not three products.",tags:["foundation"]},
+  {id:"0025",t:"Platform operations gap audit",why:"Identified platform_admins as a real membership table, never a mutable role flag on the user row.",tags:["platform"]},
+  {id:"0027",t:"Platform operations foundation",why:"Grant/revoke of platform admin is service_role-only, with zero in-app self-escalation path.",tags:["platform","security"]},
+  {id:"0028",t:"Report evidence attachment at submission",why:"Evidence can be attached in the same transaction as the initial report, not only after.",tags:["researcher"]},
+  {id:"0030",t:"Public entry and two-sided authentication",why:"intent (researcher/organization) picks a landing destination only — it never grants or changes a capability.",tags:["public","foundation"]},
+  {id:"0034",t:"Public front door product stage",why:"The anonymous landing experience treated as a real product surface, not a placeholder.",tags:["public"]},
+  {id:"0035",t:"Sentinel visual identity system",why:"The editorial/security-operations visual language every later slice (including this map) inherits.",tags:["design"]},
+  {id:"0037",t:"Program discovery access model",why:"Active status does not automatically mean public — visibility is a distinct, deliberate axis from lifecycle status.",tags:["organization","security"]},
+  {id:"0038",t:"Researcher discovery product model",why:"First explicit rejection of a public researcher directory/marketplace.",tags:["researcher","rejected"]},
+  {id:"0039",t:"Trust-based researcher discovery strategy",why:"A narrow, org-scoped signal only — reaffirmed the 0038 rejection with new reasoning, not a reopening.",tags:["researcher","rejected"]},
+  {id:"0040",t:"Public program discovery foundation",why:"The real anon-grantable RPC pattern (list_public_programs) every public surface since reuses.",tags:["public","security"]},
+  {id:"0041",t:"Public program discovery vertical slice",why:"join_public_program as the one researcher-facing mutation — creates exactly the row every other authorization check already relies on.",tags:["researcher","public"]},
+  {id:"0042",t:"Researcher product completion",why:"Full live-verified researcher lifecycle pass; found and fixed a real missing-notification bug on the information-request path.",tags:["researcher"]},
+  {id:"0043",t:"Researcher visual identity pass",why:"Design-only pass — explicitly forbade touching backend logic while restyling the researcher experience.",tags:["design","researcher"]},
+  {id:"0045",t:"Researcher showcase and charts",why:"Real seed data through real RPCs (never fabricated UI numbers) plus dependency-free real SVG charts.",tags:["researcher","design"]},
+  {id:"0047",t:"Report composer weakness/impact/severity",why:"researcher_severity added as explicitly advisory-only, read by nothing downstream — never confused with the org's confirmed severity.",tags:["researcher"]},
+  {id:"0049",t:"Researcher identity audit",why:"Full KEEP/ADAPT/REJECT audit against HackerOne; found and fixed a real anon-grant RLS violation on researcher_profiles; dropped the dead reputation_score column.",tags:["researcher","security","rejected"]},
+  {id:"0050",t:"Signup identity and business email",why:"Chosen name/username at signup with a race-safe fallback; business-email-only enforcement for organization signup, client and server.",tags:["researcher","organization"]},
+  {id:"0051",t:"Researcher extended identity, KYC, payout",why:"Real encrypted-at-rest KYC and payout fields with manual (never automated) verification — no fake 'Verify via DigiLocker' button.",tags:["researcher","security"]},
+  {id:"0052",t:"Account security: MFA, sessions, email verification",why:"Real TOTP MFA (Supabase's own implementation) with backup codes, real session/device revocation, real enabled email confirmation.",tags:["security","researcher","organization"]},
+  {id:"0052.1",t:"Email delivery audit and resend",why:"Found and fixed a hardcoded next=/organizations in the confirmation email template that silently skipped intent-aware routing; added a real, enumeration-safe resend.",tags:["security","infrastructure"]},
+  {id:"0053",t:"Production email audit and password strength",why:"Conclusively found zero production deployment/SMTP anywhere in the repository — reported honestly rather than fabricated. Password minimum raised to a real, server-matching 12 characters.",tags:["infrastructure","security"]},
+  {id:"0054",t:"Public program discovery redesign",why:"Every new discovery signal (bounty range, researcher count, resolved-report count) is a live query — no platform-wide vanity metric was added.",tags:["researcher","public"]},
+];
+
+const JOURNEY_RESEARCHER = [
+  {n:"Anonymous",s:"verified",note:"Public landing + program registry, no login wall."},
+  {n:"Landing",s:"verified",note:"PUB-001"},
+  {n:"Researcher signup",s:"verified",note:"RES-001 — name + username chosen at signup"},
+  {n:"Email verification",s:"verified",note:"RES-002 — real locally, production BLOCKED"},
+  {n:"MFA",s:"verified",note:"RES-003 — real TOTP + backup codes"},
+  {n:"Identity / alias",s:"partial",note:"RES-005 — username not editable after signup"},
+  {n:"Researcher profile",s:"verified",note:"RES-006"},
+  {n:"Program discovery",s:"verified",note:"RES-010"},
+  {n:"Search / filter",s:"partial",note:"RES-011 — no generic sort control"},
+  {n:"Program detail",s:"verified",note:"RES-012"},
+  {n:"Scope / rules",s:"verified",note:"RES-012"},
+  {n:"Join program",s:"verified",note:"RES-013"},
+];
+const JOURNEY_RESEARCHER_B = [
+  {n:"My Programs",s:"verified",note:"RES-015"},
+  {n:"Report composer",s:"verified",note:"RES-019"},
+  {n:"Evidence / attachments",s:"verified",note:"RES-020"},
+  {n:"Submit report",s:"verified",note:"RES-019"},
+  {n:"Report workspace",s:"verified",note:"RES-018"},
+  {n:"Communication",s:"verified",note:"RES-021"},
+  {n:"Information request",s:"verified",note:"RES-022"},
+  {n:"Notification",s:"verified",note:"RES-024"},
+  {n:"Researcher response",s:"verified",note:"RES-021"},
+  {n:"Triage → decision",s:"verified",note:"RES-023"},
+  {n:"Resolution",s:"verified",note:"RES-023"},
+  {n:"Reputation",s:"verified",note:"RES-027"},
+  {n:"Retest",s:"missing",note:"RES-028 — no mechanism exists. The visible break."},
+];
+
+const JOURNEY_ORG_A = [
+  {n:"Organization signup",s:"verified",note:"ORG-001 — business email only"},
+  {n:"Email verification",s:"verified",note:"RES-002, shared layer"},
+  {n:"MFA",s:"verified",note:"ORG-018, shared layer"},
+  {n:"Organization",s:"verified",note:"ORG-002 — auto-created on signup"},
+  {n:"Program creation",s:"verified",note:"ORG-005"},
+  {n:"Program configuration",s:"verified",note:"ORG-006"},
+  {n:"Scope",s:"verified",note:"ORG-007"},
+  {n:"Lifecycle",s:"verified",note:"ORG-008"},
+  {n:"Public / private visibility",s:"verified",note:"ORG-009"},
+  {n:"Researcher discovery",s:"different",note:"No org-side directory/search — invitation or public join only, deliberately (0038/0039)"},
+];
+const JOURNEY_ORG_B = [
+  {n:"Researcher participation",s:"verified",note:"ORG-011"},
+  {n:"Report intake",s:"verified",note:"ORG-012"},
+  {n:"Triage",s:"verified",note:"ORG-012"},
+  {n:"Request information",s:"verified",note:"ORG-013"},
+  {n:"Communication",s:"verified",note:"RES-021, shared"},
+  {n:"Decision",s:"verified",note:"ORG-014"},
+  {n:"Bounty",s:"verified",note:"ORG-014"},
+  {n:"Payment",s:"partial",note:"ORG-015 — real ledger, manual payout execution only"},
+  {n:"Audit",s:"verified",note:"ORG-016"},
+  {n:"Program management",s:"verified",note:"ORG-008"},
+  {n:"Member management",s:"verified",note:"ORG-003"},
+  {n:"Settings",s:"verified",note:"ORG-017"},
+];
+
+const JOURNEY_PLATFORM = [
+  {n:"Platform admin",s:"verified",note:"PLAT-001 — service_role grant only"},
+  {n:"Platform operations",s:"verified",note:"PLAT-002"},
+  {n:"Recovery",s:"partial",note:"Real for outbox; read-only by design elsewhere"},
+  {n:"Outbox failure",s:"verified",note:"PLAT-003"},
+  {n:"Failed notification",s:"missing",note:"PLAT-004 — deliberately read-only, no safe re-trigger path exists"},
+  {n:"Failed payment",s:"missing",note:"PLAT-005 — deliberately read-only, financial mutation out of scope"},
+  {n:"Replay / recovery",s:"verified",note:"PLAT-003, outbox only"},
+  {n:"Audit",s:"verified",note:"ORG-016, platform-scoped read"},
+];
+
+const BLOCKERS = [
+  {t:"Production deployment",why:"No hosting configuration exists anywhere in the repository — no vercel.json, no Dockerfile, no CI/CD workflow.",dep:"INFRA-003",need:"A real hosting account and a deployment decision."},
+  {t:"Production Supabase Cloud project",why:"supabase/.temp has no project-ref file. supabase link has never been run against this repository.",dep:"INFRA-004",need:"A real Supabase organization/project, then supabase link + db push."},
+  {t:"Production email delivery",why:"supabase/config.toml's [auth.email.smtp] block is present but entirely commented out. No provider, domain, or credentials exist anywhere in this repository or environment.",dep:"INFRA-005",need:"A transactional email provider account, a verified sending domain, and its SMTP credentials."},
+  {t:"Retesting",why:"The researcher lifecycle has no reopen/retest mechanism once a report resolves — the one real, user-visible gap in an otherwise complete journey.",dep:"RES-028",need:"A scoped implementation slice — see 11, next slice."},
+];
+const REJECTED = [
+  {t:"Public researcher directory / profile",note:"0038 / 0039 / 0049 — a stranger browsing every researcher is a privacy posture not chosen."},
+  {t:"Leaderboard / ranking",note:"0016 / 0042 / 0043 — repeatedly, explicitly rejected."},
+  {t:"Fabricated reputation score",note:"0016 / 0049 — the dead reputation_score column was dropped outright."},
+  {t:"OAuth / social login",note:"0023 — no stated product need for a second credential authority."},
+  {t:"Fake 'Verify via DigiLocker'-style buttons",note:"0051 — no UI implying a security check the backend can't actually perform."},
+];
+const DEFERRED = [
+  {t:"Passkeys",note:"0023 — vendor marks WebAuthn experimental in this Supabase version; revisit once stable."},
+  {t:"Magic link sign-in",note:"0023 — cheap to add later (shares /auth/confirm), no stated need yet."},
+  {t:"Editable public username",note:"0049 / 0050 — entangled with the still-open public-directory question."},
+  {t:"Avatar upload",note:"0049 — the column is real and ready; needs a storage bucket + validation UI."},
+  {t:"Automated (non-manual) payout provider",note:"0014 — the interface is provider-agnostic and ready for a real adapter."},
+];
+
+/* ======================================================================
+   RENDER
+====================================================================== */
+
+function statusPillHTML(s){
+  return '<span class="pill pill-'+s.toLowerCase()+'">'+s+'</span>';
+}
+
+// ---- Hero coverage bars ----
+function renderHero(){
+  const groups = {
+    RESEARCHER:{label:"Researcher — core journey"},
+    ORGANIZATION:{label:"Organization — operations"},
+    PLATFORM:{label:"Platform — foundation"},
+    INFRASTRUCTURE:{label:"Infrastructure — deployment"},
+  };
+  const weight = {VERIFIED:1,PARTIAL:.5,PLANNED:0,DEFERRED:0,MISSING:0,BLOCKED:0,REJECTED:null};
+  const wrap = document.getElementById("heroAreas");
+  Object.keys(groups).forEach(area=>{
+    const items = FEATURES.filter(f=>f.area===area && weight[f.status]!==null);
+    const total = items.length;
+    const score = items.reduce((a,f)=>a+weight[f.status],0);
+    const pct = total ? Math.round(100*score/total) : 0;
+    const el = document.createElement("div");
+    el.className = "hero-area";
+    el.innerHTML =
+      '<div class="pct-row"><span class="pct">'+pct+'%</span><span class="label">'+total+' tracked</span></div>'+
+      '<div class="bar"><span style="width:'+pct+'%"></span></div>'+
+      '<div class="name">'+groups[area].label+'</div>';
+    wrap.appendChild(el);
+  });
+}
+
+// ---- Journeys ----
+function renderJourney(containerId, nodes){
+  const el = document.getElementById(containerId);
+  el.innerHTML = nodes.map(n=>(
+    '<div class="jnode" data-status="'+n.s+'">'+
+      '<div class="stem"><div class="dot"></div><div class="wire"></div></div>'+
+      '<div class="jcard"><div class="jcard-top"><span class="jcard-name">'+n.n+'</span>'+statusPillHTML(n.s.toUpperCase())+'</div>'+
+      '<span class="jcard-note">'+n.note+'</span></div>'+
+    '</div>'
+  )).join("");
+}
+
+// ---- Lifecycle SVG ----
+function renderLifecycle(){
+  const svg = `
+  <figure>
+    <svg viewBox="0 0 920 480" role="img" aria-label="Cross-system lifecycle: a researcher discovers a program, joins it, submits a report with evidence and communication, which an organization triages, decides, resolves, and pays — feeding back into researcher reputation." style="width:100%;height:auto;max-width:100%">
+      <defs>
+        <marker id="arw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g font-family="IBM Plex Mono, monospace" font-size="11.5" fill="currentColor">
+        <!-- researcher column -->
+        <text x="20" y="24" font-weight="600" letter-spacing="1" fill="#2ad6ac">RESEARCHER</text>
+        <!-- org column -->
+        <text x="720" y="24" font-weight="600" letter-spacing="1" fill="#9b8cf2">ORGANIZATION</text>
+
+        <!-- nodes -->
+        <g id="nodes"></g>
+      </g>
+    </svg>
+    <figcaption style="margin-top:12px;font-size:12.5px;color:var(--ink-dim)">A report is the hinge: the researcher's submission (evidence attached at once, 0028) is the same row the organization triages, decides, and resolves — resolution writes both a payment obligation and a reputation-ledger entry.</figcaption>
+  </figure>`;
+  document.getElementById("lifecycleSvgWrap").innerHTML = svg;
+
+  // Build nodes/edges programmatically for clean alignment.
+  const ns = document.getElementById("nodes");
+  const boxes = [
+    {id:"program",x:20,y:50,w:190,h:40,t:"Program",sub:"discovers → joins",col:"#2ad6ac"},
+    {id:"scope",x:20,y:118,w:190,h:40,t:"Scope",sub:"authorizes target",col:"#2ad6ac"},
+    {id:"report",x:365,y:118,w:190,h:44,t:"Report",sub:"submit_report",col:"#e9e7e1"},
+    {id:"evidence",x:230,y:200,w:170,h:40,t:"Evidence",sub:"immutable once added",col:"#2ad6ac"},
+    {id:"comm",x:520,y:200,w:170,h:40,t:"Communication",sub:"researcher ⇄ org",col:"#9b8cf2"},
+    {id:"triage",x:365,y:270,w:190,h:40,t:"Triage",sub:"start_triage",col:"#9b8cf2"},
+    {id:"decision",x:365,y:330,w:190,h:40,t:"Decision",sub:"accept / reject / dup",col:"#9b8cf2"},
+    {id:"resolution",x:365,y:390,w:190,h:40,t:"Resolution",sub:"resolve_report",col:"#9b8cf2"},
+    {id:"reputation",x:130,y:390,w:190,h:40,t:"Reputation",sub:"reputation_ledger",col:"#2ad6ac"},
+    {id:"payment",x:600,y:390,w:190,h:40,t:"Payment",sub:"finalize_bounty",col:"#9b8cf2"},
+  ];
+  const edges = [
+    ["program","scope","authorizes"],
+    ["scope","report","submit"],
+    ["report","evidence","attach"],
+    ["report","comm","thread"],
+    ["evidence","triage",""],
+    ["comm","triage",""],
+    ["triage","decision","classify"],
+    ["decision","resolution","if accepted"],
+    ["resolution","reputation","real event"],
+    ["resolution","payment","if bounty-eligible"],
+  ];
+  function boxCenter(b,side){
+    if(side==="bottom") return {x:b.x+b.w/2,y:b.y+b.h};
+    if(side==="top") return {x:b.x+b.w/2,y:b.y};
+    if(side==="left") return {x:b.x,y:b.y+b.h/2};
+    return {x:b.x+b.w,y:b.y+b.h/2};
+  }
+  let html = "";
+  boxes.forEach(b=>{
+    html += '<rect x="'+b.x+'" y="'+b.y+'" width="'+b.w+'" height="'+b.h+'" rx="7" fill="none" stroke="'+b.col+'" stroke-width="1.3" opacity="0.85"/>';
+    html += '<text x="'+(b.x+12)+'" y="'+(b.y+18)+'" font-weight="600" font-size="12.5" fill="var(--ink,#e9e7e1)" style="fill:#e9e7e1">'+b.t+'</text>';
+    html += '<text x="'+(b.x+12)+'" y="'+(b.y+32)+'" font-size="10" fill="#8a9096">'+b.sub+'</text>';
+  });
+  const byId = Object.fromEntries(boxes.map(b=>[b.id,b]));
+  edges.forEach(([from,to,label])=>{
+    const a = byId[from], b = byId[to];
+    const p1 = a.y===b.y ? boxCenter(a,"right") : boxCenter(a,"bottom");
+    const p2 = a.y===b.y ? boxCenter(b,"left") : boxCenter(b,"top");
+    const midx=(p1.x+p2.x)/2, midy=(p1.y+p2.y)/2;
+    html += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="#5c6369" stroke-width="1.1" marker-end="url(#arw)"/>';
+    if(label) html += '<text x="'+midx+'" y="'+(midy-4)+'" font-size="9.5" fill="#5c6369" text-anchor="middle">'+label+'</text>';
+  });
+  ns.innerHTML = html;
+}
+
+// ---- Feature explorer ----
+let activeArea = "ALL", activeStatus = "ALL", searchTerm = "", selectedId = null;
+
+function depFeature(id){ return FEATURES.find(f=>f.id===id); }
+
+function renderChips(){
+  const areaWrap = document.getElementById("areaChips");
+  areaWrap.innerHTML = ["ALL",...AREAS].map(a=>
+    '<button class="chip'+(activeArea===a?' on':'')+'" data-area="'+a+'">'+a+'</button>'
+  ).join("");
+  areaWrap.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{activeArea=c.dataset.area;renderChips();renderFeatureTable();}));
+
+  const statusWrap = document.getElementById("statusChips");
+  statusWrap.innerHTML = ["ALL",...STATUSES].map(s=>
+    '<button class="chip'+(activeStatus===s?' on':'')+'" data-status="'+s+'">'+s+'</button>'
+  ).join("");
+  statusWrap.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{activeStatus=c.dataset.status;renderChips();renderFeatureTable();}));
+}
+
+function filteredFeatures(){
+  const q = searchTerm.trim().toLowerCase();
+  return FEATURES.filter(f=>{
+    if(activeArea!=="ALL" && f.area!==activeArea) return false;
+    if(activeStatus!=="ALL" && f.status!==activeStatus) return false;
+    if(q && !(f.name.toLowerCase().includes(q) || f.id.toLowerCase().includes(q) || f.area.toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+
+function renderFeatureTable(){
+  const rows = filteredFeatures();
+  document.getElementById("featureCount").textContent = rows.length + " of " + FEATURES.length + " features";
+  const tbody = document.getElementById("featureRows");
+  const empty = document.getElementById("featureEmpty");
+  if(rows.length===0){ tbody.innerHTML=""; empty.style.display="block"; return; }
+  empty.style.display="none";
+  tbody.innerHTML = rows.map(f=>(
+    '<tr data-id="'+f.id+'" class="'+(selectedId===f.id?'sel':'')+'" tabindex="0" role="button" aria-expanded="'+(selectedId===f.id)+'">'+
+      '<td class="mono" style="color:var(--ink-faint)">'+f.id+'</td>'+
+      '<td class="fname">'+f.name+'</td>'+
+      '<td>'+f.area+'</td>'+
+      '<td>'+statusPillHTML(f.status)+'</td>'+
+      '<td>'+(f.priority!=="—"?'<span class="prio prio-'+f.priority.toLowerCase()+'">'+f.priority+'</span>':'<span class="mono" style="color:var(--ink-faint)">—</span>')+'</td>'+
+      '<td class="fdeps">'+(f.deps.length?f.deps.join(", "):"—")+'</td>'+
+    '</tr>'
+  )).join("");
+  tbody.querySelectorAll("tr").forEach(tr=>{
+    tr.addEventListener("click",()=>selectFeature(tr.dataset.id));
+    tr.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); selectFeature(tr.dataset.id);} });
+  });
+}
+
+function maturityRow(f){
+  const items = [
+    ["FRONTEND", f.fe.length>0],
+    ["BACKEND", f.rpc.length>0 || f.db.length>0],
+    ["SECURITY", f.rls && f.rls!=="—"],
+    ["TESTS", f.tests],
+    ["BROWSER", f.browser],
+  ];
+  return '<div class="maturity-row">'+items.map(([label,ok])=>
+    '<div class="maturity-item"><span class="mk '+(ok?"yes":"no")+'">'+(ok?"✓":"—")+'</span>'+label+'</div>'
+  ).join("")+'</div>';
+}
+
+function selectFeature(id){
+  selectedId = (selectedId===id) ? null : id;
+  renderFeatureTable();
+  const panel = document.getElementById("detailPanel");
+  if(!selectedId){ panel.classList.remove("open"); panel.innerHTML=""; return; }
+  const f = depFeature(id);
+  panel.classList.add("open");
+  panel.innerHTML =
+    '<div class="detail-top">'+
+      '<div><span class="id">'+f.id+'</span><h3>'+f.name+'</h3></div>'+
+      '<button class="detail-close" aria-label="Close detail">✕</button>'+
+    '</div>'+
+    '<div class="detail-badges">'+statusPillHTML(f.status)+
+      (f.priority!=="—"?'<span class="prio prio-'+f.priority.toLowerCase()+'">'+f.priority+' priority</span>':'')+
+      '<span class="chip" style="cursor:default">'+f.area+'</span>'+
+    '</div>'+
+    '<div class="detail-grid">'+
+      field("Frontend", f.fe.length?f.fe.join("<br>"):"None") +
+      field("Service / action", (f.svc||[]).concat(f.act||[]).join("<br>")||"None") +
+      field("RPC / backend", f.rpc.length?f.rpc.join("<br>"):"None") +
+      field("Database", f.db.length?f.db.join("<br>"):"None") +
+      field("Security / RLS", f.rls) +
+    '</div>'+
+    maturityRow(f)+
+    (f.note?'<div class="detail-note">'+f.note+'</div>':'')+
+    (f.decisions.length?'<div class="detail-note" style="border-top:none;padding-top:0"><strong style="color:var(--ink)">Decisions: </strong>'+f.decisions.map(d=>'<span class="deplink" data-jump-decision="'+d+'">'+d+'</span>').join("")+'</div>':'')+
+    (f.deps.length?'<div class="detail-note" style="border-top:none;padding-top:0"><strong style="color:var(--ink)">Depends on: </strong>'+f.deps.map(d=>'<span class="deplink" data-jump-feature="'+d+'">'+d+'</span>').join("")+'</div>':'');
+
+  panel.querySelector(".detail-close").addEventListener("click",()=>{selectedId=null;renderFeatureTable();panel.classList.remove("open");panel.innerHTML="";});
+  panel.querySelectorAll("[data-jump-feature]").forEach(el=>el.addEventListener("click",()=>{
+    const targetId = el.dataset.jumpFeature;
+    activeArea="ALL";activeStatus="ALL";searchTerm=targetId;
+    document.getElementById("featureSearch").value=targetId;
+    renderChips();renderFeatureTable();selectFeature(targetId);
+    document.getElementById("features").scrollIntoView({behavior:reduceMotion()?"auto":"smooth"});
+  }));
+  panel.querySelectorAll("[data-jump-decision]").forEach(el=>el.addEventListener("click",()=>{
+    document.getElementById("decisions").scrollIntoView({behavior:reduceMotion()?"auto":"smooth"});
+    setTimeout(()=>highlightDecision(el.dataset.jumpDecision),reduceMotion()?0:350);
+  }));
+  panel.scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"nearest"});
+}
+function field(k,v){ return '<div class="detail-field"><div class="k">'+k+'</div><div class="v mono">'+v+'</div></div>'; }
+
+// ---- Dependency chains ----
+function renderDepChains(){
+  const chains = [
+    {label:"Researcher core path",nodes:["RES-001","RES-010","RES-013","RES-019","RES-022","RES-023","RES-027","RES-028"]},
+    {label:"Organization core path",nodes:["ORG-001","ORG-005","ORG-008","ORG-009","ORG-012","ORG-013","ORG-014","ORG-015"]},
+    {label:"Production email path",nodes:["INFRA-003","INFRA-004","INFRA-005","RES-002"]},
+  ];
+  const wrap = document.getElementById("depchains");
+  wrap.innerHTML = chains.map(c=>{
+    const nodesHtml = c.nodes.map((id,i)=>{
+      const f = depFeature(id);
+      const blocked = f.status==="MISSING"||f.status==="BLOCKED";
+      let out = '<div class="depnode" data-status="'+f.status.toLowerCase()+'" data-id="'+id+'" tabindex="0" role="button">'+
+        '<span class="sw"></span><span>'+id+'</span><span style="color:var(--ink-faint)">·</span><span style="color:var(--ink-faint)">'+f.name.split(" (")[0]+'</span></div>';
+      if(i<c.nodes.length-1){
+        out += '<span class="deparrow'+(blocked?' blocked':'')+'">→</span>';
+      }
+      return out;
+    }).join("");
+    return '<div class="depchain"><h4>'+c.label+'</h4><div class="depnodes">'+nodesHtml+'</div></div>';
+  }).join("");
+  wrap.querySelectorAll(".depnode").forEach(n=>{
+    const go = ()=>{
+      document.getElementById("features").scrollIntoView({behavior:reduceMotion()?"auto":"smooth"});
+      setTimeout(()=>selectFeature(n.dataset.id),reduceMotion()?0:350);
+    };
+    n.addEventListener("click",go);
+    n.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go();}});
+  });
+}
+
+// ---- Timeline ----
+function renderTimeline(){
+  const majors = new Set(["0002","0009","0013","0023","0030","0041","0042","0049","0052","0054"]);
+  const el = document.getElementById("timelineList");
+  el.innerHTML = DECISIONS.map(d=>(
+    '<div class="tick'+(majors.has(d.id)?' major':'')+'">'+
+      '<div class="tick-row"><span class="tick-id">'+d.id+'</span><span class="tick-title">'+d.t+'</span>'+
+      d.tags.map(t=>'<span class="tick-tag">'+t+'</span>').join('')+'</div>'+
+    '</div>'
+  )).join("");
+}
+
+// ---- Decisions ----
+let decisionQuery = "";
+function renderDecisions(){
+  const q = decisionQuery.trim().toLowerCase();
+  const items = DECISIONS.filter(d=> !q || d.t.toLowerCase().includes(q) || d.id.includes(q) || d.why.toLowerCase().includes(q) || d.tags.some(t=>t.includes(q)));
+  document.getElementById("decisionList").innerHTML = items.map(d=>(
+    '<div class="decision" id="decision-'+d.id+'"><div class="decision-head"><span class="id">'+d.id+'</span><span class="t">'+d.t+'</span></div>'+
+    '<p class="decision-why">'+d.why+'</p>'+
+    '<div class="decision-tags">'+d.tags.map(t=>'<span class="dtag">'+t+'</span>').join('')+'</div></div>'
+  )).join("") || '<p style="color:var(--ink-faint);font-size:13px">No decision matches this search.</p>';
+}
+function highlightDecision(id){
+  const el = document.getElementById("decision-"+id);
+  if(!el) return;
+  el.style.borderColor = "var(--signal)";
+  el.style.background = "var(--signal-dim)";
+  setTimeout(()=>{ el.style.borderColor=""; el.style.background=""; }, 1400);
+}
+
+// ---- Blockers / rejected / deferred ----
+function renderBlockers(){
+  document.getElementById("blockerList").innerHTML = BLOCKERS.map(b=>(
+    '<div class="blocker"><h4>'+b.t+'</h4><p>'+b.why+'</p><p class="req"><strong style="color:var(--ink)">Required: </strong>'+b.need+'</p></div>'
+  )).join("");
+  document.getElementById("rejectedList").innerHTML = REJECTED.map(r=>'<div class="triprow"><b>'+r.t+'</b><span>'+r.note+'</span></div>').join("");
+  document.getElementById("deferredList").innerHTML = DEFERRED.map(r=>'<div class="triprow"><b>'+r.t+'</b><span>'+r.note+'</span></div>').join("");
+  document.getElementById("blockedMiniList").innerHTML = BLOCKERS.map(r=>'<div class="triprow"><b>'+r.t+'</b><span>Needs: '+r.need+'</span></div>').join("");
+}
+
+// ---- Next slice ----
+const NEXT_TASK = {
+  id:"RES-028", name:"Retesting", priority:"P1",
+  why:[
+    "The one real, visible break in an otherwise fully verified researcher lifecycle (02).",
+    "Every dependency it needs — resolved reports, report status machine, notifications — is already VERIFIED.",
+    "Zero infrastructure blocker: unlike production email/deployment, this is pure application logic against the existing local stack."
+  ],
+  deps:["RES-023 (Decision / resolution workflow) — VERIFIED"],
+  success:[
+    "A resolved report can be reopened into a real, distinct status (not a synonym for 'triaging').",
+    "The researcher who submitted it can request or be asked for a retest, with a real audit trail.",
+    "The organization can confirm a fix or re-reject, feeding a real reputation-ledger event either way.",
+    "No fabricated 'retested' state exists without a real, server-verified transition behind it."
+  ],
+  risks:[
+    "Must not weaken report_status_transitions' existing state-machine guarantees (0009) — retest needs new states/edges, not a bypass.",
+    "Must decide whether a retest creates a new report row or mutates the existing one — affects evidence/communication history.",
+    "Bounty/payment implications if a 'fixed' resolution is later reopened after a payout was already finalized (0013/0014)."
+  ]
+};
+function renderNext(){
+  const t = NEXT_TASK;
+  document.getElementById("nextCard").innerHTML =
+    '<div class="next-top"><div><span class="next-id">'+t.id+'</span><div class="next-title">'+t.name+'</div></div>'+
+    '<span class="prio prio-'+t.priority.toLowerCase()+'" style="font-size:12px;padding:4px 9px">'+t.priority+' priority</span></div>'+
+    '<div class="next-grid">'+
+      '<div class="next-field"><div class="k">Why now</div><ul>'+t.why.map(x=>'<li>'+x+'</li>').join('')+'</ul></div>'+
+      '<div class="next-field"><div class="k">Dependencies</div><ul>'+t.deps.map(x=>'<li>'+x+'</li>').join('')+'</ul></div>'+
+      '<div class="next-field"><div class="k">What success looks like</div><ul>'+t.success.map(x=>'<li>'+x+'</li>').join('')+'</ul></div>'+
+      '<div class="next-field"><div class="k">Risks</div><ul>'+t.risks.map(x=>'<li>'+x+'</li>').join('')+'</ul></div>'+
+    '</div>'+
+    '<button class="copy-btn" id="copyPromptBtn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="4" y="4" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 11.5V3a1 1 0 0 1 1-1H10" stroke="currentColor" stroke-width="1.3"/></svg>Copy next Claude prompt</button>'+
+    '<div class="next-prompt-preview" id="promptPreview"></div>';
+
+  const prompt = buildPrompt(t);
+  const btn = document.getElementById("copyPromptBtn");
+  const preview = document.getElementById("promptPreview");
+  preview.textContent = prompt;
+  btn.addEventListener("click", async ()=>{
+    try{ await navigator.clipboard.writeText(prompt); }catch(e){}
+    preview.classList.add("open");
+    btn.classList.add("copied");
+    btn.innerHTML = "✓ Copied — prompt below";
+    setTimeout(()=>{ btn.classList.remove("copied"); btn.innerHTML='<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="4" y="4" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 11.5V3a1 1 0 0 1 1-1H10" stroke="currentColor" stroke-width="1.3"/></svg>Copy next Claude prompt'; }, 2600);
+  });
+}
+function buildPrompt(t){
+  return [
+    "SENTINEL — "+t.id+": "+t.name,
+    "",
+    "OBJECTIVE",
+    "Implement report retesting: a resolved report can be reopened for verification, with a real state transition, audit trail, and reputation-ledger event.",
+    "",
+    "CURRENT STATE",
+    "Report lifecycle (0009/0012) ends at resolved/duplicate/informative/not_applicable/rejected with no further transition. No retest RPC, status, or UI exists anywhere in the repository.",
+    "",
+    "EXACT SCOPE",
+    "- Inspect the real report_status_transitions table/enum (0009) before adding anything.",
+    "- Design the minimal real state addition (reopened or verification-pending, etc.) as an actual enum-backed transition, not a bypass of the existing machine.",
+    "- A real RPC for requesting/performing a retest, authorized the same way triage already is.",
+    "- Real UI on the report workspace for both the researcher and the organization sides.",
+    "- A real reputation_ledger entry on the outcome, fact-based, never a fabricated score.",
+    "",
+    "DEPENDENCIES"," - "+t.deps.join("\\n - "),
+    "",
+    "CONSTRAINTS",
+    "- Do not weaken any existing report_status_transitions guarantee.",
+    "- Do not touch the bounty/payment finalization logic beyond what retesting genuinely requires — flag, don't silently redesign, if a paid-out report can be reopened.",
+    "- No fabricated data anywhere — every new number/status must come from a real transition.",
+    "- DO NOT IMPLEMENT UNRELATED FEATURES.",
+    "",
+    "VERIFICATION REQUIREMENTS",
+    "- npm run typecheck / lint / test all pass.",
+    "- Live Chromium verification of the full retest round trip with a real account, screenshotted.",
+    "- A decision doc recording what was built and why.",
+    "",
+    "STOP CONDITION",
+    "Stop once a resolved report can genuinely be reopened, retested, and re-resolved end to end, live-verified. Do not continue to any other feature in this session."
+  ].join("\\n");
+}
+
+// ---- Search / nav wiring ----
+function reduceMotion(){ return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+
+function wireGlobalSearch(){
+  const input = document.getElementById("globalSearch");
+  document.addEventListener("keydown", e=>{
+    if(e.key==="/" && document.activeElement!==input && !["INPUT","TEXTAREA"].includes(document.activeElement.tagName)){
+      e.preventDefault(); input.focus();
+    }
+  });
+  input.addEventListener("input", ()=>{
+    const v = input.value;
+    searchTerm = v;
+    document.getElementById("featureSearch").value = v;
+    activeArea="ALL"; activeStatus="ALL";
+    renderChips(); renderFeatureTable();
+    if(v.trim()){ document.getElementById("features").scrollIntoView({behavior:reduceMotion()?"auto":"smooth"}); }
+  });
+}
+function wireFeatureSearch(){
+  document.getElementById("featureSearch").addEventListener("input", e=>{
+    searchTerm = e.target.value;
+    document.getElementById("globalSearch").value = e.target.value;
+    renderFeatureTable();
+  });
+}
+function wireDecisionSearch(){
+  document.getElementById("decisionSearch").addEventListener("input", e=>{
+    decisionQuery = e.target.value; renderDecisions();
+  });
+}
+function wireRailToggle(){
+  const rail = document.getElementById("rail"), btn = document.getElementById("railToggle");
+  btn.addEventListener("click", ()=>{
+    const open = rail.classList.toggle("open");
+    btn.setAttribute("aria-expanded", open?"true":"false");
+  });
+  document.getElementById("railnav").addEventListener("click", e=>{
+    if(e.target.tagName==="A") { rail.classList.remove("open"); btn.setAttribute("aria-expanded","false"); }
+  });
+}
+function wireScrollSpy(){
+  const links = Array.from(document.querySelectorAll("#railnav a"));
+  const sections = links.map(l=>document.getElementById(l.dataset.sec));
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        links.forEach(l=>l.classList.toggle("active", l.dataset.sec===entry.target.id));
+      }
+    });
+  }, {rootMargin:"-15% 0px -70% 0px", threshold:0});
+  sections.forEach(s=>s && io.observe(s));
+}
+
+function renderStats(){
+  document.getElementById("statFeatures").textContent = FEATURES.length;
+  document.getElementById("statVerified").textContent = FEATURES.filter(f=>f.status==="VERIFIED").length;
+  document.getElementById("statMissing").textContent = FEATURES.filter(f=>f.status==="MISSING"||f.status==="BLOCKED").length;
+  document.getElementById("statDecisions").textContent = DECISIONS.length;
+  document.getElementById("footStamp").textContent = "features: "+FEATURES.length+" · decisions: "+DECISIONS.length;
+}
+
+// ---- Init ----
+renderHero();
+renderJourney("journeyResearcherA", JOURNEY_RESEARCHER);
+renderJourney("journeyResearcherB", JOURNEY_RESEARCHER_B);
+renderJourney("journeyOrgA", JOURNEY_ORG_A);
+renderJourney("journeyOrgB", JOURNEY_ORG_B);
+renderJourney("journeyPlatform", JOURNEY_PLATFORM);
+renderLifecycle();
+renderChips();
+renderFeatureTable();
+renderDepChains();
+renderTimeline();
+renderDecisions();
+renderBlockers();
+renderNext();
+renderStats();
+wireGlobalSearch();
+wireFeatureSearch();
+wireDecisionSearch();
+wireRailToggle();
+wireScrollSpy();
+</script>

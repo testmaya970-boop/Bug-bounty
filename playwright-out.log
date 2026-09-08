@@ -1,0 +1,61 @@
+﻿
+Running 1 test using 1 worker
+
+
+node.exe : (node:46596) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:46596) Wa... env being set.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/1] [chromium] › e2e\researchers-verify.spec.ts:14:5 › researchers page verification
+[chromium] › e2e\researchers-verify.spec.ts:14:5 › researchers page verification
+HAS_PREVIEW_BANNER=true
+
+HAS_47=true
+
+PODIUM_RANK_COUNT=6
+
+NAV_CLASS=flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus bg-action/10 text-action
+
+NAV_HAS_ACTIVE_CLASS=true
+
+CONSOLE_ERRORS_AFTER_LOAD=[]
+
+ROWS_AFTER_VH_SEARCH=["#2\n\nvh_researcher\n\nDistinguished · 128 reports · 101 accepted · $251,500 · −730 behind #1\n\nTop 5.6%\n9,110"]
+
+ROWS_AFTER_EXPERT_FILTER=["#3\n\ngreyframe\n\nExpert · 119 reports · 94 accepted · $219,000 · −1,380 behind #1\n\nTop 11.1%\n8,460","#4\n\n0xdriftwood\n\nExpert · 103 reports · 88 accepted · $198,400 · −1,910 behind #1\n\nTop 16.7%\n7,930","#5\n\nsaltmine_sec\n\nExpert · 97 reports · 79 accepted · $176,200 · −2,435 behind #1\n\nTop 22.2%\n7,405"]
+
+ROWS_BEFORE_SORT=["#1\n\nkestrel_null\n\nDistinguished · 142 reports · 118 accepted · $284,000\n\nTop 0.0%\n9,840","#2\n\nvh_researcher\n\nDistinguished · 128 reports · 101 accepted · $251,500 · −730 behind #1\n\nTop 5.6%\n9,110","#3\n\ngreyframe\n\nExpert · 119 reports · 94 accepted · $219,000 · −1,380 behind #1\n\nTop 11.1%\n8,460","#4\n\n0xdriftwood\n\nExpert · 103 reports · 88 accepted · $198,400 · −1,910 behind #1\n\nTop 16.7%\n7,930","#5\n\nsaltmine_sec\n\nExpert · 97 reports · 79 accepted · $176,200 · −2,435 behind #1\n\nTop 22.2%\n7,405","#6\n\nnorth_paravail\n\nSpecialist · 88 reports · 71 accepted · $154,000 · −3,030 behind #1\n\nTop 27.8%\n6,810","#7\n\nquietwire\n\nSpecialist · 81 reports · 64 accepted · $132,800 · −3,620 behind #1\n\nTop 33.3%\n6,220","#8\n\nfaultline_dev\n\nSpecialist · 76 reports · 59 accepted · $121,300 · −3,950 behind #1\n\nTop 38.9%\n5,890","#9\n\nember_trace\n\nSpecialist · 69 reports · 54 accepted · $109,600 · −4,430 behind #1\n\nTop 44.4%\n5,410","#10\n\nbrackish_io\n\nPractitioner · 63 reports · 48 accepted · $95,400 · −4,920 behind #1\n\nTop 50.0%\n4,920","#11\n\ncinder_watch\n\nPractitioner · 58 reports · 43 accepted · $82,100 · −5,360 behind #1\n\nTop 55.6%\n4,480","#12\n\nloom_variant\n\nPractitioner · 52 reports · 38 accepted · $68,700 · −5,825 behind #1\n\nTop 61.1%\n4,015","#13\n\npale_signal\n\nPractitioner · 47 reports · 33 accepted · $56,400 · −6,280 behind #1\n\nTop 66.7%\n3,560","#14\n\nridgeback_h\n\nPractitioner · 41 reports · 28 accepted · $44,200 · −6,720 behind #1\n\nTop 72.2%\n3,120","#15\n\nverge_cast\n\nApprentice · 36 reports · 24 accepted · $33,500 · −7,160 behind #1\n\nTop 77.8%\n2,680","#16\n\nhollow_ping\n\nApprentice · 30 reports · 19 accepted · $24,100 · −7,630 behind #1\n\nTop 83.3%\n2,210","#17\n\nstatic_moth\n\nApprentice · 24 reports · 15 accepted · $16,800 · −8,060 behind #1\n\nTop 88.9%\n1,780","#18\n\ndriftlock\n\nApprentice · 19 reports · 11 accepted · $9,800 · −8,500 behind #1\n\nTop 94.4%\n1,340"]
+
+ROWS_AFTER_SORT=["#1\n\nkestrel_null\n\nDistinguished · 142 reports · 118 accepted · $284,000\n\nTop 0.0%\n9,840","#2\n\nvh_researcher\n\nDistinguished · 128 reports · 101 accepted · $251,500 · −730 behind #1\n\nTop 5.6%\n9,110","#3\n\ngreyframe\n\nExpert · 119 reports · 94 accepted · $219,000 · −1,380 behind #1\n\nTop 11.1%\n8,460","#4\n\n0xdriftwood\n\nExpert · 103 reports · 88 accepted · $198,400 · −1,910 behind #1\n\nTop 16.7%\n7,930","#5\n\nsaltmine_sec\n\nExpert · 97 reports · 79 accepted · $176,200 · −2,435 behind #1\n\nTop 22.2%\n7,405","#6\n\nnorth_paravail\n\nSpecialist · 88 reports · 71 accepted · $154,000 · −3,030 behind #1\n\nTop 27.8%\n6,810","#7\n\nquietwire\n\nSpecialist · 81 reports · 64 accepted · $132,800 · −3,620 behind #1\n\nTop 33.3%\n6,220","#8\n\nfaultline_dev\n\nSpecialist · 76 reports · 59 accepted · $121,300 · −3,950 behind #1\n\nTop 38.9%\n5,890","#9\n\nember_trace\n\nSpecialist · 69 reports · 54 accepted · $109,600 · −4,430 behind #1\n\nTop 44.4%\n5,410","#10\n\nbrackish_io\n\nPractitioner · 63 reports · 48 accepted · $95,400 · −4,920 behind #1\n\nTop 50.0%\n4,920","#11\n\ncinder_watch\n\nPractitioner · 58 reports · 43 accepted · $82,100 · −5,360 behind #1\n\nTop 55.6%\n4,480","#12\n\nloom_variant\n\nPractitioner · 52 reports · 38 accepted · $68,700 · −5,825 behind #1\n\nTop 61.1%\n4,015","#13\n\npale_signal\n\nPractitioner · 47 reports · 33 accepted · $56,400 · −6,280 behind #1\n\nTop 66.7%\n3,560","#14\n\nridgeback_h\n\nPractitioner · 41 reports · 28 accepted · $44,200 · −6,720 behind #1\n\nTop 72.2%\n3,120","#15\n\nverge_cast\n\nApprentice · 36 reports · 24 accepted · $33,500 · −7,160 behind #1\n\nTop 77.8%\n2,680","#16\n\nhollow_ping\n\nApprentice · 30 reports · 19 accepted · $24,100 · −7,630 behind #1\n\nTop 83.3%\n2,210","#17\n\nstatic_moth\n\nApprentice · 24 reports · 15 accepted · $16,800 · −8,060 behind #1\n\nTop 88.9%\n1,780","#18\n\ndriftlock\n\nApprentice · 19 reports · 11 accepted · $9,800 · −8,500 behind #1\n\nTop 94.4%\n1,340"]
+
+SEARCH_VALUE_AFTER_RESET=
+
+LEVEL_VALUE_AFTER_RESET=
+
+RESET_BUTTON_GONE=true
+
+HAS_REPUTATION_HEADING=true
+
+HAS_VERIFIED_OUTCOMES=true
+
+OVERFLOW_1440={"scrollWidth":1440,"clientWidth":1440}
+
+OVERFLOW_1024={"scrollWidth":1024,"clientWidth":1024}
+
+OVERFLOW_768={"scrollWidth":768,"clientWidth":768}
+
+OVERFLOW_390={"scrollWidth":390,"clientWidth":390}
+
+FINAL_CONSOLE_ERRORS=[]
+
+Error: worker-0 process did not exit within 300000ms after stop, force-killed it
+
+Error: worker-0 process did not exit within 300000ms after stop, force-killed it
+
+  1 passed (5.9m)
+  2 errors were not a part of any test, see above for details
