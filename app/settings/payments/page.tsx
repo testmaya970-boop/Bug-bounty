@@ -50,7 +50,7 @@ export default async function PaymentsSettingsPage() {
 
       <BountyTrackRecord obligations={obligations} />
 
-      <Alert tone="info" title="Payouts are processed manually today.">
+      <Alert tone="info" title="Payouts are processed off-platform by your program contact.">
         The details below are stored for your record and for a platform operator to use when arranging a payout. They aren't yet connected to an automated payment processor.
       </Alert>
 
