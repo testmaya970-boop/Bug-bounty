@@ -49,20 +49,38 @@ export function formatDate(input: string | Date): string {
   });
 }
 
-/** Converts a `pg`-returned `date`-typed column to a real `YYYY-MM-DD` string. `pg`
- * auto-parses SQL `date` columns into a JS Date at local midnight (unlike `timestamptz`
- * columns, which the rest of this codebase already passes through as ISO strings) --
- * every week_start/day-bucket RPC result (get_organization_weekly_report_volume,
- * get_organization_weekly_bounty_spend, get_program_weekly_report_volume, ...) hits this,
- * so mapping row.week_start straight into a `string`-typed field is a lie at runtime: a
- * client component template-literal-coercing that Date (e.g. `${iso}T00:00:00Z`) silently
- * produces "Invalid Date" (confirmed live). Reads the UTC calendar fields specifically
- * (not local getFullYear/getMonth/getDate) since `pg` parses a `date` value at UTC
- * midnight, and a server running in a non-UTC timezone would otherwise shift the day. */
+/** Converts a `pg`-returned `date`-typed column to a real `YYYY-MM-DD` string (no time
+ * component) -- every week_start/day-bucket RPC result (get_organization_weekly_report_
+ * volume, get_organization_weekly_bounty_spend, get_program_weekly_report_volume, ...)
+ * hits this. Reads the UTC calendar fields specifically (not local getFullYear/getMonth/
+ * getDate) since a `date` value is conceptually UTC-midnight, and a server running in a
+ * non-UTC timezone would otherwise shift the day.
+ *
+ * A real, confirmed-live bug this function's own EARLIER version caused, not merely
+ * "could cause": lib/db/type-parsers.ts's registerDateTimeTypeParsers (Phase 5.5) made
+ * `pg` return every date/timestamp/timestamptz column as a full ISO 8601 STRING at the
+ * driver level, not a JS Date object. This function's old `typeof input === "string" ?
+ * return input as-is` branch was written for the world BEFORE that fix existed, when a
+ * string input only ever meant "already date-only, nothing to do." Once the global fix
+ * shipped, `pg` started handing this function a FULL ISO TIMESTAMP string
+ * ("2026-06-22T00:00:00.000Z") for a `date` column -- and the old string branch returned
+ * it completely unchanged, skipping truncation entirely. Every downstream consumer that
+ * coerces the result via a template literal (e.g. `${weekStart}T00:00:00Z` in
+ * components/organizations/organization-weekly-volume.tsx's formatWeekLabel) then built a
+ * malformed double-timestamp string ("...000ZT00:00:00Z"), which `new Date()` cannot
+ * parse -- producing "Invalid Date" on every weekly-volume/weekly-spend chart's axis
+ * labels. Confirmed live (Phase 7, Turn 3's own falsification step): the browser-received
+ * prop was the full timestamp string, not a date-only one.
+ *
+ * The fix: always route through `new Date(...)` regardless of whether the input already
+ * arrived as a string or a Date object, so a full-ISO-string input is truncated exactly
+ * the same way a raw Date object always was -- there is no longer a "the input is
+ * already correct" case to special-case for, because pg's own output shape for these
+ * columns changed underneath this function once the global parser fix shipped. */
 export function toDateOnlyString(input: string | Date): string {
-  if (typeof input === "string") return input;
-  const year = input.getUTCFullYear();
-  const month = String(input.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(input.getUTCDate()).padStart(2, "0");
+  const date = typeof input === "string" ? new Date(input) : input;
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }

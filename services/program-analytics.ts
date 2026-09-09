@@ -33,9 +33,9 @@ export async function getProgramSeverityStatusBreakdown(programId: string): Prom
   }));
 }
 
-// week_start is a SQL `date` column -- `pg` auto-parses it into a JS Date, not a string
-// (see lib/format-date.ts's toDateOnlyString for why that matters: a client component
-// coercing that Date via a template literal silently produces "Invalid Date").
+// week_start is a SQL `date` column. lib/db/type-parsers.ts's global fix makes `pg`
+// return it as a full ISO timestamp STRING (not a Date object) -- see lib/format-date.ts's
+// toDateOnlyString for why the string case still needs truncation, not a pass-through.
 type WeeklyVolumeRow = { week_start: string | Date; submitted_count: number; resolved_count: number; other_closed_count: number };
 
 export async function getProgramWeeklyReportVolume(programId: string): Promise<OrganizationWeeklyReportVolume[]> {

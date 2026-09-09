@@ -625,6 +625,18 @@ export async function resolveReport(reportId: string, resolutionSummary: string)
   return callTriageRpc("public.resolve_report", [reportId, resolutionSummary]);
 }
 
+/** The inbox's link picker for a report with no matched_scope_entry_id (see
+ * db/migrations/202608270001_report_foundation.sql's own comment on why that column can
+ * be null -- FK `on delete set null`, or a report submitted before scope tracking
+ * existed). Not a triage state transition -- reuses callTriageRpc purely because it's the
+ * identical shape (one RPC call, manager-only, returns the updated report), never
+ * touches report.status. See db/migrations/
+ * 202609090005_link_report_to_scope_entry.sql for the real authorization/validation
+ * (manager-only; the chosen scope entry must belong to the same program). */
+export async function linkReportToScopeEntry(reportId: string, scopeEntryId: string): Promise<Report> {
+  return callTriageRpc("public.link_report_to_scope_entry", [reportId, scopeEntryId]);
+}
+
 /** cvss is optional -- omitting it behaves identically to before CVSS existed (severity
  * set, no score attached). Passing it computes and stores a real base score server-side;
  * see db/migrations/202609030006_cvss_severity_scoring.sql. */

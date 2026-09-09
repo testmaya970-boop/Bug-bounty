@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { SectionLabel } from "../ui/security-primitives";
 import { cn } from "../../lib/cn";
 
-export type OrganizationSection = "overview" | "programs" | "findings" | "analytics" | "researchers" | "members" | "settings";
+export type OrganizationSection = "overview" | "programs" | "findings" | "assets" | "analytics" | "researchers" | "members" | "settings";
 
 /** The one consistent organization-level workspace header -- eyebrow, name, and the same
  * six-item sub-navigation on every organization-scoped page, so moving between Home /
@@ -36,12 +36,20 @@ export type OrganizationSection = "overview" | "programs" | "findings" | "analyt
  * access matches every other org-wide read surface here: any active member, with RLS
  * itself narrowing which rows come back (an org owner/security_admin sees every report, a
  * plain member who manages no program sees none) -- never a second, page-level permission
- * model duplicating what RLS already decides correctly. */
+ * model duplicating what RLS already decides correctly.
+ *
+ * "Assets" sits between Findings and Analytics -- the flat, cross-program scope/asset
+ * inventory (extends public.program_scope_entries, docs/decisions/0006-scope-asset-model.md;
+ * see app/organizations/[organizationId]/assets/page.tsx), same read-access shape as
+ * Findings. Creation/editing still happens on each engagement's own Scope section (scope
+ * mutation is only legal while that program is in draft, program-by-program), so this
+ * page is read-only with a "Manage on program" link per row. */
 export function OrganizationHeader({ organizationId, organizationName, active }: { organizationId: string; organizationName: string; active: OrganizationSection }) {
   const items: { id: OrganizationSection; label: string; href: Route }[] = [
     { id: "overview", label: "Home", href: `/organizations/${organizationId}` as Route },
     { id: "programs", label: "Engagements", href: `/organizations/${organizationId}/programs` as Route },
     { id: "findings", label: "Findings", href: `/organizations/${organizationId}/findings` as Route },
+    { id: "assets", label: "Assets", href: `/organizations/${organizationId}/assets` as Route },
     { id: "analytics", label: "Analytics", href: `/organizations/${organizationId}/analytics` as Route },
     { id: "researchers", label: "Researchers", href: `/organizations/${organizationId}/researchers` as Route },
     { id: "members", label: "Members", href: `/organizations/${organizationId}/members` as Route },

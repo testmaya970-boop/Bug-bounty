@@ -11,7 +11,11 @@ import { reportNextActionLabel, reportStatusMeaning, REPORT_STATUS_TRANSITIONS }
 import { formatDateTime } from "../../lib/format-date";
 import { getReport } from "../../services/reports";
 import { getReportTimeline } from "../../services/timeline";
+import { listActiveScopeEntries } from "../../services/scope";
+import { AssetLinkPicker } from "./asset-link-picker";
+import { ScopeStateBadge } from "../ui/badge";
 import type { Report } from "../../types/report";
+import type { ScopeEntry } from "../../types/scope";
 
 /** No report selected yet -- the inbox's own resting state for the middle/right panes,
  * distinct from "no reports exist at all" (InboxReportList's own EmptyState). */
@@ -85,10 +89,14 @@ export async function InboxSelectedReport({
   // "report.created" entry (actor_id = the researcher) resolves to their real name rather
   // than falling back to describeOrganizationActivity's generic "A team member".
   const timelineActorNames: Record<string, string> = { ...actorNames, [report.researcherId]: report.researcherName };
+  // Only fetched for the "unlinked" case (matchedScopeEntryId === null) -- the common,
+  // already-linked case never pays this extra query. See db/migrations/
+  // 202608270001_report_foundation.sql's own comment on how a report ends up unlinked.
+  const linkablePicks: ScopeEntry[] = report.matchedScopeEntryId === null ? await listActiveScopeEntries(programId) : [];
 
   return (
     <div className="grid h-full grid-cols-1 xl:grid-cols-[minmax(0,1fr)_20rem]">
-      <InboxMiddlePane organizationId={organizationId} programId={programId} report={report} timelinePage={timelinePage} actorNames={timelineActorNames} />
+      <InboxMiddlePane organizationId={organizationId} programId={programId} report={report} timelinePage={timelinePage} actorNames={timelineActorNames} linkablePicks={linkablePicks} />
       <InboxRightPane organizationId={organizationId} programId={programId} report={report} allowedNext={allowedNext} isFinal={isFinal} />
     </div>
   );
@@ -100,12 +108,14 @@ function InboxMiddlePane({
   report,
   timelinePage,
   actorNames,
+  linkablePicks,
 }: {
   organizationId: string;
   programId: string;
   report: Report;
   timelinePage: Awaited<ReturnType<typeof getReportTimeline>>;
   actorNames: Record<string, string>;
+  linkablePicks: ScopeEntry[];
 }) {
   return (
     <div className="min-w-0 space-y-6 overflow-y-auto border-b border-border p-4 xl:border-b-0 xl:border-r xl:p-5">
@@ -132,6 +142,23 @@ function InboxMiddlePane({
                 <AssetTypeBadge assetType={report.assetType} />
                 <span className="break-all font-mono">{report.displayTarget}</span>
               </span>
+            }
+          />
+          <MetadataPair
+            label="Linked asset"
+            className="sm:col-span-2"
+            value={
+              report.matchedScopeEntryId ? (
+                <span className="flex flex-wrap items-center gap-2">
+                  <ScopeStateBadge state={report.matchedScopeState} />
+                  <span className="break-all font-mono">{report.matchedTarget}</span>
+                </span>
+              ) : (
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-ink-muted">No asset linked</span>
+                  <AssetLinkPicker organizationId={organizationId} programId={programId} reportId={report.id} candidates={linkablePicks} />
+                </span>
+              )
             }
           />
         </div>

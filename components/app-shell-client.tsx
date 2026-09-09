@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard,
   ShieldCheck,
+  Target,
   FileWarning,
   Award,
   Trophy,
@@ -17,6 +18,7 @@ import {
   BookOpen,
   Bell,
   HelpCircle,
+  Sparkles,
   Search,
   Menu,
   X,
@@ -66,7 +68,14 @@ const PRACTICE_NAV: NavItem[] = [
 
 const RECORD_NAV: NavItem[] = [{ href: "/bounties" as Route, label: "Bounties", icon: Award }];
 
-const SYSTEM_NAV: NavItem[] = [{ href: "/notifications" as Route, label: "Notifications", icon: Bell }];
+const SYSTEM_NAV: NavItem[] = [
+  { href: "/notifications" as Route, label: "Notifications", icon: Bell },
+  // A real, honest static stub -- not a fabricated feature preview. See
+  // app/coming-soon/page.tsx's own comment for why this exists as a real destination
+  // rather than a dead link (matches HackerOne's own reference nav, which documents
+  // "Coming Soon" as its own destination).
+  { href: "/coming-soon" as Route, label: "Coming Soon", icon: Sparkles },
+];
 
 const ACCOUNT_MENU_LINKS: { href: Route; label: string }[] = [{ href: "/settings" as Route, label: "Settings" }];
 
@@ -93,6 +102,11 @@ const ORG_SECURITY_NAV: OrgNavItem[] = [
   // listReportsForOrganization) -- distinct from the per-program triage inbox at
   // .../programs/{id}/reports, which still owns triage actions/bulk operations.
   { href: (id) => `/organizations/${id}/findings` as Route, label: "Findings", icon: Bug },
+  // Assets: the flat, cross-program scope/asset inventory (extends
+  // public.program_scope_entries, docs/decisions/0006-scope-asset-model.md) -- creation/
+  // editing still happens per-engagement (scope mutation is only legal while that
+  // program is in draft), this is the read-only cross-program view.
+  { href: (id) => `/organizations/${id}/assets` as Route, label: "Assets", icon: Target },
   { href: (id) => `/organizations/${id}/researchers` as Route, label: "Researchers", icon: Trophy },
 ];
 const ORG_INSIGHTS_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}/analytics` as Route, label: "Analytics", icon: FileWarning }];

@@ -16,6 +16,8 @@ import { listCurrentUserOrganizations } from "../../../services/organizations";
 import { listProgramsForOrganization } from "../../../services/programs";
 import { listOpenReportsForOrganization, OPEN_REPORTS_OVERVIEW_LIMIT } from "../../../services/reports";
 import { listPendingReportDisclosures } from "../../../services/report-disclosures";
+import { getOrganizationBountySpendSummary } from "../../../services/organization-analytics";
+import { formatMoney } from "../../../lib/money";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { reportNextActionLabel } from "../../../lib/report-status";
 import { formatDate, formatDateTime } from "../../../lib/format-date";
@@ -101,7 +103,7 @@ export default async function OrganizationOverviewPage({ params }: { params: Pro
   // rather than "you aren't authorized to see this." So these three only fetch at all when
   // canSeeAdminActivity is true; every other active member simply doesn't get the
   // "Recent activity"/"Upcoming actions" zones, matching Settings' own established pattern.
-  const [organizations, programs, openReports, pendingDisclosures, members, pendingInvitations, activityPage] = await Promise.all([
+  const [organizations, programs, openReports, pendingDisclosures, members, pendingInvitations, activityPage, bountySpendSummary] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listProgramsForOrganization(organizationId),
     listOpenReportsForOrganization(organizationId),
@@ -109,6 +111,11 @@ export default async function OrganizationOverviewPage({ params }: { params: Pro
     canSeeAdminActivity ? listOrganizationMembers(organizationId) : Promise.resolve([]),
     canSeeAdminActivity ? listPendingInvitations(organizationId) : Promise.resolve([]),
     canSeeAdminActivity ? getOrganizationAuditActivity(organizationId) : Promise.resolve(null),
+    // Real data, not mock -- the same get_organization_bounty_spend_summary RPC the
+    // Analytics page's own Bounty spend section already uses (see docs/decisions/
+    // 0077-organization-bounty-spend-analytics.md). Read access matches every other
+    // org-wide read on this page: any active member, RLS narrows the rest.
+    getOrganizationBountySpendSummary(organizationId),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
   const programNameById = new Map(programs.map((program) => [program.id, program.name]));
@@ -201,6 +208,25 @@ export default async function OrganizationOverviewPage({ params }: { params: Pro
                 <span className="font-semibold text-ink">{programCountByStatus.get(status)}</span> {PROGRAM_STATUS_LABEL[status].toLowerCase()}
               </span>
             ))}
+            {/* Total paid -- real, finalized bounty spend only (report_bounty_decisions
+                where state = 'finalized'), never a calculated recommendation or a policy's
+                max range. One figure per currency, never blended (an org with programs in
+                more than one currency shows both) -- see get_organization_bounty_spend_
+                summary's own comment on why summing different currencies would fabricate
+                a meaningless number. Hidden entirely when nothing has been paid yet --
+                matches this strip's own "hidden when there's nothing to show" convention,
+                never a fabricated "$0 paid" row. */}
+            {bountySpendSummary.length > 0 && (
+              <span className="font-mono tabular-nums text-ink-muted">
+                Total paid:{" "}
+                {bountySpendSummary.map((summary, index) => (
+                  <React.Fragment key={summary.currency}>
+                    {index > 0 && ", "}
+                    <span className="font-semibold text-ink">{formatMoney(summary.totalPaidMinorUnits, summary.currency)}</span>
+                  </React.Fragment>
+                ))}
+              </span>
+            )}
           </div>
         )}
 
