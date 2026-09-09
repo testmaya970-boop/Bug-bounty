@@ -29,6 +29,9 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   report_not_applicable: "A report was marked not applicable",
   report_rejected: "A report was rejected",
   bounty_finalized: "A bounty was finalized",
+  report_triage_started: "A report entered triage",
+  report_accepted: "A report was accepted",
+  report_message_posted: "A new message was posted on a report",
 };
 
 function NotificationRow({ notification, onRead }: { notification: Notification; onRead: (id: string) => void }) {

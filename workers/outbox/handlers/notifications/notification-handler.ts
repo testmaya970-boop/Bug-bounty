@@ -21,7 +21,7 @@ import type { NotificationType } from "@/types/notifications";
  * (on conflict do nothing) and ensure_email_delivery/prepare_notification_email skip any
  * delivery already in a terminal state, so only the genuinely-still-pending work repeats.
  */
-function hasReportId(payload: Record<string, unknown>): payload is { report_id: string } {
+function hasReportId(payload: Record<string, unknown>): payload is { report_id: string; actor_id?: string } {
   return typeof payload.report_id === "string";
 }
 
@@ -47,8 +47,17 @@ export function createNotificationHandler(notificationType: NotificationType) {
 
     let notifications: NotificationRow[];
     try {
+      // p_actor_id is only meaningful for report_message_posted (see
+      // route_and_create_notifications's own routing) -- undefined for every other
+      // notificationType, which resolves to SQL's own `default null` and is ignored there.
       notifications = await withServiceRoleTransaction((client) =>
-        callRpc<NotificationRow>(client, "public.route_and_create_notifications", [event.id, notificationType, event.payload.report_id, event.occurredAt]),
+        callRpc<NotificationRow>(client, "public.route_and_create_notifications", [
+          event.id,
+          notificationType,
+          event.payload.report_id,
+          event.occurredAt,
+          event.payload.actor_id ?? null,
+        ]),
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

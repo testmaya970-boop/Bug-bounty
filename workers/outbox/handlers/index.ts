@@ -39,3 +39,12 @@ registerHandler("report.informative", 1, createNotificationHandler("report_infor
 registerHandler("report.not_applicable", 1, createNotificationHandler("report_not_applicable"));
 registerHandler("report.rejected", 1, createNotificationHandler("report_rejected"));
 registerHandler("bounty.finalized", 1, createNotificationHandler("bounty_finalized"));
+
+// Turn 8 -- closes the notification gap the Turn 5 outbox trace found. start_triage/
+// accept_report/post_organization_message/post_researcher_message now all emit a real
+// outbox event (db/migrations/202609090007_message_and_triage_notifications.sql); these
+// three registrations are what makes that event actually produce a notification, reusing
+// this exact same factory/pipeline unchanged.
+registerHandler("report.triage_started", 1, createNotificationHandler("report_triage_started"));
+registerHandler("report.accepted", 1, createNotificationHandler("report_accepted"));
+registerHandler("report.message_posted", 1, createNotificationHandler("report_message_posted"));

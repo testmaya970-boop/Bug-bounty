@@ -9,8 +9,25 @@
 export type NotificationCategory = "report_activity" | "bounty_activity";
 
 /** The specific fact a notification records. Distinct from `NotificationCategory` --
- * category is the preference-grouping; notification_type is the specific event. */
-export type NotificationType = "report_created" | "report_needs_information" | "report_resolved" | "report_duplicate" | "report_informative" | "report_not_applicable" | "report_rejected" | "bounty_finalized";
+ * category is the preference-grouping; notification_type is the specific event.
+ *
+ * Turn 8 adds report_triage_started/report_accepted (single-recipient = the report's own
+ * researcher, identical shape to report_resolved etc.) and report_message_posted
+ * (actor-aware -- whoever did NOT post is the recipient; see
+ * route_and_create_notifications's own handling in
+ * db/migrations/202609090007_message_and_triage_notifications.sql). */
+export type NotificationType =
+  | "report_created"
+  | "report_needs_information"
+  | "report_resolved"
+  | "report_duplicate"
+  | "report_informative"
+  | "report_not_applicable"
+  | "report_rejected"
+  | "bounty_finalized"
+  | "report_triage_started"
+  | "report_accepted"
+  | "report_message_posted";
 
 /**
  * The durable in-app record. Deliberately content-free beyond identifiers and the fact

@@ -29,6 +29,9 @@ const LABELS: Record<NotificationType, string> = {
   report_not_applicable: "Your report was marked not applicable",
   report_rejected: "Your report was rejected",
   bounty_finalized: "A bounty was finalized for your report",
+  report_triage_started: "Your report has entered triage",
+  report_accepted: "Your report was accepted",
+  report_message_posted: "There's a new message on a report",
 };
 
 export type NotificationEmailInput = {
