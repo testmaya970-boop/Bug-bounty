@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { SectionLabel } from "../ui/security-primitives";
 import { cn } from "../../lib/cn";
 
-export type OrganizationSection = "overview" | "programs" | "findings" | "assets" | "analytics" | "researchers" | "members" | "settings";
+export type OrganizationSection = "overview" | "programs" | "findings" | "assets" | "analytics" | "researchers" | "hactivity" | "members" | "settings";
 
 /** The one consistent organization-level workspace header -- eyebrow, name, and the same
  * six-item sub-navigation on every organization-scoped page, so moving between Home /
@@ -43,7 +43,13 @@ export type OrganizationSection = "overview" | "programs" | "findings" | "assets
  * see app/organizations/[organizationId]/assets/page.tsx), same read-access shape as
  * Findings. Creation/editing still happens on each engagement's own Scope section (scope
  * mutation is only legal while that program is in draft, program-by-program), so this
- * page is read-only with a "Manage on program" link per row. */
+ * page is read-only with a "Manage on program" link per row.
+ *
+ * "Hactivity" (Turn 6, phase/9-ia) sits after Researchers -- the org's full, chronological
+ * audit event feed (services/organization-members.ts's getOrganizationAuditActivity, the
+ * same RLS-gated audit_logs read Home's own "Recent activity" now links out to instead of
+ * duplicating). Owner/security_admin only, matching audit_logs' own read policy -- not a
+ * new permission model, the existing one. */
 export function OrganizationHeader({ organizationId, organizationName, active }: { organizationId: string; organizationName: string; active: OrganizationSection }) {
   const items: { id: OrganizationSection; label: string; href: Route }[] = [
     { id: "overview", label: "Home", href: `/organizations/${organizationId}` as Route },
@@ -52,6 +58,7 @@ export function OrganizationHeader({ organizationId, organizationName, active }:
     { id: "assets", label: "Assets", href: `/organizations/${organizationId}/assets` as Route },
     { id: "analytics", label: "Analytics", href: `/organizations/${organizationId}/analytics` as Route },
     { id: "researchers", label: "Researchers", href: `/organizations/${organizationId}/researchers` as Route },
+    { id: "hactivity", label: "Hactivity", href: `/organizations/${organizationId}/hactivity` as Route },
     { id: "members", label: "Members", href: `/organizations/${organizationId}/members` as Route },
     { id: "settings", label: "Settings", href: `/organizations/${organizationId}/settings` as Route },
   ];
