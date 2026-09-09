@@ -27,3 +27,20 @@ reusable checklist itself).
    researcher. Expect: the Bounty section shows the real finalized amount (`USD
    3000.00`) and the finalization note, with no admin-only controls (no
    Finalize/Adjust buttons).
+
+## Latency budgets
+
+Measured every release: 3 warm hits per route against the running `next build` +
+`next start` server, `waitUntil: "load"` (not `"networkidle"` — that counts background
+navigation prefetch as part of the measured load and inflates results; see
+AGENTS.md's information-architecture rule on why prefetch is disabled on gated links in
+the first place), median of the 3. A >20% regression on any row blocks merge.
+
+| Route | Budget | Result | Pass/Fail |
+|---|---|---|---|
+| Org dashboard (Home) | ≤0.5s | 148ms | PASS |
+| Engagements | ≤0.6s | 102ms | PASS |
+| Findings | ≤0.6s | 103ms | PASS |
+| Program inbox | ≤0.6s | 179ms | PASS |
+| Researcher home | ≤0.8s | 136ms | PASS |
+| CTF | ≤1.0s | 197ms | PASS |
