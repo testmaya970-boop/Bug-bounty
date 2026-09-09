@@ -19,6 +19,7 @@ import {
   Bell,
   HelpCircle,
   Sparkles,
+  Wand2,
   Search,
   Menu,
   X,
@@ -84,9 +85,22 @@ const SYSTEM_NAV: NavItem[] = [
   // rather than a dead link (matches HackerOne's own reference nav, which documents
   // "Coming Soon" as its own destination).
   { href: "/coming-soon" as Route, label: "Coming Soon", icon: Sparkles },
+  // Item 15 of the 15-point nav map (Turn 6, phase/9-ia) -- same honest-stub posture as
+  // Coming Soon above: no chat, no model, just what's real (a waitlist signup). See
+  // app/hai/page.tsx's own comment.
+  { href: "/hai" as Route, label: "Hai", icon: Wand2 },
 ];
 
-const ACCOUNT_MENU_LINKS: { href: Route; label: string }[] = [{ href: "/settings" as Route, label: "Settings" }];
+// Item 14 of the 15-point nav map (Turn 6, phase/9-ia): previously Settings + Sign out
+// only. Profile (the real, existing /settings/profile route) and Help/Docs (the same
+// real /help destination the top-bar HelpLink now points to, item 12 -- not a second,
+// divergent doc surface) are added; Support is intentionally not a separate row here
+// since /help itself is exactly one click from Send feedback, the real support channel.
+const ACCOUNT_MENU_LINKS: { href: Route; label: string }[] = [
+  { href: "/settings/profile" as Route, label: "Profile" },
+  { href: "/settings" as Route, label: "Settings" },
+  { href: "/help" as Route, label: "Help & docs" },
+];
 
 // docs/decisions/0075 -- the organization-side nav, regrouped into the same zone grammar
 // (Overview / Security / Insights / Organization) the research-side nav already uses
@@ -213,19 +227,17 @@ function NotificationBell({ unreadCount }: { unreadCount: number }) {
   return <NotificationBellDropdown initialUnreadCount={unreadCount} />;
 }
 
-// Previously a permanent, unconditional `href="#"` -- a dead link present on every page
-// load, the same class of real/fake mismatch this pass is closing everywhere else.
-// /settings/feedback is the one real, already-functioning destination for "something's
-// wrong, I need to reach someone" today; no dedicated help center/support inbox exists
-// yet to route to instead, and inventing one here would be exactly the fabricated
-// destination this fix is meant to remove.
+// Previously pointed directly at /settings/feedback (see that commit's own comment on
+// why -- no dedicated help center existed at the time). Turn 6/phase-9-ia built a real
+// /help destination (support link, real docs, live-read release notes) -- this now
+// points there instead, one level up from feedback rather than skipping straight to it.
 function HelpLink() {
   return (
     <Link
-      href={"/settings/feedback" as Route}
+      href={"/help" as Route}
       prefetch={false}
-      aria-label="Help & feedback"
-      title="Help & feedback"
+      aria-label="Help"
+      title="Help"
       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-muted transition-colors duration-150 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
       <HelpCircle aria-hidden="true" className="size-5" />
