@@ -11,6 +11,7 @@ import { listCurrentUserOrganizations } from "../../../../services/organizations
 import { listProgramsForOrganization } from "../../../../services/programs";
 import { listReportsForOrganization } from "../../../../services/reports";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
+import { perfTimed } from "../../../../lib/perf-trace";
 import type { ReportSeverity, ReportStatus } from "../../../../types/report";
 
 const VALID_STATUSES: ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"];
@@ -32,7 +33,14 @@ const VALID_SEVERITIES: ReportSeverity[] = ["none", "low", "medium", "high", "cr
  * who manages no program simply sees an empty (correctly narrowed) result, never a
  * permission error. See services/reports.ts's own comment on this.
  */
-export default async function OrganizationFindingsPage({
+export default async function OrganizationFindingsPage(props: {
+  params: Promise<{ organizationId: string }>;
+  searchParams: Promise<{ program?: string; status?: string; severity?: string }>;
+}) {
+  return perfTimed("route: findings (total)", () => renderOrganizationFindingsPage(props));
+}
+
+async function renderOrganizationFindingsPage({
   params,
   searchParams,
 }: {
@@ -44,7 +52,15 @@ export default async function OrganizationFindingsPage({
   const user = await getCurrentUser();
   if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/findings` as Route);
 
-  const actor = await getActorMembership(user.id, organizationId);
+  // Phase 8 perf fix: actor/org/programs used to be two sequential stages
+  // (getActorMembership, THEN listCurrentUserOrganizations+listProgramsForOrganization)
+  // even though none of the three depend on each other -- all three only need
+  // user.id/organizationId, both already known. Parallelized; the org/programs fetch is
+  // simply discarded on the rare access-denied path, a negligible cost against paying a
+  // full extra round trip on every real visit.
+  const [actor, organizations, programs] = await perfTimed("findings: actor+org+programs batch", () =>
+    Promise.all([getActorMembership(user.id, organizationId), listCurrentUserOrganizations(user.id), listProgramsForOrganization(organizationId)]),
+  );
   if (!actor || actor.status !== "active") {
     return (
       <AppShell title="Findings" user={user} organizationId={organizationId}>
@@ -53,18 +69,19 @@ export default async function OrganizationFindingsPage({
     );
   }
 
-  const [organizations, programs] = await Promise.all([listCurrentUserOrganizations(user.id), listProgramsForOrganization(organizationId)]);
   const organization = organizations.find((org) => org.id === organizationId);
 
   const programId = programParam && programs.some((program) => program.id === programParam) ? programParam : "all";
   const status: ReportStatus | "all" = statusParam && VALID_STATUSES.includes(statusParam as ReportStatus) ? (statusParam as ReportStatus) : "all";
   const severity: ReportSeverity | "all" = severityParam && VALID_SEVERITIES.includes(severityParam as ReportSeverity) ? (severityParam as ReportSeverity) : "all";
 
-  const { items: reports, nextCursor } = await listReportsForOrganization(organizationId, undefined, undefined, {
-    programId: programId === "all" ? undefined : programId,
-    status: status === "all" ? undefined : status,
-    severity: severity === "all" ? undefined : severity,
-  });
+  const { items: reports, nextCursor } = await perfTimed("findings: listReportsForOrganization", () =>
+    listReportsForOrganization(organizationId, undefined, undefined, {
+      programId: programId === "all" ? undefined : programId,
+      status: status === "all" ? undefined : status,
+      severity: severity === "all" ? undefined : severity,
+    }),
+  );
 
   return (
     <AppShell title="Findings" user={user} organizationId={organizationId}>
