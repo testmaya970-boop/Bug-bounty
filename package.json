@@ -16,7 +16,8 @@
     "test:e2e": "playwright test",
     "worker:outbox": "tsx --env-file=.env.local workers/outbox/run.ts",
     "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs",
-    "seed:launch": "tsx --env-file=.env.local scripts/seed-demo.ts"
+    "seed:launch": "tsx --env-file=.env.local scripts/seed-demo.ts",
+    "seed:e2e": "tsx --env-file=.env.local scripts/seed-e2e.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",

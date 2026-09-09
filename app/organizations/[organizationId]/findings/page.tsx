@@ -92,7 +92,16 @@ async function renderOrganizationFindingsPage({
 
         <p className="text-sm text-ink-muted">Every report across every engagement. Filter, scan, and open a report to act on it in its own engagement's triage inbox.</p>
 
+        {/* key forces a full remount on any filter change -- OrganizationFindingsTable's
+            own `reports`/`nextCursor` state is seeded once from initialReports/
+            initialNextCursor via useState(initial...), which (by design, same as every
+            React useState initializer) does NOT re-run on a prop change alone. Without
+            this key, changing a filter updates the URL and the dropdown's own displayed
+            value, but the rendered report list silently keeps showing the PREVIOUS
+            filter's results -- confirmed live via the Turn 8 E2E journey suite, which is
+            what caught this. */}
         <OrganizationFindingsTable
+          key={`${programId}:${status}:${severity}`}
           organizationId={organizationId}
           initialReports={reports}
           initialNextCursor={nextCursor}

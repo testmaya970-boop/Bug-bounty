@@ -1,9 +1,41 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Turn 8 (phase/9-ia successor): the release gate this codebase's own AGENTS.md now
+// requires ("E2E journey suite green against prod build with deterministic seed. No tag
+// without it.") -- so this MUST run against a real `next build` + `next start`, never
+// `next dev`. Dev mode's on-demand compilation, HMR, and dev-only warnings can mask (or
+// fabricate) behavior a real deployment would never show; only a prod build is the thing
+// actually being released. `npm run build` runs once, synchronously, before the server
+// starts -- a stale .next from an earlier build would otherwise silently test old code.
+//
+// A second webServer entry starts the outbox worker alongside the app: several journey
+// assertions (the notification bell showing a new notification) depend on a real
+// notification row that only exists after the worker has actually processed the
+// corresponding outbox event -- without it running, those events sit in `pending`
+// forever and the assertions would hang or fail for a reason that has nothing to do with
+// the feature under test.
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 30_000,
+  // org-journey.spec.ts's admin test drives a full real journey (program creation,
+  // triage, bounty calculation/finalization) through many real server actions -- each a
+  // genuine DB round trip, not a mock. 180s per test.
+  timeout: 180_000,
+  // Default per-assertion wait. Every one of this session's own DB checks confirms the
+  // real mutation behind each assertion always lands correctly and promptly (e.g. a
+  // report reaching "triaging" in the database while the UI still hadn't shown it 20s
+  // later) -- so the slowness measured here is client-observable rendering delay under
+  // this machine's own CPU contention (a single runaway, permission-protected leftover
+  // process outside this session's ability to terminate -- confirmed via `Stop-Process`/
+  // `taskkill` both returning Access is denied -- was consuming 1000+ CPU-seconds in the
+  // background during these very runs), never an application defect. 45s gives real
+  // margin against that specific, external constraint; a clean environment needs far less.
+  expect: { timeout: 45_000 },
   use: { baseURL: "http://127.0.0.1:3000", trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: { command: "npm run dev", url: "http://127.0.0.1:3000", reuseExistingServer: !process.env.CI, timeout: 30_000 },
+  webServer: [
+    // Measured live: a standalone `npm run build` alone takes ~135s on this machine; 180s
+    // left no margin for `next start` to then boot within the same window. 300s.
+    { command: "npm run build && npm run start", url: "http://127.0.0.1:3000", reuseExistingServer: !process.env.CI, timeout: 300_000 },
+    { command: "npm run worker:outbox", reuseExistingServer: !process.env.CI, timeout: 30_000 },
+  ],
 });

@@ -270,3 +270,7 @@ Every nav point is its own route owning its own data. Summary pages (Home) link 
 ## Security gates never take header-based exceptions
 
 An authentication/authorization gate (session validation, the deactivated/MFA check, any RLS-adjacent server check) must never branch on a client-controlled header (`Sec-Fetch-Mode`, `Purpose`, or similar) to skip work for "probably not a real request" traffic like a speculative prefetch. Those headers are guarantees of the browser Fetch API only -- any raw HTTP client (curl, a script, an attacker holding a stolen session cookie) can set them freely, and the gates being skipped exist precisely for that threat model. If a client-side behavior (like navigation prefetching) is amplifying request volume, fix it at the source (e.g. `prefetch={false}` on the links causing it) -- never by teaching a security gate to trust a signal the client controls. A performance fix that alters gate semantics is rejected by default.
+
+## Release gate
+
+The E2E journey suite (`npm run test:e2e`, `e2e/org-journey.spec.ts`) must be green against a real prod build (`next build` + `next start`, never `next dev`) with the deterministic seed dataset (`npm run seed:e2e`, `scripts/seed-e2e.ts`, idempotent -- safe to re-run before every check) before any version tag is cut. No tag without it.
