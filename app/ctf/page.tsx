@@ -9,6 +9,7 @@ import { ChallengeGrid } from "../../components/ctf/challenge-grid";
 import { CtfLeaderboardTable } from "../../components/ctf/ctf-leaderboard-table";
 import { getCurrentUser } from "../../lib/auth/current-user";
 import { listMyCtfSolves } from "../../services/ctf";
+import { perfTimed } from "../../lib/perf-trace";
 import {
   MOCK_CTF_CHALLENGES,
   MOCK_CTF_TRACKS,
@@ -27,14 +28,18 @@ const VALID_CATEGORIES = new Set<string>(["web", "crypto", "reverse-engineering"
  * branding, or layout copied from either). Auth-guarded exactly like
  * app/researchers/page.tsx.
  */
-export default async function CtfPage({ searchParams }: { searchParams: Promise<{ category?: string; tab?: string }> }) {
+export default async function CtfPage(props: { searchParams: Promise<{ category?: string; tab?: string }> }) {
+  return perfTimed("route: CTF (total)", () => renderCtfPage(props));
+}
+
+async function renderCtfPage({ searchParams }: { searchParams: Promise<{ category?: string; tab?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirectTo=/ctf" as Route);
 
   const { category: categoryParam, tab } = await searchParams;
   const initialCategory = categoryParam && VALID_CATEGORIES.has(categoryParam) ? (categoryParam as CtfCategoryId) : undefined;
   const showLeaderboard = tab === "leaderboard";
-  const solves = await listMyCtfSolves();
+  const solves = await perfTimed("CTF: listMyCtfSolves", () => listMyCtfSolves());
   const solvedChallengeIds = new Set(solves.map((solve) => solve.challengeId));
   const totalPointsEarned = solves.reduce((sum, solve) => sum + solve.pointsAwarded, 0);
 
