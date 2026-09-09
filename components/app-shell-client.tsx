@@ -37,6 +37,15 @@ import { TRAINING_ARTICLES } from "../lib/training/content";
 import { MOCK_TOTAL_RESEARCHERS } from "../lib/mock/researcher-dashboard";
 import type { OrganizationSummary } from "../services/organizations";
 
+// Every <Link> in this file carries prefetch={false}: this shell renders on every
+// authenticated page, so its nav/switcher/menu links are on-screen (and thus
+// speculatively prefetched by the App Router) on every single request. Each prefetch is
+// a full middleware invocation through the deliberately unconditional deactivated/MFA
+// gate (lib/session/middleware.ts) -- measured live at ~11x the real navigation volume.
+// Disabling prefetch here removes that request volume at the source; the gate itself
+// stays unconditional with no header-based exception (a prior attempt at exactly that
+// was reverted -- Sec-Fetch-Mode is a client-controlled signal for any raw HTTP client,
+// which is precisely the threat the gate exists to catch).
 type NavItem = { href: Route; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string };
 
 // docs/decisions/0074 -- the security-operating-system nav grouping. Same real
@@ -133,7 +142,12 @@ function AccountMenu({ user }: { user: ShellUser }) {
       </div>
       <Separator className="my-1" />
       {ACCOUNT_MENU_LINKS.map((item) => (
-        <Link key={item.href} href={item.href} className="block min-h-11 rounded px-3 py-2.5 text-sm text-ink hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus">
+        <Link
+          key={item.href}
+          href={item.href}
+          prefetch={false}
+          className="block min-h-11 rounded px-3 py-2.5 text-sm text-ink hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
+        >
           {item.label}
         </Link>
       ))}
@@ -209,6 +223,7 @@ function HelpLink() {
   return (
     <Link
       href={"/settings/feedback" as Route}
+      prefetch={false}
       aria-label="Help & feedback"
       title="Help & feedback"
       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-muted transition-colors duration-150 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
@@ -230,6 +245,7 @@ function NavLink({ item, active, onClick }: { item: NavItem; active: boolean; on
   return (
     <Link
       href={item.href}
+      prefetch={false}
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
@@ -277,6 +293,7 @@ function OrgNavGroup({ label, items, organizationId, path, onNavigate }: { label
             <Link
               key={item.label}
               href={href}
+              prefetch={false}
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
@@ -360,6 +377,7 @@ function OrganizationSwitcher({ organizations, currentOrganizationId }: { organi
           <Separator className="my-1" />
           <Link
             href={"/organizations" as Route}
+            prefetch={false}
             onClick={() => setOpen(false)}
             className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 text-sm text-ink-muted hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
           >
@@ -374,7 +392,7 @@ function OrganizationSwitcher({ organizations, currentOrganizationId }: { organi
 
 function SidebarBrand() {
   return (
-    <Link href="/" className="flex items-center gap-2 px-1 focus-visible:outline-2 focus-visible:outline-focus">
+    <Link href="/" prefetch={false} className="flex items-center gap-2 px-1 focus-visible:outline-2 focus-visible:outline-focus">
       <span aria-hidden="true" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-action text-on-action shadow-[0_0_14px_var(--glow-action)]">
         <ShieldCheck className="size-4" />
       </span>

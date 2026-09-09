@@ -70,6 +70,16 @@ async function updateSessionInner(request: NextRequest) {
   // parallel rather than serially. Every navigation (including every tab click) pays
   // this cost, so a needless second round-trip here is a real, felt latency tax, not a
   // micro-optimization. Each check is still only issued when its own path isn't exempt.
+  //
+  // Deliberately unconditional otherwise -- no header-based exception of any kind. A
+  // prior version of this file skipped these queries when Sec-Fetch-Mode read "cors", to
+  // avoid paying them on Next.js's speculative <Link> prefetches. That header is a
+  // browser-Fetch-API-only guarantee: curl, scripts, and any raw HTTP client holding a
+  // stolen session cookie can set it freely, and the MFA/deactivation gates exist
+  // precisely for the stolen-session and terminated-employee scenarios that kind of
+  // client represents. Reverted -- see the request-amplification fix at the nav-link
+  // layer instead (prefetch={false} on gated links), which removes the extra requests at
+  // the source instead of teaching this gate to trust a client-controlled signal.
   const checkDeactivated = session && !isDeactivatedExempt(request.nextUrl.pathname);
   const checkMfa = session && !isMfaExempt(request.nextUrl.pathname);
 

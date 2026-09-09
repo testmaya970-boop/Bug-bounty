@@ -62,11 +62,16 @@ export function ProgramHeader({
           <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">Disclosure only</span>
         )}
       </div>
+      {/* prefetch={false}: same reasoning as organization-header.tsx's own tabs -- avoid
+          feeding the App Router's speculative prefetch, which would otherwise run the
+          full (deliberately unconditional) middleware auth gate for every tab on every
+          render. */}
       <nav aria-label="Program sections" className="mt-4 flex gap-5 overflow-x-auto">
         {items.map((item) => (
           <Link
             key={item.id}
             href={item.href}
+            prefetch={false}
             aria-current={active === item.id ? "page" : undefined}
             className={cn(
               "shrink-0 border-b-2 pb-3 text-sm font-semibold transition-[color,border-color,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",

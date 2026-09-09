@@ -60,11 +60,17 @@ export function OrganizationHeader({ organizationId, organizationName, active }:
     <div className="border-b border-border pb-0">
       <SectionLabel>Organization</SectionLabel>
       <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{organizationName}</h2>
+      {/* prefetch={false}: these tabs sit on every org-scoped page, so the App Router
+          speculatively prefetches all eight on every render -- each one a full middleware
+          pass through the deactivated/MFA gate, unconditional by design (see
+          lib/session/middleware.ts). Disabling prefetch removes the request volume at the
+          source instead of teaching the gate to trust a client-controlled signal. */}
       <nav aria-label="Organization sections" className="mt-4 flex gap-5 overflow-x-auto">
         {items.map((item) => (
           <Link
             key={item.id}
             href={item.href}
+            prefetch={false}
             aria-current={active === item.id ? "page" : undefined}
             className={cn(
               "shrink-0 border-b-2 pb-3 text-sm font-semibold transition-[color,border-color,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
