@@ -24,7 +24,7 @@ import { PrimaryActionPanel, RegistryList, SectionLabel } from "../../../../../c
 import { ProgramHeader } from "../../../../../components/programs/program-header";
 import { canCreateProgram } from "../../../../../services/authorization";
 import { getActorMembership } from "../../../../../services/organization-members";
-import { getProgram, getProgramFocusAreas, getPublicProgram, listProgramMembers, listPublicProgramScope } from "../../../../../services/programs";
+import { getProgram, getProgramFocusAreas, getPublicProgram, listProgramMembers, listProgramsForOrganization, listPublicProgramScope } from "../../../../../services/programs";
 import { getProgramResolutionPerformance, getProgramSeverityStatusBreakdown, getProgramWeeklyReportVolume } from "../../../../../services/program-analytics";
 import { listActiveScopeEntries } from "../../../../../services/scope";
 import { getMyParticipation, listMyProgramParticipations, listPendingProgramInvitations, listProgramResearchers } from "../../../../../services/program-researchers";
@@ -328,7 +328,7 @@ async function renderProgramControlCenterPage({
   // each other -- every one of them depends only on canManageProgram/isActiveResearcher,
   // both already known above. Collapsed into one Promise.all so the whole page pays for
   // exactly the slowest single query in this batch, not the sum of all of them.
-  const [scopeEntries, [researchers, pendingInvitations], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance]] =
+  const [scopeEntries, [researchers, pendingInvitations], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms] =
     await perfTimed("program home: stage 2 (parallel batch)", () =>
       Promise.all([
         listActiveScopeEntries(programId),
@@ -356,6 +356,10 @@ async function renderProgramControlCenterPage({
         canManageProgram || isActiveResearcher
           ? Promise.all([getProgramSeverityStatusBreakdown(programId), getProgramWeeklyReportVolume(programId), getProgramResolutionPerformance(programId)])
           : Promise.resolve([[], [], null] as [OrganizationSeverityStatusCount[], OrganizationWeeklyReportVolume[], OrganizationResolutionPerformance | null]),
+        // Program switcher's own data (item 11, Turn 6) -- manager/admin only, matching
+        // every other manager-gated fetch in this batch; fetch ownership rule means this
+        // page fetches it, never ProgramHeader itself.
+        canManageProgram ? listProgramsForOrganization(organizationId) : Promise.resolve([]),
       ]),
     );
   // Reaching this page as a manager already proves the identical authorization predicate
@@ -377,7 +381,16 @@ async function renderProgramControlCenterPage({
           items={[{ label: "Organizations", href: "/organizations" }, { label: "Engagements", href: `/organizations/${organizationId}/programs` }, { label: program.name }]}
         />
 
-        <ProgramHeader organizationId={organizationId} programId={programId} programName={program.name} status={program.status} programType={program.programType} active="overview" canManage={canManageProgram} />
+        <ProgramHeader
+          organizationId={organizationId}
+          programId={programId}
+          programName={program.name}
+          status={program.status}
+          programType={program.programType}
+          active="overview"
+          canManage={canManageProgram}
+          siblingPrograms={canManageProgram ? organizationPrograms.filter((p) => p.id !== programId).map((p) => ({ id: p.id, name: p.name, status: p.status })) : undefined}
+        />
 
         {canManageProgram ? (
           <dl className="grid gap-4 text-sm sm:grid-cols-3">
