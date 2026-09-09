@@ -18,6 +18,7 @@ import {
   BookOpen,
   Bell,
   HelpCircle,
+  Sparkles,
   Search,
   Menu,
   X,
@@ -67,7 +68,14 @@ const PRACTICE_NAV: NavItem[] = [
 
 const RECORD_NAV: NavItem[] = [{ href: "/bounties" as Route, label: "Bounties", icon: Award }];
 
-const SYSTEM_NAV: NavItem[] = [{ href: "/notifications" as Route, label: "Notifications", icon: Bell }];
+const SYSTEM_NAV: NavItem[] = [
+  { href: "/notifications" as Route, label: "Notifications", icon: Bell },
+  // A real, honest static stub -- not a fabricated feature preview. See
+  // app/coming-soon/page.tsx's own comment for why this exists as a real destination
+  // rather than a dead link (matches HackerOne's own reference nav, which documents
+  // "Coming Soon" as its own destination).
+  { href: "/coming-soon" as Route, label: "Coming Soon", icon: Sparkles },
+];
 
 const ACCOUNT_MENU_LINKS: { href: Route; label: string }[] = [{ href: "/settings" as Route, label: "Settings" }];
 
