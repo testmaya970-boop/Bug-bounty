@@ -9,9 +9,10 @@ import { InboxReportList } from "../../../../../../components/reports/inbox-repo
 import { InboxNoSelection, InboxReportNotFound, InboxSelectedReport } from "../../../../../../components/reports/inbox-detail-panes";
 import { canCreateProgram } from "../../../../../../services/authorization";
 import { getActorMembership } from "../../../../../../services/organization-members";
-import { getProgram, listProgramMembers } from "../../../../../../services/programs";
+import { getProgram, listProgramMembers, listProgramsForOrganization } from "../../../../../../services/programs";
 import { listReportsForProgram } from "../../../../../../services/reports";
 import { getCurrentUser } from "../../../../../../lib/auth/current-user";
+import { perfTimed } from "../../../../../../lib/perf-trace";
 
 // A plain shape check, not a full RFC 4122 validator -- matches this codebase's own
 // light-validation-for-a-URL-param convention elsewhere (e.g. the Findings page's own
@@ -59,7 +60,14 @@ function ReportDetailSkeleton() {
  * reportId, so switching reports shows the list instantly and only the detail panes show a
  * loading skeleton while the new report's data streams in -- never a full-page reload.
  */
-export default async function ProgramInboxPage({
+export default async function ProgramInboxPage(props: {
+  params: Promise<{ organizationId: string; programId: string }>;
+  searchParams: Promise<{ reportId?: string }>;
+}) {
+  return perfTimed("route: inbox (total)", () => renderProgramInboxPage(props));
+}
+
+async function renderProgramInboxPage({
   params,
   searchParams,
 }: {
@@ -71,7 +79,7 @@ export default async function ProgramInboxPage({
   const user = await getCurrentUser();
   if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/programs/${programId}/inbox` as Route);
 
-  const program = await getProgram(programId);
+  const program = await perfTimed("inbox: getProgram", () => getProgram(programId));
   if (!program || program.organizationId !== organizationId) {
     return (
       <AppShell title="Inbox" user={user}>
@@ -80,7 +88,7 @@ export default async function ProgramInboxPage({
     );
   }
 
-  const [members, actorMembership] = await Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId)]);
+  const [members, actorMembership] = await perfTimed("inbox: membership batch", () => Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId)]));
   const isProgramManager = members.some((member) => member.userId === user.id);
   const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
   const canManageProgram = isProgramManager || isOrgAdmin;
@@ -93,7 +101,13 @@ export default async function ProgramInboxPage({
     );
   }
 
-  const { items: reports } = await listReportsForProgram(programId);
+  const [{ items: reports }, organizationPrograms] = await Promise.all([
+    perfTimed("inbox: listReportsForProgram", () => listReportsForProgram(programId)),
+    // Program switcher's own data (item 11, Turn 6) -- inbox is already manager/admin-only
+    // past the canManageProgram check above, so unlike the program overview page this
+    // needs no conditional.
+    perfTimed("inbox: listProgramsForOrganization", () => listProgramsForOrganization(organizationId)),
+  ]);
   const actorNames: Record<string, string> = { [user.id]: user.displayName };
   members.forEach((member) => {
     actorNames[member.userId] = member.displayName;
@@ -127,7 +141,15 @@ export default async function ProgramInboxPage({
               { label: "Inbox" },
             ]}
           />
-          <ProgramHeader organizationId={organizationId} programId={programId} programName={program.name} status={program.status} active="inbox" canManage={canManageProgram} />
+          <ProgramHeader
+            organizationId={organizationId}
+            programId={programId}
+            programName={program.name}
+            status={program.status}
+            active="inbox"
+            canManage={canManageProgram}
+            siblingPrograms={organizationPrograms.filter((p) => p.id !== programId).map((p) => ({ id: p.id, name: p.name, status: p.status }))}
+          />
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-lg border border-border bg-surface lg:grid-cols-[18rem_minmax(0,1fr)]">

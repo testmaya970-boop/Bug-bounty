@@ -109,6 +109,42 @@ describe("organization-members service: cross-organization access", () => {
     expect(error).toBeInstanceOf(OrganizationServiceError);
     expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("FORBIDDEN");
   });
+
+  // getOrganizationAuditActivity (Hactivity's data source, Turn 6/phase-9-ia) is a plain
+  // SELECT against audit_logs, not a SECURITY DEFINER RPC -- so unlike suspendMember above,
+  // the database's real denial mechanism is RLS row-filtering (private.has_org_role scopes
+  // by BOTH organization_id and owner/security_admin role), not a thrown FORBIDDEN. A
+  // caller without access gets back zero rows, silently -- this proves the service layer
+  // passes the caller-specified organization id straight through to the query (never
+  // substitutes or drops it) and returns exactly what the (mocked) RLS-scoped row set
+  // contains, with no separate application-level filtering that could diverge from it.
+  it("passes the caller-specified organization id straight through to the RLS-scoped query, and returns an empty page when RLS denies (cross-org/non-admin)", async () => {
+    let capturedArgs: unknown[] | undefined;
+    fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
+      capturedArgs = params;
+      return queryReturning([]); // what RLS returns for a caller with no owner/security_admin membership in this org
+    });
+    const { getOrganizationAuditActivity } = await import("../../services/organization-members");
+
+    const page = await getOrganizationAuditActivity("org-B");
+
+    expect(capturedArgs?.[0]).toBe("org-B");
+    expect(page).toEqual({ items: [], nextCursor: null });
+  });
+
+  it("returns the organization's own real audit rows when RLS admits the caller", async () => {
+    fakeClient.query.mockImplementation(async () =>
+      queryReturning([
+        { id: "event-1", actor_id: "user-1", action: "report.accepted", entity_type: "report", entity_id: "report-1", metadata: {}, created_at: "2026-09-01T00:00:00Z" },
+      ]),
+    );
+    const { getOrganizationAuditActivity } = await import("../../services/organization-members");
+
+    const page = await getOrganizationAuditActivity("org-A");
+
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]).toMatchObject({ id: "event-1", action: "report.accepted", entityType: "report" });
+  });
 });
 
 describe("organization-members service: RPC call shape", () => {

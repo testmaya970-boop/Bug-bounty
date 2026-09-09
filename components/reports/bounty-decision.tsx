@@ -119,6 +119,12 @@ export function FinalizeBountyDialog({ organizationId, programId, reportId, curr
             <p className="text-sm text-ink-muted">
               This finalizes the bounty at <span className="font-mono font-semibold text-ink">{currency} {amount !== null ? minorUnitsToDecimalString(amount) : amountInput}</span>. Once finalized, only an explicit adjustment (with a recorded reason) can change it.
             </p>
+            {/* v0.1.0: no in-product payout processor exists yet (see docs/decisions/
+                0063-real-payment-processing-scope.md) -- finalizing records the decision,
+                it does not move money. Said plainly here, at the one moment an org admin
+                is about to commit to a number, so nobody assumes this button pays the
+                researcher. */}
+            <p className="text-sm text-ink-muted">Payouts are processed off-platform by your program contact.</p>
             {error && (
               <p role="alert" className="text-sm font-medium text-danger">
                 {error}
@@ -294,6 +300,11 @@ export function BountyDecisionSection({
       </p>
       {decision.finalizedAt && <p className="text-xs text-ink-muted">Finalized {formatDateTime(decision.finalizedAt)}.</p>}
       {decision.finalizationNote && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink-muted">{decision.finalizationNote}</p>}
+      {/* v0.1.0: this block renders for the researcher too (canFinalize only gates the
+          Adjust dialog below, not this whole section) -- the researcher is the one most
+          likely to read "Final bounty: $X" and wonder when it arrives. See
+          docs/decisions/0063-real-payment-processing-scope.md. */}
+      <p className="text-xs text-ink-muted">Payouts are processed off-platform by your program contact.</p>
       {canFinalize && decision.currency && decision.finalAmountMinorUnits !== null && (
         <AdjustBountyDialog organizationId={organizationId} programId={programId} reportId={reportId} currency={decision.currency} currentAmountMinorUnits={decision.finalAmountMinorUnits} />
       )}

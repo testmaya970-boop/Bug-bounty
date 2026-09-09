@@ -601,6 +601,10 @@ function PublicHome() {
  * COUNT or a complete, non-paginated list), never a partial page's `.length`, and no
  * bounty totals, rankings, SLAs, or synthetic activity appear anywhere on this screen. */
 export default async function HomePage() {
+  return perfTimed("route: researcher dashboard (total)", () => renderHomePage());
+}
+
+async function renderHomePage() {
   const user = await getCurrentUser();
   if (!user) return <PublicHome />;
 

@@ -258,3 +258,15 @@ Deliver
 ## Product integrity
 
 Even in build mode, mock data must be internally honest: it should behave like real data, be structured so a real query can later replace it cleanly, and never be presented as a real integration, a real production dataset, or a claim about actual users/traffic/revenue outside the product itself. "Do not label mock data in the UI" (Section 1) is a UI-polish decision, not a license to claim a fake integration is real, or to blur mock and production data stores together.
+
+## Performance is part of definition of done
+
+Every budgeted route (see `docs/launch-qa.md`) has a warm-median latency budget, measured with client-side navigation prefetch disabled on gated links (see the information-architecture rule below for why). A >20% regression on any budgeted route blocks merge -- re-measure before merging any change that touches a budgeted route's own data fetching, and disclose a miss with its cause rather than merging past it.
+
+## Information architecture
+
+Every nav point is its own route owning its own data. Summary pages (Home) link out and never embed or duplicate another route's list -- the same record must never render twice on one page. Layouts and shared header/nav components fetch nothing themselves; each route fetches only what it renders, so navigating to one section never pays another section's query cost.
+
+## Security gates never take header-based exceptions
+
+An authentication/authorization gate (session validation, the deactivated/MFA check, any RLS-adjacent server check) must never branch on a client-controlled header (`Sec-Fetch-Mode`, `Purpose`, or similar) to skip work for "probably not a real request" traffic like a speculative prefetch. Those headers are guarantees of the browser Fetch API only -- any raw HTTP client (curl, a script, an attacker holding a stolen session cookie) can set them freely, and the gates being skipped exist precisely for that threat model. If a client-side behavior (like navigation prefetching) is amplifying request volume, fix it at the source (e.g. `prefetch={false}` on the links causing it) -- never by teaching a security gate to trust a signal the client controls. A performance fix that alters gate semantics is rejected by default.

@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { SectionLabel } from "../ui/security-primitives";
 import { cn } from "../../lib/cn";
 
-export type OrganizationSection = "overview" | "programs" | "findings" | "assets" | "analytics" | "researchers" | "members" | "settings";
+export type OrganizationSection = "overview" | "programs" | "findings" | "assets" | "analytics" | "researchers" | "hactivity" | "members" | "settings";
 
 /** The one consistent organization-level workspace header -- eyebrow, name, and the same
  * six-item sub-navigation on every organization-scoped page, so moving between Home /
@@ -43,7 +43,13 @@ export type OrganizationSection = "overview" | "programs" | "findings" | "assets
  * see app/organizations/[organizationId]/assets/page.tsx), same read-access shape as
  * Findings. Creation/editing still happens on each engagement's own Scope section (scope
  * mutation is only legal while that program is in draft, program-by-program), so this
- * page is read-only with a "Manage on program" link per row. */
+ * page is read-only with a "Manage on program" link per row.
+ *
+ * "Hactivity" (Turn 6, phase/9-ia) sits after Researchers -- the org's full, chronological
+ * audit event feed (services/organization-members.ts's getOrganizationAuditActivity, the
+ * same RLS-gated audit_logs read Home's own "Recent activity" now links out to instead of
+ * duplicating). Owner/security_admin only, matching audit_logs' own read policy -- not a
+ * new permission model, the existing one. */
 export function OrganizationHeader({ organizationId, organizationName, active }: { organizationId: string; organizationName: string; active: OrganizationSection }) {
   const items: { id: OrganizationSection; label: string; href: Route }[] = [
     { id: "overview", label: "Home", href: `/organizations/${organizationId}` as Route },
@@ -52,6 +58,7 @@ export function OrganizationHeader({ organizationId, organizationName, active }:
     { id: "assets", label: "Assets", href: `/organizations/${organizationId}/assets` as Route },
     { id: "analytics", label: "Analytics", href: `/organizations/${organizationId}/analytics` as Route },
     { id: "researchers", label: "Researchers", href: `/organizations/${organizationId}/researchers` as Route },
+    { id: "hactivity", label: "Hactivity", href: `/organizations/${organizationId}/hactivity` as Route },
     { id: "members", label: "Members", href: `/organizations/${organizationId}/members` as Route },
     { id: "settings", label: "Settings", href: `/organizations/${organizationId}/settings` as Route },
   ];
@@ -60,11 +67,17 @@ export function OrganizationHeader({ organizationId, organizationName, active }:
     <div className="border-b border-border pb-0">
       <SectionLabel>Organization</SectionLabel>
       <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{organizationName}</h2>
+      {/* prefetch={false}: these tabs sit on every org-scoped page, so the App Router
+          speculatively prefetches all eight on every render -- each one a full middleware
+          pass through the deactivated/MFA gate, unconditional by design (see
+          lib/session/middleware.ts). Disabling prefetch removes the request volume at the
+          source instead of teaching the gate to trust a client-controlled signal. */}
       <nav aria-label="Organization sections" className="mt-4 flex gap-5 overflow-x-auto">
         {items.map((item) => (
           <Link
             key={item.id}
             href={item.href}
+            prefetch={false}
             aria-current={active === item.id ? "page" : undefined}
             className={cn(
               "shrink-0 border-b-2 pb-3 text-sm font-semibold transition-[color,border-color,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
