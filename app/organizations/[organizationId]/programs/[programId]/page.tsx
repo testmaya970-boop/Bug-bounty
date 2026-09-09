@@ -28,11 +28,14 @@ import { getProgram, getProgramFocusAreas, getPublicProgram, listProgramMembers,
 import { getProgramResolutionPerformance, getProgramSeverityStatusBreakdown, getProgramWeeklyReportVolume } from "../../../../../services/program-analytics";
 import { listActiveScopeEntries } from "../../../../../services/scope";
 import { getMyParticipation, listMyProgramParticipations, listPendingProgramInvitations, listProgramResearchers } from "../../../../../services/program-researchers";
+import type { ProgramInvitationRecord, ProgramResearcherRecord } from "../../../../../types/researcher";
 import { listReportsForProgram } from "../../../../../services/reports";
 import { getEffectiveBountyPolicy } from "../../../../../services/bounty";
 import { getCurrentUser } from "../../../../../lib/auth/current-user";
 import { formatDate } from "../../../../../lib/format-date";
+import { perfTimed } from "../../../../../lib/perf-trace";
 import type { ScopeState } from "../../../../../types/scope";
+import type { OrganizationResolutionPerformance, OrganizationSeverityStatusCount, OrganizationWeeklyReportVolume } from "../../../../../types/organization";
 
 const SCOPE_FILTERS: { value: "all" | ScopeState; label: string }[] = [
   { value: "all", label: "All" },
@@ -40,7 +43,14 @@ const SCOPE_FILTERS: { value: "all" | ScopeState; label: string }[] = [
   { value: "out_of_scope", label: "Out of scope" },
 ];
 
-export default async function ProgramControlCenterPage({
+export default async function ProgramControlCenterPage(props: {
+  params: Promise<{ organizationId: string; programId: string }>;
+  searchParams: Promise<{ scope?: string }>;
+}) {
+  return perfTimed("route: program home (total)", () => renderProgramControlCenterPage(props));
+}
+
+async function renderProgramControlCenterPage({
   params,
   searchParams,
 }: {
@@ -302,13 +312,52 @@ export default async function ProgramControlCenterPage({
   // an org owner/security admin (oversight), a program_members manager, or an active
   // researcher. Which one determines the entire page below -- manager-facing content
   // (the roster, invitations, other researchers' identities) is never shown to a
-  // researcher, per the task's data-confidentiality requirement.
-  const [members, actorMembership] = await Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId)]);
+  // researcher, per the task's data-confidentiality requirement. This first stage is a
+  // genuine, unavoidable sequential dependency: canManageProgram/isActiveResearcher gate
+  // every read below (whether to fetch the manager-only roster at all), so nothing after
+  // it can start until this resolves.
+  const [members, actorMembership] = await perfTimed("program home: stage 1 (membership)", () => Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId)]));
   const isProgramManager = members.some((member) => member.userId === user.id);
   const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
   const canManageProgram = isProgramManager || isOrgAdmin;
+  const isActiveResearcher = myParticipation?.status === "active";
 
-  const scopeEntries = await listActiveScopeEntries(programId);
+  // Phase 8 perf fix: this used to be six sequential await stages (scopeEntries, then
+  // researchers/pendingInvitations, then focusAreas, then reports, then bountyPolicy,
+  // then the analytics batch) even though NONE of them have a real data dependency on
+  // each other -- every one of them depends only on canManageProgram/isActiveResearcher,
+  // both already known above. Collapsed into one Promise.all so the whole page pays for
+  // exactly the slowest single query in this batch, not the sum of all of them.
+  const [scopeEntries, [researchers, pendingInvitations], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance]] =
+    await perfTimed("program home: stage 2 (parallel batch)", () =>
+      Promise.all([
+        listActiveScopeEntries(programId),
+        canManageProgram ? Promise.all([listProgramResearchers(programId), listPendingProgramInvitations(programId)]) : Promise.resolve([[], []] as [ProgramResearcherRecord[], ProgramInvitationRecord[]]),
+        canManageProgram ? getProgramFocusAreas(programId) : Promise.resolve([]),
+        // RLS already scopes this correctly per viewer: a manager sees every report for
+        // the program, a researcher sees only their own (researcher_id = auth.uid()) --
+        // the same query, deliberately, rather than two different reads for the same
+        // table. A manager only ever sees a small preview here (limit 5) -- the full,
+        // filterable, paginated list lives at the dedicated triage inbox route this page
+        // links to; a researcher's own report count on one program is small enough that
+        // the default page size is fine.
+        listReportsForProgram(programId, undefined, canManageProgram ? 5 : undefined),
+        // RLS scopes this identically for a manager or an active, authorized researcher --
+        // the same transparency every bounty program studied publishes. See
+        // docs/decisions/0013-bounty-decision-engine.md.
+        canManageProgram || isActiveResearcher ? getEffectiveBountyPolicy(programId) : Promise.resolve(null),
+        // Same two-path authorization the underlying RPCs enforce themselves
+        // (private.authorize_program_analytics_read: has_org_role(owner/security_admin)
+        // OR is_program_member) -- canManageProgram already covers is_program_member/
+        // isOrgAdmin, so this is deliberately the SAME gate as Bounty policy above, not
+        // narrowed to owner/security_admin only. An authorized researcher sees the same
+        // read-only health signal a manager does, matching bounty policy's own existing
+        // transparency precedent on this page.
+        canManageProgram || isActiveResearcher
+          ? Promise.all([getProgramSeverityStatusBreakdown(programId), getProgramWeeklyReportVolume(programId), getProgramResolutionPerformance(programId)])
+          : Promise.resolve([[], [], null] as [OrganizationSeverityStatusCount[], OrganizationWeeklyReportVolume[], OrganizationResolutionPerformance | null]),
+      ]),
+    );
   // Reaching this page as a manager already proves the identical authorization predicate
   // scope mutation uses -- the only remaining gate is the program's lifecycle state,
   // which the database independently re-enforces regardless of this flag.
@@ -316,33 +365,6 @@ export default async function ProgramControlCenterPage({
 
   const scopeFilter: "all" | ScopeState = scopeFilterParam === "in_scope" || scopeFilterParam === "out_of_scope" ? scopeFilterParam : "all";
   const filteredScopeEntries = scopeFilter === "all" ? scopeEntries : scopeEntries.filter((entry) => entry.scopeState === scopeFilter);
-
-  const [researchers, pendingInvitations] = canManageProgram ? await Promise.all([listProgramResearchers(programId), listPendingProgramInvitations(programId)]) : [[], []];
-  const focusAreas = canManageProgram ? await getProgramFocusAreas(programId) : [];
-  // RLS already scopes this correctly per viewer: a manager sees every report for the
-  // program, a researcher sees only their own (researcher_id = auth.uid()) -- the same
-  // query, deliberately, rather than two different reads for the same table. A manager
-  // only ever sees a small preview here (limit 5) -- the full, filterable, paginated
-  // list lives at the dedicated triage inbox route this page links to; a researcher's
-  // own report count on one program is small enough that the default page size is fine.
-  const { items: reports, nextCursor: nextCursorPreview } = await listReportsForProgram(programId, undefined, canManageProgram ? 5 : undefined);
-  const isActiveResearcher = myParticipation?.status === "active";
-  // RLS scopes this identically for a manager or an active, authorized researcher --
-  // the same transparency every bounty program studied publishes. See
-  // docs/decisions/0013-bounty-decision-engine.md.
-  const bountyPolicy = canManageProgram || isActiveResearcher ? await getEffectiveBountyPolicy(programId) : null;
-
-  // Same two-path authorization the underlying RPCs enforce themselves
-  // (private.authorize_program_analytics_read: has_org_role(owner/security_admin) OR
-  // is_program_member) -- canManageProgram already covers is_program_member/isOrgAdmin, so
-  // this is deliberately the SAME gate as Bounty policy above (canManageProgram ||
-  // isActiveResearcher), not narrowed to owner/security_admin only. An authorized
-  // researcher sees the same read-only health signal a manager does, matching bounty
-  // policy's own existing transparency precedent on this page.
-  const [severityStatusBreakdown, weeklyVolume, resolutionPerformance] =
-    canManageProgram || isActiveResearcher
-      ? await Promise.all([getProgramSeverityStatusBreakdown(programId), getProgramWeeklyReportVolume(programId), getProgramResolutionPerformance(programId)])
-      : [[], [], null];
 
   return (
     // AppShell's title is the page-level landmark, not a second copy of the program
