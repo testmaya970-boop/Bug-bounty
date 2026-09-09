@@ -15,7 +15,8 @@
     "test:watch": "vitest tests/unit",
     "test:e2e": "playwright test",
     "worker:outbox": "tsx --env-file=.env.local workers/outbox/run.ts",
-    "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs"
+    "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs",
+    "seed:launch": "tsx --env-file=.env.local scripts/seed-demo.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
