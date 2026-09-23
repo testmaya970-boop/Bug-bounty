@@ -13,7 +13,26 @@ export function Tabs({ tabs, active, onChange }: { tabs: { id: string; label: st
 
 export function Tooltip({ label, children }: { label: string; children: ReactNode }) { return <span className="group relative inline-flex">{children}<span role="tooltip" className="glass-surface-raised pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-max max-w-52 -translate-x-1/2 rounded px-2 py-1 text-xs text-ink group-hover:block group-focus-within:block">{label}</span></span>; }
 
-export function DropdownMenu({ label, children }: { label: ReactNode; children: ReactNode }) { const [open, setOpen] = useState(false); const ref = useRef<HTMLDivElement>(null); useEffect(() => { const close = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) setOpen(false); }; document.addEventListener("mousedown", close); return () => document.removeEventListener("mousedown", close); }, []); return <div ref={ref} className="relative inline-block"><button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} className="min-h-11 rounded-md px-3 text-sm font-medium text-ink hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{label}</button>{open && <div role="menu" className="glass-surface-raised motion-safe:animate-enter-rise absolute right-0 z-30 mt-1 min-w-44 rounded-md p-1 shadow-xl">{children}</div>}</div>; }
+export function DropdownMenu({ label, children }: { label: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const close = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+  // Same Escape-to-close + return-focus contract as Dialog above -- this menu previously
+  // only closed on outside click, leaving keyboard users with no way to dismiss it without
+  // tabbing away.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); } };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+  return <div ref={ref} className="relative inline-block"><button ref={triggerRef} type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} className="min-h-11 rounded-md px-3 text-sm font-medium text-ink hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{label}</button>{open && <div role="menu" className="glass-surface-raised motion-safe:animate-enter-rise absolute right-0 z-30 mt-1 min-w-44 rounded-md p-1 shadow-xl">{children}</div>}</div>;
+}
 
 export function Dialog({ open, title, children, onClose }: { open: boolean; title: string; children: ReactNode; onClose: () => void }) {
   const dialogRef = useRef<HTMLElement>(null);
@@ -47,8 +66,45 @@ export function Dialog({ open, title, children, onClose }: { open: boolean; titl
       previousFocus.current?.focus();
     };
   }, [open]);
-  if (!open) return null; return <div className="fixed inset-0 z-40 grid place-items-center bg-ink/40 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="glass-surface-raised w-full max-w-md rounded-lg p-5 shadow-2xl motion-safe:animate-hero-reveal"><div className="flex items-start justify-between gap-4"><h2 id="dialog-title" className="text-lg font-semibold">{title}</h2><button ref={closeRef} type="button" aria-label="Close dialog" onClick={onClose} className="min-h-11 min-w-11 rounded-md text-xl text-ink-muted hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">×</button></div><div className="mt-4">{children}</div></section></div>; }
+  // max-h-[calc(100vh-2rem)] + overflow-y-auto -- a dialog taller than the viewport (e.g.
+  // ImportScopeDialog's preview table with many rows) used to have no way to reach its own
+  // footer buttons at all: this section had no height cap, so it simply grew past the
+  // bottom of the screen with nothing to scroll. Every dialog in this codebase was short
+  // enough to never hit this until the bulk scope import preview did (confirmed live --
+  // "Import N entries" sat below the fold with no scrollbar). Fixed at this shared
+  // primitive, not with a one-off wrapper in that dialog, since any future tall-content
+  // dialog would hit the identical bug.
+  // Backdrop now gets its own fade-in (enter-fade, opacity-only) instead of appearing
+  // instantly while the panel animates in independently -- previously the two read as
+  // disconnected. The panel itself moved from hero-reveal (500ms, 16px translate -- built
+  // for a page section, not a popover) to enter-rise (220ms, 4px translate): a modal
+  // opened many times a day should confirm instantly, not take half a second to settle.
+  if (!open) return null; return <div className="fixed inset-0 z-40 grid place-items-center bg-ink/40 p-4 backdrop-blur-sm motion-safe:animate-enter-fade" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="glass-surface-raised flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col rounded-lg p-5 shadow-2xl motion-safe:animate-enter-rise"><div className="flex items-start justify-between gap-4"><h2 id="dialog-title" className="text-lg font-semibold">{title}</h2><button ref={closeRef} type="button" aria-label="Close dialog" onClick={onClose} className="min-h-11 min-w-11 rounded-md text-xl text-ink-muted hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">×</button></div><div className="mt-4 overflow-y-auto">{children}</div></section></div>; }
 
 export function Breadcrumbs({ items }: { items: { label: string; href?: string }[] }) { return <nav aria-label="Breadcrumb"><ol className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">{items.map((item, index) => <li key={item.label} className="flex items-center gap-2">{index > 0 && <span aria-hidden="true">/</span>}{item.href ? <a className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus" href={item.href}>{item.label}</a> : <span aria-current="page">{item.label}</span>}</li>)}</ol></nav>; }
 
-export function Avatar({ name }: { name: string }) { const initial = name.trim().slice(0, 1).toUpperCase() || "?"; return <span role="img" aria-label={`${name} avatar`} className="inline-flex size-9 items-center justify-center rounded-full bg-surface-muted text-sm font-semibold text-ink">{initial}</span>; }
+// A deterministic name -> hue, not a fabricated logo (this schema has no logo/branding
+// upload) -- the same identity-safe placeholder technique GitHub/Slack/Linear use so
+// a real listing of many different organizations doesn't render every avatar in the
+// identical flat grey, which is the actual "every card looks the same" complaint
+// confirmed against real competitor screenshots. Golden-angle spacing (137.5deg) keeps
+// adjacent hash values visually separated even for short/similar names.
+function nameToHue(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return Math.abs(hash * 137.5) % 360;
+}
+
+/** `tinted`: derives a per-name background hue instead of the flat neutral default --
+ * opt-in, only where distinguishing many different organizations at a glance matters
+ * (a public program directory), not the default for every avatar in the app (a team
+ * member roster has no such need, and the flat neutral stays correct there). */
+export function Avatar({ name, tinted }: { name: string; tinted?: boolean }) {
+  const initial = name.trim().slice(0, 1).toUpperCase() || "?";
+  const style = tinted ? { backgroundColor: `hsl(${nameToHue(name)}, 55%, 92%)`, color: `hsl(${nameToHue(name)}, 45%, 32%)` } : undefined;
+  return (
+    <span role="img" aria-label={`${name} avatar`} style={style} className={cn("inline-flex size-9 items-center justify-center rounded-full text-sm font-semibold", !tinted && "bg-surface-muted text-ink")}>
+      {initial}
+    </span>
+  );
+}

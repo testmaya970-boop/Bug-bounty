@@ -35,9 +35,9 @@ describe("Sentinel UI foundation", () => {
     expect(html).toContain("text-accent-2");
   });
   it("associates form labels, help, and validation errors", () => { const html = renderToStaticMarkup(<Input id="title" label="Report title" helperText="Use a concise summary." error="A title is required." required />); expect(html).toContain('for="title"'); expect(html).toContain('aria-describedby="title-help title-error"'); expect(html).toContain('role="alert"'); });
-  it("includes responsive navigation structure and a skip link", () => { const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} currentOrganizationId="org-1" hasResearcherParticipation={true} unreadNotificationCount={0}><p>Content</p></AppShellClient>); expect(html).toContain("Skip to content"); expect(html).toContain("lg:hidden"); expect(html).toContain('aria-label="Primary navigation"'); });
+  it("includes responsive navigation structure and a skip link", () => { const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} currentOrganizationId="org-1" hasResearcherParticipation={true} unreadNotificationCount={0} isPlatformAdmin={false}><p>Content</p></AppShellClient>); expect(html).toContain("Skip to content"); expect(html).toContain("lg:hidden"); expect(html).toContain('aria-label="Primary navigation"'); });
   it("both-context (real org membership AND real researcher participation) shows Research/Practice/Record and the org zones together, never one replacing the other -- with exactly one Researchers entry and no separate Workspace group (both were found live to duplicate the same destinations under a second label, each producing the identical 'two nav items light up active at once' bug, see docs/decisions/0059)", () => {
-    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} currentOrganizationId="org-1" hasResearcherParticipation={true} unreadNotificationCount={0}><p>Content</p></AppShellClient>);
+    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} currentOrganizationId="org-1" hasResearcherParticipation={true} unreadNotificationCount={0} isPlatformAdmin={false}><p>Content</p></AppShellClient>);
     expect(html).toContain("Research");
     expect(html).toContain("Practice");
     expect(html).toContain("Record");
@@ -52,7 +52,7 @@ describe("Sentinel UI foundation", () => {
   });
   it("hides the org zones and the switcher entirely for a user with no organization membership; a signed-in user still gets a real account menu (Settings lives inside it -- see docs/decisions/0049), which renderToStaticMarkup can only observe in its closed state, since DropdownMenu's items mount on client-side open state, not in the initial static markup", () => {
     const html = renderToStaticMarkup(
-      <AppShellClient title="Foundation" organizations={NO_ORGS} hasResearcherParticipation={true} unreadNotificationCount={0} user={{ displayName: "Riley Researcher", email: "riley@example.com" }}>
+      <AppShellClient title="Foundation" organizations={NO_ORGS} hasResearcherParticipation={true} unreadNotificationCount={0} isPlatformAdmin={false} user={{ displayName: "Riley Researcher", email: "riley@example.com" }}>
         <p>Content</p>
       </AppShellClient>,
     );
@@ -63,7 +63,7 @@ describe("Sentinel UI foundation", () => {
     expect(html).toContain('aria-haspopup="menu"');
   });
   it("organization-only (real org membership, zero researcher participation) hides the Research/Practice/Record zones entirely -- an org owner must never see researcher-only destinations like CTF/Learn/Bounties/the researcher dashboard, and the real organization switcher/nav zones render instead", () => {
-    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} hasResearcherParticipation={false} unreadNotificationCount={0}><p>Content</p></AppShellClient>);
+    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} hasResearcherParticipation={false} unreadNotificationCount={0} isPlatformAdmin={false}><p>Content</p></AppShellClient>);
     // "Research" alone would false-positive on the Security zone's own real "Researchers"
     // nav item -- assert against the zone label text ">Research<" (an exact nav-group
     // label match) instead of the bare substring.
@@ -76,13 +76,35 @@ describe("Sentinel UI foundation", () => {
     expect(html).toContain("System");
   });
   it("organization-only with no currentOrganizationId (a non-org-scoped page) still resolves the nav zones against the user's one real organization, rather than showing the switcher with no destinations below it", () => {
-    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} hasResearcherParticipation={false} unreadNotificationCount={0}><p>Content</p></AppShellClient>);
+    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} hasResearcherParticipation={false} unreadNotificationCount={0} isPlatformAdmin={false}><p>Content</p></AppShellClient>);
     expect(html).toContain(`/organizations/${ONE_ORG[0].id}`);
   });
   it("neither yet (a brand-new signup, no org and no participation) keeps Research/Practice/Record so a new user can still discover public programs -- no invented onboarding flow", () => {
-    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={NO_ORGS} hasResearcherParticipation={false} unreadNotificationCount={0}><p>Content</p></AppShellClient>);
+    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={NO_ORGS} hasResearcherParticipation={false} unreadNotificationCount={0} isPlatformAdmin={false}><p>Content</p></AppShellClient>);
     expect(html).toContain("Research");
     expect(html).toContain("Practice");
     expect(html).not.toContain("Acme Security");
+  });
+  it("shows the Platform admin nav entry only for a real platform admin -- confirmed live as a genuine gap: platform_admins membership granted directly in the DB produced zero nav indication of admin status, only reachable by typing /platform/programs by hand", () => {
+    const adminHtml = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={NO_ORGS} hasResearcherParticipation={false} unreadNotificationCount={0} isPlatformAdmin={true}><p>Content</p></AppShellClient>);
+    expect(adminHtml).toContain("Platform admin");
+    expect(adminHtml).toContain('href="/platform/programs"');
+
+    const nonAdminHtml = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={NO_ORGS} hasResearcherParticipation={false} unreadNotificationCount={0} isPlatformAdmin={false}><p>Content</p></AppShellClient>);
+    expect(nonAdminHtml).not.toContain("Platform admin");
+    expect(nonAdminHtml).not.toContain('href="/platform/programs"');
+  });
+  it("hides Research/Practice/Record for a platform-admin-only account (no organizations, no real researcher participation) -- confirmed live as a genuine gap: an admin account fell through to the same 'brand-new signup' case as a real new user, and saw Dashboard/Programs/Reports/CTF/Learn/Bounties, none of it real or relevant to what a platform admin actually does", () => {
+    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={NO_ORGS} hasResearcherParticipation={false} unreadNotificationCount={0} isPlatformAdmin={true}><p>Content</p></AppShellClient>);
+    expect(html).not.toContain(">Research<");
+    expect(html).not.toContain(">Practice<");
+    expect(html).not.toMatch(/>CTF<|>Learn<|>Bounties</);
+    expect(html).toContain("Platform admin");
+  });
+  it("still shows Research/Practice/Record for an account that is BOTH a platform admin AND a real researcher -- admin status alone must never erase a real relationship this account actually has", () => {
+    const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={NO_ORGS} hasResearcherParticipation={true} unreadNotificationCount={0} isPlatformAdmin={true}><p>Content</p></AppShellClient>);
+    expect(html).toContain(">Research<");
+    expect(html).toContain(">Practice<");
+    expect(html).toContain("Platform admin");
   });
 });

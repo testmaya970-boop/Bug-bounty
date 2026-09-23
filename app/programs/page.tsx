@@ -7,13 +7,14 @@ import { Tabs, type TabItem } from "../../components/ui/tabs";
 import { PendingProgramInvitationCard } from "../../components/programs/pending-program-invitation-card";
 import { ProgramParticipationCard } from "../../components/programs/program-participation-card";
 import { PublicProgramList } from "../../components/programs/public-program-list";
+import { PublicProgramSearchForm } from "../../components/programs/public-program-search-form";
 import { RecommendedProgramsList } from "../../components/programs/recommended-programs-list";
 import { TopBountyProgramsList } from "../../components/programs/top-bounty-programs-list";
 import { listMyPendingProgramInvitations, listMyProgramParticipations } from "../../services/program-researchers";
 import { listPublicPrograms, listTopBountyPrograms } from "../../services/programs";
 import { listRecommendedPrograms } from "../../services/researcher-profiles";
 import { getCurrentUser } from "../../lib/auth/current-user";
-import { FOCUS_AREA_ORDER, focusAreaLabel } from "../../lib/researcher-identity-labels";
+import { FOCUS_AREA_ORDER } from "../../lib/researcher-identity-labels";
 import type { ResearcherFocusArea } from "../../types/researcher-identity";
 
 type ProgramsTab = "all" | "mine" | "invitations";
@@ -50,55 +51,7 @@ async function AllProgramsTab({ searchParams }: { searchParams: ProgramsSearchPa
 
   return (
     <div className="space-y-8">
-      <form method="get" className="flex flex-wrap gap-2 rounded-lg border border-border bg-surface-muted p-2">
-        <input type="hidden" name="tab" value="all" />
-        <label className="sr-only" htmlFor="public-program-search">
-          Search public programs
-        </label>
-        <input
-          id="public-program-search"
-          type="text"
-          name="q"
-          defaultValue={search ?? ""}
-          placeholder="Search by program or organization name"
-          className="min-h-11 min-w-0 flex-1 rounded-md border border-transparent bg-surface px-3 font-mono text-sm text-ink outline-none placeholder:font-sans placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30"
-        />
-        <label className="sr-only" htmlFor="public-program-focus-area">
-          Filter by focus area
-        </label>
-        <select
-          id="public-program-focus-area"
-          name="focusArea"
-          defaultValue={focusArea ?? ""}
-          className="min-h-11 rounded-md border border-transparent bg-surface px-3 text-sm text-ink outline-none focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30"
-        >
-          <option value="">All focus areas</option>
-          {FOCUS_AREA_ORDER.map((area) => (
-            <option key={area} value={area}>
-              {focusAreaLabel(area)}
-            </option>
-          ))}
-        </select>
-        <label className="sr-only" htmlFor="public-program-status">
-          Filter by status
-        </label>
-        <select
-          id="public-program-status"
-          name="status"
-          defaultValue={status ?? ""}
-          className="min-h-11 rounded-md border border-transparent bg-surface px-3 text-sm text-ink outline-none focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30"
-        >
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="paused">Paused</option>
-        </select>
-        <button
-          type="submit"
-          className="inline-flex min-h-11 items-center rounded-md bg-ink px-5 text-sm font-semibold text-canvas transition hover:bg-ink/85 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        >
-          Search
-        </button>
-      </form>
+      <PublicProgramSearchForm tab="all" search={search} status={status} focusArea={focusArea} />
 
       {!isFiltered && topBounty.length > 0 && (
         <div className="space-y-3">
@@ -198,14 +151,18 @@ function PendingInvitationsTab({ invitations }: { invitations: Awaited<ReturnTyp
   );
 }
 
-async function AnonymousProgramsPage() {
-  const topBounty = await listTopBountyPrograms();
-  const { items: programs, nextCursor } = await listPublicPrograms({});
+async function AnonymousProgramsPage({ searchParams }: { searchParams: ProgramsSearchParams }) {
+  const status = parseStatusParam(searchParams.status);
+  const focusArea = parseFocusAreaParam(searchParams.focusArea);
+  const search = searchParams.q?.trim() || undefined;
+  const isFiltered = Boolean(search || status || focusArea);
+  const [{ items: programs, nextCursor }, topBounty] = await Promise.all([listPublicPrograms({ search, status, focusArea }), listTopBountyPrograms()]);
+  const activeCount = programs.filter((program) => program.status === "active").length;
 
   return (
     <div className="min-h-dvh bg-canvas text-ink">
       <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           <Link href="/" className="text-lg font-bold tracking-tight">
             Unpatched
           </Link>
@@ -214,13 +171,24 @@ async function AnonymousProgramsPage() {
           </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 motion-safe:animate-hero-reveal">
-        <SectionLabel>Registry · Open to the community</SectionLabel>
+      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 motion-safe:animate-hero-reveal">
+        {/* A real fact, not decoration: the exact active count from the same query the
+            registry below renders, given visual weight instead of only appearing as a
+            row count further down the page -- confirmed live as the actual gap on this
+            page: a bare heading with nothing else to look at before the first list. */}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <SectionLabel>Registry · Open to the community</SectionLabel>
+          {activeCount > 0 && <span className="font-mono text-xs font-semibold text-success">{activeCount} active now</span>}
+        </div>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Security research programs open to the community</h1>
         <p className="mt-2 text-sm text-ink-muted">Sign in (or create a researcher account) once you find a program that fits, to submit a report.</p>
 
-        {topBounty.length > 0 && (
-          <div className="mt-8 space-y-3">
+        <div className="mt-8">
+          <PublicProgramSearchForm search={search} status={status} focusArea={focusArea} />
+        </div>
+
+        {!isFiltered && topBounty.length > 0 && (
+          <div className="mt-10 space-y-3">
             <div>
               <SectionLabel>Real, configured payouts</SectionLabel>
               <h2 className="mt-1 text-lg font-semibold text-ink">Highest-paying programs</h2>
@@ -229,20 +197,24 @@ async function AnonymousProgramsPage() {
           </div>
         )}
 
-        <div className="mt-8 space-y-3">
+        <div className="mt-10 space-y-3">
           <div>
             <SectionLabel>Registry</SectionLabel>
-            <h2 className="mt-1 text-lg font-semibold text-ink">Every public program</h2>
+            <h2 className="mt-1 text-lg font-semibold text-ink">{isFiltered ? "Results" : "Every public program"}</h2>
           </div>
           {programs.length === 0 ? (
-            <EmptyState title="No public programs right now">Check back later, or ask an organization to invite you directly.</EmptyState>
+            <EmptyState title={isFiltered ? "No matching public programs" : "No public programs right now"}>
+              {isFiltered
+                ? "No public program matches this search. Clear the filters or browse every available program."
+                : "Check back later, or ask an organization to invite you directly."}
+            </EmptyState>
           ) : (
-            <PublicProgramList initialPrograms={programs} initialNextCursor={nextCursor} />
+            <PublicProgramList initialPrograms={programs} initialNextCursor={nextCursor} search={search} status={status} focusArea={focusArea} />
           )}
         </div>
       </main>
       <footer className="border-t border-border px-4 py-8 sm:px-6">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 text-sm text-ink-muted">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 text-sm text-ink-muted">
           <span>Unpatched</span>
           <Link href="/sign-in" className="font-medium hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
             Sign in
@@ -256,7 +228,7 @@ async function AnonymousProgramsPage() {
 export default async function ProgramsPage({ searchParams }: { searchParams: Promise<ProgramsSearchParams> }) {
   const resolvedSearchParams = await searchParams;
   const user = await getCurrentUser();
-  if (!user) return <AnonymousProgramsPage />;
+  if (!user) return <AnonymousProgramsPage searchParams={resolvedSearchParams} />;
 
   const tab = parseTabParam(resolvedSearchParams.tab);
 

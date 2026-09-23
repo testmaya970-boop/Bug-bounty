@@ -50,13 +50,13 @@ export const dynamic = "force-dynamic";
 // server-rendered markup never has this class (it can't know the client's localStorage
 // or OS preference), and this script deliberately changes the DOM before React hydrates.
 //
-// Light is now the PRIMARY default again (docs/decisions/0062 -- the unified warm-theme
-// reskin reverses 0057's dark-primary direction): the fallback when there is no saved
-// preference is "follow the OS, default light" -- dark only wins when the OS explicitly
-// reports it OR the user explicitly saved "dark" before. This must stay the exact
-// inverse of ThemeProvider's own resolution (below) or the two will disagree on first
-// paint.
-const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("sentinel-theme");var d=t==="dark"?true:(t==="light"?false:window.matchMedia("(prefers-color-scheme: dark)").matches);var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d);document.documentElement.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
+// Dark is now the PRIMARY default (supersedes docs/decisions/0062's light-primary
+// reskin): the fallback when there is no saved preference is dark, regardless of the
+// OS's prefers-color-scheme -- a first-time visitor in any browser lands on dark. The
+// explicit toggle still works and is still honored first (a saved "light"/"dark" always
+// wins). This must stay the exact inverse of ThemeProvider's own resolution (below) or
+// the two will disagree on first paint.
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("sentinel-theme");var d=t==="light"?false:true;var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d);document.documentElement.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

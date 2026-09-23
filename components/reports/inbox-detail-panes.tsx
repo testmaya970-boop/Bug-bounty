@@ -4,6 +4,7 @@ import type { Route } from "next";
 import { AssetTypeBadge, SeverityBadge, StatusBadge } from "../ui/badge";
 import { SectionLabel, MetadataPair } from "../ui/security-primitives";
 import { EmptyState } from "../ui/feedback";
+import { Markdown } from "../ui/markdown";
 import { InboxTimeline } from "./inbox-timeline";
 import { InboxTriageControls } from "./inbox-triage-controls";
 import { OrganizationMessageComposer } from "./report-communication";
@@ -166,13 +167,13 @@ function InboxMiddlePane({
 
       <div className="border-t border-border pt-4">
         <SectionLabel>Reproduction</SectionLabel>
-        <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink">{report.description}</p>
+        <Markdown content={report.description} className="mt-2" />
       </div>
 
       {report.impact && (
         <div className="border-t border-border pt-4">
           <SectionLabel>Impact</SectionLabel>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink">{report.impact}</p>
+          <Markdown content={report.impact} className="mt-2" />
         </div>
       )}
 

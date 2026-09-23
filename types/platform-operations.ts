@@ -1,3 +1,5 @@
+import type { ProgramType, EngagementType, ProgramVisibility } from "@/types/program";
+
 /** Never a report title/description/evidence/message, never a bounty or payment amount,
  * never a recipient's identity -- exactly the failure metadata needed to locate and
  * describe a problem. See docs/decisions/0027-platform-operations-foundation.md. */
@@ -49,7 +51,11 @@ export type NeedsRecoveryPaymentAttempt = {
 
 /** A program awaiting platform-admin launch review -- list_programs_pending_review_for_admin.
  * See supabase/migrations/202609050013_program_launch_review_gate.sql: activate_program is
- * now platform-admin-only, so this is the real queue an admin approves or rejects from. */
+ * now platform-admin-only, so this is the real queue an admin approves or rejects from.
+ * programType/engagementType/visibility/requiresKyc/focusAreas/scopeEntryCount are the
+ * real fields an admin needs to actually judge a launch (not just its free-text
+ * description) -- all already stored on public.programs / program_scope_entries, added
+ * here rather than inventing new review criteria. */
 export type ProgramPendingReview = {
   id: string;
   name: string;
@@ -57,6 +63,12 @@ export type ProgramPendingReview = {
   organizationId: string;
   organizationName: string;
   submittedAt: string;
+  programType: ProgramType;
+  engagementType: EngagementType;
+  visibility: ProgramVisibility;
+  requiresKyc: boolean;
+  focusAreas: string[];
+  scopeEntryCount: number;
 };
 
 /** A researcher currently suspended platform-wide -- list_suspended_researchers_for_admin.

@@ -57,7 +57,7 @@ describe("organization-members service: error mapping", () => {
 
 describe("organization-members service: every documented SQL error code maps correctly", () => {
   // Every CODE the migration's `raise exception 'CODE: message'` statements can produce
-  // (see supabase/migrations/202608260001_..., grep for `using errcode`), proven against
+  // (see db/migrations/202608260001_..., grep for `using errcode`), proven against
   // the specific service call that can trigger it. This does not prove the database
   // actually raises these -- only that our TS layer, given each one, behaves correctly.
   const cases: { name: string; message: string; expectedCode: string; call: (services: typeof import("../../services/organization-members")) => Promise<unknown> }[] = [

@@ -144,7 +144,7 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="overview" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         {/* Read-only and purely informational -- only a platform admin can lift a
             suspension (see supabase/migrations/202609050016_organization_status_control.sql

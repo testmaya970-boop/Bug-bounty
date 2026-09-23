@@ -48,6 +48,7 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
   const [loading, setLoading] = useState(false);
   const [, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   // Notification ids this bell itself just marked read and already applied to its own
   // state -- checked (and cleared) by the listener below so its own emitted event never
   // double-decrements unreadCount. A plain ref, not state: purely a same-tick echo guard,
@@ -61,6 +62,17 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  // Same Escape-to-close + return-focus contract as Dialog/DropdownMenu in
+  // components/ui/navigation.tsx -- this dropdown previously only closed on outside click.
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   // The /notifications page (a separate, independently-mounted component tree) maintains
   // its own local read state -- marking a notification read there previously had no way
@@ -103,6 +115,7 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
   return (
     <div ref={ref} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={handleToggle}
         aria-haspopup="menu"
@@ -123,7 +136,7 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
       </button>
 
       {open && (
-        <div role="menu" aria-label="Recent notifications" className="absolute right-0 z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface shadow-lg">
+        <div role="menu" aria-label="Recent notifications" className="motion-safe:animate-enter-rise absolute right-0 z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface shadow-lg">
           <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
             <p className="text-sm font-semibold text-ink">Notifications</p>
             <Link href={"/notifications" as Route} onClick={() => setOpen(false)} className="text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">

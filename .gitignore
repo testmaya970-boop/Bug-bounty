@@ -12,3 +12,4 @@ work/npm-cache/
 supabase/.temp/
 .claude/
 e2e/.seed-fixture.json
+graphify-out/

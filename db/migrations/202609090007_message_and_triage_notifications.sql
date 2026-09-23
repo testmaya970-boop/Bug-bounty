@@ -47,8 +47,7 @@ create or replace function public.route_and_create_notifications(
   p_actor_id uuid default null
 )
 returns setof public.notifications
-language plpgsql
-set search_path = ''
+language plpgsql security definer set search_path = ''
 as $$
 declare
   report public.reports;

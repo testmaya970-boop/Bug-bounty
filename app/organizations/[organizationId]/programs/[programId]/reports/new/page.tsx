@@ -18,7 +18,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
   const program = await getProgram(programId);
   if (!program || program.organizationId !== organizationId) {
     return (
-      <AppShell title="Report a vulnerability" user={user}>
+      <AppShell title="Report a vulnerability" user={user} organizationId={organizationId}>
         <PermissionDenied>This program does not exist, or you do not have access to it.</PermissionDenied>
       </AppShell>
     );
@@ -27,7 +27,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
   const participation = await getMyParticipation(user.id, programId);
   if (!participation || participation.status !== "active") {
     return (
-      <AppShell title="Report a vulnerability" user={user}>
+      <AppShell title="Report a vulnerability" user={user} organizationId={organizationId}>
         <PermissionDenied>You are not currently an authorized, active researcher for this program.</PermissionDenied>
       </AppShell>
     );
@@ -35,14 +35,14 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
 
   if (program.status === "paused" || program.status === "closed") {
     return (
-      <AppShell title="Report a vulnerability" user={user}>
+      <AppShell title="Report a vulnerability" user={user} organizationId={organizationId}>
         <EmptyState title="This program is not currently accepting reports">Its status is {program.status}. Check back later, or contact the program if you believe this is a mistake.</EmptyState>
       </AppShell>
     );
   }
 
   return (
-    <AppShell title="Report a vulnerability" user={user}>
+    <AppShell title="Report a vulnerability" user={user} organizationId={organizationId}>
       <div className="mx-auto max-w-2xl space-y-6">
         <Breadcrumbs
           items={[

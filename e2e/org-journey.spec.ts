@@ -33,23 +33,33 @@ async function signIn(page: Page, email: string) {
   await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
 }
 
-/** "Engagements" (and every other org-header tab label) exists twice on an org-scoped
- * page: once in the sidebar's own "Primary navigation" landmark, once in
- * OrganizationHeader's "Organization sections" tab bar -- both real, both correct, but
- * ambiguous to a bare getByRole. Scoped to the org header specifically (the more
- * contextually correct one for a journey already inside an organization). */
-function orgTab(page: Page, name: string) {
-  return page.getByRole("navigation", { name: "Organization sections" }).getByRole("link", { name });
+/** Turn 8b: OrganizationHeader's own "Organization sections" tab bar is deleted (AGENTS.md's
+ * "One nav control per hierarchy level" rule) -- the sidebar (components/app-shell-client.tsx,
+ * "Primary navigation" landmark) is now the single org nav. "Engagements" (and every other
+ * former tab label) still collides with the Breadcrumb's own "Engagements" link on program
+ * pages, so this stays scoped to the sidebar landmark specifically rather than a bare
+ * getByRole("link", { name }). */
+function sidebarNav(page: Page, name: string) {
+  return page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name });
 }
 
-/** From a PROGRAM page (ProgramHeader's own "Program sections" nav, not OrganizationHeader's
- * "Organization sections"), the org-level tab bar doesn't exist at all -- the real way back
- * is the program page's own Breadcrumb, which carries a real "Engagements" link alongside
- * "Organizations". Scoped to the breadcrumb landmark specifically, since "Engagements" is a
- * label shared by three real, independently-correct surfaces in this app (sidebar,
- * OrganizationHeader tabs, breadcrumb) -- never bare getByRole("link", { name: "Engagements" }). */
+/** From a PROGRAM page, the real way back to the org's engagement list is the page's own
+ * Breadcrumb (which carries a real "Engagements" link alongside "Organizations") -- scoped to
+ * the breadcrumb landmark specifically, since "Engagements" is also a real sidebar destination
+ * on the same page and a bare getByRole("link", { name: "Engagements" }) would be ambiguous. */
 function breadcrumbEngagements(page: Page) {
   return page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Engagements" });
+}
+
+/** Every one of the nine org routes must highlight exactly one nav control -- the sidebar item
+ * matching that route (AGENTS.md's "One nav control per hierarchy level" rule, added closing the
+ * Turn 8b defect where the deleted tab row and the sidebar could each independently show no
+ * active item on the same page). Asserts both halves: exactly one aria-current="page" in the
+ * whole document, and it is the expected sidebar link. */
+async function expectSingleSidebarHighlight(page: Page, name: string) {
+  const current = page.locator('[aria-current="page"]');
+  await expect(current).toHaveCount(1);
+  await expect(sidebarNav(page, name)).toHaveAttribute("aria-current", "page");
 }
 
 /** ProgramHeader's own "Program sections" tab bar -- distinct from, and NOT the same
@@ -91,7 +101,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await expect(page.getByText(TRIAGE_WALK_REPORT_TITLE)).toHaveCount(1);
 
   // --- Engagements: both programs visible to the admin --------------------------------
-  await orgTab(page, "Engagements").click();
+  await sidebarNav(page, "Engagements").click();
   // .first(): the Engagements list may render a responsive table/card duplicate per entry.
   await expect(page.getByText(PUBLIC_PROGRAM_NAME).first()).toBeVisible();
   await expect(page.getByText(PRIVATE_PROGRAM_NAME).first()).toBeVisible();
@@ -145,7 +155,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // the sidebar's own OrganizationSwitcher button, both rendering the org name -- scope to
   // the real link role.
   await page.getByRole("link", { name: new RegExp(ORG_NAME) }).click();
-  await orgTab(page, "Engagements").click();
+  await sidebarNav(page, "Engagements").click();
   await page.waitForURL(/\/programs$/);
   await page.getByRole("link", { name: new RegExp(PRIVATE_PROGRAM_NAME) }).click();
   // ProgramHeader's own Researchers tab (an in-page #researchers anchor), not the org
@@ -169,7 +179,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // Currently on the private program's own page (ProgramHeader) -- reach Findings via the
   // breadcrumb back to Engagements, then the org header's own Findings tab.
   await breadcrumbEngagements(page).click();
-  await orgTab(page, "Findings").click();
+  await sidebarNav(page, "Findings").click();
   await page.waitForURL(/\/findings$/);
   // OrganizationFindingsTable renders a responsive table/card split -- the same real link
   // exists twice in the DOM (one hidden per breakpoint), so .first() rather than a bare
@@ -188,7 +198,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await page.waitForURL(/\/findings$/);
 
   // --- Inbox: new -> triaged -> resolved -> finalize bounty ----------------------------
-  await orgTab(page, "Engagements").click();
+  await sidebarNav(page, "Engagements").click();
   await page.waitForURL(/\/programs$/);
   // getByText(PUBLIC_PROGRAM_NAME) alone can match a filter <option> or a duplicated
   // responsive card cell on other pages -- scope to the real program-card link on the
@@ -243,7 +253,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // Currently on the Inbox page (ProgramHeader) -- breadcrumb back to Engagements, then
   // the org header's own Hactivity tab (Hactivity itself is org-scoped, not per-program).
   await breadcrumbEngagements(page).click();
-  await orgTab(page, "Hactivity").click();
+  await sidebarNav(page, "Hactivity").click();
   await expect(page.getByText(/started triage/)).toBeVisible();
   await expect(page.getByText(/accepted a report/)).toBeVisible();
   await expect(page.getByText(/resolved a report/)).toBeVisible();
@@ -258,7 +268,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
 
   // --- Analytics ---------------------------------------------------------------------
   // Already on an org-scoped page (Hactivity) -- Analytics is org-wide too.
-  await orgTab(page, "Analytics").click();
+  await sidebarNav(page, "Analytics").click();
   await expect(page.getByRole("heading", { name: /Analytics/ })).toBeVisible();
 
   // --- Help / profile menu / switchers reachable ---------------------------------------
@@ -274,6 +284,71 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // --- Sign out --------------------------------------------------------------------------
   await signOut(page);
   await expect(page.getByLabel("Email")).toBeVisible();
+});
+
+test("nav de-duplication: every one of the nine org routes highlights exactly one nav control -- the sidebar item matching that route", async ({ page }) => {
+  // AGENTS.md's "One nav control per hierarchy level" rule, added this turn: the deleted
+  // org-level tab row and the sidebar could each independently show no active item on the
+  // same page (a program sub-route, a member-detail page). This is the proof, not a promise
+  // -- every org route, one assertion each, against the real deployed app.
+  await signIn(page, ADMIN_EMAIL);
+  await page.getByRole("button", { name: /Switch organization|E2E Journey Org/ }).first().click();
+  await page.getByRole("menu", { name: "Switch organization" }).getByText(ORG_NAME).click();
+  await expect(page.getByRole("heading", { name: ORG_NAME })).toBeVisible();
+
+  await expectSingleSidebarHighlight(page, "Home");
+
+  await sidebarNav(page, "Engagements").click();
+  await page.waitForURL(/\/programs$/);
+  await expectSingleSidebarHighlight(page, "Engagements");
+
+  // A specific program's own sub-route must still keep the parent sidebar item ("Engagements")
+  // highlighted -- prefixMatch, not exactMatch (app-shell-client.tsx). This is exactly the case
+  // the old tab row's `active === item.id` string check could never match.
+  await page.getByRole("link", { name: new RegExp(PUBLIC_PROGRAM_NAME) }).click();
+  await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
+  await expectSingleSidebarHighlight(page, "Engagements");
+
+  await breadcrumbEngagements(page).click();
+  await sidebarNav(page, "Findings").click();
+  await page.waitForURL(/\/findings$/);
+  await expectSingleSidebarHighlight(page, "Findings");
+
+  await sidebarNav(page, "Assets").click();
+  await page.waitForURL(/\/assets$/);
+  await expectSingleSidebarHighlight(page, "Assets");
+
+  await sidebarNav(page, "Researchers").click();
+  await page.waitForURL(/\/researchers$/);
+  await expectSingleSidebarHighlight(page, "Researchers");
+
+  await sidebarNav(page, "Hactivity").click();
+  await page.waitForURL(/\/hactivity$/);
+  await expectSingleSidebarHighlight(page, "Hactivity");
+
+  await sidebarNav(page, "Analytics").click();
+  await page.waitForURL(/\/analytics$/);
+  await expectSingleSidebarHighlight(page, "Analytics");
+
+  await sidebarNav(page, "Members").click();
+  await page.waitForURL(/\/members$/);
+  await expectSingleSidebarHighlight(page, "Members");
+
+  // A specific member's own detail sub-route must keep "Members" highlighted -- the other
+  // case (alongside the program sub-route above) the old tab row could never match. "Manage"
+  // (MemberTable's own per-row action link) is unambiguous and exact, unlike the row's own
+  // name/email cell link, which is a compound accessible name.
+  await page.getByRole("link", { name: "Manage" }).first().click();
+  await page.waitForURL(/\/members\/[0-9a-f-]{36}$/);
+  await expectSingleSidebarHighlight(page, "Members");
+
+  await page.goBack();
+  await page.waitForURL(/\/members$/);
+  await sidebarNav(page, "Settings").click();
+  await page.waitForURL(/\/settings$/);
+  await expectSingleSidebarHighlight(page, "Settings");
+
+  await signOut(page);
 });
 
 test("org journey: researcher accepts an invitation, sees the finalized amount, gets notified, and reaches Hai", async ({ page }) => {

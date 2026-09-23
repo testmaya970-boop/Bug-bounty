@@ -42,7 +42,11 @@ export function LifecycleStepper({
 
   return (
     <div onMouseEnter={() => (pausedRef.current = true)} onMouseLeave={() => (pausedRef.current = false)} onFocus={() => (pausedRef.current = true)} onBlur={() => (pausedRef.current = false)}>
-      <div role="group" aria-label="Security workflow stages" className={cn("flex gap-2 overflow-x-auto pb-1", compact ? "flex-wrap" : "flex-wrap sm:flex-nowrap")}>
+      <div
+        role="group"
+        aria-label="Security workflow stages"
+        className={cn("flex gap-2 overflow-x-auto pb-1", compact ? "min-h-[4.75rem] flex-wrap content-start" : "flex-wrap sm:flex-nowrap")}
+      >
         {stages.map((stage, index) => (
           <button
             key={stage.key}

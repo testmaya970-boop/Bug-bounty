@@ -102,11 +102,15 @@ export async function listMyPaymentObligations(userId: string): Promise<MyPaymen
       const programIds = [...new Set(obligations.map((o) => o.program_id))];
       const orgIds = [...new Set(obligations.map((o) => o.organization_id))];
       const reportIds = [...new Set(obligations.map((o) => o.report_id))];
-      const [{ rows: programs }, { rows: organizations }, { rows: reports }] = await Promise.all([
-        client.query<{ id: string; name: string }>("select id, name from public.programs where id = any($1)", [programIds]),
-        client.query<{ id: string; name: string }>("select id, name from public.organizations where id = any($1)", [orgIds]),
-        client.query<{ id: string; title: string }>("select id, title from public.reports where id = any($1)", [reportIds]),
-      ]);
+      // Sequential, not Promise.all -- these three queries share the single client this
+      // withActorTransaction callback was handed (unlike separate withActorTransaction
+      // calls, which each get their own pool connection). A pg PoolClient can only run
+      // one query at a time; firing these concurrently on it throws pg's own "client is
+      // already executing a query" deprecation warning, confirmed live on a researcher's
+      // Home load whenever they have at least one payment obligation.
+      const { rows: programs } = await client.query<{ id: string; name: string }>("select id, name from public.programs where id = any($1)", [programIds]);
+      const { rows: organizations } = await client.query<{ id: string; name: string }>("select id, name from public.organizations where id = any($1)", [orgIds]);
+      const { rows: reports } = await client.query<{ id: string; title: string }>("select id, title from public.reports where id = any($1)", [reportIds]);
       return {
         obligations,
         programName: new Map(programs.map((p) => [p.id, p.name])),

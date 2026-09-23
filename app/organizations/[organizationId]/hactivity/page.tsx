@@ -33,7 +33,7 @@ async function renderHactivityPage(paramsPromise: Promise<{ organizationId: stri
   const actor = await perfTimed("hactivity: getActorMembership", () => getActorMembership(user.id, organizationId));
   if (!actor || actor.status !== "active" || !canManageMembers(actor.role)) {
     return (
-      <AppShell title="Hactivity" user={user}>
+      <AppShell title="Hactivity" user={user} organizationId={organizationId}>
         <PermissionDenied>Only an organization owner or security admin can view the activity feed.</PermissionDenied>
       </AppShell>
     );
@@ -50,7 +50,7 @@ async function renderHactivityPage(paramsPromise: Promise<{ organizationId: stri
       <div className="max-w-3xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="hactivity" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         <p className="text-sm text-ink-muted">Every action taken in this organization, most recent first.</p>
 

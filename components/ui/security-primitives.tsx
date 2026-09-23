@@ -47,12 +47,14 @@ export function PrimaryActionPanel({ eyebrow, title, description, href, actionLa
     <div className="relative overflow-hidden rounded-xl bg-ink px-6 py-8 text-canvas shadow-[0_24px_48px_-20px_rgba(0,0,0,0.55)] sm:px-8 sm:py-9">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,var(--glow-action),transparent_60%)] opacity-40" />
       <div className="relative">
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-action">{eyebrow}</p>
+        {/* text-action-on-dark, not text-action: this panel always renders on bg-ink;
+            see app/globals.css's own token comment for why --action fails contrast here. */}
+        <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-action-on-dark">{eyebrow}</p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
         {description && <p className="mt-2 max-w-lg text-sm text-canvas/70">{description}</p>}
         <Link
           href={href}
-          className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-md bg-canvas px-6 text-sm font-semibold text-ink transition duration-200 hover:bg-canvas/90 hover:shadow-[0_0_20px_var(--glow-action)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas"
+          className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-md bg-canvas px-6 text-sm font-semibold text-ink transition-[transform,background-color,box-shadow] duration-200 ease-out hover:bg-canvas/90 hover:shadow-[0_0_20px_var(--glow-action)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas"
         >
           {actionLabel} <span aria-hidden="true">→</span>
         </Link>

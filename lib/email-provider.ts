@@ -1,3 +1,5 @@
+import nodemailer, { type Transporter } from "nodemailer";
+
 /**
  * No `import "server-only"` here, deliberately, unlike lib/payment-provider.ts: this
  * module is reachable from workers/outbox/handlers/notifications/* -- a standalone
@@ -155,15 +157,94 @@ export function createResendEmailProvider(): EmailProvider {
   };
 }
 
+/** A deterministic retryable/permanent split for nodemailer's own thrown errors, mirroring
+ * classifyResendFailure's reasoning above (network/rate/outage = retryable, a rejected
+ * credential or a rejected recipient/message = permanent, unrecognized = retryable by the
+ * same conservative default). nodemailer surfaces SMTP failures as a thrown error with a
+ * `code` (e.g. "EAUTH", "ECONNECTION") and, for a real SMTP-protocol rejection, a
+ * `responseCode` (the numeric SMTP reply code) -- both are used here, `code` first since
+ * a connection-level failure has no responseCode at all. */
+function classifySmtpFailure(error: unknown): { permanent: boolean; error: string } {
+  const err = error as { code?: string; responseCode?: number; message?: string; response?: string };
+  const message = err.response ?? err.message ?? String(error);
+
+  if (err.code === "EAUTH") return { permanent: true, error: `permanent (SMTP auth rejected): ${message}` };
+  if (err.code === "ECONNECTION" || err.code === "ETIMEDOUT" || err.code === "ESOCKET" || err.code === "EDNS") {
+    return { permanent: false, error: `retryable (SMTP connection error, ${err.code}): ${message}` };
+  }
+  if (typeof err.responseCode === "number") {
+    // SMTP reply codes: 4xx is a transient failure (try again later), 5xx is permanent
+    // (the server will never accept this exact message/recipient) -- the same 4xx/5xx
+    // split HTTP status codes get above, just SMTP's own numbering.
+    if (err.responseCode >= 400 && err.responseCode < 500) return { permanent: false, error: `retryable (SMTP ${err.responseCode}): ${message}` };
+    if (err.responseCode >= 500) return { permanent: true, error: `permanent (SMTP ${err.responseCode}): ${message}` };
+  }
+  return { permanent: false, error: `retryable (unrecognized SMTP error): ${message}` };
+}
+
+/** Gmail SMTP for local development -- an explicit, disclosed alternative to Resend for a
+ * developer who wants to see real OTP/notification emails land in a real inbox without
+ * signing up for a separate provider. NEVER the recommended choice for anything other
+ * than local dev: Gmail's SMTP relay is rate-limited (roughly 500 messages/day per
+ * account) and explicitly not intended for application/transactional traffic -- see
+ * docs/decisions/0022-real-email-provider-integration.md for why Resend is the real
+ * production path. `SMTP_PASS` must be a Google App Password (a 2-Step-Verification-gated,
+ * per-app credential), never the account's real login password -- Google's SMTP servers
+ * reject a plain account password outright as of 2025. Transporter creation itself can
+ * throw on a malformed config; that's allowed to propagate here (same "fail at module
+ * load, not on first send" posture createResendEmailProvider already establishes). */
+export function createGmailSmtpEmailProvider(): EmailProvider {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.EMAIL_FROM;
+  if (!user) throw new Error("EMAIL_PROVIDER=gmail-smtp requires SMTP_USER to be set (your Gmail address).");
+  if (!pass) throw new Error("EMAIL_PROVIDER=gmail-smtp requires SMTP_PASS to be set (a Google App Password, not your real Gmail password).");
+  if (!from) throw new Error("EMAIL_PROVIDER=gmail-smtp requires EMAIL_FROM to be set.");
+
+  const transporter: Transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: { user, pass },
+  });
+
+  return {
+    name: "gmail-smtp",
+
+    async send(message) {
+      try {
+        // nodemailer has no built-in idempotency-key concept (unlike Resend's own header)
+        // -- passed through as a custom header instead, purely for cross-referencing a
+        // delivery row against Gmail's own "Sent" copy by hand if ever needed; it has no
+        // effect on Gmail's own delivery behavior (Gmail does not deduplicate on it the
+        // way Resend does), so a retried send after an AMBIGUOUS failure genuinely can
+        // result in a duplicate message -- an accepted, disclosed gap for a local-dev-only
+        // provider, not a claim of the same real dedup guarantee Resend provides.
+        const info = await transporter.sendMail({
+          from,
+          to: message.to,
+          subject: message.subject,
+          text: message.text,
+          headers: { "X-Idempotency-Key": message.idempotencyKey },
+        });
+        return { success: true, providerReference: info.messageId };
+      } catch (error) {
+        return { success: false, ...classifySmtpFailure(error) };
+      }
+    },
+  };
+}
+
 /** The one, explicit provider-selection mechanism -- EMAIL_PROVIDER defaults to "dev"
  * whenever unset, so no existing local/test environment can start sending real email
- * merely by this feature shipping. Evaluated once at module load: a resend selection
- * with missing credentials throws immediately here, not on the first real send. */
+ * merely by this feature shipping. Evaluated once at module load: a resend/gmail-smtp
+ * selection with missing credentials throws immediately here, not on the first real send. */
 function resolveEmailProvider(): EmailProvider {
   const selection = process.env.EMAIL_PROVIDER ?? "dev";
   if (selection === "dev") return devEmailProvider;
   if (selection === "resend") return createResendEmailProvider();
-  throw new Error(`Unknown EMAIL_PROVIDER "${selection}" — expected "dev" or "resend".`);
+  if (selection === "gmail-smtp") return createGmailSmtpEmailProvider();
+  throw new Error(`Unknown EMAIL_PROVIDER "${selection}" — expected "dev", "resend", or "gmail-smtp".`);
 }
 
 /** The active provider for this deployment. See lib/payment-provider.ts for the

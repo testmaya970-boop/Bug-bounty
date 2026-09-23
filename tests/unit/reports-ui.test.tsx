@@ -63,6 +63,12 @@ describe("classifyFailure: every submit_report error code maps to a calm, specif
     expect(result.banner).toBeUndefined();
   });
 
+  it("INVALID_TARGET (malformed target, e.g. a URL's query string on a domain entry) surfaces canonicalize_scope_target's own already-specific message on the Target field, never the generic fallback -- confirmed live as a real gap via a real submission's own server log (errorCode: INVALID_TARGET, no case existed for it)", () => {
+    const result = classifyFailure("INVALID_TARGET", "Enter a bare hostname, e.g. api.example.com or *.example.com -- not a URL, port, or path.");
+    expect(result.targetError).toBe("Enter a bare hostname, e.g. api.example.com or *.example.com -- not a URL, port, or path.");
+    expect(result.banner).toBeUndefined();
+  });
+
   it("FORBIDDEN (not an authorized researcher) shows a safe, specific sentence", () => {
     const result = classifyFailure("FORBIDDEN", "actor is not an authorized researcher for this program");
     expect(result.banner).toContain("not currently an authorized, active researcher");
@@ -81,6 +87,12 @@ describe("classifyFailure: every submit_report error code maps to a calm, specif
   it("INVALID_WEAKNESS_TYPE/INVALID_IMPACT attach to their own field too", () => {
     expect(classifyFailure("INVALID_WEAKNESS_TYPE", "irrelevant server text").weaknessTypeError).toBe("Select the type of weakness you found.");
     expect(classifyFailure("INVALID_IMPACT", "Describe the impact of this finding.").impactError).toBe("Describe the impact of this finding.");
+  });
+
+  it("KYC_REQUIRED surfaces the server's own already-specific message, never the generic fallback -- confirmed live as a real gap: this was the one submit_report code this switch had no case for, so a researcher without verified KYC on a KYC-required program saw 'The request could not be completed' with no indication of what was actually wrong", () => {
+    const result = classifyFailure("KYC_REQUIRED", "this program requires identity verification before you can submit reports");
+    expect(result.banner).toBe("this program requires identity verification before you can submit reports");
+    expect(result.banner).not.toBe("The request could not be completed. Try again in a moment.");
   });
 
   it("an unrecognized code falls back to a safe, generic sentence, never a raw message", () => {

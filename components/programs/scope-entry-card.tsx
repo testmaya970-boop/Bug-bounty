@@ -4,11 +4,117 @@ import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/navigation";
+import { Input, Select, Textarea } from "../ui/form";
 import { AssetTypeBadge, ScopeStateBadge } from "../ui/badge";
 import { removeScopeEntryAction, updateScopeEntryAction } from "../../actions/scope";
+import { assetTypeLabel } from "../../lib/scope-labels";
 import { formatDate } from "../../lib/format-date";
 import { cn } from "../../lib/cn";
-import type { ScopeEntry, ScopeState } from "../../types/scope";
+import type { ProgramAssetType, ScopeEntry, ScopeState } from "../../types/scope";
+
+const ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
+
+const TARGET_PLACEHOLDER: Record<ProgramAssetType, string> = {
+  domain: "api.example.com or *.example.com",
+  url: "https://api.example.com/admin",
+  ip_cidr: "203.0.113.0/24 or 203.0.113.5",
+  ios_app: "https://apps.apple.com/app/id123456789 or com.example.app",
+  android_app: "https://play.google.com/store/apps/details?id=com.example.app",
+  source_code: "https://github.com/example/repo",
+  hardware: "Model XR-200 router",
+  ai_model: "gpt-example-v2 or https://api.example.com/v1/chat/completions",
+};
+
+/** Edits the entry's target, type, and description in place via update_scope_entry
+ * (db/migrations/202609090009_editable_scope_target.sql), which re-canonicalizes an
+ * edited target exactly like add_scope_entry does. This overrides
+ * docs/decisions/0006-scope-asset-model.md's original "target is immutable, edit means
+ * remove+re-add" decision -- see that migration's own header for the audit-history
+ * trade-off this carries. */
+function EditScopeEntryDialog({ organizationId, programId, entry }: { organizationId: string; programId: string; entry: ScopeEntry }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [assetType, setAssetType] = useState<ProgramAssetType>(entry.assetType);
+  const [target, setTarget] = useState(entry.displayTarget);
+  const [description, setDescription] = useState(entry.description ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function close() {
+    if (pending) return;
+    setOpen(false);
+    setAssetType(entry.assetType);
+    setTarget(entry.displayTarget);
+    setDescription(entry.description ?? "");
+    setError(null);
+  }
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (pending) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await updateScopeEntryAction({
+        organizationId,
+        programId,
+        entryId: entry.id,
+        scopeState: entry.scopeState,
+        description: description || undefined,
+        assetType,
+        targetInput: target,
+      });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <>
+      <Button variant="secondary" onClick={() => setOpen(true)}>
+        Edit
+      </Button>
+      <Dialog open={open} title="Edit scope entry" onClose={close}>
+        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+          <Select
+            label="Target type"
+            value={assetType}
+            onChange={(event) => setAssetType(event.target.value as ProgramAssetType)}
+          >
+            {ASSET_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {assetTypeLabel(type)}
+              </option>
+            ))}
+          </Select>
+          <Input
+            label="Target"
+            required
+            autoFocus
+            value={target}
+            onChange={(event) => setTarget(event.target.value)}
+            placeholder={TARGET_PLACEHOLDER[assetType]}
+            className="[&_input]:font-mono"
+            maxLength={2048}
+            error={error ?? undefined}
+          />
+          <Textarea label="Description" helperText="Optional." value={description} onChange={(event) => setDescription(event.target.value)} maxLength={500} />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={close} disabled={pending}>
+              Cancel
+            </Button>
+            <Button type="submit" pending={pending}>
+              Save changes
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+    </>
+  );
+}
 
 function ToggleStateDialog({ organizationId, programId, entry }: { organizationId: string; programId: string; entry: ScopeEntry }) {
   const router = useRouter();
@@ -144,6 +250,7 @@ export function ScopeEntryCard({ organizationId, programId, entry, canManage }: 
       </div>
       {canManage && (
         <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-1 sm:justify-end">
+          <EditScopeEntryDialog organizationId={organizationId} programId={programId} entry={entry} />
           <ToggleStateDialog organizationId={organizationId} programId={programId} entry={entry} />
           <RemoveEntryDialog organizationId={organizationId} programId={programId} entry={entry} />
         </div>

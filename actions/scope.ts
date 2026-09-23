@@ -58,12 +58,16 @@ const updateSchema = z.object({
   entryId: uuidSchema,
   scopeState: scopeStateSchema,
   description: z.string().trim().max(500, "Use 500 characters or fewer.").optional(),
+  // Both optional -- omitting both leaves the target untouched. See
+  // db/migrations/202609090009_editable_scope_target.sql.
+  assetType: assetTypeSchema.optional(),
+  targetInput: z.string().trim().min(1, "Enter a target.").max(2048, "Use 2048 characters or fewer.").optional(),
 });
 
 export async function updateScopeEntryAction(input: z.infer<typeof updateSchema>) {
   const parsed = updateSchema.safeParse(input);
   if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
-  const result = await toResult(updateScopeEntry(parsed.data.entryId, parsed.data.scopeState, parsed.data.description));
+  const result = await toResult(updateScopeEntry(parsed.data.entryId, parsed.data.scopeState, parsed.data.description, parsed.data.assetType, parsed.data.targetInput));
   if (result.ok) revalidateScopePaths(parsed.data.organizationId, parsed.data.programId);
   return result;
 }

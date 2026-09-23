@@ -65,6 +65,6 @@ A new `public` `SECURITY DEFINER` RPC, authorized by the identical two-path chec
 
 ## Deferred, explicitly
 
-- Bulk/CSV import (needs its own validation, preview, deduplication, and partial-failure handling — a real slice on its own).
-- Editing a scope entry's underlying target/type (only `scope_state` and `description` are editable after creation; changing the target itself means removing and re-adding, keeping audit history unambiguous about what target existed when).
+- ~~Bulk/CSV import~~ — see `docs/decisions/0006a-scope-bulk-import-export.md`.
+- ~~Editing a scope entry's underlying target/type~~ — superseded: `db/migrations/202609090009_editable_scope_target.sql` widens `update_scope_entry` to accept a new `asset_type`/target, re-running the same `canonicalize_scope_target` `add_scope_entry` uses. This was a deliberate override of the original decision above, made directly with the product owner — not a silent reversal. The audit-ambiguity cost this paragraph warned about is real and only partially mitigated: the `scope.asset_updated` audit row for the edit itself now carries both the previous and new target, but no earlier `audit_logs` row referencing the old target is rewritten, so a row from before the edit can still name a target that no longer exists on any current entry.
 - IDN/punycode domains, wildcard URL hosts, a global cross-program asset registry, and status-transition-aware scope-editing rules — all named above, all real gaps, none silently pretended to be solved.

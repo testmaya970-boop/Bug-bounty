@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { signInWithPassword, signUpWithPassword } from "@/services/auth";
 import { createOrganization, listCurrentUserOrganizations } from "@/services/organizations";
 import { listMyProgramParticipations } from "@/services/program-researchers";
+import { isPlatformAdmin } from "@/services/platform-operations";
 
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/services/auth", async (importOriginal) => {
@@ -17,6 +18,10 @@ vi.mock("@/services/program-researchers", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/services/program-researchers")>();
   return { ...actual, listMyProgramParticipations: vi.fn() };
 });
+vi.mock("@/services/platform-operations", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/platform-operations")>();
+  return { ...actual, isPlatformAdmin: vi.fn() };
+});
 
 const mockedRedirect = vi.mocked(redirect);
 const mockedSignIn = vi.mocked(signInWithPassword);
@@ -24,6 +29,7 @@ const mockedSignUp = vi.mocked(signUpWithPassword);
 const mockedListOrgs = vi.mocked(listCurrentUserOrganizations);
 const mockedListParticipations = vi.mocked(listMyProgramParticipations);
 const mockedCreateOrganization = vi.mocked(createOrganization);
+const mockedIsPlatformAdmin = vi.mocked(isPlatformAdmin);
 
 beforeEach(() => {
   mockedRedirect.mockReset();
@@ -32,6 +38,10 @@ beforeEach(() => {
   mockedListOrgs.mockReset();
   mockedListParticipations.mockReset();
   mockedCreateOrganization.mockReset();
+  // Every existing test below predates platform-admin-first routing and asserts on a
+  // non-admin account -- default every case to false so they keep exercising the
+  // org/researcher branches unchanged; the dedicated platform-admin test overrides this.
+  mockedIsPlatformAdmin.mockResolvedValue(false);
 });
 
 describe("signUpAction: email confirmation is always required now -- no role or organization is created here", () => {
@@ -162,6 +172,32 @@ describe("signInAction: destination is the account's own real, server-derived co
 
     expect(result).toEqual({ ok: true, destination: "/mfa/verify?redirectTo=%2Forganizations" });
     expect(mockedRedirect).not.toHaveBeenCalled();
+  });
+
+  it("sends a platform admin to /platform/programs, never the researcher dashboard -- confirmed live as a real gap: a platform-admin-only test account (no organizations, no researcher participation) landed on the ordinary 'You haven't submitted any reports yet' researcher Home with nothing admin-shaped about it", async () => {
+    mockedSignIn.mockResolvedValue({ mfaRequired: false, userId: "admin-1" });
+    mockedIsPlatformAdmin.mockResolvedValue(true);
+    const { signInAction } = await import("../../actions/auth");
+
+    const result = await signInAction({ email: "admin@example.test", password: "a-real-password" });
+
+    expect(result).toEqual({ ok: true, destination: "/platform/programs" });
+    // Platform-admin status is checked first and short-circuits the rest of the routing
+    // decision -- an admin's org/researcher standing (if any) is irrelevant to where they land.
+    expect(mockedListOrgs).not.toHaveBeenCalled();
+    expect(mockedListParticipations).not.toHaveBeenCalled();
+  });
+
+  it("still sends a platform admin to /platform/programs even when they ALSO have real organization and researcher standing -- platform-admin status takes priority over any other real context this account might have", async () => {
+    mockedSignIn.mockResolvedValue({ mfaRequired: false, userId: "admin-2" });
+    mockedIsPlatformAdmin.mockResolvedValue(true);
+    mockedListOrgs.mockResolvedValue([{ id: "org-1", slug: "acme", name: "Acme", role: "owner", status: "active" }]);
+    mockedListParticipations.mockResolvedValue([{ programId: "p-1", organizationId: "org-2", programName: "Bounty", organizationName: "Other Org", status: "active", programStatus: "active", joinedAt: "2026-01-01" }]);
+    const { signInAction } = await import("../../actions/auth");
+
+    const result = await signInAction({ email: "admin-both@example.test", password: "a-real-password" });
+
+    expect(result).toEqual({ ok: true, destination: "/platform/programs" });
   });
 });
 

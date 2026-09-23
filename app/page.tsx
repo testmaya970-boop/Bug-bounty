@@ -3,15 +3,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { AppShell } from "../components/app-shell";
-import { MetadataPair, SectionLabel } from "../components/ui/security-primitives";
-import { ScopeStateBadge, SeverityBadge, StatusBadge, ProgramStatusBadge } from "../components/ui/badge";
-import { LiveWorkflowArtifact } from "../components/marketing/live-workflow-artifact";
-import { LifecycleStepper, type LifecycleStage } from "../components/marketing/lifecycle-stepper";
-import { WorkflowDiagram } from "../components/marketing/workflow-diagram";
+import { SectionLabel } from "../components/ui/security-primitives";
+import { HeroArt } from "../components/marketing/hero-art/hero-art";
+import { BugSpecimen } from "../components/marketing/hero-art/bug-specimen";
+import { AuditSeal } from "../components/marketing/hero-art/audit-seal";
+import { WorkflowDiagramPair } from "../components/marketing/workflow-diagram";
 import { ProgramDiscoveryPreview } from "../components/marketing/program-discovery-preview";
-import { RealProductFragment } from "../components/marketing/real-product-fragment";
+import { StateMachineDiagram } from "../components/marketing/state-machine-diagram";
 import { getCurrentUser } from "../lib/auth/current-user";
 import { listMyPendingProgramInvitations, listMyProgramParticipations } from "../services/program-researchers";
 import { listMyReports } from "../services/reports";
@@ -37,70 +37,44 @@ import { perfTimed } from "../lib/perf-trace";
 // Public-homepage layout reskin (docs/decisions/0056), now the whole app's palette
 // (docs/decisions/0062): PublicHome's warm cream/green/orange colors are no longer a
 // component-scoped override -- they ARE app/globals.css's `:root` theme, so every
-// existing shared primitive (Badge, SectionLabel, MetadataPair, LiveWorkflowArtifact,
-// RealProductFragment, AppShell, and every authenticated screen) reads the identical
+// existing shared primitive (Badge, SectionLabel, HeroArt,
+// AppShell, and every authenticated screen) reads the identical
 // tokens with zero prop changes. Only this page's typeface stays a deliberate, disclosed
 // exception (Plus Jakarta Sans, per 0056) to the app-wide Space Grotesk/Inter pairing.
 const displayFont = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["500", "600", "700", "800"], display: "swap" });
 
 const headingClass = `${displayFont.className} font-extrabold tracking-tight text-ink`;
 
+// Every pressable link on this page gets the same real press feedback (scale(0.97) on
+// :active) -- previously only the accent-2-filled primary link had it; the two outline
+// variants had a hover color shift but no confirmation on press. Explicit transition
+// properties (never the `transition`/`transition-all` shorthand) plus a real ease-out
+// curve, per this session's own emil-design-eng review pass -- a filled button pressed
+// hundreds of times a day should feel like it heard the click, and an unspecified
+// `transition: all` risks animating layout properties it was never meant to.
 const primaryLinkClass =
-  "inline-flex min-h-12 items-center gap-2 rounded-full bg-accent-2 px-7 text-sm font-bold text-on-accent-2 shadow-[0_8px_20px_-8px_var(--glow-accent-2)] transition duration-200 hover:bg-accent-2 hover:brightness-90 hover:shadow-[0_10px_28px_-8px_var(--glow-accent-2)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+  "inline-flex min-h-12 items-center gap-2 rounded-full bg-accent-2 px-7 text-sm font-bold text-on-accent-2 shadow-[0_8px_20px_-8px_var(--glow-accent-2)] transition-[transform,filter,box-shadow] duration-200 ease-out hover:brightness-90 hover:shadow-[0_10px_28px_-8px_var(--glow-accent-2)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 const secondaryLinkClass =
-  "inline-flex min-h-12 items-center gap-2 rounded-full border border-border-strong bg-surface px-7 text-sm font-bold text-ink transition hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
-const invertedPrimaryLinkClass = primaryLinkClass;
-const invertedSecondaryLinkClass =
-  "inline-flex min-h-12 items-center gap-2 rounded-full border border-canvas/30 px-7 text-sm font-bold text-canvas transition hover:bg-canvas/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+  "inline-flex min-h-12 items-center gap-2 rounded-full border border-border-strong bg-surface px-7 text-sm font-bold text-ink transition-[transform,background-color,border-color] duration-200 ease-out hover:bg-surface-muted active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
-/** A small pill eyebrow -- Jasper's own recurring "topic chip" above a section heading --
- * rebuilt with Sentinel's tokens (surface/border/ink-muted), never Jasper's literal
- * colors. */
-function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface px-3.5 py-1 text-xs font-bold uppercase tracking-wide text-action">
-      {children}
-    </span>
-  );
-}
-
-/** One tinted, rounded feature card -- Jasper's bento-grid feature block, rebuilt from
- * Sentinel's own semantic tone tokens (info/success/warning) rather than Jasper's literal
- * pastel hex values, so light/content stays honest to what each block is about. */
-function FeatureCard({ tone, title, description, children }: { tone: "action" | "info" | "warning"; title: string; description: string; children?: React.ReactNode }) {
-  const toneBg = tone === "action" ? "bg-action/10" : tone === "info" ? "bg-info/10" : "bg-warning/10";
-  const toneBorder = tone === "action" ? "border-action/25" : tone === "info" ? "border-info/25" : "border-warning/25";
-  return (
-    <div className={`rounded-3xl border ${toneBorder} ${toneBg} p-7`}>
-      {children && <div className="mb-5">{children}</div>}
-      <h3 className="text-lg font-bold text-ink">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-ink-muted">{description}</p>
-    </div>
-  );
-}
-
-/** A single stat tile -- Jasper's "10,000+ / Compliant / 60%" proof band, rebuilt from
- * Sentinel's own domain facts (the workflow this page already describes), never invented
- * customer metrics. */
-function StatTile({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-surface p-6">
-      <p className={`${headingClass} text-3xl sm:text-4xl`}>{value}</p>
-      <p className="mt-1 text-sm text-ink-muted">{label}</p>
-    </div>
-  );
-}
-
+// The `+`/rotate icon gets an explicit duration/ease (was `transition-transform` alone,
+// resolving to Tailwind's default 150ms/default ease -- fine, but undocumented). The
+// answer text no longer just snaps into existence with the native <details> toggle: a
+// short fade + lift on open makes the reveal feel like content arriving, not a layout
+// jump. Occasional-tier interaction (a handful of opens per visit), so a standard
+// animation is warranted -- but it must still sit under the 300ms UI ceiling, which is
+// why this uses enter-rise (220ms, 4px lift), not hero-reveal (500ms, 16px lift, sized
+// for a page section entering on scroll, not a FAQ answer appearing on click).
 function FaqItem({ question, answer }: { question: string; answer: string }) {
   return (
-    <details className="group rounded-2xl border border-border bg-surface p-5 open:bg-surface-muted">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-ink [&::-webkit-details-marker]:hidden">
+    <details className="group border-t border-border py-5 transition-colors duration-200 ease-out motion-reduce:transition-none">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-ink [&::-webkit-details-marker]:hidden">
         {question}
-        <span aria-hidden="true" className="shrink-0 text-xl text-ink-muted transition-transform group-open:rotate-45">
+        <span aria-hidden="true" className="shrink-0 text-xl text-ink-muted transition-transform duration-200 ease-out group-open:rotate-45 motion-reduce:transition-none">
           +
         </span>
       </summary>
-      <p className="mt-3 text-sm leading-relaxed text-ink-muted">{answer}</p>
+      <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-ink-muted motion-safe:animate-enter-rise">{answer}</p>
     </details>
   );
 }
@@ -124,178 +98,6 @@ const ORGANIZATION_STAGES = [
   { label: "Make a decision", detail: "Resolved, duplicate, informative, not applicable, or rejected. A bounty decision is layered on top, never inside the report row." },
   { label: "Audit", detail: "Every decision is attributed and timestamped. Nothing is quietly overwritten." },
 ];
-
-/** A small bordered artifact card -- the same visual grammar LiveWorkflowArtifact uses,
- * at a lighter weight, so a LifecycleStepper's per-stage panel reads as a real Sentinel
- * record rather than a generic illustration. */
-function StagePanel({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-lg border border-border-strong bg-surface p-6">{children}</div>;
-}
-
-const SECURITY_LIFECYCLE_STAGES: LifecycleStage[] = [
-  {
-    key: "program",
-    label: "Program",
-    artifact: (
-      <StagePanel>
-        <MetadataPair label="Program" value="CloudVault" />
-        <div className="mt-3">
-          <ProgramStatusBadge status="active" />
-        </div>
-      </StagePanel>
-    ),
-  },
-  {
-    key: "scope",
-    label: "Scope",
-    artifact: (
-      <StagePanel>
-        <MetadataPair label="Scope" value="*.cloudvault.example" mono />
-        <div className="mt-3">
-          <ScopeStateBadge state="in_scope" />
-        </div>
-      </StagePanel>
-    ),
-  },
-  {
-    key: "report",
-    label: "Report",
-    artifact: (
-      <StagePanel>
-        <SectionLabel>Report</SectionLabel>
-        <p className="mt-1.5 text-base font-semibold text-ink">Authentication bypass on session refresh</p>
-        <div className="mt-3">
-          <SeverityBadge severity="critical" />
-        </div>
-      </StagePanel>
-    ),
-  },
-  {
-    key: "triage",
-    label: "Triage",
-    artifact: (
-      <StagePanel>
-        <SectionLabel>Triage</SectionLabel>
-        <p className="mt-1.5 text-sm text-ink-muted">The organization asks the researcher for a reproduction step.</p>
-        <div className="mt-3">
-          <StatusBadge status="needs_information" />
-        </div>
-      </StagePanel>
-    ),
-  },
-  {
-    key: "decision",
-    label: "Decision",
-    artifact: (
-      <StagePanel>
-        <SectionLabel>Decision</SectionLabel>
-        <p className="mt-1.5 text-sm text-ink-muted">Confirmed, with a bounty decided separately from the report itself.</p>
-        <div className="mt-3">
-          <StatusBadge status="accepted" />
-        </div>
-      </StagePanel>
-    ),
-  },
-  {
-    key: "audit",
-    label: "Audit",
-    artifact: (
-      <StagePanel>
-        <SectionLabel>Audit</SectionLabel>
-        <p className="mt-1.5 text-sm text-ink-muted">Who decided what, and when. Readable by the organization, not just implied.</p>
-        <div className="mt-3">
-          <StatusBadge status="resolved" />
-        </div>
-      </StagePanel>
-    ),
-  },
-];
-
-const RESEARCHER_LIFECYCLE_STAGES: LifecycleStage[] = [
-  {
-    key: "target",
-    label: "Target found",
-    artifact: (
-      <StagePanel>
-        <MetadataPair label="Scope" value="*.cloudvault.example" mono />
-      </StagePanel>
-    ),
-  },
-  {
-    key: "finding",
-    label: "Finding submitted",
-    artifact: (
-      <StagePanel>
-        <p className="text-sm font-semibold text-ink">Authentication bypass</p>
-        <div className="mt-2">
-          <SeverityBadge severity="critical" />
-        </div>
-      </StagePanel>
-    ),
-  },
-  {
-    key: "evidence",
-    label: "Evidence attached",
-    artifact: (
-      <StagePanel>
-        <MetadataPair label="Evidence" value="3 artifacts" />
-      </StagePanel>
-    ),
-  },
-  {
-    key: "submitted",
-    label: "Report submitted",
-    artifact: (
-      <StagePanel>
-        <StatusBadge status="new" />
-      </StagePanel>
-    ),
-  },
-];
-
-const ORGANIZATION_LIFECYCLE_STAGES: LifecycleStage[] = [
-  {
-    key: "arrives",
-    label: "Report arrives",
-    artifact: (
-      <StagePanel>
-        <p className="text-sm font-semibold text-ink">Authentication bypass</p>
-        <div className="mt-2">
-          <StatusBadge status="new" />
-        </div>
-      </StagePanel>
-    ),
-  },
-  {
-    key: "severity",
-    label: "Severity assessed",
-    artifact: (
-      <StagePanel>
-        <SeverityBadge severity="critical" />
-      </StagePanel>
-    ),
-  },
-  {
-    key: "requested",
-    label: "Information requested",
-    artifact: (
-      <StagePanel>
-        <StatusBadge status="needs_information" />
-      </StagePanel>
-    ),
-  },
-  {
-    key: "decided",
-    label: "Decision recorded",
-    artifact: (
-      <StagePanel>
-        <StatusBadge status="accepted" />
-      </StagePanel>
-    ),
-  },
-];
-
-const SIGNAL_PATH = ["Program", "Scope", "Finding", "Evidence", "Triage", "Researcher response", "Decision", "Audit record"];
 
 const PHILOSOPHY_STAGES = [
   { label: "Report submitted", detail: "The target, the scope match, and the description: frozen at the moment of submission." },
@@ -322,218 +124,156 @@ const PHILOSOPHY_STAGES = [
 function PublicHome() {
   return (
     <div className="min-h-dvh bg-canvas text-ink">
-      <header className="sticky top-0 z-10 bg-canvas/90 px-4 py-4 backdrop-blur sm:px-6">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-full border border-border-strong bg-surface px-5 py-2.5 shadow-sm">
+      {/* NAVIGATION (docs/decisions/0083, chaptered-editorial grammar) -- no fixed
+          bar: the grammar explicitly forbids the pill-shaped sticky wordmark+CTA
+          bar every earlier version of this page carried. A plain top rule with
+          the wordmark and two real entry points, in document flow, not fixed. */}
+      <header className="border-b border-border px-4 py-5 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck aria-hidden="true" className="size-5 text-action" />
             <span className={`${displayFont.className} text-lg font-extrabold tracking-tight`}>Unpatched</span>
           </div>
-          <nav aria-label="Page sections" className="hidden items-center gap-6 text-sm font-semibold text-ink-muted md:flex">
-            <a href="#how-it-works" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
-              How it works
-            </a>
-            <a href="#for-researchers" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
-              For researchers
-            </a>
-            <a href="#for-organizations" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
-              For organizations
-            </a>
-            <Link href="/programs" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
-              Programs
-            </Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Link href="/sign-in" className="hidden text-sm font-semibold text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-focus sm:inline">
+          <div className="flex items-center gap-5 text-sm font-semibold text-ink-muted">
+            <Link href="/sign-in" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
               Sign in
             </Link>
-            <Link href="/sign-up" className={`${primaryLinkClass} min-h-10 px-5 text-xs`}>
-              Get started
+            <Link href="/programs" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+              Programs
             </Link>
           </div>
         </div>
       </header>
 
-      <main>
-        {/* 01 HERO — Jasper's own hero shape: a centered eyebrow pill, a big two-line
-            headline, a short subhead, two pill CTAs, then the product artifact sitting
-            BELOW the copy as one wide staged panel rather than beside it. Content
-            unchanged from 0031-0036's hero copy. */}
-        <section className="px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
-          <div className="mx-auto max-w-4xl text-center">
-            <Eyebrow>Security operations, actually recorded</Eyebrow>
-            <h1 className={`${headingClass} mt-6 text-4xl leading-[1.05] sm:text-5xl lg:text-6xl`}>
-              Find what matters.
-              <br />
-              Prove it. Resolve it.
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-base text-ink-muted sm:text-lg">
-              Unpatched turns security noise into a recorded signal: researchers submit real findings, organizations triage and decide, and every step, evidence, response, resolution, becomes part
-              of an audit record no one quietly overwrites.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href={"/researchers/sign-up" as Route} className={primaryLinkClass}>
-                Explore security research <ArrowRight aria-hidden="true" className="size-4" />
-              </Link>
-              <Link href={"/organizations/sign-up" as Route} className={secondaryLinkClass}>
-                Run a security program
-              </Link>
-            </div>
-          </div>
-
-          <div className="mx-auto mt-14 max-w-5xl rounded-[2rem] border border-border-strong bg-surface-muted p-4 shadow-[0_40px_90px_-40px_rgba(22,28,20,0.35)] sm:p-8">
-            <div className="flex justify-center">
-              <LiveWorkflowArtifact />
-            </div>
-          </div>
-        </section>
-
-        {/* 02 SIGNAL PATH STRIP — Jasper's "who trusts us" logo band, rebuilt honestly:
-            Sentinel has no customer logos to show, so this strip carries the one true
-            claim the logo band would otherwise stand in for -- the real accountable path
-            every report moves through. */}
-        <section className="border-y border-border bg-surface px-4 py-8 sm:px-6">
-          <div className="mx-auto max-w-6xl">
-            <p className="text-center text-xs font-bold uppercase tracking-wider text-ink-muted">Every report moves through the same recorded path</p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-3">
-              {SIGNAL_PATH.map((label, index) => (
-                <React.Fragment key={label}>
-                  <span className="rounded-full border border-border-strong bg-canvas px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-wider text-ink">{label}</span>
-                  {index < SIGNAL_PATH.length - 1 && (
-                    <span aria-hidden="true" className="text-ink-muted">
-                      →
-                    </span>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 03 FEATURE BENTO — Jasper's tri-card "Agents / Content Pipelines / Jasper IQ"
-            band, rebuilt as Sentinel's own three pillars, each still linking into the
-            real, existing lifecycle stepper below it rather than losing that content. */}
-        <section id="how-it-works" className="px-4 py-20 sm:px-6 sm:py-24">
-          <div className="mx-auto max-w-6xl">
-            <div className="mx-auto max-w-2xl text-center">
-              <Eyebrow>What Unpatched does</Eyebrow>
-              <h2 className={`${headingClass} mt-4 text-3xl sm:text-4xl`}>Security noise, turned into a recorded signal.</h2>
-              <p className="mt-4 text-base text-ink-muted">Every report Unpatched handles moves through the same accountable path, the same one shown running above.</p>
-            </div>
-
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
-              <FeatureCard tone="action" title="Program & scope" description="Domains, URLs, or IP ranges. The single most-specific match decides what's authorized, before anyone tests anything.">
-                <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-action/15 text-action">
-                  <ShieldCheck aria-hidden="true" className="size-5" />
-                </span>
-              </FeatureCard>
-              <FeatureCard tone="info" title="Report & evidence" description="Target, title, description, evidence: text, code, logs, or a file. The server makes the final scope decision, not the form.">
-                <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-info/15 text-info">
-                  <CheckCircle2 aria-hidden="true" className="size-5" />
-                </span>
-              </FeatureCard>
-              <FeatureCard tone="warning" title="Triage & audit" description="A real state machine: new, triaging, needs information, accepted. Every decision is attributed, timestamped, and never quietly overwritten.">
-                <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-warning/15 text-warning">
-                  <ArrowRight aria-hidden="true" className="size-5" />
-                </span>
-              </FeatureCard>
-            </div>
-
-            <div className="mt-14 rounded-3xl border border-border bg-surface p-6 sm:p-10">
-              <h3 className={`${headingClass} text-2xl sm:text-3xl`}>One security lifecycle, not a feature list.</h3>
-              <p className="mt-3 max-w-xl text-sm text-ink-muted sm:text-base">Program, scope, report, triage, decision, audit. Click a stage, or watch it advance on its own.</p>
-              <div className="mt-8">
-                <LifecycleStepper stages={SECURITY_LIFECYCLE_STAGES} />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 04 PROOF BAND — Jasper's "10,000+ / Compliant / 60%" stat tiles, rebuilt from
-            Sentinel's own true, non-fabricated facts about how the workflow itself works
-            (never invented customer/usage metrics — DESIGN.md and AGENTS.md both forbid
-            that regardless of this page's visual reskin). */}
-        <section className="bg-surface-muted px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mx-auto max-w-6xl">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <StatTile value="7 stages" label="Program → scope → finding → evidence → triage → response → decision → audit." />
-              <StatTile value="1 record" label="Every evidence upload is immutable once attached. A correction is a new entry, never an edit." />
-              <StatTile value="0 silent changes" label="Every status transition needs an actor and an event. There is no generic field that can be set quietly." />
-            </div>
-          </div>
-        </section>
-
-        {/* 05 TWO SIDES — Jasper's alternating benefit sections, rebuilt as Sentinel's
-            existing researcher/organization split, content and both lifecycle steppers
-            and both WorkflowDiagrams fully unchanged. */}
-        <section className="px-4 py-20 sm:px-6 sm:py-24">
-          <div className="mx-auto max-w-6xl">
-            <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
-              <div id="for-researchers" className="rounded-3xl border border-action/25 bg-action/5 p-7 sm:p-9">
-                <Eyebrow>For researchers</Eyebrow>
-                <h2 className={`${headingClass} mt-4 text-2xl sm:text-3xl`}>Find real work. Keep the record.</h2>
-                <div className="mt-6">
-                  <LifecycleStepper stages={RESEARCHER_LIFECYCLE_STAGES} autoAdvanceMs={2200} compact />
-                </div>
-                <div className="mt-7 rounded-2xl border border-border bg-surface p-5">
-                  <WorkflowDiagram stages={RESEARCHER_STAGES} />
-                </div>
-                <Link href={"/researchers/sign-up" as Route} className={`${primaryLinkClass} mt-7`}>
-                  Continue as researcher <ArrowRight aria-hidden="true" className="size-4" />
+        <main>
+          {/* TITLE PAGE (docs/decisions/0082/0083) -- the chaptered-editorial hero:
+              type on the paper ground, the hero-art bleeding off both edges as the
+              only imagery above the fold. Headline/copy/buttons unchanged. */}
+          <section className="relative overflow-hidden px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
+            <HeroArt />
+            <div className="relative mx-auto max-w-2xl text-center">
+              <h1 className={`${headingClass} text-4xl leading-[1.05] sm:text-5xl lg:text-[3.4rem]`}>
+                Every finding becomes a record no one can quietly change.
+              </h1>
+              <p className="mx-auto mt-6 max-w-xl text-base text-ink-muted sm:text-lg">
+                Researchers submit real findings. Organizations triage and decide. Every step, evidence, response, and resolution is written once and never silently overwritten.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <Link href={"/researchers/sign-up" as Route} className={primaryLinkClass}>
+                  Explore security research <ArrowRight aria-hidden="true" className="size-4" />
                 </Link>
-              </div>
-              <div id="for-organizations" className="rounded-3xl border border-info/25 bg-info/5 p-7 sm:p-9">
-                <Eyebrow>For organizations</Eyebrow>
-                <h2 className={`${headingClass} mt-4 text-2xl sm:text-3xl`}>Run a program, not a vulnerability inbox.</h2>
-                <div className="mt-6">
-                  <LifecycleStepper stages={ORGANIZATION_LIFECYCLE_STAGES} autoAdvanceMs={2200} compact />
-                </div>
-                <div className="mt-7 rounded-2xl border border-border bg-surface p-5">
-                  <WorkflowDiagram stages={ORGANIZATION_STAGES} />
-                </div>
-                <Link href={"/organizations/sign-up" as Route} className={`${secondaryLinkClass} mt-7`}>
+                <Link href={"/organizations/sign-up" as Route} className={secondaryLinkClass}>
                   Run a security program
                 </Link>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* 06 REAL PRODUCT — the same cropped report-inbox fragment as before, now
-            staged in a light rounded panel instead of a dark chapter, matching the
-            reference's own "product screenshot inside a soft card" pattern. */}
-        <section className="bg-surface-muted px-4 py-20 sm:px-6 sm:py-24">
-          <div className="mx-auto max-w-4xl text-center">
-            <Eyebrow>The real product</Eyebrow>
-            <h2 className={`${headingClass} mt-4 text-3xl sm:text-4xl`}>This is Unpatched, not a mockup of Unpatched.</h2>
-            <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">The same report inbox, the same badges, the same columns an organization sees inside the real product.</p>
-            <div className="mt-10 flex justify-center">
-              <RealProductFragment />
+          {/* CHAPTER ONE — SIGNAL / EVIDENCE (docs/decisions/0083). Hard-cut ground
+              (per devices.md §10: a chaptered page paints grounds per section, never
+              drifts between them), the bug specimen full and real, its own callout
+              labels read as case annotations rather than decoration -- the same real
+              SVG this session already built, given a real chapter instead of sharing
+              the hero with the title page. */}
+          <section id="how-it-works" className="relative overflow-hidden border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28">
+            <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
+              <div className="relative z-10">
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">Chapter one</p>
+                <h2 className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Signal, then evidence.</h2>
+                <p className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
+                  A researcher notices something worth a second look. Domains, URLs, or IP ranges: the single most-specific scope match decides what&rsquo;s authorized before anyone tests anything. Text,
+                  code, request/response logs, or a file, up to 10 MB, attached at submission or added afterward.
+                </p>
+              </div>
+              <figure className="chapter-art-full relative -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:mx-0 lg:h-[64vh]" aria-hidden="true">
+                <BugSpecimen />
+                <figcaption className="sr-only">A specimen-plate diagram of a security finding, annotated with real vulnerability classes: unvalidated input, broken access control, session token exposed, outdated dependency.</figcaption>
+              </figure>
+            </div>
+          </section>
+
+          {/* CHAPTER TWO — FINDING / TRIAGE. Hard-cut ground change (bg-surface-muted,
+              not an interpolated drift), the real state-machine diagram as the
+              chapter's one real "second-read" moment. */}
+          <section className="border-t border-border bg-surface-muted px-4 py-20 sm:px-6 sm:py-28">
+            <div className="mx-auto max-w-4xl">
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">Chapter two</p>
+              <h2 className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Not a status field. A state machine.</h2>
+              <p className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
+                Every report moves through a fixed, real transition table — the exact same one that runs in production, not a simplified version for this page.
+              </p>
+              <div className="mt-12">
+                <StateMachineDiagram />
+              </div>
+            </div>
+          </section>
+
+          {/* CHAPTER THREE — DECISION / FIX / VERIFICATION. Two real paths (the
+              researcher path, the organization path) as one shared WorkflowDiagramPair
+              grid, step N of one aligned with step N of the other -- per taste.md's
+              "media never bleeds under type" rule for this grammar, not a rounded
+              tinted card. */}
+          <section id="for-researchers" className="border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28">
+            <div className="mx-auto max-w-6xl">
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">Chapter three</p>
+              <h2 className={`${headingClass} mt-3 max-w-2xl text-3xl sm:text-4xl`}>Decision, fix, verification: two real paths through the same record.</h2>
+              <div className="mt-12 grid gap-6 lg:grid-cols-2 lg:gap-12">
+                <h3 className="text-xl font-bold text-ink lg:pr-12">Find real work. Keep the record.</h3>
+                <h3 id="for-organizations" className="text-xl font-bold text-ink lg:pl-12">
+                  Run a program, not a vulnerability inbox.
+                </h3>
+              </div>
+              <div className="mt-6">
+                <WorkflowDiagramPair left={RESEARCHER_STAGES} right={ORGANIZATION_STAGES} />
+              </div>
+              <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:gap-12">
+                <Link href={"/researchers/sign-up" as Route} className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pr-12">
+                  Continue as researcher
+                </Link>
+                <Link href={"/organizations/sign-up" as Route} className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pl-12">
+                  Continue as organization
+                </Link>
+              </div>
+            </div>
+          </section>
+
+        {/* CHAPTER FOUR — RECORD (docs/decisions/0083). The peak, per BRIEF.md's
+            feeling curve: the audit seal, full, its own real ring text (RECEIVED /
+            TRIAGED / DECIDED / RECORDED) read as the chapter's own thesis restated
+            rather than decoration, and PHILOSOPHY_STAGES's six real facts set as
+            plain prose, not a tinted rounded card. The largest span on the page,
+            and the quiet chapter-three ground change is its silence-before, per
+            feel.md's peak rules. */}
+        <section className="relative overflow-hidden border-t border-border bg-surface-muted px-4 py-24 sm:px-6 sm:py-32">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
+            <figure className="chapter-art-full relative order-2 -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:order-1 lg:mx-0 lg:h-[68vh]" aria-hidden="true">
+              <AuditSeal />
+              <figcaption className="sr-only">A notary-style audit seal, its ring reading RECEIVED, TRIAGED, DECIDED, RECORDED -- the real Unpatched report lifecycle.</figcaption>
+            </figure>
+            <div className="relative z-10 order-1 lg:order-2">
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">Chapter four</p>
+              <h2 className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Security work should leave a record.</h2>
+              <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-ink-muted">Not a status that quietly changed. Not a decision no one can trace back to a reason.</p>
+              <dl className="mt-8 space-y-5 border-t border-border pt-6">
+                {PHILOSOPHY_STAGES.map((stage) => (
+                  <div key={stage.label}>
+                    <dt className="text-sm font-bold text-ink">{stage.label}</dt>
+                    <dd className="mt-1 max-w-[54ch] text-sm leading-relaxed text-ink-muted">{stage.detail}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           </div>
         </section>
 
-        {/* 07 WHY THE RECORD MATTERS — the philosophy section, content unchanged. */}
-        <section className="px-4 py-20 sm:px-6 sm:py-24">
+        {/* FAQ — flowed short, per feel.md §5's "compress the administrative
+            parts" rule: information the reader will use, not experience they'll
+            remember, so it stays a plain divided list, not another chapter. Real
+            questions about Unpatched's real, current constraints, unchanged. */}
+        <section className="border-t border-border px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-3xl">
-            <Eyebrow>Why it&rsquo;s built this way</Eyebrow>
-            <h2 className={`${headingClass} mt-4 text-3xl sm:text-4xl`}>Security work should leave a record.</h2>
-            <p className="mt-4 max-w-xl text-base text-ink-muted">Not a status that quietly changed. Not a decision no one can trace back to a reason.</p>
-            <div className="mt-9 rounded-3xl border border-border bg-surface p-6 sm:p-8">
-              <WorkflowDiagram stages={PHILOSOPHY_STAGES} />
-            </div>
-          </div>
-        </section>
-
-        {/* 08 FAQ — Jasper's own closing "frequently asked questions" band. Real
-            questions about Sentinel's real, current constraints (no public program
-            marketplace yet, invite-only access) rather than invented filler — the same
-            honest disclosure ProgramDiscoveryPreview always carried, now given the
-            visual weight an FAQ answer deserves instead of one muted footnote line. */}
-        <section className="px-4 py-20 sm:px-6 sm:py-24">
-          <div className="mx-auto max-w-3xl">
-            <Eyebrow>Questions</Eyebrow>
-            <h2 className={`${headingClass} mt-4 text-3xl sm:text-4xl`}>Frequently asked questions</h2>
-            <div className="mt-8 space-y-3">
+            <h2 className={`${headingClass} text-2xl sm:text-3xl`}>Frequently asked questions</h2>
+            <div className="mt-2">
               <FaqItem
                 question="Can I browse every program on Unpatched?"
                 answer="Some organizations open their program to the whole community, and those are listed publicly. Most programs remain invitation-only for now. An organization invites a researcher directly by email rather than through an open application queue."
@@ -554,40 +294,106 @@ function PublicHome() {
           </div>
         </section>
 
-        {/* 09 FINAL CTA — Sentinel's dark closing band kept as the one deliberate dark
-            moment on the page, matching the reference's own dark closing CTA section.
-            Carries the same dot-grid texture + ambient glow every other dark bg-ink
-            surface in the app now does (docs/decisions/0062). */}
-        <section className="relative mx-4 overflow-hidden rounded-[2.5rem] bg-ink px-6 py-16 text-center text-canvas sm:mx-6 sm:py-20">
-          <div aria-hidden="true" className="dot-grid pointer-events-none absolute inset-0 text-canvas" />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,var(--glow-action),transparent_55%),radial-gradient(ellipse_at_bottom_right,var(--glow-accent-2),transparent_50%)] opacity-70" />
-          <div className="relative mx-auto max-w-2xl">
-            <h2 className={`${headingClass} text-canvas text-3xl sm:text-5xl`}>Every decision on Unpatched is recorded. Nothing is quietly overwritten.</h2>
-            <div className="mt-10 flex flex-wrap justify-center gap-3">
-              <Link href={"/researchers/sign-up" as Route} className={invertedPrimaryLinkClass}>
-                Continue as researcher <ArrowRight aria-hidden="true" className="size-4" />
+        {/* CLOSE — a colophon plate, not a magnetic CTA island (both are banned by
+            the chaptered-editorial grammar, uniqueness.md §2.2). Stays on the same
+            paper ground as the rest of the page -- taste.md's own rule against a
+            single dark section breaking an otherwise light page, which every
+            earlier version of this homepage violated with two separate bg-ink
+            bands. The CTA is set as running text. */}
+        <section className="border-t border-border px-4 py-16 sm:px-6 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">REC-0000842 · closed</p>
+            <h2 className={`${headingClass} mt-4 text-2xl sm:text-3xl`}>The record does not disappear.</h2>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-muted">
+              <Link href={"/researchers/sign-up" as Route} className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+                Continue as researcher
               </Link>
-              <Link href={"/organizations/sign-up" as Route} className={invertedSecondaryLinkClass}>
+              {" · "}
+              <Link href={"/organizations/sign-up" as Route} className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                 Continue as organization
               </Link>
-            </div>
+            </p>
           </div>
         </section>
       </main>
+      <footer className="border-t border-border px-4 py-14 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck aria-hidden="true" className="size-5 text-action" />
+                <span className={`${displayFont.className} text-lg font-bold text-ink`}>Unpatched</span>
+              </div>
+              <p className="mt-3 max-w-xs text-sm text-ink-muted">Every finding becomes a record no one can quietly change.</p>
+            </div>
 
-      <footer className="px-4 py-10 sm:px-6">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-border pt-8 text-sm text-ink-muted">
-          <div className="flex items-center gap-2">
-            <ShieldCheck aria-hidden="true" className="size-4 text-action" />
-            <span className={`${displayFont.className} font-bold text-ink`}>Unpatched</span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">Product</p>
+              <ul className="mt-4 space-y-2.5 text-sm text-ink-muted">
+                <li>
+                  <Link href="/programs" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                    Browse programs
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/learn" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                    Learn
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/ctf" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                    CTF challenges
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">Get started</p>
+              <ul className="mt-4 space-y-2.5 text-sm text-ink-muted">
+                <li>
+                  <Link href={"/researchers/sign-up" as Route} className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                    For researchers
+                  </Link>
+                </li>
+                <li>
+                  <Link href={"/organizations/sign-up" as Route} className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                    For organizations
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/sign-in" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                    Sign in
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">Trust</p>
+              <ul className="mt-4 space-y-2.5 text-sm text-ink-muted">
+                <li>
+                  <Link href="/safe-harbor" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                    Safe Harbor & Code of Conduct
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/disclosures" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                    Disclosures
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/help" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                    Help
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/safe-harbor" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
-              Safe Harbor & Code of Conduct
-            </Link>
-            <Link href="/sign-in" className="font-semibold hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
-              Sign in
-            </Link>
+
+          <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6 text-xs text-ink-muted">
+            <p>© {new Date().getFullYear()} Unpatched.</p>
+            <p className="font-mono">Every report moves through the same recorded path.</p>
           </div>
         </div>
       </footer>

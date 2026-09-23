@@ -103,3 +103,34 @@ export async function listMyPendingInvitations(): Promise<PendingInvitationForUs
   }
   return rows.map(mapPendingInvitationRow);
 }
+
+/** The organization's own free-text description -- a real, minimal identity field
+ * (202609220001), read by any active member (same "members read organization roster"
+ * visibility tier the rest of Settings already uses). Null both when never set and when
+ * the organization doesn't exist/isn't visible to this actor -- identical, honest
+ * degradation, no distinguishing existence-leak. */
+export async function getOrganizationDescription(organizationId: string): Promise<string | null> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      client.query<{ description: string | null }>("select description from public.organizations where id = $1", [organizationId]).then((r) => r.rows),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows[0]?.description ?? null;
+}
+
+/** Owner/security_admin only -- enforced inside update_organization_description itself
+ * (private.has_org_role), not re-checked here; this function trusts the RPC to be the
+ * one real authorization boundary, the same pattern every other org-admin mutation in
+ * this service layer already follows. */
+export async function updateOrganizationDescription(organizationId: string, description: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.update_organization_description", [organizationId, description]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}

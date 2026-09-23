@@ -73,7 +73,11 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,var(--glow-action),transparent_60%)] opacity-60" />
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,var(--glow-accent-2),transparent_55%)] opacity-30" />
         <div className="relative">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-action">{action.eyebrow}</p>
+          {/* text-action-on-dark, not text-action: --action (#c7331e) is AA-safe for
+              button/link text on the light canvas but fails contrast against this dark
+              panel (2.7:1) -- --action-on-dark is the brighter, dark-surface-only
+              variant (5.8:1 here), see app/globals.css's own token comment. */}
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-action-on-dark">{action.eyebrow}</p>
           {/* Not a second <h1> -- the shell's own page title (AppShell/AppShellClient) IS
               this action's title (see app/page.tsx, where AppShell's title prop is now
               primaryAction.title, not the generic word "Dashboard"). Repeating it here as

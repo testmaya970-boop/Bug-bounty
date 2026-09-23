@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "skills": {
+    "animate": {
+      "source": "registry:emilkowalski/animate",
+      "commit_sha": "159fe0753228ab9d43fce274bd2c24433f3c4771",
+      "digest": "sha256:8be3884e9deb345163f5722924c829a09ee4c20f42fae7dbae779550aa923eca",
+      "agents": [
+        "claude-code",
+        "codex",
+        "github-copilot"
+      ],
+      "mode": {
+        "claude-code": "junction",
+        "codex": "canonical",
+        "github-copilot": "junction"
+      }
+    },
+    "emil-design-eng": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "77853cec799207f80868c611374c6ed5fdf34a55355c5ab544b59e791c63ad98"
+    }
+  }
+}

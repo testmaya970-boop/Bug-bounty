@@ -4,22 +4,16 @@ import { describe, expect, it } from "vitest";
 import { OrganizationHeader } from "../../components/organizations/organization-header";
 import { ProgramHeader } from "../../components/programs/program-header";
 
-describe("OrganizationHeader: the same six-section sub-nav on every organization-scoped page", () => {
-  it("renders the organization name and all six sections, with the first tab labeled Home and the second labeled Engagements (their routes/ids stay 'overview'/'programs' -- no new route, no duplicate page)", () => {
-    const html = renderToStaticMarkup(<OrganizationHeader organizationId="org-1" organizationName="Acme Security" active="overview" />);
+describe("OrganizationHeader: identity block only -- Turn 8b deleted the org-level tab row (nav lives solely in the sidebar, components/app-shell-client.tsx)", () => {
+  it("renders the organization name", () => {
+    const html = renderToStaticMarkup(<OrganizationHeader organizationName="Acme Security" />);
     expect(html).toContain("Acme Security");
-    for (const label of ["Home", "Engagements", "Analytics", "Researchers", "Members", "Settings"]) expect(html).toContain(label);
   });
 
-  it("marks the active section with aria-current, and only that one", () => {
-    const html = renderToStaticMarkup(<OrganizationHeader organizationId="org-1" organizationName="Acme Security" active="members" />);
-    const matches = html.match(/aria-current="page"/g) ?? [];
-    expect(matches).toHaveLength(1);
-  });
-
-  it("links Settings to the real, per-organization settings route", () => {
-    const html = renderToStaticMarkup(<OrganizationHeader organizationId="org-1" organizationName="Acme Security" active="overview" />);
-    expect(html).toContain('href="/organizations/org-1/settings"');
+  it("renders no nav/links -- there is no second nav here to highlight anything in", () => {
+    const html = renderToStaticMarkup(<OrganizationHeader organizationName="Acme Security" />);
+    expect(html).not.toContain("<a ");
+    expect(html).not.toContain("aria-current");
   });
 });
 

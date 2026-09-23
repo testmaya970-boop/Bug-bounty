@@ -48,6 +48,22 @@ export const E2E_ORG_NAME = "E2E Journey Org";
 export const E2E_PUBLIC_PROGRAM_NAME = "E2E Public Program";
 export const E2E_PRIVATE_PROGRAM_NAME = "E2E Private Program";
 
+// Turn 8b: e2e/notifications.spec.ts drives its own report through triage/accept/message
+// live, in a spec FILE Playwright can run in parallel with org-journey.spec.ts's own file
+// (test.describe.configure({ mode: "serial" }) only serializes tests *within* one file --
+// nothing in playwright.config.ts caps cross-file parallelism). Sharing the triage-walk
+// report between the two spec files would be a real race, not a hypothetical one -- this
+// program/report pair exists so notifications.spec.ts never touches org-journey.spec.ts's
+// own fixture rows.
+export const E2E_NOTIF_PROGRAM_NAME = "E2E Notifications Program";
+// A second, wholly unrelated organization -- its own owner, its own program -- so
+// notifications.spec.ts's cross-org-isolation assertion ("unrelated org's activity ->
+// nothing appears") is a real RLS/routing fact, not just "no matching report_id happened
+// to be seeded."
+export const E2E_UNRELATED_ADMIN_EMAIL = "e2e.unrelated-admin@unpatched.demo";
+export const E2E_UNRELATED_ORG_NAME = "E2E Unrelated Org";
+export const E2E_UNRELATED_PROGRAM_NAME = "E2E Unrelated Program";
+
 const pool = new Pool({ connectionString: DATABASE_URL, max: 5 });
 
 async function withServiceRole<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -346,6 +362,59 @@ async function ensureFreshReportForTriageWalk(researcherId: string, program: Pro
   if (created) console.log("Submitted the triage-walk seed report (left at `new`).");
 }
 
+/** The dedicated report notifications.spec.ts drives live (new -> triaging -> accepted,
+ * plus messages both directions) -- its own row, isolated from org-journey.spec.ts's
+ * triage-walk report (see the E2E_NOTIF_PROGRAM_NAME comment above). Reset to a clean
+ * `new` state on re-run for the same reason ensureFreshReportForTriageWalk resets its own. */
+async function ensureFreshReportForNotificationsWalk(researcherId: string, program: ProgramRow, target: string): Promise<void> {
+  const title = "E2E seed: fresh report for the live notifications walk";
+  const existing = await withServiceRole(async (client) => {
+    const { rows } = await client.query<{ id: string; status: string }>("select id, status from public.reports where program_id = $1 and title = $2", [program.id, title]);
+    return rows[0] ?? null;
+  });
+  if (existing) {
+    if (existing.status !== "new") {
+      await withServiceRole((client) => client.query("delete from public.report_bounty_decisions where report_id = $1", [existing.id]));
+      await withServiceRole((client) => client.query("delete from public.report_messages where report_id = $1", [existing.id]));
+      await withServiceRole((client) =>
+        client.query("update public.reports set status = 'new', confirmed_severity = null, resolution_summary = null, updated_at = now() where id = $1", [existing.id]),
+      );
+      console.log(`Notifications-walk seed report existed at "${existing.status}" -- reset to "new" for a clean re-run.`);
+    } else {
+      console.log("Notifications-walk seed report already exists (status: new).");
+    }
+    return;
+  }
+  const created = await tryStep(
+    withActor(researcherId, (client) =>
+      callRpc<{ id: string }>(client, "public.submit_report", [
+        program.id,
+        "domain",
+        target,
+        title,
+        "Seed data for the E2E notifications suite's own live walk -- left at `new` deliberately.",
+        "other",
+        "Seed impact statement.",
+        "medium",
+      ]),
+    ),
+    "submit_report (notifications-walk fixture)",
+  );
+  if (created) console.log("Submitted the notifications-walk seed report (left at `new`).");
+}
+
+/** A second organization, unrelated to E2E_ORG_NAME -- its own owner, its own active
+ * public program -- purely so notifications.spec.ts can prove its own org's admin never
+ * sees activity from a report that isn't theirs. No researcher participation, no reports:
+ * existence alone is enough for the isolation assertion (nothing should route to this
+ * org's admin no matter what happens in E2E_ORG_NAME). */
+async function ensureUnrelatedOrg(): Promise<void> {
+  const unrelatedAdmin = await ensureUser(E2E_UNRELATED_ADMIN_EMAIL, "E2E Unrelated Admin", "e2e_unrelated_admin");
+  const unrelatedOrg = await ensureOrganization(unrelatedAdmin.id, E2E_UNRELATED_ORG_NAME);
+  const unrelatedProgram = await ensureProgram(unrelatedAdmin.id, unrelatedOrg.id, E2E_UNRELATED_PROGRAM_NAME);
+  await ensureScopeAndActivate(unrelatedAdmin.id, unrelatedProgram, "api.e2e-unrelated.example", "public");
+}
+
 async function main() {
   console.log("Seeding the E2E journey dataset...\n");
 
@@ -373,6 +442,15 @@ async function main() {
   console.log("");
 
   await ensureFreshReportForTriageWalk(veteran.id, publicProgram, "api.e2e-public.example");
+  console.log("");
+
+  let notifProgram = await ensureProgram(admin.id, org.id, E2E_NOTIF_PROGRAM_NAME);
+  notifProgram = await ensureScopeAndActivate(admin.id, notifProgram, "api.e2e-notif.example", "public");
+  await tryStep(withActor(veteran.id, (client) => client.query("select public.join_public_program($1)", [notifProgram.id])), "join_public_program (veteran, notif program)");
+  await ensureFreshReportForNotificationsWalk(veteran.id, notifProgram, "api.e2e-notif.example");
+  console.log("");
+
+  await ensureUnrelatedOrg();
 
   // Turn 8: the visibility-with-teeth E2E assertion needs a real id to attempt a direct
   // URL against as the uninvited researcher -- a UI-only search can only prove "not

@@ -42,7 +42,9 @@ export function LearningSection({ categories }: { categories: MockChallengeCateg
             className="pointer-events-none absolute -right-6 -top-6 size-40 text-canvas/10 transition-transform duration-300 motion-reduce:transition-none group-hover:scale-110 group-hover:rotate-6"
           />
           <div className="relative">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-action">Featured track</p>
+            {/* text-action-on-dark, not text-action: see app/globals.css's own token
+                comment -- --action fails contrast on this dark panel. */}
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-action-on-dark">Featured track</p>
             <p className="mt-1 text-xl font-semibold">Web fundamentals: cookies, injection, and access control</p>
           </div>
         </Link>

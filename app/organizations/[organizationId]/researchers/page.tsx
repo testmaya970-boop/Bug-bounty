@@ -65,7 +65,7 @@ export default async function OrganizationResearchersPage({ params }: { params: 
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="researchers" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         <div>
           <div className="flex items-baseline justify-between gap-3">

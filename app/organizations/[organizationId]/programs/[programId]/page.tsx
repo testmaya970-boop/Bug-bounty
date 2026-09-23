@@ -7,6 +7,8 @@ import { Breadcrumbs } from "../../../../../components/ui/navigation";
 import { Card, EmptyState, PermissionDenied } from "../../../../../components/ui/feedback";
 import { AssetTypeBadge, ProgramStatusBadge, ResearcherStatusBadge } from "../../../../../components/ui/badge";
 import { AddScopeEntryDialog } from "../../../../../components/programs/add-scope-entry-dialog";
+import { ImportScopeDialog } from "../../../../../components/programs/import-scope-dialog";
+import { ExportScopeButton } from "../../../../../components/programs/export-scope-button";
 import { ScopeEntryCard } from "../../../../../components/programs/scope-entry-card";
 import { ResearcherScopeView } from "../../../../../components/programs/researcher-scope-view";
 import { InviteResearcherDialog } from "../../../../../components/programs/invite-researcher-dialog";
@@ -189,7 +191,7 @@ async function renderProgramControlCenterPage({
       const { items: ownReports, nextCursor: ownReportsCursor } = await listReportsForProgram(programId);
 
       return (
-        <AppShell title={recovered?.programName ?? "Program"} user={user}>
+        <AppShell title={recovered?.programName ?? "Program"} user={user} organizationId={organizationId}>
           <div className="space-y-6">
             <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: "Programs", href: "/programs" }, { label: recovered?.programName ?? "Program" }]} />
 
@@ -235,7 +237,7 @@ async function renderProgramControlCenterPage({
       const outOfScope = publicScope.filter((entry) => entry.scopeState === "out_of_scope");
 
       return (
-        <AppShell title={publicProgram.name} user={user}>
+        <AppShell title={publicProgram.name} user={user} organizationId={organizationId}>
           <div className="mx-auto max-w-3xl space-y-8">
             <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: "Programs", href: "/programs" }, { label: publicProgram.name }]} />
             <div>
@@ -302,7 +304,7 @@ async function renderProgramControlCenterPage({
     }
 
     return (
-      <AppShell title="Program" user={user}>
+      <AppShell title="Program" user={user} organizationId={organizationId}>
         <PermissionDenied>This program does not exist, or you do not have access to it.</PermissionDenied>
       </AppShell>
     );
@@ -375,7 +377,7 @@ async function renderProgramControlCenterPage({
     // name -- ProgramHeader's own h2, right below, already shows it once (matches the
     // triage inbox's own precedent of a section title, e.g. "Triage inbox", never a
     // repeated entity name).
-    <AppShell title="Overview" user={user}>
+    <AppShell title="Overview" user={user} organizationId={organizationId}>
       <div className="space-y-6">
         <Breadcrumbs
           items={[{ label: "Organizations", href: "/organizations" }, { label: "Engagements", href: `/organizations/${organizationId}/programs` }, { label: program.name }]}
@@ -484,7 +486,11 @@ async function renderProgramControlCenterPage({
               <h2 className="text-base font-semibold text-ink">Scope</h2>
               <p className="text-sm text-ink-muted">This defines what researchers are permitted to test.</p>
             </div>
-            {canManageScope && <AddScopeEntryDialog organizationId={organizationId} programId={programId} />}
+            <div className="flex flex-wrap gap-2">
+              <ExportScopeButton entries={scopeEntries} programName={program.name} />
+              {canManageScope && <ImportScopeDialog organizationId={organizationId} programId={programId} />}
+              {canManageScope && <AddScopeEntryDialog organizationId={organizationId} programId={programId} />}
+            </div>
           </div>
 
           {canManageProgram && !canManageScope && <p className="text-sm text-ink-muted">Scope can only be changed while the program is in draft.</p>}

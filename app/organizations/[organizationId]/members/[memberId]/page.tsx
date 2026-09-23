@@ -25,7 +25,7 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
   const actor = await getActorMembership(user.id, organizationId);
   if (!actor || actor.status !== "active" || !canManageMembers(actor.role)) {
     return (
-      <AppShell title="Member" user={user}>
+      <AppShell title="Member" user={user} organizationId={organizationId}>
         <PermissionDenied>{actor ? "Only an owner or security admin can open the organization control center." : "You do not have access to this organization."}</PermissionDenied>
       </AppShell>
     );
@@ -43,7 +43,7 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
 
   if (!target) {
     return (
-      <AppShell title="Member" user={user}>
+      <AppShell title="Member" user={user} organizationId={organizationId}>
         <ErrorState title="Member not found">This member no longer exists in this organization, or the link is incorrect.</ErrorState>
       </AppShell>
     );
@@ -59,7 +59,7 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
     // name -- the profile card's own h2, right below, already shows it once (and matches
     // this page's own error/permission-denied branches above, which already use the
     // static "Member" title).
-    <AppShell title="Member" user={user}>
+    <AppShell title="Member" user={user} organizationId={organizationId}>
       <div className="space-y-6">
         <Breadcrumbs
           items={[
@@ -70,7 +70,7 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
           ]}
         />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="members" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         <Card className="flex flex-wrap items-center gap-4 p-5">
           <Avatar name={target.displayName} />

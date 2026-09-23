@@ -7,9 +7,10 @@ import { Breadcrumbs } from "../../../../components/ui/navigation";
 import { PermissionDenied } from "../../../../components/ui/feedback";
 import { MetadataPair, SectionLabel } from "../../../../components/ui/security-primitives";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { OrganizationDescriptionForm } from "../../../../components/organizations/organization-description-form";
 import { canManageMembers } from "../../../../services/authorization";
 import { getActorMembership, listOrganizationMembers, listPendingInvitations } from "../../../../services/organization-members";
-import { listCurrentUserOrganizations } from "../../../../services/organizations";
+import { getOrganizationDescription, listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listProgramsForOrganization } from "../../../../services/programs";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 
@@ -45,11 +46,12 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
   // member would silently come back empty, which would misrepresent "0" as a real count
   // rather than "you aren't authorized to see this." So that fetch only happens at all
   // when `canManage` is true.
-  const [organizations, members, programs, invitations] = await Promise.all([
+  const [organizations, members, programs, invitations, description] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listOrganizationMembers(organizationId),
     listProgramsForOrganization(organizationId),
     canManage ? listPendingInvitations(organizationId) : Promise.resolve(null),
+    getOrganizationDescription(organizationId),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
@@ -63,7 +65,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
       <div className="max-w-2xl space-y-8">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization", href: `/organizations/${organizationId}` }, { label: "Settings" }]} />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="settings" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         <div>
           <p className="text-sm text-ink-muted">
@@ -77,6 +79,19 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
             <MetadataPair label="Organization name" value={organization?.name ?? "Organization"} />
             <p className="mt-2 text-xs text-ink-muted">Organization name changes aren&apos;t available yet.</p>
           </div>
+        </div>
+
+        <div className="border-t border-border pt-6">
+          <SectionLabel>Description</SectionLabel>
+          {canManage ? (
+            <div className="mt-3">
+              <OrganizationDescriptionForm organizationId={organizationId} initialDescription={description ?? ""} />
+            </div>
+          ) : description ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{description}</p>
+          ) : (
+            <p className="mt-2 text-sm text-ink-muted">No description set yet.</p>
+          )}
         </div>
 
         <div className="border-t border-border pt-6">

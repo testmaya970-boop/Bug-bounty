@@ -112,8 +112,12 @@ export async function approveProgramLaunchAction(input: { programId: string }) {
   if (!user) return { ok: false as const, code: "AUTH_REQUIRED", message: "Your session has expired. Sign in again to continue." };
 
   try {
-    await withRequestLogging("platform.program_launch.approve", { actorId: user.id }, () => approveProgramLaunch(parsed.data.programId));
+    const program = await withRequestLogging("platform.program_launch.approve", { actorId: user.id }, () => approveProgramLaunch(parsed.data.programId));
     revalidatePath("/platform/programs");
+    // The org's own program page was confirmed live to keep showing "In review" after a
+    // real, successful approval (the RPC genuinely writes status='active') -- this path
+    // was simply never revalidated, only /platform/programs was. Same fix on reject below.
+    revalidatePath(`/organizations/${program.organizationId}/programs/${parsed.data.programId}`);
     return { ok: true as const };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
@@ -136,8 +140,9 @@ export async function rejectProgramLaunchAction(input: { programId: string; reas
   if (!user) return { ok: false as const, code: "AUTH_REQUIRED", message: "Your session has expired. Sign in again to continue." };
 
   try {
-    await withRequestLogging("platform.program_launch.reject", { actorId: user.id }, () => rejectProgramLaunch(parsed.data.programId, parsed.data.reason));
+    const { organizationId } = await withRequestLogging("platform.program_launch.reject", { actorId: user.id }, () => rejectProgramLaunch(parsed.data.programId, parsed.data.reason));
     revalidatePath("/platform/programs");
+    revalidatePath(`/organizations/${organizationId}/programs/${parsed.data.programId}`);
     return { ok: true as const };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };

@@ -34,7 +34,7 @@ describe("payment provider independence: the domain service never imports a paym
   });
 
   it("the migration itself contains no provider SDK reference -- the database owns its own ids and state, never a provider's", () => {
-    const source = read("supabase/migrations/202608290001_payment_ledger_and_payout_orchestration.sql");
+    const source = read("db/migrations/202608290001_payment_ledger_and_payout_orchestration.sql");
     expect(source).not.toMatch(PROVIDER_SDK_PATTERN);
   });
 

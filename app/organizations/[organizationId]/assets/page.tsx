@@ -67,7 +67,7 @@ export default async function OrganizationAssetsPage({
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="assets" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         <p className="text-sm text-ink-muted">Every asset in scope across every engagement. Manage an asset from its own engagement's Scope section.</p>
 

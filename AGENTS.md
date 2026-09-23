@@ -138,6 +138,23 @@ The objective is:
 
 **familiar where it should be familiar, distinctive where Unpatched should be distinctive.**
 
+### 4.1 Installed skills — when to reach for which
+
+`.claude/skills/` has design skills installed but nothing here says when to use them, so they go untouched and UI defaults back to generic. Use this table instead of guessing:
+
+| Skill | Use it for | Skip it for |
+|---|---|---|
+| `ui-ux-pro-max` | Any UI work: new pages, components, nav/interaction patterns, accessibility/contrast checks, stack-specific implementation (`--stack nextjs`, `--stack shadcn`). Default first stop for anything in section 4. | Non-visual logic, pure backend/API work. |
+| `design-system` | Defining or extending Unpatched's own tokens (color, spacing, type scale) — not per-component styling. | One-off component styling; use `ui-ux-pro-max` or `ui-styling` instead. |
+| `ui-styling` | Implementing components with shadcn/Radix + Tailwind once the design direction is already decided. | Deciding the direction itself — that's `ui-ux-pro-max --design-system`. |
+| `brand` | Marketing copy, tone, messaging — voice consistency across landing/marketing surfaces. | Product/dashboard UI, which isn't brand-voice-driven. |
+| `banner-design`, `slides` | One-off marketing assets (social banners, decks). Rare in this app's day-to-day. | Anything inside the product itself. |
+
+Practical rule: before building a new page or component, run
+`ui-ux-pro-max`'s `--design-system` (new page) or `--domain ux`/`--domain style` (targeted fix) search — see its own `SKILL.md` for the CLI. This is what turns section 4's "do not produce a generic SaaS dashboard" from an instruction into something enforced against real pattern data, instead of vibes.
+
+**Trap:** Unpatched already has its own token system (`app/globals.css` — `--color-action`, `--color-ink`, `--color-surface`, etc). `--design-system` invents a *new* palette/pattern from scratch (e.g. it returned a generic "Hero + Features + CTA" layout with a `#2563EB` palette when queried against the notifications inbox) — right for a genuinely new marketing surface, wrong for any page inside the existing product. For existing-product work, always use `--domain` (`ux`, `style`, `chart`, etc.) against the specific component or interaction, never `--design-system`.
+
 ## 5. Agent autonomy
 
 Agents should operate with high autonomy.
@@ -267,6 +284,10 @@ Every budgeted route (see `docs/launch-qa.md`) has a warm-median latency budget,
 
 Every nav point is its own route owning its own data. Summary pages (Home) link out and never embed or duplicate another route's list -- the same record must never render twice on one page. Layouts and shared header/nav components fetch nothing themselves; each route fetches only what it renders, so navigating to one section never pays another section's query cost.
 
+## One nav control per hierarchy level
+
+One hierarchy level = one nav control. Two navs pointing at the same destinations on one screen is a defect, not a feature. (Turn 8b: the org-level tab row and the sidebar's org group both linked the same nine destinations, each with its own, independently-broken active-state logic -- neither matched a program sub-route or a member-detail page, so both went dark at once with no visible "you are here." The tab row was deleted; the sidebar is the single org nav, with active state derived from pathname across every sub-route.) A sub-nav one level down (e.g. the program-level Inbox/Reports/Scope tabs inside a program) is a different hierarchy level, not a duplicate -- but it must never repeat a destination the level above it already links to.
+
 ## Security gates never take header-based exceptions
 
 An authentication/authorization gate (session validation, the deactivated/MFA check, any RLS-adjacent server check) must never branch on a client-controlled header (`Sec-Fetch-Mode`, `Purpose`, or similar) to skip work for "probably not a real request" traffic like a speculative prefetch. Those headers are guarantees of the browser Fetch API only -- any raw HTTP client (curl, a script, an attacker holding a stolen session cookie) can set them freely, and the gates being skipped exist precisely for that threat model. If a client-side behavior (like navigation prefetching) is amplifying request volume, fix it at the source (e.g. `prefetch={false}` on the links causing it) -- never by teaching a security gate to trust a signal the client controls. A performance fix that alters gate semantics is rejected by default.
@@ -274,3 +295,7 @@ An authentication/authorization gate (session validation, the deactivated/MFA ch
 ## Release gate
 
 The E2E journey suite (`npm run test:e2e`, `e2e/org-journey.spec.ts`) must be green against a real prod build (`next build` + `next start`, never `next dev`) with the deterministic seed dataset (`npm run seed:e2e`, `scripts/seed-e2e.ts`, idempotent -- safe to re-run before every check) before any version tag is cut. No tag without it.
+
+## Latency claims require a click-to-interactive breakdown
+
+Latency claims require a click→interactive breakdown (TTFB / server / transfer / client). Restating a previous root cause without new measurements is a rejected turn.

@@ -20,6 +20,14 @@ import {
   HelpCircle,
   Sparkles,
   Wand2,
+  Activity,
+  Landmark,
+  Building2,
+  UserCog,
+  IdCard,
+  Scale,
+  RefreshCw,
+  LifeBuoy,
   Search,
   Menu,
   X,
@@ -32,6 +40,7 @@ import { IconButton } from "./ui/button";
 import { Separator } from "./ui/feedback";
 import { NotificationBellDropdown } from "./notifications/notification-bell-dropdown";
 import { cn } from "../lib/cn";
+import { usePrefersReducedMotion } from "../lib/motion";
 import { signOutAction } from "../actions/auth";
 import { MOCK_CTF_CHALLENGES } from "../lib/mock/ctf";
 import { TRAINING_ARTICLES } from "../lib/training/content";
@@ -78,6 +87,25 @@ const PRACTICE_NAV: NavItem[] = [
 
 const RECORD_NAV: NavItem[] = [{ href: "/bounties" as Route, label: "Bounties", icon: Award }];
 
+// Platform-admin nav -- all seven app/platform/* destinations, which otherwise have zero
+// nav visibility anywhere (confirmed live: platform_admins membership was granted directly
+// in the DB, and the signed-in shell showed no indication of admin status at all, no link,
+// nothing beyond typing a /platform/* URL by hand). Every /platform/* page still
+// independently re-checks isPlatformAdmin() itself server-side -- this group rendering is
+// a discoverability fix only, never the actual authorization boundary. An earlier pass
+// gave these seven pages their own separate header+nav-bar component instead of using
+// AppShell's sidebar like every other authenticated page -- flagged live as a real
+// inconsistency and reverted; this group is the one, real, shared nav for all seven now.
+const PLATFORM_NAV: NavItem[] = [
+  { href: "/platform/programs" as Route, label: "Program launches", icon: Landmark },
+  { href: "/platform/organizations" as Route, label: "Organizations", icon: Building2 },
+  { href: "/platform/researchers" as Route, label: "Researchers", icon: UserCog },
+  { href: "/platform/kyc" as Route, label: "KYC", icon: IdCard },
+  { href: "/platform/mediations" as Route, label: "Mediations", icon: Scale },
+  { href: "/platform/retests" as Route, label: "Retests", icon: RefreshCw },
+  { href: "/platform/needs-recovery" as Route, label: "Needs recovery", icon: LifeBuoy },
+];
+
 const SYSTEM_NAV: NavItem[] = [
   { href: "/notifications" as Route, label: "Notifications", icon: Bell },
   // A real, honest static stub -- not a fabricated feature preview. See
@@ -91,6 +119,13 @@ const SYSTEM_NAV: NavItem[] = [
   { href: "/hai" as Route, label: "Hai", icon: Wand2 },
 ];
 
+// A platform-admin-only account (isPlatformAdminOnly below) has no researcher/org context
+// for "Coming Soon" or "Hai" to mean anything -- both are researcher-facing feature
+// previews, confirmed live to have zero relevance to an admin-only sidebar. Notifications
+// stays (platform-admin actions -- approvals, rejections -- generate real notifications
+// too), just narrowed to the one real destination for this context.
+const PLATFORM_SYSTEM_NAV: NavItem[] = [{ href: "/notifications" as Route, label: "Notifications", icon: Bell }];
+
 // Item 14 of the 15-point nav map (Turn 6, phase/9-ia): previously Settings + Sign out
 // only. Profile (the real, existing /settings/profile route) and Help/Docs (the same
 // real /help destination the top-bar HelpLink now points to, item 12 -- not a second,
@@ -102,40 +137,56 @@ const ACCOUNT_MENU_LINKS: { href: Route; label: string }[] = [
   { href: "/help" as Route, label: "Help & docs" },
 ];
 
-// docs/decisions/0075 -- the organization-side nav, regrouped into the same zone grammar
-// (Overview / Security / Insights / Organization) the research-side nav already uses
-// (Research/Practice/Record/System) for the identical reason: one consistent grouping
-// grammar across both contexts, not five ad hoc label styles. Every href below is a real,
-// already-existing route (components/organizations/organization-header.tsx's own six real
-// tabs: Overview, Programs, Analytics, Researchers, Members, Settings) -- this is a
-// regrouping of what exists, never a new route. Engagements/Findings/Inbox/Assets/
-// Hacktivity are explicitly NOT included here: none of those concepts exist in the real
-// domain model yet (see the architecture inventory this pass is based on) -- adding nav
-// entries for them would be exactly the "fake destination" pattern this codebase has
-// spent this whole session removing, not adding back.
-type OrgNavItem = { href: (organizationId: string) => Route; label: string; icon: React.ComponentType<{ className?: string }> };
+// Turn 8b: the org-level tab row (components/organizations/organization-header.tsx's own
+// nine-item nav) is deleted -- this sidebar is now the ONE org nav, full stop. Nine
+// destinations behind two independently-highlighting controls (the tab row's own
+// path === item.href check never matched a program sub-route or a member-detail page,
+// so "Engagements"/"Members" silently went dark exactly where a user most needed to see
+// where they were) was flagged live, on a real screenshot, as the disease -- not the
+// individual routes. New standing rule (AGENTS.md): one hierarchy level, one nav control.
+//
+// Hactivity (Turn 6, phase/9-ia) was missing from this list entirely -- built after this
+// grouping's own comment was written, and never backfilled. Added here now; it was never
+// missing from the org header's own nine, only from this second, now-deleted nav.
+type OrgNavItem = { href: (organizationId: string) => Route; label: string; icon: React.ComponentType<{ className?: string }>; matchesPath: (path: string, href: string) => boolean };
 
-const ORG_OVERVIEW_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}` as Route, label: "Home", icon: LayoutDashboard }];
+// Home matches ONLY the exact org root -- every other org route also starts with
+// `/organizations/{id}`, so a prefix match here would keep Home lit on every org page.
+function exactMatch(path: string, href: string): boolean {
+  return path === href;
+}
+// Every other org destination matches its own path and anything nested under it (e.g.
+// Engagements stays highlighted while looking at one specific program, since that's a
+// deeper level of the SAME hierarchy branch, not a different destination).
+function prefixMatch(path: string, href: string): boolean {
+  return path === href || path.startsWith(`${href}/`);
+}
+
+const ORG_OVERVIEW_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}` as Route, label: "Home", icon: LayoutDashboard, matchesPath: exactMatch }];
 const ORG_SECURITY_NAV: OrgNavItem[] = [
   // Route unchanged (/organizations/{id}/programs) -- only the label changed to
   // "Engagements" to match the page's real HackerOne-style category-tab identity
   // (docs/decisions/0076). Same programs, same URLs, same permissions.
-  { href: (id) => `/organizations/${id}/programs` as Route, label: "Engagements", icon: FolderKanban },
+  { href: (id) => `/organizations/${id}/programs` as Route, label: "Engagements", icon: FolderKanban, matchesPath: prefixMatch },
   // Findings: the flat, cross-program report list (services/reports.ts's
   // listReportsForOrganization) -- distinct from the per-program triage inbox at
   // .../programs/{id}/reports, which still owns triage actions/bulk operations.
-  { href: (id) => `/organizations/${id}/findings` as Route, label: "Findings", icon: Bug },
+  { href: (id) => `/organizations/${id}/findings` as Route, label: "Findings", icon: Bug, matchesPath: prefixMatch },
   // Assets: the flat, cross-program scope/asset inventory (extends
   // public.program_scope_entries, docs/decisions/0006-scope-asset-model.md) -- creation/
   // editing still happens per-engagement (scope mutation is only legal while that
   // program is in draft), this is the read-only cross-program view.
-  { href: (id) => `/organizations/${id}/assets` as Route, label: "Assets", icon: Target },
-  { href: (id) => `/organizations/${id}/researchers` as Route, label: "Researchers", icon: Trophy },
+  { href: (id) => `/organizations/${id}/assets` as Route, label: "Assets", icon: Target, matchesPath: prefixMatch },
+  { href: (id) => `/organizations/${id}/researchers` as Route, label: "Researchers", icon: Trophy, matchesPath: prefixMatch },
+  // Hactivity: the org's full, chronological audit event feed (services/organization-
+  // members.ts's getOrganizationAuditActivity) -- owner/security_admin only, matching
+  // audit_logs' own read policy.
+  { href: (id) => `/organizations/${id}/hactivity` as Route, label: "Hactivity", icon: Activity, matchesPath: prefixMatch },
 ];
-const ORG_INSIGHTS_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}/analytics` as Route, label: "Analytics", icon: FileWarning }];
+const ORG_INSIGHTS_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}/analytics` as Route, label: "Analytics", icon: FileWarning, matchesPath: prefixMatch }];
 const ORG_ORGANIZATION_NAV: OrgNavItem[] = [
-  { href: (id) => `/organizations/${id}/members` as Route, label: "Members", icon: Award },
-  { href: (id) => `/organizations/${id}/settings` as Route, label: "Settings", icon: ShieldCheck },
+  { href: (id) => `/organizations/${id}/members` as Route, label: "Members", icon: Award, matchesPath: prefixMatch },
+  { href: (id) => `/organizations/${id}/settings` as Route, label: "Settings", icon: ShieldCheck, matchesPath: prefixMatch },
 ];
 
 type ShellUser = { displayName: string; email: string | null };
@@ -300,7 +351,7 @@ function OrgNavGroup({ label, items, organizationId, path, onNavigate }: { label
         {items.map((item) => {
           const href = item.href(organizationId);
           const Icon = item.icon;
-          const active = path === href;
+          const active = item.matchesPath(path, href);
           return (
             <Link
               key={item.label}
@@ -436,21 +487,43 @@ function SidebarNav({
   organizations,
   currentOrganizationId,
   hasResearcherParticipation,
+  isPlatformAdmin,
   onNavigate,
 }: {
   path: string;
   organizations: OrganizationSummary[];
   currentOrganizationId?: string;
   hasResearcherParticipation: boolean;
+  isPlatformAdmin: boolean;
   onNavigate: () => void;
 }) {
   const hasOrganization = organizations.length > 0;
   const isOrganizationOnly = hasOrganization && !hasResearcherParticipation;
-  const resolvedOrgId = currentOrganizationId ?? (isOrganizationOnly ? organizations[0]?.id : undefined);
+  // Only fall back to a guessed org when there is exactly one -- nothing ambiguous to
+  // pick. With 2+ organizations and no real currentOrganizationId (e.g. the /organizations
+  // picker page itself, which intentionally passes no organizationId to AppShell), this
+  // used to silently resolve to organizations[0] -- confirmed live: it made the sidebar
+  // render a full org-scoped nav (Findings, Engagements, etc.) as if that first-sorted
+  // org were "current" while standing on the picker page for a DIFFERENT org, so clicking
+  // Findings there silently opened the wrong organization's data. Falls through to
+  // `undefined` for 2+ orgs, matching this function's own doc comment above (the org zone
+  // links simply don't render without a real current org).
+  const resolvedOrgId = currentOrganizationId ?? (isOrganizationOnly && organizations.length === 1 ? organizations[0]?.id : undefined);
+  // A platform admin with no real organization membership and no real researcher
+  // participation used to fall through to the "brand-new signup" case below (Research/
+  // Practice/Record render whenever !isOrganizationOnly, and hasOrganization=false makes
+  // that true regardless of admin status) -- confirmed live: an admin-only account saw
+  // Dashboard/Programs/Reports/CTF/Learn/Bounties, none of it real or relevant to what
+  // this account can actually do. Hidden specifically for that case (admin AND no real
+  // researcher standing) -- an account that is BOTH a platform admin AND a real
+  // researcher keeps its real researcher zones; admin status alone never erases a real
+  // relationship this account actually has.
+  const isPlatformAdminOnly = isPlatformAdmin && !hasResearcherParticipation;
+  const showResearcherZones = !isOrganizationOnly && !isPlatformAdminOnly;
 
   return (
     <nav aria-label="Primary navigation" className="space-y-5">
-      {!isOrganizationOnly && (
+      {showResearcherZones && (
         <>
           <NavGroup label="Research" items={RESEARCH_NAV} path={path} onNavigate={onNavigate} />
           <NavGroup label="Practice" items={PRACTICE_NAV} path={path} onNavigate={onNavigate} />
@@ -470,7 +543,17 @@ function SidebarNav({
           )}
         </div>
       )}
-      <NavGroup label="System" items={SYSTEM_NAV} path={path} onNavigate={onNavigate} />
+      {isPlatformAdminOnly ? (
+        <>
+          <NavGroup label="Platform admin" items={PLATFORM_NAV} path={path} onNavigate={onNavigate} />
+          <NavGroup label="System" items={PLATFORM_SYSTEM_NAV} path={path} onNavigate={onNavigate} />
+        </>
+      ) : (
+        <>
+          <NavGroup label="System" items={SYSTEM_NAV} path={path} onNavigate={onNavigate} />
+          {isPlatformAdmin && <NavGroup label="Platform admin" items={PLATFORM_NAV} path={path} onNavigate={onNavigate} />}
+        </>
+      )}
     </nav>
   );
 }
@@ -483,6 +566,7 @@ export function AppShellClient({
   currentOrganizationId,
   hasResearcherParticipation,
   unreadNotificationCount,
+  isPlatformAdmin,
 }: {
   title: string;
   children: React.ReactNode;
@@ -491,10 +575,19 @@ export function AppShellClient({
   currentOrganizationId?: string;
   hasResearcherParticipation: boolean;
   unreadNotificationCount: number;
+  isPlatformAdmin: boolean;
 }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  // Framer Motion's initial/animate/transition props run their own JS-driven animation
+  // loop and are never touched by Tailwind's motion-reduce: variant (that only rewrites
+  // CSS classes) -- so every motion.* block below reads this directly and drops its
+  // transform component under reduced motion, keeping the opacity fade only (the
+  // "gentler, not zero" rule: a reduced-motion visitor gets an instant-feeling but not
+  // literally instant transition, never full slide/translate motion, and never nothing
+  // at all -- an abrupt hard cut is its own kind of jarring change).
+  const reducedMotion = usePrefersReducedMotion();
 
   return (
     <div className="relative min-h-dvh bg-canvas text-ink">
@@ -530,7 +623,7 @@ export function AppShellClient({
             the top on desktop, not duplicated in the top bar. */}
         <aside className="glass-surface hidden min-h-[calc(100dvh-4rem)] flex-col gap-6 rounded-none border-y-0 border-l-0 p-3 lg:flex">
           <SidebarBrand />
-          <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} onNavigate={close} />
+          <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} onNavigate={close} />
         </aside>
 
         <AnimatePresence>
@@ -544,10 +637,10 @@ export function AppShellClient({
             >
               <button aria-label="Close navigation" className="absolute inset-0 bg-black/60" onClick={close} />
               <motion.aside
-                initial={{ x: -24, opacity: 0 }}
+                initial={{ x: reducedMotion ? 0 : -24, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -24, opacity: 0 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+                exit={{ x: reducedMotion ? 0 : -24, opacity: 0 }}
+                transition={{ duration: reducedMotion ? 0.12 : 0.18, ease: "easeOut" }}
                 className="glass-surface relative flex h-full w-72 flex-col gap-6 rounded-none border-y-0 border-l-0 p-3 shadow-xl"
               >
                 <div className="flex items-center justify-between">
@@ -556,7 +649,7 @@ export function AppShellClient({
                     <X aria-hidden="true" className="size-5" />
                   </IconButton>
                 </div>
-                <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} onNavigate={close} />
+                <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} onNavigate={close} />
               </motion.aside>
             </motion.div>
           )}
@@ -565,9 +658,9 @@ export function AppShellClient({
         <motion.main
           id="main"
           key={path}
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: reducedMotion ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
+          transition={{ duration: reducedMotion ? 0.15 : 0.4, ease: "easeOut" }}
           className="min-w-0 p-4 sm:p-6 lg:p-8"
         >
           <div className="mx-auto max-w-[1440px]">

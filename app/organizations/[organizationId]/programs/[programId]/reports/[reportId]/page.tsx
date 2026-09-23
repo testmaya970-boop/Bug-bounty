@@ -25,6 +25,7 @@ import { ReportCollaboratorsPanel } from "../../../../../../../components/report
 import { ReportRetestPanel } from "../../../../../../../components/reports/report-retest";
 import { ReportMediationPanel } from "../../../../../../../components/reports/report-mediation";
 import { SectionLabel, MetadataPair } from "../../../../../../../components/ui/security-primitives";
+import { Markdown } from "../../../../../../../components/ui/markdown";
 import { getReport, getReportAuditActivity, listReportCollaborators, listReportEvidence, listReportMediations, listReportMessages, listReportRetests } from "../../../../../../../services/reports";
 import { getReportBountyDecision } from "../../../../../../../services/bounty";
 import { getReportDisclosure } from "../../../../../../../services/report-disclosures";
@@ -66,7 +67,7 @@ export default async function ReportDetailPage({
   // URL is treated the same way, rather than silently rendering it under the wrong context.
   if (!report || report.organizationId !== organizationId || report.programId !== programId) {
     return (
-      <AppShell title="Report" user={user}>
+      <AppShell title="Report" user={user} organizationId={organizationId}>
         <PermissionDenied>This report does not exist, or you do not have access to it.</PermissionDenied>
       </AppShell>
     );
@@ -127,7 +128,7 @@ export default async function ReportDetailPage({
   const isFinal = allowedNext.length === 0;
 
   return (
-    <AppShell title={report.title} user={user}>
+    <AppShell title={report.title} user={user} organizationId={organizationId}>
       <TriageStatusRailProvider initialStatus={report.status} initialSeverity={report.confirmedSeverity}>
       <div className="mx-auto max-w-6xl space-y-6">
         <Breadcrumbs
@@ -235,12 +236,12 @@ export default async function ReportDetailPage({
               )}
               <div className="mt-5 border-t border-border pt-5">
                 <SectionLabel>Reproduction</SectionLabel>
-                <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink">{report.description}</p>
+                <Markdown content={report.description} className="mt-2" />
               </div>
               {report.impact && (
                 <div className="mt-5 border-t border-border pt-5">
                   <SectionLabel>Impact</SectionLabel>
-                  <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink">{report.impact}</p>
+                  <Markdown content={report.impact} className="mt-2" />
                 </div>
               )}
               {report.cvssMetrics && report.cvssBaseScore !== null && <CvssSummary metrics={report.cvssMetrics} baseScore={report.cvssBaseScore} />}
@@ -355,7 +356,7 @@ export default async function ReportDetailPage({
               {report.resolutionSummary && (
                 <div className="mt-3 rounded-md border border-border p-3">
                   <SectionLabel>Resolution</SectionLabel>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{report.resolutionSummary}</p>
+                  <Markdown content={report.resolutionSummary} className="mt-1" />
                 </div>
               )}
               {report.status === "duplicate" && report.duplicateOfReportId && (

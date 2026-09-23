@@ -6,7 +6,7 @@ This repository implements Phase 1 and Phase 2: application plumbing, identity p
 
 ## Layers
 
-`app/` renders Next.js App Router pages. Route handlers and Server Actions will authenticate before calling `services/`. `services/` owns authorization and domain rules. `lib/` contains integration code such as Supabase clients, environment parsing, and the current-session lookup. Database truth lives in PostgreSQL migrations under `supabase/migrations/`; TypeScript types are convenience types, not authorization evidence.
+`app/` renders Next.js App Router pages. Route handlers and Server Actions will authenticate before calling `services/`. `services/` owns authorization and domain rules. `lib/` contains integration code such as the native Postgres pool, environment parsing, and the current-session lookup. Database truth lives in PostgreSQL migrations under `db/migrations/`; TypeScript types are convenience types, not authorization evidence.
 
 ## Identity and tenancy
 

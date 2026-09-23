@@ -58,7 +58,7 @@ export default async function OrganizationMembersPage({ params }: { params: Prom
       <div className="space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization", href: `/organizations/${organizationId}` }, { label: "Members" }]} />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="members" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-ink-muted">

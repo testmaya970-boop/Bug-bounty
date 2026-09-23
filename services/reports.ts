@@ -322,14 +322,17 @@ export async function getReportInboxWorkloadSummary(programId: string): Promise<
   let newCount: number, needsInfoCount: number, highSeverityCount: number;
   try {
     ({ newCount, needsInfoCount, highSeverityCount } = await withActorTransaction(actor?.id ?? null, async (client) => {
-      const [newResult, needsInfoResult, highSeverityResult] = await Promise.all([
-        client.query<{ count: string }>("select count(*) from public.reports where program_id = $1 and status = 'new'", [programId]),
-        client.query<{ count: string }>("select count(*) from public.reports where program_id = $1 and status = 'needs_information'", [programId]),
-        client.query<{ count: string }>(
-          "select count(*) from public.reports where program_id = $1 and status = any($2) and confirmed_severity = any($3)",
-          [programId, OPEN_REPORT_STATUSES, ["high", "critical"]],
-        ),
-      ]);
+      // Sequential, not Promise.all -- these three queries share the single client this
+      // withActorTransaction callback was handed. A pg PoolClient can only run one query
+      // at a time; firing these concurrently on it throws pg's own "client is already
+      // executing a query" deprecation warning (same real bug found and fixed in
+      // services/payments.ts's listMyPaymentObligations).
+      const newResult = await client.query<{ count: string }>("select count(*) from public.reports where program_id = $1 and status = 'new'", [programId]);
+      const needsInfoResult = await client.query<{ count: string }>("select count(*) from public.reports where program_id = $1 and status = 'needs_information'", [programId]);
+      const highSeverityResult = await client.query<{ count: string }>(
+        "select count(*) from public.reports where program_id = $1 and status = any($2) and confirmed_severity = any($3)",
+        [programId, OPEN_REPORT_STATUSES, ["high", "critical"]],
+      );
       return { newCount: Number(newResult.rows[0].count), needsInfoCount: Number(needsInfoResult.rows[0].count), highSeverityCount: Number(highSeverityResult.rows[0].count) };
     }));
   } catch (error) {

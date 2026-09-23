@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 // replacement for it.
 
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
-const migrationPath = `${repoRoot}supabase/migrations/202609060002_organization_researcher_intelligence.sql`;
+const migrationPath = `${repoRoot}db/migrations/202609060002_organization_researcher_intelligence.sql`;
 const sql = readFileSync(migrationPath, "utf8");
 
 describe("list_researchers_for_organization: authorization", () => {

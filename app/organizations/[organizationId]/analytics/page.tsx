@@ -142,7 +142,7 @@ export default async function OrganizationAnalyticsPage({
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="analytics" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         {programs.length === 0 ? (
           <EmptyState title="No analytics yet">Analytics fill in once this organization has at least one program receiving reports.</EmptyState>

@@ -3,6 +3,7 @@ import { AppShellClient } from "./app-shell-client";
 import { listCurrentUserOrganizations } from "../services/organizations";
 import { countMyUnreadNotifications } from "../services/notifications";
 import { listMyProgramParticipations } from "../services/program-researchers";
+import { isPlatformAdmin } from "../services/platform-operations";
 import { perfTimed } from "../lib/perf-trace";
 
 type ShellUser = { id: string; displayName: string; email: string | null };
@@ -42,11 +43,16 @@ export async function AppShell({
   user?: ShellUser | null;
   organizationId?: string;
 }) {
-  const [organizations, hasResearcherParticipation, unreadNotificationCount] = await perfTimed("AppShell 3-query batch", () =>
+  const [organizations, hasResearcherParticipation, unreadNotificationCount, isAdmin] = await perfTimed("AppShell 4-query batch", () =>
     Promise.all([
       user ? listCurrentUserOrganizations(user.id) : Promise.resolve([]),
       user ? listMyProgramParticipations().then((participations) => participations.length > 0) : Promise.resolve(false),
       user ? countMyUnreadNotifications(user.id) : Promise.resolve(0),
+      // Real platform_admins membership (public.am_i_platform_admin), never a role
+      // column -- see isPlatformAdmin's own comment. Only used here to decide whether the
+      // one-line "Platform" entry point below renders; every /platform/* page still
+      // independently re-checks this itself server-side (never trusts this alone).
+      user ? isPlatformAdmin() : Promise.resolve(false),
     ]),
   );
   return (
@@ -57,6 +63,7 @@ export async function AppShell({
       currentOrganizationId={organizationId}
       hasResearcherParticipation={hasResearcherParticipation}
       unreadNotificationCount={unreadNotificationCount}
+      isPlatformAdmin={isAdmin}
     >
       {children}
     </AppShellClient>

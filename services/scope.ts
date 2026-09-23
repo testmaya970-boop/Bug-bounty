@@ -144,11 +144,19 @@ export async function addScopeEntry(programId: string, assetType: ProgramAssetTy
   return mapScopeEntryRpcRow(rows[0]);
 }
 
-export async function updateScopeEntry(entryId: string, scopeState: ScopeState, description?: string): Promise<ScopeEntry> {
+/** `assetType`/`targetInput` are optional -- omitting both leaves the entry's target
+ * completely untouched (the original state/description-only edit path). Passing
+ * `targetInput` re-canonicalizes it exactly like addScopeEntry does (never duplicated
+ * validation logic here) -- see db/migrations/202609090009_editable_scope_target.sql for
+ * why this overrides 0006's original "target is immutable" decision, and what audit-
+ * history trade-off that carries. */
+export async function updateScopeEntry(entryId: string, scopeState: ScopeState, description?: string, assetType?: ProgramAssetType, targetInput?: string): Promise<ScopeEntry> {
   const actor = await getCurrentUser();
   let rows;
   try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<ScopeEntryRpcRow>(client, "public.update_scope_entry", [entryId, scopeState, description ?? null]));
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<ScopeEntryRpcRow>(client, "public.update_scope_entry", [entryId, scopeState, description ?? null, assetType ?? null, targetInput ?? null]),
+    );
   } catch (error) {
     mapError(error as { message: string });
   }

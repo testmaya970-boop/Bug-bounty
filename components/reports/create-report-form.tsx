@@ -6,6 +6,7 @@ import type { Route } from "next";
 import { Card, Alert } from "../ui/feedback";
 import { Button } from "../ui/button";
 import { Input, Select, Textarea } from "../ui/form";
+import { MarkdownTextarea } from "../ui/markdown-textarea";
 import { SectionLabel } from "../ui/security-primitives";
 import { submitReportAction, addResearcherEvidenceAction } from "../../actions/reports";
 import { uploadResearcherFileEvidenceAction } from "../../actions/report-file-evidence";
@@ -83,8 +84,23 @@ export function classifyFailure(code: string, message: string): SubmitFailure {
     case "PROGRAM_NOT_FOUND":
     case "SUBMISSIONS_CLOSED":
       return { banner: "This program is not currently accepting reports." };
+    case "KYC_REQUIRED":
+      // submit_report's own message is already specific and correct -- surfaced verbatim,
+      // the same convention INVALID_TITLE/INVALID_DESCRIPTION/INVALID_IMPACT already use
+      // for a real, server-computed, safe-to-show sentence. Previously fell to the
+      // generic default banner ("The request could not be completed...") -- confirmed
+      // live as a real gap: this is the one code submit_report can raise that this
+      // switch never had a case for.
+      return { banner: message };
     case "TARGET_NOT_ELIGIBLE":
       return { targetError: "This target is not currently inside the program's scope." };
+    case "INVALID_TARGET":
+      // canonicalize_scope_target's own message is already specific and safe to show
+      // verbatim (the same real-format-rule guidance TARGET_HELPER_TEXT above warns about
+      // preventively) -- confirmed live as a real gap: a malformed target (e.g. a URL's
+      // own query string on a domain-type entry) fell to the generic default banner
+      // instead of this field-level, already-correct message.
+      return { targetError: message };
     case "INVALID_TITLE":
       return { titleError: message };
     case "INVALID_DESCRIPTION":
@@ -475,14 +491,14 @@ export function CreateReportForm({ organizationId, programId, programName }: { o
           <SectionLabel>Reproduction</SectionLabel>
           <p className="mt-1 text-sm text-ink-muted">How can the organization reproduce it?</p>
           <div className="mt-3">
-            <Textarea
+            <MarkdownTextarea
               label="Description"
               required
-              helperText="Step-by-step reproduction. Formatting and whitespace are preserved exactly as written. Selecting a weakness type above fills in a starting structure you can edit or replace."
+              helperText="Step-by-step reproduction. Selecting a weakness type above fills in a starting structure you can edit or replace."
               value={description}
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={setDescription}
               maxLength={20000}
-              className="[&_textarea]:min-h-48"
+              rows={12}
               error={failure?.descriptionError}
             />
           </div>
@@ -492,14 +508,14 @@ export function CreateReportForm({ organizationId, programId, programName }: { o
           <SectionLabel>Impact</SectionLabel>
           <p className="mt-1 text-sm text-ink-muted">Why does this matter? What can an attacker actually achieve?</p>
           <div className="mt-3">
-            <Textarea
+            <MarkdownTextarea
               label="Impact"
               required
               helperText={impactPrompt ?? "Business or technical consequence: data exposed, actions an attacker could take, users affected."}
               value={impact}
-              onChange={(event) => setImpact(event.target.value)}
+              onChange={setImpact}
               maxLength={20000}
-              className="[&_textarea]:min-h-32"
+              rows={8}
               error={failure?.impactError}
             />
           </div>

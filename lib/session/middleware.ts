@@ -1,8 +1,9 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { withClient, withServiceRoleTransaction, setActorClaims } from "@/lib/db/pool";
 import { validateSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth/session";
-import { perfTimed } from "@/lib/perf-trace";
+import { perfTimedWithId } from "@/lib/perf-trace";
 
 // A password-only session for an account with a verified email-OTP factor is deliberately
 // insufficient (see docs/decisions/0052) -- every route except these must redirect to
@@ -35,11 +36,22 @@ function isDeactivatedExempt(pathname: string): boolean {
 export const VERIFIED_USER_ID_HEADER = "x-sentinel-verified-user-id";
 export const VERIFIED_SESSION_ID_HEADER = "x-sentinel-verified-session-id";
 
+/** Turn 8c forensics: minted once per request, forwarded on the request headers (so every
+ * downstream perfTimed() call -- Server Components, Server Actions, route handlers -- can
+ * read it back via next/headers() and log under the same id) and set on the response
+ * headers too, so a client-side correlation pass can read it off the navigation's own
+ * response and join client-side timing to this request's exact server-side breakdown. */
+const REQUEST_ID_HEADER = "x-request-id";
+
 export async function updateSession(request: NextRequest) {
-  return perfTimed(`middleware ${request.method} ${request.nextUrl.pathname}`, () => updateSessionInner(request));
+  const requestId = request.headers.get(REQUEST_ID_HEADER) ?? randomUUID();
+  request.headers.set(REQUEST_ID_HEADER, requestId);
+  const response = await perfTimedWithId(requestId, `middleware ${request.method} ${request.nextUrl.pathname}`, () => updateSessionInner(request, requestId));
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  return response;
 }
 
-async function updateSessionInner(request: NextRequest) {
+async function updateSessionInner(request: NextRequest, requestId: string) {
   // A client-supplied value here would let a request claim to be pre-verified without
   // ever going through a real session lookup -- always strip both first, so the only way
   // either header can be set is the real assignment below, after real validation.
@@ -54,7 +66,7 @@ async function updateSessionInner(request: NextRequest) {
   // provably correct, freshly committed session row was invisible to this exact query).
   // service_role is the correct role for this lookup -- identical to why
   // signInWithPassword itself reads public.users pre-auth via withServiceRoleTransaction.
-  const session = await perfTimed("middleware validateSessionCookie", () =>
+  const session = await perfTimedWithId(requestId, "middleware validateSessionCookie", () =>
     withServiceRoleTransaction((client) => validateSessionCookie(client, cookieValue)),
   );
 
@@ -85,7 +97,7 @@ async function updateSessionInner(request: NextRequest) {
 
   if (checkDeactivated || checkMfa) {
     try {
-      const { deactivated, mfaStatus } = await perfTimed("middleware gate queries", () =>
+      const { deactivated, mfaStatus } = await perfTimedWithId(requestId, "middleware gate queries", () =>
         withClient(async (client) => {
           await client.query("begin");
           try {

@@ -82,7 +82,7 @@ async function renderProgramInboxPage({
   const program = await perfTimed("inbox: getProgram", () => getProgram(programId));
   if (!program || program.organizationId !== organizationId) {
     return (
-      <AppShell title="Inbox" user={user}>
+      <AppShell title="Inbox" user={user} organizationId={organizationId}>
         <PermissionDenied>This program does not exist, or you do not have access to it.</PermissionDenied>
       </AppShell>
     );
@@ -95,7 +95,7 @@ async function renderProgramInboxPage({
 
   if (!canManageProgram) {
     return (
-      <AppShell title="Inbox" user={user}>
+      <AppShell title="Inbox" user={user} organizationId={organizationId}>
         <PermissionDenied>Only a program manager or organization admin can open the inbox. Your own reports are available at /reports.</PermissionDenied>
       </AppShell>
     );
@@ -130,7 +130,7 @@ async function renderProgramInboxPage({
   const reportIdNotFound = reportIdProvided && !validSelectedReportId;
 
   return (
-    <AppShell title="Inbox" user={user}>
+    <AppShell title="Inbox" user={user} organizationId={organizationId}>
       <div className="flex h-[calc(100vh-8.5rem)] max-w-[100rem] flex-col space-y-4">
         <div className="shrink-0 space-y-4">
           <Breadcrumbs

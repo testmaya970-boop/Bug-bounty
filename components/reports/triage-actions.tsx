@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Dialog } from "../ui/navigation";
 import { Button } from "../ui/button";
 import { Input, Select, Textarea } from "../ui/form";
+import { MarkdownTextarea } from "../ui/markdown-textarea";
 import { cn } from "../../lib/cn";
 import {
   acceptReportAction,
@@ -280,7 +281,7 @@ export function ResolveReportDialog({ organizationId, programId, reportId }: Rep
       <Dialog open={open} title="Resolve this report" onClose={close}>
         <form className="space-y-4" onSubmit={handleSubmit} noValidate>
           <p className="text-sm text-ink-muted">This is a terminal state. It cannot be moved to another status afterward.</p>
-          <Textarea label="How was this resolved?" required autoFocus value={summary} onChange={(event) => setSummary(event.target.value)} maxLength={5000} error={error ?? undefined} />
+          <MarkdownTextarea label="How was this resolved?" required autoFocus value={summary} onChange={setSummary} maxLength={5000} rows={5} error={error ?? undefined} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={close} disabled={pending}>
               Cancel

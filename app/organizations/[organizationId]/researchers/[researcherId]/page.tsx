@@ -33,7 +33,7 @@ export default async function OrganizationResearcherDetailPage({ params }: { par
   const actor = await getActorMembership(user.id, organizationId);
   if (!actor || actor.status !== "active") {
     return (
-      <AppShell title="Researcher" user={user}>
+      <AppShell title="Researcher" user={user} organizationId={organizationId}>
         <PermissionDenied>You do not have access to this organization.</PermissionDenied>
       </AppShell>
     );
@@ -45,7 +45,7 @@ export default async function OrganizationResearcherDetailPage({ params }: { par
 
   if (!researcher) {
     return (
-      <AppShell title="Researcher" user={user}>
+      <AppShell title="Researcher" user={user} organizationId={organizationId}>
         <div className="max-w-3xl space-y-6">
           <Breadcrumbs
             items={[
@@ -61,7 +61,7 @@ export default async function OrganizationResearcherDetailPage({ params }: { par
   }
 
   return (
-    <AppShell title={researcher.displayName} user={user}>
+    <AppShell title={researcher.displayName} user={user} organizationId={organizationId}>
       <div className="max-w-3xl space-y-6">
         <Breadcrumbs
           items={[

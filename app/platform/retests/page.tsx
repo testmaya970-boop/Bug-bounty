@@ -1,6 +1,7 @@
 import React from "react";
 import { redirect, notFound } from "next/navigation";
 import type { Route } from "next";
+import { AppShell } from "../../../components/app-shell";
 import { SectionLabel } from "../../../components/ui/security-primitives";
 import { EmptyState } from "../../../components/ui/feedback";
 import { ResolveRetestForm } from "../../../components/platform/resolve-retest-form";
@@ -15,7 +16,9 @@ import { formatDateTime } from "../../../lib/format-date";
  * because the organization was unresponsive or the researcher disagreed with the
  * organization's own retest decision. Shows real report content (title, requester notes),
  * mirroring list_escalated_mediations_for_admin's own exception to the "never report
- * content" rule -- see list_escalated_retests_for_admin's own comment.
+ * content" rule -- see list_escalated_retests_for_admin's own comment. Uses <AppShell>
+ * like every other authenticated page -- see app/platform/programs/page.tsx's own comment
+ * for why this replaced a separate header+nav-bar component.
  */
 export default async function PlatformRetestsPage() {
   const user = await getCurrentUser();
@@ -27,25 +30,15 @@ export default async function PlatformRetestsPage() {
   const retests = await listEscalatedRetestsForAdmin();
 
   return (
-    <div className="min-h-dvh bg-canvas text-ink">
-      <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-5xl items-center gap-3">
-          <span className="text-lg font-bold tracking-tight">Unpatched</span>
-          <span className="border-l border-border-strong pl-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Platform operations</span>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <AppShell title="Escalated retests" user={user}>
+      <div className="max-w-5xl space-y-6">
         <SectionLabel>Platform operations</SectionLabel>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Escalated retests</h1>
-        <p className="mt-2 max-w-2xl text-sm text-ink-muted">Retest requests a researcher escalated past their organization, across every organization.</p>
+        <p className="text-sm text-ink-muted">Retest requests a researcher escalated past their organization, across every organization.</p>
 
         {retests.length === 0 ? (
-          <div className="mt-8">
-            <EmptyState title="No escalated retests">Nothing is currently awaiting platform review.</EmptyState>
-          </div>
+          <EmptyState title="No escalated retests">Nothing is currently awaiting platform review.</EmptyState>
         ) : (
-          <ul className="mt-8 divide-y divide-border rounded-lg border border-border bg-surface">
+          <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
             {retests.map((retest) => (
               <li key={retest.id} className="p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-danger">Escalated · {formatDateTime(retest.escalatedAt ?? retest.requestedAt)}</p>
@@ -59,7 +52,7 @@ export default async function PlatformRetestsPage() {
             ))}
           </ul>
         )}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

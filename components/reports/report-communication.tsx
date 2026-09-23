@@ -3,8 +3,10 @@
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
-import { Select, Textarea } from "../ui/form";
+import { Select } from "../ui/form";
+import { MarkdownTextarea } from "../ui/markdown-textarea";
 import { SectionLabel } from "../ui/security-primitives";
+import { Markdown } from "../ui/markdown";
 import { postOrganizationMessageAction, postResearcherMessageAction } from "../../actions/reports";
 import { formatDateTime } from "../../lib/format-date";
 import type { ReportMessage, ReportVisibility } from "../../types/report";
@@ -20,7 +22,7 @@ function MessageItem({ message }: { message: ReportMessage }) {
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
         {message.authorName} · {message.authorContext === "researcher" ? "Researcher" : "Organization"} · <time>{formatDateTime(message.createdAt)}</time>
       </p>
-      <p className="mt-1.5 whitespace-pre-wrap break-words text-sm text-ink">{message.body}</p>
+      <Markdown content={message.body} className="mt-1.5" />
     </li>
   );
 }
@@ -82,7 +84,7 @@ export function ResearcherMessageComposer({ organizationId, programId, reportId 
 
   return (
     <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-      <Textarea label="Message to the organization" required value={body} onChange={(event) => setBody(event.target.value)} maxLength={5000} error={error ?? undefined} />
+      <MarkdownTextarea label="Message to the organization" required value={body} onChange={setBody} maxLength={5000} rows={5} error={error ?? undefined} />
       <div className="flex justify-end">
         <Button type="submit" pending={pending}>
           Send message
@@ -116,7 +118,7 @@ export function OrganizationMessageComposer({ organizationId, programId, reportI
 
   return (
     <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-      <Textarea label="Message" required value={body} onChange={(event) => setBody(event.target.value)} maxLength={5000} error={error ?? undefined} />
+      <MarkdownTextarea label="Message" required value={body} onChange={setBody} maxLength={5000} rows={5} error={error ?? undefined} />
       <Select label="Visible to" value={visibility} onChange={(event) => setVisibility(event.target.value as ReportVisibility)} className="max-w-xs">
         <option value="researcher_visible">Researcher and organization</option>
         <option value="internal">Internal only</option>

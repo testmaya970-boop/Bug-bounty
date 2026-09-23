@@ -4,6 +4,7 @@ import React, { useState, useTransition } from "react";
 import { describeOrganizationActivity } from "../../lib/organization-activity-labels";
 import { formatDateTime } from "../../lib/format-date";
 import { EmptyState, ErrorState } from "../ui/feedback";
+import { Markdown } from "../ui/markdown";
 import { Button } from "../ui/button";
 import { loadEarlierReportTimelineAction } from "../../actions/reports";
 import type { TimelineEntry } from "../../services/timeline";
@@ -75,7 +76,7 @@ function CommentRow({ entry }: { entry: Extract<TimelineEntry, { kind: "message"
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           {message.authorName} · {isHacker ? "Hacker" : isInternal ? "Internal note" : "Reply to hacker"} · <time>{formatDateTime(entry.createdAt)}</time>
         </p>
-        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{message.body}</p>
+        <Markdown content={message.body} className="mt-1" />
       </div>
     </li>
   );

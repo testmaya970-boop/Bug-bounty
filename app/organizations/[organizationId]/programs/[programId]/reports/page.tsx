@@ -39,7 +39,7 @@ export default async function ProgramReportsInboxPage({
   const program = await getProgram(programId);
   if (!program || program.organizationId !== organizationId) {
     return (
-      <AppShell title="Triage inbox" user={user}>
+      <AppShell title="Triage inbox" user={user} organizationId={organizationId}>
         <PermissionDenied>This program does not exist, or you do not have access to it.</PermissionDenied>
       </AppShell>
     );
@@ -52,7 +52,7 @@ export default async function ProgramReportsInboxPage({
 
   if (!canManageProgram) {
     return (
-      <AppShell title="Triage inbox" user={user}>
+      <AppShell title="Triage inbox" user={user} organizationId={organizationId}>
         <PermissionDenied>Only a program manager or organization admin can open the triage inbox. Your own reports are available at /reports.</PermissionDenied>
       </AppShell>
     );
@@ -70,7 +70,7 @@ export default async function ProgramReportsInboxPage({
   ]);
 
   return (
-    <AppShell title="Triage inbox" user={user}>
+    <AppShell title="Triage inbox" user={user} organizationId={organizationId}>
       <div className="space-y-6">
         <Breadcrumbs
           items={[

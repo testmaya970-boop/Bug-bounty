@@ -88,7 +88,7 @@ async function renderOrganizationFindingsPage({
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="findings" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         <p className="text-sm text-ink-muted">Every report across every engagement. Filter, scan, and open a report to act on it in its own engagement's triage inbox.</p>
 

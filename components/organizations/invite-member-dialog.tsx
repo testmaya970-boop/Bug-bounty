@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Dialog } from "../ui/navigation";
 import { Button } from "../ui/button";
 import { Input, Select, Textarea } from "../ui/form";
@@ -15,6 +16,7 @@ import type { OrganizationRole } from "../../types/auth";
 const INVITATION_EXPIRY_DAYS = 7;
 
 export function InviteMemberDialog({ organizationId, invitableRoles }: { organizationId: string; invitableRoles: OrganizationRole[] }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [email, setEmail] = useState("");
@@ -51,6 +53,7 @@ export function InviteMemberDialog({ organizationId, invitableRoles }: { organiz
         return;
       }
       close();
+      router.refresh();
     });
   }
 

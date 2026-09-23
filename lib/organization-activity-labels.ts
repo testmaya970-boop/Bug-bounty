@@ -25,6 +25,7 @@ import type { OrganizationAuditEventRecord } from "@/types/organization";
  */
 const ACTION_LABELS: Record<string, string> = {
   "organization.created": "created this organization",
+  "organization.description_updated": "updated the organization description",
 
   "program.created": "created a program",
   "program.description_updated": "updated a program's description",

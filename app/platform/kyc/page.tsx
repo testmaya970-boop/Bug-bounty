@@ -1,6 +1,7 @@
 import React from "react";
 import { redirect, notFound } from "next/navigation";
 import type { Route } from "next";
+import { AppShell } from "../../../components/app-shell";
 import { SectionLabel } from "../../../components/ui/security-primitives";
 import { EmptyState } from "../../../components/ui/feedback";
 import { KycReviewRow } from "../../../components/platform/kyc-review-row";
@@ -12,7 +13,9 @@ import { getCurrentUser } from "../../../lib/auth/current-user";
  * Platform-admin-only KYC review queue -- the other half of the "no fake verification
  * button" decision (docs/decisions/0051): a researcher submits an encrypted value, and a
  * real person here marks it verified/rejected after their own out-of-band review. A
- * non-admin gets a real 404, matching /platform/needs-recovery's own convention.
+ * non-admin gets a real 404, matching /platform/needs-recovery's own convention. Uses
+ * <AppShell> like every other authenticated page -- see app/platform/programs/page.tsx's
+ * own comment for why this replaced a separate header+nav-bar component.
  */
 export default async function KycReviewPage() {
   const user = await getCurrentUser();
@@ -24,25 +27,15 @@ export default async function KycReviewPage() {
   const submissions = await listKycSubmissions();
 
   return (
-    <div className="min-h-dvh bg-canvas text-ink">
-      <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-5xl items-center gap-3">
-          <span className="text-lg font-bold tracking-tight">Unpatched</span>
-          <span className="border-l border-border-strong pl-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Platform operations</span>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <AppShell title="KYC review" user={user}>
+      <div className="max-w-5xl space-y-6">
         <SectionLabel>Platform operations</SectionLabel>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">KYC review</h1>
-        <p className="mt-2 max-w-2xl text-sm text-ink-muted">Researcher-submitted Aadhaar/PAN/passport/phone details awaiting manual review. No automated verification exists: every decision here is a real, logged decision.</p>
+        <p className="text-sm text-ink-muted">Researcher-submitted Aadhaar/PAN/passport/phone details awaiting manual review. No automated verification exists: every decision here is a real, logged decision.</p>
 
         {submissions.length === 0 ? (
-          <div className="mt-8">
-            <EmptyState title="No pending KYC submissions">Nothing is waiting on review right now.</EmptyState>
-          </div>
+          <EmptyState title="No pending KYC submissions">Nothing is waiting on review right now.</EmptyState>
         ) : (
-          <ul className="mt-8 divide-y divide-border rounded-lg border border-border bg-surface">
+          <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
             {submissions.map((submission) => (
               <KycReviewRow
                 key={submission.userId}
@@ -54,7 +47,7 @@ export default async function KycReviewPage() {
             ))}
           </ul>
         )}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

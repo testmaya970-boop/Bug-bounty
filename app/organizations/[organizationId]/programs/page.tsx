@@ -8,6 +8,7 @@ import { EmptyState, PermissionDenied } from "../../../../components/ui/feedback
 import { ProgramStatusBadge } from "../../../../components/ui/badge";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
 import { CreateProgramDialog } from "../../../../components/programs/create-program-dialog";
+import { DeleteDraftProgramDialog } from "../../../../components/programs/delete-draft-program-dialog";
 import { canCreateProgram } from "../../../../services/authorization";
 import { getActorMembership } from "../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
@@ -72,7 +73,7 @@ export default async function OrganizationEngagementsPage({ params, searchParams
       <div className="max-w-3xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization", href: `/organizations/${organizationId}` }, { label: "Engagements" }]} />
 
-        <OrganizationHeader organizationId={organizationId} organizationName={organization?.name ?? "Organization"} active="programs" />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
         {programs.length === 0 ? (
           <EmptyState title="No engagements yet">
@@ -111,10 +112,10 @@ export default async function OrganizationEngagementsPage({ params, searchParams
             ) : (
               <ul className="divide-y divide-border">
                 {visiblePrograms.map((program) => (
-                  <li key={program.id}>
+                  <li key={program.id} className="flex items-center justify-between gap-3 py-3">
                     <Link
                       href={`/organizations/${organizationId}/programs/${program.id}` as Route}
-                      className="flex items-center justify-between gap-3 rounded py-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                      className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                     >
                       <span className="flex items-center gap-2">
                         <span className="font-medium text-ink">{program.name}</span>
@@ -123,6 +124,11 @@ export default async function OrganizationEngagementsPage({ params, searchParams
                       </span>
                       <span className="text-sm text-ink-muted">Created {formatDate(program.createdAt)}</span>
                     </Link>
+                    {/* Draft-only: a program that has ever left draft carries real
+                        history (once submitted -- and always for review/active/paused/
+                        closed) that a delete would need to destroy -- that path is
+                        Close program, on the program's own detail page, not here. */}
+                    {canCreate && program.status === "draft" && <DeleteDraftProgramDialog organizationId={organizationId} programId={program.id} programName={program.name} />}
                   </li>
                 ))}
               </ul>

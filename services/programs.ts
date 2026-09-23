@@ -205,6 +205,19 @@ export async function closeProgram(programId: string): Promise<ProgramSummary> {
   return callProgramLifecycleRpc("public.close_program", programId);
 }
 
+/** Hard delete, draft-only -- see db/migrations/202609090008_delete_draft_program.sql for
+ * why this is safe as a real delete (never a soft-delete flag) specifically for a program
+ * that has never left draft. Returns void, not a ProgramSummary, since the row genuinely
+ * no longer exists after this call -- there is nothing to map. */
+export async function deleteDraftProgram(programId: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc<never>(client, "public.delete_draft_program", [programId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
 /** Independent of lifecycle status (see docs/decisions/0041) -- can be set at any
  * program stage; only takes visible effect once the program reaches active/paused. */
 export async function setProgramVisibility(programId: string, visibility: "private" | "public"): Promise<ProgramSummary> {

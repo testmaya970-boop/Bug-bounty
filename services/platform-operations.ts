@@ -11,7 +11,7 @@ import type {
   SuspendedOrganization,
   SuspendedResearcher,
 } from "@/types/platform-operations";
-import type { ProgramSummary } from "@/types/program";
+import type { ProgramSummary, ProgramType, EngagementType, ProgramVisibility } from "@/types/program";
 
 /** Self-check only -- never another user's platform-admin status. Safe to call before
  * the caller is known to be a platform admin, since it just answers "am I one." */
@@ -181,6 +181,12 @@ type ProgramPendingReviewRow = {
   organization_id: string;
   organization_name: string;
   submitted_at: string;
+  program_type: ProgramType;
+  engagement_type: EngagementType;
+  visibility: ProgramVisibility;
+  requires_kyc: boolean;
+  focus_areas: string[];
+  scope_entry_count: string | number;
 };
 
 function mapProgramPendingReviewRow(row: ProgramPendingReviewRow): ProgramPendingReview {
@@ -191,6 +197,12 @@ function mapProgramPendingReviewRow(row: ProgramPendingReviewRow): ProgramPendin
     organizationId: row.organization_id,
     organizationName: row.organization_name,
     submittedAt: row.submitted_at,
+    programType: row.program_type,
+    engagementType: row.engagement_type,
+    visibility: row.visibility,
+    requiresKyc: row.requires_kyc,
+    focusAreas: row.focus_areas ?? [],
+    scopeEntryCount: Number(row.scope_entry_count),
   };
 }
 
@@ -211,13 +223,19 @@ export async function approveProgramLaunch(programId: string): Promise<ProgramSu
   return activateProgram(programId);
 }
 
-export async function rejectProgramLaunch(programId: string, reason: string): Promise<void> {
+/** reject_program_launch's own RPC already returns the full updated `public.programs` row
+ * (db/migrations/202609050013_program_launch_review_gate.sql) -- returning organization_id
+ * here (not discarding it as `Promise<void>` previously did) is what lets the caller
+ * revalidate the org's own program page after a reject, not just /platform/programs. */
+export async function rejectProgramLaunch(programId: string, reason: string): Promise<{ organizationId: string }> {
   const actor = await getCurrentUser();
+  let rows;
   try {
-    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.reject_program_launch", [programId, reason]));
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<{ organization_id: string }>(client, "public.reject_program_launch", [programId, reason]));
   } catch (error) {
     mapError(error as { message: string });
   }
+  return { organizationId: rows[0].organization_id };
 }
 
 // --- Cross-program researcher suspension (see db/migrations/202609050014_researcher_platform_suspension.sql) ---

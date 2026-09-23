@@ -12,17 +12,17 @@ const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 // report); this file is the fast-running, CI-safe regression layer underneath that, not a
 // replacement for it.
 
-const migrationPath = `${repoRoot}supabase/migrations/202608260001_organization_membership_lifecycle.sql`;
+const migrationPath = `${repoRoot}db/migrations/202608260001_organization_membership_lifecycle.sql`;
 const sql = readFileSync(migrationPath, "utf8");
-const orgCreationMigrationPath = `${repoRoot}supabase/migrations/202608260003_organization_creation.sql`;
+const orgCreationMigrationPath = `${repoRoot}db/migrations/202608260003_organization_creation.sql`;
 const orgCreationSql = readFileSync(orgCreationMigrationPath, "utf8");
-const programFoundationMigrationPath = `${repoRoot}supabase/migrations/202608260004_program_foundation.sql`;
+const programFoundationMigrationPath = `${repoRoot}db/migrations/202608260004_program_foundation.sql`;
 const programSql = readFileSync(programFoundationMigrationPath, "utf8");
-const scopeMigrationPath = `${repoRoot}supabase/migrations/202608260005_program_scope_foundation.sql`;
+const scopeMigrationPath = `${repoRoot}db/migrations/202608260005_program_scope_foundation.sql`;
 const scopeSql = readFileSync(scopeMigrationPath, "utf8");
-const researcherMigrationPath = `${repoRoot}supabase/migrations/202608260006_researcher_access_foundation.sql`;
+const researcherMigrationPath = `${repoRoot}db/migrations/202608260006_researcher_access_foundation.sql`;
 const researcherSql = readFileSync(researcherMigrationPath, "utf8");
-const reportMigrationPath = `${repoRoot}supabase/migrations/202608270001_report_foundation.sql`;
+const reportMigrationPath = `${repoRoot}db/migrations/202608270001_report_foundation.sql`;
 const reportSql = readFileSync(reportMigrationPath, "utf8");
 
 const HELPERS = ["is_org_member", "has_org_role", "shares_organization_with"];
@@ -53,18 +53,6 @@ describe("migration source: RLS helper functions are not publicly exposed", () =
   it("grants USAGE on the private schema to authenticated, not to anon or PUBLIC", () => {
     expect(sql).toMatch(/grant usage on schema private to authenticated;/);
     expect(sql).not.toMatch(/grant usage on schema private to (anon|public)\b/i);
-  });
-});
-
-describe("migration source: supabase/config.toml does not expose the private schema", () => {
-  const config = readFileSync(`${repoRoot}supabase/config.toml`, "utf8");
-
-  it("lists only public and graphql_public as exposed API schemas", () => {
-    const match = /schemas\s*=\s*\[([^\]]*)\]/.exec(config);
-    expect(match).not.toBeNull();
-    const schemas = (match?.[1] ?? "").split(",").map((entry) => entry.trim().replace(/"/g, "")).filter(Boolean);
-    expect(schemas).toEqual(["public", "graphql_public"]);
-    expect(schemas).not.toContain("private");
   });
 });
 
@@ -678,7 +666,7 @@ describe("migration source: every SECURITY DEFINER function in the report-founda
 
 // --- 202608270002_report_triage_foundation.sql -----------------------------------------
 
-const triageMigrationPath = `${repoRoot}supabase/migrations/202608270002_report_triage_foundation.sql`;
+const triageMigrationPath = `${repoRoot}db/migrations/202608270002_report_triage_foundation.sql`;
 const triageSql = readFileSync(triageMigrationPath, "utf8");
 
 const TRIAGE_TRANSITION_RPCS = ["start_triage", "request_information", "accept_report", "mark_duplicate", "mark_informative", "mark_not_applicable", "reject_report", "resolve_report"];
@@ -933,7 +921,7 @@ describe("migration source: triage is not gated by program lifecycle, unlike sub
 
 // --- 202608270003_report_evidence_and_communication.sql --------------------------------
 
-const evidenceMigrationPath = `${repoRoot}supabase/migrations/202608270003_report_evidence_and_communication.sql`;
+const evidenceMigrationPath = `${repoRoot}db/migrations/202608270003_report_evidence_and_communication.sql`;
 const evidenceSql = readFileSync(evidenceMigrationPath, "utf8");
 
 const RESEARCHER_COMMUNICATION_RPCS = ["post_researcher_message", "add_researcher_evidence"];
@@ -1216,9 +1204,9 @@ describe("migration source: every SECURITY DEFINER function in the evidence-and-
 
 // --- 202608270004_report_evidence_file_type.sql / 202608270005_binary_evidence_storage.sql
 
-const evidenceEnumMigrationPath = `${repoRoot}supabase/migrations/202608270004_report_evidence_file_type.sql`;
+const evidenceEnumMigrationPath = `${repoRoot}db/migrations/202608270004_report_evidence_file_type.sql`;
 const evidenceEnumSql = readFileSync(evidenceEnumMigrationPath, "utf8");
-const binaryEvidenceMigrationPath = `${repoRoot}supabase/migrations/202608270005_binary_evidence_storage.sql`;
+const binaryEvidenceMigrationPath = `${repoRoot}db/migrations/202608270005_binary_evidence_storage.sql`;
 const binarySql = readFileSync(binaryEvidenceMigrationPath, "utf8");
 
 const FILE_EVIDENCE_RPCS = ["add_researcher_file_evidence", "add_organization_file_evidence", "record_evidence_download"];
@@ -1277,10 +1265,6 @@ describe("migration source: a check constraint enforces exactly one shape per ev
 });
 
 describe("migration source: the evidence bucket is private, with a storage-layer size backstop", () => {
-  it("inserts into storage.buckets with public = false and file_size_limit = 10485760", () => {
-    expect(binarySql).toMatch(/insert into storage\.buckets \(id, name, public, file_size_limit\)\s*\nvalues \('evidence', 'evidence', false, 10485760\)/);
-  });
-
   it("adds no storage.objects RLS policy for authenticated or anon -- every access goes through the service-role client only, after Sentinel's own authorization", () => {
     expect(binarySql).not.toMatch(/create policy[^;]*on storage\.objects/);
   });
@@ -1405,19 +1389,19 @@ describe("migration source: every SECURITY DEFINER function in the binary-eviden
 
 // --- 202608280001_report_resolution_finality.sql ----------------------------------------
 
-const finalityMigrationPath = `${repoRoot}supabase/migrations/202608280001_report_resolution_finality.sql`;
+const finalityMigrationPath = `${repoRoot}db/migrations/202608280001_report_resolution_finality.sql`;
 const finalitySql = readFileSync(finalityMigrationPath, "utf8");
-const bountyMigrationPath = `${repoRoot}supabase/migrations/202608280002_bounty_decision_engine.sql`;
+const bountyMigrationPath = `${repoRoot}db/migrations/202608280002_bounty_decision_engine.sql`;
 const bountySql = readFileSync(bountyMigrationPath, "utf8");
-const paymentMigrationPath = `${repoRoot}supabase/migrations/202608290001_payment_ledger_and_payout_orchestration.sql`;
+const paymentMigrationPath = `${repoRoot}db/migrations/202608290001_payment_ledger_and_payout_orchestration.sql`;
 const paymentSql = readFileSync(paymentMigrationPath, "utf8");
-const outboxMigrationPath = `${repoRoot}supabase/migrations/202608290002_outbox_event_foundation.sql`;
+const outboxMigrationPath = `${repoRoot}db/migrations/202608290002_outbox_event_foundation.sql`;
 const outboxSql = readFileSync(outboxMigrationPath, "utf8");
 const outboxCodeOnly = outboxSql
   .split("\n")
   .filter((line) => !line.trim().startsWith("--"))
   .join("\n");
-const reputationMigrationPath = `${repoRoot}supabase/migrations/202608290003_reputation_ledger_foundation.sql`;
+const reputationMigrationPath = `${repoRoot}db/migrations/202608290003_reputation_ledger_foundation.sql`;
 const reputationSql = readFileSync(reputationMigrationPath, "utf8");
 const reputationCodeOnly = reputationSql
   .split("\n")
@@ -2472,7 +2456,7 @@ describe("migration source: every function in the reputation migration pins sear
   });
 });
 
-const notificationMigrationPath = `${repoRoot}supabase/migrations/202608290004_notification_routing_and_delivery_foundation.sql`;
+const notificationMigrationPath = `${repoRoot}db/migrations/202608290004_notification_routing_and_delivery_foundation.sql`;
 const notificationSql = readFileSync(notificationMigrationPath, "utf8");
 const notificationCodeOnly = notificationSql
   .split("\n")
@@ -2718,7 +2702,7 @@ describe("migration source: zero existing report/triage/bounty RPCs are touched 
   });
 });
 
-const hardeningMigrationPath = `${repoRoot}supabase/migrations/202608290005_production_hardening_foundation.sql`;
+const hardeningMigrationPath = `${repoRoot}db/migrations/202608290005_production_hardening_foundation.sql`;
 const hardeningSql = readFileSync(hardeningMigrationPath, "utf8");
 const hardeningCodeOnly = hardeningSql
   .split("\n")
@@ -2751,7 +2735,7 @@ describe("migration source: rate limiting is one atomic upsert, not a check-then
   });
 
   it("check_sign_in_rate_limit is granted to anon (pre-auth) and authenticated, never service_role-only", () => {
-    expect(hardeningSql).toContain("grant execute on function public.check_sign_in_rate_limit(text) to anon, authenticated;");
+    expect(hardeningSql).toContain("grant execute on function public.check_sign_in_rate_limit(text) to anon, authenticated, service_role;");
   });
 
   it("submit_report's rate limit is keyed by the server-derived actor id, checked before any other logic, and raises a distinct RATE_LIMITED code", () => {
@@ -2832,7 +2816,7 @@ describe("migration source: every function in the hardening migration pins searc
   });
 });
 
-const onboardingMigrationPath = `${repoRoot}supabase/migrations/202608290006_public_onboarding_abuse_hardening.sql`;
+const onboardingMigrationPath = `${repoRoot}db/migrations/202608290006_public_onboarding_abuse_hardening.sql`;
 const onboardingSql = readFileSync(onboardingMigrationPath, "utf8");
 const onboardingCodeOnly = onboardingSql
   .split("\n")

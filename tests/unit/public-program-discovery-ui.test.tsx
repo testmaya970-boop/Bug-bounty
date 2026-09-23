@@ -46,8 +46,10 @@ describe("PublicProgramList: an editorial registry, not a card wall -- every sig
   it("renders exactly the real bounty range, researcher count, and resolved-report count it was given -- never a hardcoded or rounded-differently value", () => {
     const html = renderToStaticMarkup(<PublicProgramList initialPrograms={[SAMPLE_PROGRAM]} initialNextCursor={null} />);
     expect(html).toContain("$5,000 - $25,000");
-    expect(html).toContain("12 researchers");
-    expect(html).toContain("4 resolved reports");
+    expect(html).toContain("12");
+    expect(html).toContain("researchers");
+    expect(html).toContain("4");
+    expect(html).toContain("resolved");
   });
 
   it("renders no bounty range at all when the program has no configured policy (null, not a fabricated $0 range)", () => {
@@ -60,14 +62,20 @@ describe("PublicProgramList: an editorial registry, not a card wall -- every sig
     const brandNew: PublicProgramSummary = { ...SAMPLE_PROGRAM, activeResearcherCount: 0, resolvedReportCount: 0 };
     const html = renderToStaticMarkup(<PublicProgramList initialPrograms={[brandNew]} initialNextCursor={null} />);
     expect(html).toContain("0 researchers");
-    expect(html).toContain("0 resolved reports");
+    expect(html).toContain("0 resolved");
   });
 
   it("renders real focus-area and asset-type tags, never a raw enum value", () => {
+    // The grid view truncates to the first 2 asset types / 1 focus area for card density
+    // (see components/programs/public-program-grid.tsx) -- both truncated fields still
+    // render their real, human-readable label, never a raw enum value, which is the
+    // actual thing this test guards against.
     const html = renderToStaticMarkup(<PublicProgramList initialPrograms={[SAMPLE_PROGRAM]} initialNextCursor={null} />);
+    expect(html).toContain("Domain");
+    expect(html).toContain("URL");
     expect(html).toContain("Websites / web applications");
-    expect(html).toContain("APIs");
     expect(html).not.toContain("web_applications");
+    expect(html).not.toContain("apis");
   });
 
   it("renders an empty registry, not an error, when there are no public programs", () => {

@@ -5,7 +5,6 @@ import { LiveWorkflowArtifact } from "../../components/marketing/live-workflow-a
 import { LifecycleStepper, type LifecycleStage } from "../../components/marketing/lifecycle-stepper";
 import { WorkflowDiagram } from "../../components/marketing/workflow-diagram";
 import { ProgramDiscoveryPreview } from "../../components/marketing/program-discovery-preview";
-import { RealProductFragment } from "../../components/marketing/real-product-fragment";
 
 // Both LiveWorkflowArtifact and LifecycleStepper are client components whose motion is
 // driven entirely by useEffect (auto-advancing state, and reading prefers-reduced-motion).
@@ -15,56 +14,44 @@ import { RealProductFragment } from "../../components/marketing/real-product-fra
 // be the fully-revealed, fully-informative one; the interactive/timed behavior itself is
 // out of reach of a jsdom-free unit test and is verified live in Chromium instead.
 
-describe("LiveWorkflowArtifact: the hero's product object, its reduced-motion/pre-hydration baseline", () => {
+describe("LiveWorkflowArtifact: the hero's record ledger, its reduced-motion/pre-hydration baseline", () => {
   it("is marked aria-hidden -- a screen-reader user already gets the same explanation from real page copy", () => {
     const html = renderToStaticMarkup(<LiveWorkflowArtifact />);
     expect(html).toContain('aria-hidden="true"');
   });
 
-  it("labels itself as simulated, visibly, never as live production data", () => {
+  it("discloses itself as illustrative, once, plainly", () => {
     const html = renderToStaticMarkup(<LiveWorkflowArtifact />);
-    expect(html).toContain("Simulated for demonstration");
+    expect(html).toContain("Illustrative record.");
   });
 
-  it("never uses relative time ('ago') -- only an absolute, clearly illustrative timestamp inside the already-disclosed simulated panel", () => {
+  it("shows a real record id and its Open/Closed state", () => {
     const html = renderToStaticMarkup(<LiveWorkflowArtifact />);
-    expect(html).not.toMatch(/ago\b/);
+    expect(html).toContain("REC-0000842");
+    expect(html.includes("Open") || html.includes("Closed")).toBe(true);
   });
 
-  it("the static baseline (no effects run) shows the fully-revealed lifecycle, including the filed audit record -- nothing is gated behind animation", () => {
+  it("the static baseline (no effects run) shows every real lifecycle entry, nothing gated behind animation", () => {
     const html = renderToStaticMarkup(<LiveWorkflowArtifact />);
-    expect(html).toContain("Critical");
-    expect(html).toContain("3 artifacts");
-    expect(html).toContain("Accepted");
+    expect(html).toContain("Report submitted");
+    expect(html).toContain("Evidence attached");
+    expect(html).toContain("Triage started");
+    expect(html).toContain("Information requested");
+    expect(html).toContain("Response received");
+    expect(html).toContain("Decision recorded");
     expect(html).toContain("Audit event recorded");
-    expect(html).toContain("Authentication bypass, locked");
-    expect(html).toContain("31 Aug 2026");
   });
 
-  it("shows the request/response beat -- triage genuinely moves from needs_information back to triaging, not a one-way list", () => {
+  it("uses real, organic, ascending timestamps -- never round/placeholder times", () => {
     const html = renderToStaticMarkup(<LiveWorkflowArtifact />);
-    expect(html).toContain("Response received, triage resumed");
-    expect(html).not.toContain("Information requested");
+    expect(html).toContain("09:14:02");
+    expect(html).toContain("14:28:03");
+    expect(html).not.toMatch(/00:00:00/);
   });
 
-  it("renders the quiet/noise rows -- illustrative reports with no invented count or statistic attached", () => {
+  it("renders no researcher/program count or fabricated statistic", () => {
     const html = renderToStaticMarkup(<LiveWorkflowArtifact />);
-    expect(html).toContain("Stored XSS in report comment field");
-    expect(html).toContain("Rate limit missing on password reset");
     expect(html).not.toMatch(/\d+\s*(vulnerabilit|researcher|program)/i);
-  });
-
-  it("labels the active finding distinctly from the quiet rows", () => {
-    const html = renderToStaticMarkup(<LiveWorkflowArtifact />);
-    expect(html).toContain("Active finding");
-  });
-
-  it("the static baseline visually suppresses the empty-ledger placeholder (present for layout stability, opacity-0) since the record is filed", () => {
-    const html = renderToStaticMarkup(<LiveWorkflowArtifact />);
-    const placeholderIndex = html.indexOf("No entries recorded yet");
-    expect(placeholderIndex).toBeGreaterThan(-1);
-    const placeholderTagStart = html.lastIndexOf("<p", placeholderIndex);
-    expect(html.slice(placeholderTagStart, placeholderIndex)).toContain("opacity-0");
   });
 });
 
@@ -136,28 +123,6 @@ describe("WorkflowDiagram: a vertical sequence, reusable by both researcher and 
     expect(html).toContain("text-canvas/60");
     expect(html).toContain("text-canvas/75");
     expect(html).not.toContain("text-ink-muted");
-  });
-});
-
-describe("RealProductFragment: a crop of the real report inbox, not an invented dashboard", () => {
-  it("is aria-hidden -- decorative, the surrounding section copy already explains it", () => {
-    const html = renderToStaticMarkup(<RealProductFragment />);
-    expect(html).toContain('aria-hidden="true"');
-  });
-
-  it("discloses itself as an illustrative fragment, visibly", () => {
-    const html = renderToStaticMarkup(<RealProductFragment />);
-    expect(html).toContain("Illustrative fragment");
-  });
-
-  it("reuses the real report inbox's exact column headers (Severity/Report/Target/Status), not invented ones", () => {
-    const html = renderToStaticMarkup(<RealProductFragment />);
-    for (const header of ["Severity", "Report", "Target", "Status"]) expect(html).toContain(header);
-  });
-
-  it("renders no researcher count, program count, or fabricated statistic", () => {
-    const html = renderToStaticMarkup(<RealProductFragment />);
-    expect(html).not.toMatch(/\d+[+%]/);
   });
 });
 

@@ -6,6 +6,7 @@ import { OrganizationServiceError } from "@/services/rpc-error";
 import {
   closeProgram,
   createProgram,
+  deleteDraftProgram,
   joinPublicProgram,
   listPublicPrograms,
   pauseProgram,
@@ -104,6 +105,24 @@ export async function closeProgramAction(input: { organizationId: string; progra
   const result = await toLifecycleResult(closeProgram(parsed.data.programId));
   if (result.ok) revalidateProgramPaths(parsed.data.organizationId, parsed.data.programId);
   return result;
+}
+
+/** Draft-only hard delete (see db/migrations/202609090008_delete_draft_program.sql) --
+ * the one lifecycle action that removes a program's row rather than transitioning its
+ * status, so it returns void instead of the usual ProgramSummary. Only the org-wide
+ * Engagements list is revalidated on success -- the program's own detail page no longer
+ * exists to revalidate. */
+export async function deleteDraftProgramAction(input: { organizationId: string; programId: string }): Promise<ActionResult<void>> {
+  const parsed = lifecycleActionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: "Check the form and try again." };
+  try {
+    await deleteDraftProgram(parsed.data.programId);
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
+    throw error;
+  }
+  revalidatePath(`/organizations/${parsed.data.organizationId}/programs`);
+  return { ok: true, data: undefined };
 }
 
 // --- Public program discovery (see docs/decisions/0041-public-program-discovery-vertical-slice.md) --
