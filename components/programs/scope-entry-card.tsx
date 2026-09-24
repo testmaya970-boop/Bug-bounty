@@ -231,13 +231,34 @@ function RemoveEntryDialog({ organizationId, programId, entry }: { organizationI
  * authorization registry uses. Attribution is a quiet second line under the target
  * column; management controls sit in their own trailing column, present only for a
  * manager who can currently act. "Can I test this?" should resolve from the first two
- * columns alone, without reading a sentence. */
+ * columns alone, without reading a sentence.
+ *
+ * The 7rem status track (measured against the old, non-mono badge style) clipped once
+ * the brutalist reskin made ScopeStateBadge mono/uppercase with 0.08em tracking --
+ * "OUT OF SCOPE" no longer fit and its trailing letters were cut off against the next
+ * column. 9rem comfortably fits that widest label at the new tracking.
+ *
+ * The status column is a FIXED track width (9rem) and the action column is a FIXED track
+ * width (22rem) with `whitespace-nowrap` and no wrap on the button group -- each row here
+ * is its own independent grid container (RegistryList is a plain <ul>, not one shared
+ * grid), so a status label or an `auto`/`flex-wrap`-able action column sizes itself
+ * per-row from that row's own content alone. "In scope" pairs with the longer "Mark out
+ * of scope" toggle label; "Out of scope" pairs with the shorter "Mark in scope" -- so
+ * without a hard-fixed, non-wrapping action column, rows alternate between the button
+ * group fitting on one line and wrapping to two, changing both the row height AND the
+ * Edit button's x-position depending on which status that row happens to show (confirmed
+ * live: a `flex-wrap` group inside a merely-generous-but-not-quite-wide-enough 20rem
+ * column still wrapped on the "In scope" rows in real font rendering). 22rem comfortably
+ * exceeds the widest realistic combination (Edit + "Mark out of scope" + Remove, measured
+ * live at ~19.2rem), and `whitespace-nowrap` plus no `flex-wrap` makes a wrap impossible
+ * even if a future longer label is added, rather than merely unlikely. The group is
+ * right-aligned inside the fixed column so Remove's right edge lines up on every row. */
 export function ScopeEntryCard({ organizationId, programId, entry, canManage }: { organizationId: string; programId: string; entry: ScopeEntry; canManage: boolean }) {
   return (
     <div
       className={cn(
         "grid grid-cols-[5.5rem_1fr] items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:gap-x-4 sm:px-5",
-        canManage ? "sm:grid-cols-[5.5rem_1fr_7rem_auto]" : "sm:grid-cols-[5.5rem_1fr_7rem]",
+        canManage ? "sm:grid-cols-[5.5rem_1fr_9rem_22rem]" : "sm:grid-cols-[5.5rem_1fr_9rem]",
       )}
     >
       <AssetTypeBadge assetType={entry.assetType} />
@@ -249,7 +270,7 @@ export function ScopeEntryCard({ organizationId, programId, entry, canManage }: 
         <ScopeStateBadge state={entry.scopeState} />
       </div>
       {canManage && (
-        <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-1 sm:justify-end">
+        <div className="col-span-2 flex flex-nowrap justify-end gap-2 whitespace-nowrap sm:col-span-1">
           <EditScopeEntryDialog organizationId={organizationId} programId={programId} entry={entry} />
           <ToggleStateDialog organizationId={organizationId} programId={programId} entry={entry} />
           <RemoveEntryDialog organizationId={organizationId} programId={programId} entry={entry} />

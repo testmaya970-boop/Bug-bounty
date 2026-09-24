@@ -139,7 +139,7 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
         <div role="menu" aria-label="Recent notifications" className="motion-safe:animate-enter-rise absolute right-0 z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface shadow-lg">
           <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
             <p className="text-sm font-semibold text-ink">Notifications</p>
-            <Link href={"/notifications" as Route} onClick={() => setOpen(false)} className="text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            <Link prefetch={false} href={"/notifications" as Route} onClick={() => setOpen(false)} className="text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
               View all
             </Link>
           </div>
@@ -156,7 +156,7 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
                   const reportHref = `/organizations/${notification.organizationId}/programs/${notification.programId}/reports/${notification.reportId}` as Route;
                   return (
                     <li key={notification.id} className={cn("px-3 py-2.5", !isRead && "bg-action/5")}>
-                      <Link
+                      <Link prefetch={false}
                         href={reportHref}
                         onClick={() => {
                           setOpen(false);

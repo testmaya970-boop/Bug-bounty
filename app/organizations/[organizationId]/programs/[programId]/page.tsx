@@ -16,6 +16,9 @@ import { ResearcherTable } from "../../../../../components/programs/researcher-t
 import { PendingProgramInvitationsPanel } from "../../../../../components/programs/pending-program-invitations-panel";
 import { BountyPolicySection, CreateBountyPolicyDialog } from "../../../../../components/programs/bounty-policy";
 import { ProgramVisibilityPanel } from "../../../../../components/programs/program-visibility-panel";
+import { ProgramAccessInstructionsEditor, ProgramAccessInstructionsNotice } from "../../../../../components/programs/program-access-instructions-panel";
+import { ProgramAccessFileEditor, ProgramAccessFileNotice } from "../../../../../components/programs/program-access-file-panel";
+import { getProgramAccessFile } from "../../../../../services/program-access-file";
 import { ProgramKycPanel } from "../../../../../components/programs/program-kyc-panel";
 import { ProgramLifecycleControls } from "../../../../../components/programs/program-lifecycle-controls";
 import { ProgramFocusAreasPanel } from "../../../../../components/programs/program-focus-areas-panel";
@@ -26,7 +29,7 @@ import { PrimaryActionPanel, RegistryList, SectionLabel } from "../../../../../c
 import { ProgramHeader } from "../../../../../components/programs/program-header";
 import { canCreateProgram } from "../../../../../services/authorization";
 import { getActorMembership } from "../../../../../services/organization-members";
-import { getProgram, getProgramFocusAreas, getPublicProgram, listProgramMembers, listProgramsForOrganization, listPublicProgramScope } from "../../../../../services/programs";
+import { getProgram, getProgramAccessInstructions, getProgramFocusAreas, getPublicProgram, listProgramMembers, listProgramsForOrganization, listPublicProgramScope } from "../../../../../services/programs";
 import { getProgramResolutionPerformance, getProgramSeverityStatusBreakdown, getProgramWeeklyReportVolume } from "../../../../../services/program-analytics";
 import { listActiveScopeEntries } from "../../../../../services/scope";
 import { getMyParticipation, listMyProgramParticipations, listPendingProgramInvitations, listProgramResearchers } from "../../../../../services/program-researchers";
@@ -83,10 +86,10 @@ async function renderProgramControlCenterPage({
       <div className="min-h-dvh bg-canvas text-ink">
         <header className="border-b border-border px-4 py-4 sm:px-6">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-            <Link href="/" className="text-lg font-bold tracking-tight">
+            <Link prefetch={false} href="/" className="text-lg font-bold tracking-tight">
               Unpatched
             </Link>
-            <Link href="/sign-in" className="text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+            <Link prefetch={false} href="/sign-in" className="text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
               Sign in
             </Link>
           </div>
@@ -108,7 +111,7 @@ async function renderProgramControlCenterPage({
             {publicProgram.status === "active" ? (
               <>
                 <p className="mt-2 text-sm text-canvas/70">This program is open to the community. Sign in, or create a researcher account, to submit a report against the scope below.</p>
-                <Link
+                <Link prefetch={false}
                   href={`/sign-in?redirectTo=/organizations/${organizationId}/programs/${programId}` as Route}
                   className="mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-md bg-canvas px-5 text-sm font-semibold text-ink transition hover:bg-canvas/90 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas"
                 >
@@ -156,7 +159,7 @@ async function renderProgramControlCenterPage({
         <footer className="border-t border-border px-4 py-8 sm:px-6">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 text-sm text-ink-muted">
             <span>Unpatched</span>
-            <Link href="/sign-in" className="font-medium hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+            <Link prefetch={false} href="/sign-in" className="font-medium hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
               Sign in
             </Link>
           </div>
@@ -241,9 +244,10 @@ async function renderProgramControlCenterPage({
           <div className="mx-auto max-w-3xl space-y-8">
             <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: "Programs", href: "/programs" }, { label: publicProgram.name }]} />
             <div>
-              <SectionLabel>{publicProgram.organizationName}</SectionLabel>
-              <div className="mt-1 flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{publicProgram.name}</h1>
+              {/* The program name is AppShell's own <h1> (title={publicProgram.name}); it
+                  is not repeated here as a second h1. */}
+              <div className="flex flex-wrap items-center gap-3">
+                <SectionLabel>{publicProgram.organizationName}</SectionLabel>
                 <ProgramStatusBadge status={publicProgram.status} />
               </div>
               {publicProgram.description && <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-ink-muted">{publicProgram.description}</p>}
@@ -330,10 +334,17 @@ async function renderProgramControlCenterPage({
   // each other -- every one of them depends only on canManageProgram/isActiveResearcher,
   // both already known above. Collapsed into one Promise.all so the whole page pays for
   // exactly the slowest single query in this batch, not the sum of all of them.
-  const [scopeEntries, [researchers, pendingInvitations], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms] =
+  const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms] =
     await perfTimed("program home: stage 2 (parallel batch)", () =>
       Promise.all([
         listActiveScopeEntries(programId),
+        // Same RLS-scoped read for either viewer as scopeEntries above -- a manager or an
+        // INVITED (never a self-enrolled public-program) researcher can read the row;
+        // anyone else gets null. See db/migrations/202609240004_program_access_invitation_only.sql.
+        getProgramAccessFile(programId),
+        // Invitation-only read, deliberately separate from `program.description` --
+        // see the same migration and getProgramAccessInstructions' own comment.
+        getProgramAccessInstructions(programId),
         canManageProgram ? Promise.all([listProgramResearchers(programId), listPendingProgramInvitations(programId)]) : Promise.resolve([[], []] as [ProgramResearcherRecord[], ProgramInvitationRecord[]]),
         canManageProgram ? getProgramFocusAreas(programId) : Promise.resolve([]),
         // RLS already scopes this correctly per viewer: a manager sees every report for
@@ -364,10 +375,12 @@ async function renderProgramControlCenterPage({
         canManageProgram ? listProgramsForOrganization(organizationId) : Promise.resolve([]),
       ]),
     );
+  // Scope editing is no longer locked to draft (202609230001_scope_editable_after_launch):
+  // an org can still fix a scope mistake, add a target, or retire one after review/launch.
   // Reaching this page as a manager already proves the identical authorization predicate
-  // scope mutation uses -- the only remaining gate is the program's lifecycle state,
-  // which the database independently re-enforces regardless of this flag.
-  const canManageScope = canManageProgram && program.status === "draft";
+  // scope mutation uses, which the database independently re-enforces regardless of this
+  // flag -- lifecycle status is no longer part of that check on either side.
+  const canManageScope = canManageProgram;
 
   const scopeFilter: "all" | ScopeState = scopeFilterParam === "in_scope" || scopeFilterParam === "out_of_scope" ? scopeFilterParam : "all";
   const filteredScopeEntries = scopeFilter === "all" ? scopeEntries : scopeEntries.filter((entry) => entry.scopeState === scopeFilter);
@@ -450,6 +463,36 @@ async function renderProgramControlCenterPage({
           </>
         )}
 
+        {/* Public programs have no invitation gate at all -- join_public_program lets any
+            active, non-suspended Sentinel account self-enroll (202608310002). Access
+            instructions/files exist for the invitation-only trust model 0007 describes;
+            showing them to a self-enrolled researcher on a public program would hand a
+            VPN config or internal contact to literally anyone who clicks "Join", not to
+            someone the org actually vetted. So this notice only ever renders for a
+            private program, regardless of researcher status. */}
+        {!canManageProgram && isActiveResearcher && program.visibility === "private" && (
+          <>
+            <ProgramAccessInstructionsNotice accessInstructions={accessInstructions} />
+            <ProgramAccessFileNotice organizationId={organizationId} programId={programId} file={accessFile} />
+          </>
+        )}
+
+        {canManageProgram && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Access instructions</h2>
+              <p className="text-sm text-ink-muted">How an authorized researcher actually reaches your targets -- VPN setup, a required contact, anything beyond scope. Never shown publicly.</p>
+              {program.visibility === "public" && (
+                <p className="mt-1 text-sm font-medium text-warning">
+                  This program is public -- anyone can self-enroll with no invitation. Access instructions and files are hidden from researchers while this program stays public.
+                </p>
+              )}
+            </div>
+            <ProgramAccessInstructionsEditor organizationId={organizationId} programId={programId} accessInstructions={accessInstructions} />
+            <ProgramAccessFileEditor organizationId={organizationId} programId={programId} file={accessFile} />
+          </div>
+        )}
+
         {canManageProgram && (
           <div className="space-y-3">
             <div>
@@ -493,8 +536,6 @@ async function renderProgramControlCenterPage({
             </div>
           </div>
 
-          {canManageProgram && !canManageScope && <p className="text-sm text-ink-muted">Scope can only be changed while the program is in draft.</p>}
-
           {!canManageProgram && isActiveResearcher && (
             <p className="text-sm text-ink-muted">
               Only targets explicitly marked <span className="font-medium text-ink">In scope</span> below are authorized for testing. A target that is not listed here is not in scope. The program does not treat an
@@ -507,7 +548,7 @@ async function renderProgramControlCenterPage({
               {scopeEntries.length > 0 && (
                 <nav aria-label="Filter scope by state" className="flex flex-wrap gap-2">
                   {SCOPE_FILTERS.map((filter) => (
-                    <Link
+                    <Link prefetch={false}
                       key={filter.value}
                       href={(filter.value === "all" ? `/organizations/${organizationId}/programs/${programId}` : `/organizations/${organizationId}/programs/${programId}?scope=${filter.value}`) as Route}
                       // A real bug, not cosmetic: without this, clicking a scope filter is a
@@ -615,7 +656,7 @@ async function renderProgramControlCenterPage({
             </div>
             <div className="flex items-center gap-2">
               {canManageProgram && reports.length > 0 && (
-                <Link
+                <Link prefetch={false}
                   href={`/organizations/${organizationId}/programs/${programId}/reports` as Route}
                   className="inline-flex min-h-11 items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
@@ -636,7 +677,7 @@ async function renderProgramControlCenterPage({
             <Card className="p-5">
               <p className="text-sm text-ink">
                 {reports.length} recent report{reports.length === 1 ? "" : "s"}{nextCursorPreview ? "+" : ""} on this program.{" "}
-                <Link href={`/organizations/${organizationId}/programs/${programId}/reports` as Route} className="font-medium text-action hover:text-action-hover">
+                <Link prefetch={false} href={`/organizations/${organizationId}/programs/${programId}/reports` as Route} className="font-medium text-action hover:text-action-hover">
                   Open the triage inbox
                 </Link>{" "}
                 to filter, page through every report, and act on them.

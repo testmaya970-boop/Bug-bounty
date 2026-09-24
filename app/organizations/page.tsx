@@ -49,7 +49,7 @@ export default async function OrganizationsPage() {
             <RegistryList>
               {organizations.map((organization) => (
                 <li key={organization.id}>
-                  <Link
+                  <Link prefetch={false}
                     href={`/organizations/${organization.id}` as Route}
                     className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus sm:px-5"
                   >

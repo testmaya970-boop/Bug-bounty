@@ -266,10 +266,10 @@ export function SecurityRecordPrototype() {
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <span className="font-mono text-sm font-bold uppercase tracking-[0.15em] text-record-ink">[ UNPATCHED ]</span>
           <nav aria-label="Prototype entry points" className="flex items-center gap-5 font-mono text-xs font-bold uppercase tracking-[0.15em] text-record-ink-muted">
-            <Link href="/sign-in" className="hover:text-record-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-record-ink">
+            <Link prefetch={false} href="/sign-in" className="hover:text-record-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-record-ink">
               Sign in
             </Link>
-            <Link
+            <Link prefetch={false}
               href={"/researchers/sign-up" as Route}
               className="border-2 border-record-ink bg-record-ink px-3 py-1.5 text-record-canvas transition-colors hover:bg-record-canvas hover:text-record-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-record-ink"
             >
@@ -365,13 +365,13 @@ export function SecurityRecordPrototype() {
             <h2 className="mt-5 font-display text-4xl font-extrabold uppercase leading-[0.9] tracking-[-0.03em] text-record-ink sm:text-5xl">The record does not disappear.</h2>
             <p className="mx-auto mt-4 max-w-md font-mono text-sm leading-relaxed text-record-ink-muted">Every decision on Unpatched stays attributed, timestamped, and readable &mdash; to the researcher who found it, and the organization that closed it.</p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-5 font-mono text-sm font-bold uppercase tracking-[0.1em]">
-              <Link
+              <Link prefetch={false}
                 href={"/researchers/sign-up" as Route}
                 className="border-2 border-record-ink bg-record-ink px-5 py-2.5 text-record-canvas transition-colors hover:bg-record-canvas hover:text-record-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-record-ink"
               >
                 Continue as researcher
               </Link>
-              <Link href={"/organizations/sign-up" as Route} className="border-b-2 border-record-ink text-record-ink hover:text-record-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-record-ink">
+              <Link prefetch={false} href={"/organizations/sign-up" as Route} className="border-b-2 border-record-ink text-record-ink hover:text-record-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-record-ink">
                 Continue as organization
               </Link>
             </div>

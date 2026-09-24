@@ -92,6 +92,7 @@ export function PublicProgramTable({ programs }: { programs: PublicProgramSummar
             <tr key={program.id} className="group transition-colors hover:bg-surface-muted">
               <td className="px-4 py-3">
                 <Link
+                  prefetch={false}
                   href={`/organizations/${program.organizationId}/programs/${program.id}` as Route}
                   className="flex min-w-0 items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
@@ -102,7 +103,7 @@ export function PublicProgramTable({ programs }: { programs: PublicProgramSummar
                   </span>
                 </Link>
               </td>
-              <td className="whitespace-nowrap px-3 py-3 font-semibold text-success">
+              <td className="whitespace-nowrap px-3 py-3 font-semibold text-ink">
                 {program.bountyMinMinorUnits !== null && program.bountyMaxMinorUnits !== null && program.bountyCurrency
                   ? formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)
                   : "—"}

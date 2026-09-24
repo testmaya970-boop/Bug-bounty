@@ -50,7 +50,7 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
             <DifficultyBadge difficulty={challenge.difficulty} />
             <span className="font-mono text-sm font-semibold text-ink">{challenge.points} pts</span>
           </div>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">{challenge.title}</h1>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">{challenge.title}</h2>
         </div>
 
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6">

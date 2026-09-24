@@ -72,7 +72,7 @@ export function LeaderboardTable({ rows }: { rows: MockLeaderboardRow[] }) {
                 <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-ink">{row.reputation.toLocaleString("en-US")}</td>
                 <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-ink-muted">{row.reports}</td>
                 <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-ink-muted">{row.acceptedReports}</td>
-                <td className="py-2.5 text-right font-mono tabular-nums text-success">${Math.round(row.bountyEarnedMinorUnits / 100).toLocaleString("en-US")}</td>
+                <td className="py-2.5 text-right font-mono tabular-nums text-ink">${Math.round(row.bountyEarnedMinorUnits / 100).toLocaleString("en-US")}</td>
               </tr>
             ))}
             {visibleRows.length === 0 && (

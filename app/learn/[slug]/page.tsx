@@ -43,7 +43,7 @@ export default async function TrainingArticlePage({ params }: { params: Promise<
         <div className="mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-8">
           <div className="min-w-0">
             <SectionLabel>Lesson</SectionLabel>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{article.title}</h1>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{article.title}</h2>
             <p className="mt-2 text-sm text-ink-muted">{article.summary}</p>
 
             <div className="mt-6">

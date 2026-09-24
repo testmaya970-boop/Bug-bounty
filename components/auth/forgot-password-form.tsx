@@ -51,7 +51,7 @@ export function ForgotPasswordForm() {
         {pending ? "Sending reset link…" : "Send reset link"}
       </Button>
       <p className="text-center text-sm text-ink-muted">
-        <Link href={"/sign-in" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
+        <Link prefetch={false} href={"/sign-in" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
           ← Back to sign in
         </Link>
       </p>

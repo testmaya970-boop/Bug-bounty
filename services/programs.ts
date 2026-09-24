@@ -9,6 +9,12 @@ import type { Page } from "@/types/pagination";
 
 export { programStatusLabel } from "@/lib/program-status";
 
+// access_instructions is deliberately NOT part of this shared select -- see
+// db/migrations/202609240004_program_access_invitation_only.sql. It is invitation-only
+// (never visible to a self-enrolled public-program researcher), so it is read through its
+// own dedicated, separately-authorized RPC (getProgramAccessInstructions below), never
+// riding along on a generic programs-row fetch every caller of getProgram/
+// listProgramsForOrganization shares.
 const PROGRAM_SELECT = `p.id, p.organization_id, p.name, p.status, p.visibility, p.program_type, p.engagement_type, p.description, p.requires_kyc, p.created_by, p.created_at, p.updated_at, u.display_name as creator_display_name`;
 
 type ProgramRow = {
@@ -145,6 +151,7 @@ export async function createProgram(organizationId: string, name: string, idempo
         program_type: ProgramType;
         engagement_type: EngagementType;
         description: string | null;
+        access_instructions: string | null;
         requires_kyc: boolean;
         created_by: string;
         created_at: string;
@@ -260,6 +267,45 @@ export async function updateProgramDescription(programId: string, description: s
     mapError(error as { message: string });
   }
   return mapProgramRpcResult(rows[0]);
+}
+
+/** How an already-authorized researcher reaches this program's targets -- VPN
+ * credentials, a required contact, whatever this program needs. See
+ * db/migrations/202609240001_program_access_instructions.sql for why this is a separate
+ * column/RPC from updateProgramDescription, never merged into it. Writing stays
+ * manager-only regardless of visibility; only reading it as a researcher is restricted
+ * (see getProgramAccessInstructions below and 202609240004) -- this returns the saved
+ * text directly, not a ProgramSummary, since access_instructions is no longer part of
+ * that shared shape. */
+export async function updateProgramAccessInstructions(programId: string, accessInstructions: string): Promise<string | null> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ access_instructions: string | null }>(client, "public.update_program_access_instructions", [programId, accessInstructions]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows[0]?.access_instructions ?? null;
+}
+
+/** Invitation-only read: a self-enrolled public-program researcher gets null here even
+ * though the program itself is real -- see 202609240004 for why this can never be part
+ * of getProgram's generic select. Null is deliberately indistinguishable between "not
+ * authorized to read it" and "authorized, but nothing written yet," the same
+ * confidentiality-safe shape getEvidenceDownloadUrl already uses. */
+export async function getProgramAccessInstructions(programId: string): Promise<string | null> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ get_program_access_instructions: string | null }>(client, "public.get_program_access_instructions", [programId]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows[0]?.get_program_access_instructions ?? null;
 }
 
 /** Tags a program with the focus areas it's actually meant for -- the one piece of data

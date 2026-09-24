@@ -18,7 +18,7 @@ export function RecommendedProgramsList({ programs }: { programs: RecommendedPro
     <RegistryList>
       {programs.map((program) => (
         <li key={program.id} className="motion-safe:animate-enter-rise">
-          <Link
+          <Link prefetch={false}
             href={`/organizations/${program.organizationId}/programs/${program.id}` as Route}
             className="group flex items-start justify-between gap-4 p-4 transition-colors hover:bg-surface-muted motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus sm:p-5"
           >

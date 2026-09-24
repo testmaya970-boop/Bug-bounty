@@ -171,7 +171,7 @@ export default async function OrganizationAnalyticsPage({
                       {programRows.map((row) => (
                         <tr key={row.id} className="border-b border-border last:border-0">
                           <td className="px-4 py-3">
-                            <Link
+                            <Link prefetch={false}
                               href={`/organizations/${organizationId}/analytics?program=${row.id}` as Route}
                               className="font-medium text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                             >
@@ -209,7 +209,7 @@ export default async function OrganizationAnalyticsPage({
                     <SectionLabel>{selectedProgram.name}</SectionLabel>
                     <h2 className="mt-1 text-lg font-semibold text-ink">Program analytics</h2>
                   </div>
-                  <Link
+                  <Link prefetch={false}
                     href={`/organizations/${organizationId}/analytics` as Route}
                     className="text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                   >

@@ -29,10 +29,10 @@ export default async function PublicResearcherProfilePage({ params }: { params: 
     <div className="min-h-dvh bg-canvas text-ink">
       <header className="border-b border-border px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          <Link href="/" className="text-lg font-bold tracking-tight">
+          <Link prefetch={false} href="/" className="text-lg font-bold tracking-tight">
             Unpatched
           </Link>
-          <Link href="/sign-in" className="text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+          <Link prefetch={false} href="/sign-in" className="text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
             Sign in
           </Link>
         </div>
@@ -89,7 +89,7 @@ export default async function PublicResearcherProfilePage({ params }: { params: 
           <p>
             The reputation score is computed from organization-confirmed report outcomes: resolved reports and finalized bounties count positively, rejected reports count negatively. Duplicate,
             informative, and not-applicable outcomes are never counted either way.{" "}
-            <Link href={"/researchers" as const} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            <Link prefetch={false} href={"/researchers" as const} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
               View the full leaderboard →
             </Link>
           </p>
@@ -99,7 +99,7 @@ export default async function PublicResearcherProfilePage({ params }: { params: 
       <footer className="border-t border-border px-4 py-8 sm:px-6">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 text-sm text-ink-muted">
           <span>Unpatched</span>
-          <Link href="/sign-in" className="font-medium hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+          <Link prefetch={false} href="/sign-in" className="font-medium hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
             Sign in
           </Link>
         </div>

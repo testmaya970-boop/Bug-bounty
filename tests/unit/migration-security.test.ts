@@ -285,8 +285,15 @@ describe("migration source: scope mutation RPCs never trust a client-supplied ac
     });
   }
 
+  // The draft-only lock these three RPCs originally shipped with (asserted against this
+  // same foundational migration file in earlier revisions of this test) was deliberately
+  // removed in 202609230001_scope_editable_after_launch: an org can now fix scope mistakes
+  // or retire/add targets after review/launch, since reports snapshot the scope state they
+  // matched at submission time and are never retroactively affected by a later edit. The
+  // current, live function bodies live in that later migration, not this one -- checked
+  // below against ITS source, not this file's now-superseded original definitions.
   for (const fn of ["add_scope_entry", "update_scope_entry", "remove_scope_entry"]) {
-    it(`${fn} refuses to mutate scope unless the program is in draft (SCOPE_LOCKED)`, () => {
+    it(`${fn}'s original draft-only lock is documented as superseded, not silently dropped`, () => {
       const start = scopeSql.indexOf(`function public.${fn}(`);
       const bodyEnd = scopeSql.indexOf("\n$$;", start);
       const body = scopeSql.slice(start, bodyEnd);
@@ -294,6 +301,53 @@ describe("migration source: scope mutation RPCs never trust a client-supplied ac
       expect(body).toContain("SCOPE_LOCKED");
     });
   }
+});
+
+describe("migration source: scope mutation is no longer locked to draft (202609230001)", () => {
+  const scopeEditableMigrationPath = `${repoRoot}db/migrations/202609230001_scope_editable_after_launch.sql`;
+  const scopeEditableSql = readFileSync(scopeEditableMigrationPath, "utf8");
+
+  for (const fn of ["add_scope_entry", "update_scope_entry", "remove_scope_entry"]) {
+    it(`${fn} no longer checks program.status before mutating scope`, () => {
+      const start = scopeEditableSql.indexOf(`function public.${fn}(`);
+      const bodyEnd = scopeEditableSql.indexOf("\n$$;", start);
+      const body = scopeEditableSql.slice(start, bodyEnd);
+      expect(body).not.toMatch(/program\.status <> 'draft'/);
+      expect(body).not.toContain("SCOPE_LOCKED");
+    });
+
+    it(`${fn} still authorizes via the same two-path check (has_org_role or is_program_member)`, () => {
+      const start = scopeEditableSql.indexOf(`function public.${fn}(`);
+      const bodyEnd = scopeEditableSql.indexOf("\n$$;", start);
+      const body = scopeEditableSql.slice(start, bodyEnd);
+      expect(body).toMatch(/private\.has_org_role\(program\.organization_id, array\['owner', 'security_admin'\]/);
+      expect(body).toMatch(/private\.is_program_member\(program\.id\)/);
+    });
+
+    it(`${fn} still derives the actor from auth.uid(), never a parameter`, () => {
+      const start = scopeEditableSql.indexOf(`function public.${fn}(`);
+      const bodyEnd = scopeEditableSql.indexOf("\n$$;", start);
+      const body = scopeEditableSql.slice(start, bodyEnd);
+      expect(body).toContain("actor uuid := auth.uid()");
+    });
+  }
+
+  // Regression guard for a real bug found live-testing this migration against Postgres:
+  // update_scope_entry's predecessor (202609090009) referenced `canon.*` inside a single
+  // UPDATE's `case when target_changed then canon.x else x end` expressions -- but Postgres
+  // evaluates a record variable's field reference in every branch regardless of which one
+  // is taken, so calling update_scope_entry WITHOUT target_input (the common "just change
+  // scope_state" path, and the only one the UI's edit dialog drives) threw `record "canon"
+  // is not assigned yet` and failed outright, on every program regardless of lifecycle
+  // status. Fixed here via two separate UPDATE statements. A static check can't prove the
+  // runtime behavior (that needs a real Postgres instance, exercised live during this
+  // migration's own verification), but it can catch the exact anti-pattern regressing.
+  it("update_scope_entry never references canon.* inside a single UPDATE's conditional-expression columns (the exact pattern that broke the no-target-change path)", () => {
+    const start = scopeEditableSql.indexOf("function public.update_scope_entry(");
+    const bodyEnd = scopeEditableSql.indexOf("\n$$;", start);
+    const body = scopeEditableSql.slice(start, bodyEnd);
+    expect(body).not.toMatch(/case when target_changed then canon\./);
+  });
 });
 
 describe("migration source: canonicalization/validation exists in exactly one place", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
 
 // Aligned to the exact same recipe as components/ui/tabs.tsx's URL-driven Tabs (shrink-0,
@@ -9,7 +10,7 @@ import { cn } from "../../lib/cn";
 // silently disagreeing on height and padding -- one used `min-h-11` with no vertical
 // padding, the other `py-3` with no min-height, which put their baselines and bottom
 // borders at different heights whenever they appeared near each other in a screenshot.
-export function Tabs({ tabs, active, onChange }: { tabs: { id: string; label: string }[]; active: string; onChange: (id: string) => void }) { return <div role="tablist" aria-label="Page sections" className="flex items-end gap-1 overflow-x-auto border-b border-border">{tabs.map((tab) => <button key={tab.id} role="tab" aria-selected={active === tab.id} onClick={() => onChange(tab.id)} className={cn("flex shrink-0 items-center whitespace-nowrap border-b-2 px-3 py-3 text-sm font-semibold transition-[color,border-color,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus", active === tab.id ? "border-action text-ink shadow-[0_1px_8px_var(--glow-action)]" : "border-transparent text-ink-muted hover:text-ink")}>{tab.label}</button>)}</div>; }
+export function Tabs({ tabs, active, onChange }: { tabs: { id: string; label: string }[]; active: string; onChange: (id: string) => void }) { return <div role="tablist" aria-label="Page sections" className="flex items-end gap-1 overflow-x-auto border-b border-border">{tabs.map((tab) => <button key={tab.id} role="tab" aria-selected={active === tab.id} onClick={() => onChange(tab.id)} className={cn("flex shrink-0 items-center whitespace-nowrap border-b-2 px-3 py-3 font-mono text-xs font-bold uppercase tracking-[0.08em] transition-[color,border-color] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus", active === tab.id ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink")}>{tab.label}</button>)}</div>; }
 
 export function Tooltip({ label, children }: { label: string; children: ReactNode }) { return <span className="group relative inline-flex">{children}<span role="tooltip" className="glass-surface-raised pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-max max-w-52 -translate-x-1/2 rounded px-2 py-1 text-xs text-ink group-hover:block group-focus-within:block">{label}</span></span>; }
 
@@ -79,7 +80,32 @@ export function Dialog({ open, title, children, onClose }: { open: boolean; titl
   // disconnected. The panel itself moved from hero-reveal (500ms, 16px translate -- built
   // for a page section, not a popover) to enter-rise (220ms, 4px translate): a modal
   // opened many times a day should confirm instantly, not take half a second to settle.
-  if (!open) return null; return <div className="fixed inset-0 z-40 grid place-items-center bg-ink/40 p-4 backdrop-blur-sm motion-safe:animate-enter-fade" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="glass-surface-raised flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col rounded-lg p-5 shadow-2xl motion-safe:animate-enter-rise"><div className="flex items-start justify-between gap-4"><h2 id="dialog-title" className="text-lg font-semibold">{title}</h2><button ref={closeRef} type="button" aria-label="Close dialog" onClick={onClose} className="min-h-11 min-w-11 rounded-md text-xl text-ink-muted hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">×</button></div><div className="mt-4 overflow-y-auto">{children}</div></section></div>; }
+  //
+  // Rendered via createPortal into document.body, not inline where the trigger lives --
+  // confirmed live as a real bug otherwise: FinalizeBountyDialog's trigger sits inside the
+  // report detail page's `lg:sticky` contextual rail, and a `position: sticky` (or
+  // transformed/filtered) ancestor becomes the CONTAINING BLOCK for a `position: fixed`
+  // descendant per the CSS spec -- so this dialog's "fixed inset-0" resolved relative to
+  // that sticky rail's own box, not the viewport. The backdrop and panel both rendered
+  // clipped to the sidebar column's width/height, with the page's other cards showing
+  // through where the dimmed backdrop should have been. A portal makes this impossible
+  // structurally: the dialog is never a DOM descendant of whatever ancestor its trigger
+  // happens to live inside, so no future sticky/transformed/filtered container anywhere in
+  // the app can trap it again.
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-40 grid place-items-center bg-ink/40 p-4 backdrop-blur-sm motion-safe:animate-enter-fade" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="glass-surface-raised flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col rounded-lg p-5 shadow-2xl motion-safe:animate-enter-rise">
+        <div className="flex items-start justify-between gap-4">
+          <h2 id="dialog-title" className="text-lg font-semibold">{title}</h2>
+          <button ref={closeRef} type="button" aria-label="Close dialog" onClick={onClose} className="min-h-11 min-w-11 rounded-md text-xl text-ink-muted hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">×</button>
+        </div>
+        <div className="mt-4 overflow-y-auto">{children}</div>
+      </section>
+    </div>,
+    document.body,
+  );
+}
 
 export function Breadcrumbs({ items }: { items: { label: string; href?: string }[] }) { return <nav aria-label="Breadcrumb"><ol className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">{items.map((item, index) => <li key={item.label} className="flex items-center gap-2">{index > 0 && <span aria-hidden="true">/</span>}{item.href ? <a className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus" href={item.href}>{item.label}</a> : <span aria-current="page">{item.label}</span>}</li>)}</ol></nav>; }
 

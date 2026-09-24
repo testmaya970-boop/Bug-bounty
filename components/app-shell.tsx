@@ -1,12 +1,25 @@
 import React from "react";
+import { cookies } from "next/headers";
 import { AppShellClient } from "./app-shell-client";
 import { listCurrentUserOrganizations } from "../services/organizations";
 import { countMyUnreadNotifications } from "../services/notifications";
 import { listMyProgramParticipations } from "../services/program-researchers";
 import { isPlatformAdmin } from "../services/platform-operations";
 import { perfTimed } from "../lib/perf-trace";
+import { LAST_ORGANIZATION_COOKIE } from "../lib/session/middleware";
 
 type ShellUser = { id: string; displayName: string; email: string | null };
+
+/** Pure so it's directly unit-testable (AppShell itself is an async Server Component and
+ * can't be rendered via renderToStaticMarkup -- see this file's own callers/tests). Never
+ * trusts the cookie value alone: `organizations` is the same real-membership list AppShell
+ * already fetched from listCurrentUserOrganizations, so a stale cookie naming an org this
+ * user has since left, or an outright tampered value, resolves to undefined -- identical to
+ * having no cookie at all -- never to a wrong organization. */
+export function resolveLastOrganizationId(lastOrganizationId: string | undefined, organizations: { id: string }[]): string | undefined {
+  if (!lastOrganizationId) return undefined;
+  return organizations.some((org) => org.id === lastOrganizationId) ? lastOrganizationId : undefined;
+}
 
 /**
  * A thin Server Component wrapper -- every caller keeps the exact `<AppShell title=...
@@ -29,8 +42,20 @@ type ShellUser = { id: string; displayName: string; email: string | null };
  * sidebar's Organization Switcher can highlight "you are here" and switching organizations
  * actually changes context (docs/decisions/0075) -- never a second, divergent org-context
  * mechanism; the URL segment IS the context, exactly as it already was before any
- * switcher existed. Omitted by a non-org-scoped page (the researcher dashboard, settings,
- * etc.), where there is no current organization to highlight.
+ * switcher existed.
+ *
+ * A caller that omits it (a non-org-scoped page: Help, Settings, Notifications) falls back
+ * to the `last_organization_id` cookie -- the real org the user most recently navigated
+ * INTO (set by lib/session/middleware.ts only when the URL itself named an org, never a
+ * guess) -- so the sidebar's org nav groups persist across the whole app instead of
+ * vanishing the moment you leave an org-scoped URL. This is NOT the same thing as the
+ * array-order fallback the switcher's own display uses (organizations[0], purely cosmetic)
+ * -- that one caused a real, previously-fixed bug (guessed org context made a nav link
+ * silently open the wrong organization's data), which is exactly why the fallback here
+ * re-validates the cookie's id against this user's own real memberships (`organizations`,
+ * the same list already fetched below) before ever trusting it: a stale cookie naming an
+ * org this user has since left, or a tampered value, resolves to `undefined` -- the
+ * existing "nothing real behind it, don't guess" behavior -- never to a wrong org.
  */
 export async function AppShell({
   title,
@@ -55,12 +80,15 @@ export async function AppShell({
       user ? isPlatformAdmin() : Promise.resolve(false),
     ]),
   );
+
+  const resolvedOrganizationId = organizationId ?? (user ? resolveLastOrganizationId((await cookies()).get(LAST_ORGANIZATION_COOKIE)?.value, organizations) : undefined);
+
   return (
     <AppShellClient
       title={title}
       user={user}
       organizations={organizations}
-      currentOrganizationId={organizationId}
+      currentOrganizationId={resolvedOrganizationId}
       hasResearcherParticipation={hasResearcherParticipation}
       unreadNotificationCount={unreadNotificationCount}
       isPlatformAdmin={isAdmin}

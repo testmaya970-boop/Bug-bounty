@@ -157,7 +157,7 @@ export function ProfileSettings({
         />
         {usernameSaved !== null && (
           <Alert tone="success" title="Public profile published.">
-            <Link href={`/researchers/${usernameSaved}` as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            <Link prefetch={false} href={`/researchers/${usernameSaved}` as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
               View your public profile →
             </Link>
           </Alert>

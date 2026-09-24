@@ -72,7 +72,7 @@ export default async function ResearchersPage() {
       <div className="mx-auto max-w-5xl space-y-8">
         <div>
           <SectionLabel>Research network</SectionLabel>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink sm:text-2xl">Verified researcher registry</h1>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink sm:text-2xl">Verified researcher registry</h2>
           <p className="mt-1.5 max-w-xl text-sm text-ink-muted">Every score is computed from the same append-only ledger: organization-confirmed resolutions and finalized bounties, never self-reported.</p>
         </div>
 
@@ -110,7 +110,7 @@ export default async function ResearchersPage() {
                 Your reputation is established through verified security outcomes. Your reputation history will appear here as reports reach meaningful outcomes.
               </EmptyState>
               <div className="flex justify-center">
-                <Link href={"/programs" as Route} className="text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+                <Link prefetch={false} href={"/programs" as Route} className="text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                   Browse programs →
                 </Link>
               </div>

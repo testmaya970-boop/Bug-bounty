@@ -60,7 +60,7 @@ export function ReportsAnalytics({ statusCounts }: { statusCounts: { status: Rep
         <ResolutionPerformance performance={MOCK_RESOLUTION_PERFORMANCE} />
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
         <div>
           <div className="flex items-baseline justify-between gap-3">
             <SectionLabel>Aging (open reports)</SectionLabel>

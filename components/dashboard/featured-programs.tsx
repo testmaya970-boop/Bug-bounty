@@ -30,7 +30,7 @@ export function FeaturedPrograms({ programs }: { programs: MockFeaturedProgram[]
                   <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold", program.accentClass)}>{program.visibility}</span>
                 </div>
                 <p className="mt-1 text-xs uppercase tracking-wide text-ink-muted">{program.category}</p>
-                <p className="mt-3 font-mono text-sm font-semibold text-success">{program.maxRewardLabel}</p>
+                <p className="mt-3 font-mono text-sm font-semibold text-ink">{program.maxRewardLabel}</p>
                 <p className="mt-1 truncate text-xs text-ink-muted">{program.platform}</p>
                 {isSelected && <p className="mt-3 border-t border-border pt-3 text-xs font-medium text-action">Selected. Mock preview only, no live program page yet.</p>}
               </button>

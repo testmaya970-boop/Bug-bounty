@@ -148,7 +148,7 @@ export function OrganizationFindingsTable({
                   >
                     <td className="px-4 py-3">{report.confirmedSeverity ? <SeverityBadge severity={report.confirmedSeverity} /> : <span className="text-sm text-ink-muted">Not set</span>}</td>
                     <td className="px-4 py-3">
-                      <Link
+                      <Link prefetch={false}
                         href={`/organizations/${organizationId}/programs/${report.programId}/reports/${report.id}` as Route}
                         className="font-medium text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                       >
@@ -178,7 +178,7 @@ export function OrganizationFindingsTable({
           <ul className="divide-y divide-border md:hidden">
             {reports.map((report) => (
               <li key={report.id} className="p-4 transition-colors duration-150 hover:bg-surface-muted motion-reduce:transition-none">
-                <Link
+                <Link prefetch={false}
                   href={`/organizations/${organizationId}/programs/${report.programId}/reports/${report.id}` as Route}
                   className="font-medium text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >

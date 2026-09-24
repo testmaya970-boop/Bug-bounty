@@ -69,7 +69,7 @@ export function SignInForm({ redirectTo }: { redirectTo?: string }) {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           labelExtra={
-            <Link href={"/forgot-password" as Route} className="text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
+            <Link prefetch={false} href={"/forgot-password" as Route} className="text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
               Forgot password?
             </Link>
           }
@@ -93,7 +93,7 @@ export function SignInForm({ redirectTo }: { redirectTo?: string }) {
       </form>
       <p className="mt-6 border-t border-border pt-6 text-center text-sm text-ink-muted">
         New to Unpatched?{" "}
-        <Link href={"/sign-up" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
+        <Link prefetch={false} href={"/sign-up" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
           Create an account →
         </Link>
       </p>

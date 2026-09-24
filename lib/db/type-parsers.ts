@@ -77,6 +77,21 @@ import { types as pgTypes, type Pool } from "pg";
 // that happen to read one of these columns.
 const DATE_TIME_TYPE_OIDS = [1082, 1114, 1184]; // date, timestamp, timestamptz -- stable built-in Postgres OIDs, not schema-dependent, no discovery query needed.
 
+// `pg` returns `bigint` columns (OID 20) as JS strings, not numbers -- the driver's own
+// deliberate default, since a bigint can exceed Number.MAX_SAFE_INTEGER. But every
+// bigint column in this schema is a money amount in minor units (payment_obligations.
+// amount_minor_units, payment_attempts.requested_amount_minor_units, ...) and every
+// row-mapper type in services/*.ts already declares it `number`, not `string` -- found
+// live: BountyTrackRecord's "Pending" total showed $200,000,200.00 for two real rows of
+// $2,000.00 and $200.00 because `sumByCurrency`'s `total += row.amountMinorUnits` silently
+// string-concatenated ("200000" + "20000" = "20000020000") instead of adding, the exact
+// failure mode of a `number`-typed field that is actually a string at runtime. The same
+// bug independently existed in lib/dashboard-status.ts's own bounty total. Minor-unit
+// amounts never approach 2^53, so parsing bigint as a JS number here is safe and makes
+// the runtime type finally match what every existing type declaration assumes -- fixing
+// it once at the driver boundary, not at each call site that happens to sum an amount.
+const BIGINT_TYPE_OID = 20;
+
 let dateTimeParsersRegistered = false;
 
 /** Idempotent and synchronous -- safe to call at module load time, safe to call more
@@ -90,6 +105,7 @@ export function registerDateTimeTypeParsers(): void {
   for (const oid of DATE_TIME_TYPE_OIDS) {
     pgTypes.setTypeParser(oid, (value: string) => new Date(value).toISOString());
   }
+  pgTypes.setTypeParser(BIGINT_TYPE_OID, (value: string) => Number.parseInt(value, 10));
   dateTimeParsersRegistered = true;
 }
 

@@ -25,7 +25,10 @@ import type { CtfCategoryId, CtfDifficulty } from "../../lib/mock/ctf";
  * gated; under reduced motion the dot renders with no animation at all. */
 export function Badge({ className, children, dotClassName, pulse }: { className?: string; children: React.ReactNode; dotClassName?: string; pulse?: boolean }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold", className)}>
+    // Tactical Telemetry: status reads as terminal telemetry -- uppercase, tracked mono.
+    // Uppercase is CSS-only (text-transform), so the DOM text every test asserts on is
+    // unchanged.
+    <span className={cn("inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]", className)}>
       {dotClassName && <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", dotClassName, pulse && "motion-safe:animate-glow-pulse")} />}
       {children}
     </span>

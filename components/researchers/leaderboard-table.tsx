@@ -123,7 +123,7 @@ export function LeaderboardTable({ rows, myResearcherId }: { rows: PublicLeaderb
                 >
                   <div role="cell" className="flex min-w-0 items-center gap-2">
                     {row.publicUsername ? (
-                      <Link
+                      <Link prefetch={false}
                         href={`/researchers/${row.publicUsername}` as Route}
                         className="truncate text-sm font-semibold text-ink transition-colors duration-150 hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none"
                       >

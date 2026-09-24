@@ -26,7 +26,7 @@ export function AcceptProgramInvitationButton({ token }: { token: string }) {
         <Alert tone="success" title="Invitation accepted">
           You&apos;re now an authorized researcher for this program.
         </Alert>
-        <Link href={`/organizations/${result.organizationId}/programs/${result.programId}` as Route} className="text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+        <Link prefetch={false} href={`/organizations/${result.organizationId}/programs/${result.programId}` as Route} className="text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
           Go to the program →
         </Link>
       </div>

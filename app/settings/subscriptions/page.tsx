@@ -13,7 +13,7 @@ export default function SubscriptionsSettingsPage() {
       <NotApplicableSettings feature="Subscriptions" />
       <p className="text-sm text-ink-muted">
         Looking for email notification toggles?{" "}
-        <Link href={"/settings/notifications" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
+        <Link prefetch={false} href={"/settings/notifications" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
           Go to Notifications →
         </Link>
       </p>

@@ -26,6 +26,30 @@ function isDeactivatedExempt(pathname: string): boolean {
 }
 
 /**
+ * Real, remembered "last organization visited" -- not a guess. The org switcher's sidebar
+ * groups (Overview/Security/Insights/Organization) previously only rendered on a page whose
+ * URL is itself inside /organizations/[id]/..., so a non-org-scoped page (Help, Settings,
+ * Notifications) showed an org selected in the switcher (a cosmetic organizations[0]
+ * fallback -- see app-shell-client.tsx's own OrganizationSwitcher) but none of the actual
+ * org nav below it, which read as "broken" even though it was a deliberate anti-guessing
+ * safeguard (see that file's own comment on a prior bug: guessing org context from array
+ * order made clicking a nav link silently open the wrong organization's data).
+ *
+ * This closes that gap the safe way: set a cookie recording the LAST organization the user
+ * actually navigated into (from the URL itself, never from the switcher's cosmetic
+ * fallback), and let AppShell fall back to that on a page with no organizationId of its
+ * own. lib/app-shell/last-organization.ts revalidates the cookie's org id against this
+ * user's real membership before ever using it -- a stale or tampered cookie value (e.g.
+ * from an org this user has since left) is never trusted blindly.
+ */
+export const LAST_ORGANIZATION_COOKIE = "last_organization_id";
+const ORGANIZATION_PATH_PATTERN = /^\/organizations\/([0-9a-f-]{36})(?:\/|$)/i;
+
+export function extractOrganizationIdFromPath(pathname: string): string | null {
+  return pathname.match(ORGANIZATION_PATH_PATTERN)?.[1] ?? null;
+}
+
+/**
  * Set once middleware has already validated the session cookie below, so
  * lib/auth/current-user.ts's getCurrentUser() can trust "this request's user id is X"
  * without paying a second session-table round trip for the exact same request. Verified
@@ -76,6 +100,21 @@ async function updateSessionInner(request: NextRequest, requestId: string) {
     request.headers.set(VERIFIED_USER_ID_HEADER, session.userId);
     request.headers.set(VERIFIED_SESSION_ID_HEADER, session.id);
     response = NextResponse.next({ request });
+  }
+
+  // Real navigation into an org-scoped page, not the switcher's cosmetic guess -- see the
+  // constant's own comment above. Only writes when the URL actually names an org and that
+  // differs from what's already stored, so this never adds a Set-Cookie header (and its
+  // response-size/perf cost) to the vast majority of requests that aren't switching org.
+  const organizationIdInPath = extractOrganizationIdFromPath(request.nextUrl.pathname);
+  if (organizationIdInPath && request.cookies.get(LAST_ORGANIZATION_COOKIE)?.value !== organizationIdInPath) {
+    response.cookies.set(LAST_ORGANIZATION_COOKIE, organizationIdInPath, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 90,
+    });
   }
 
   // These two gates are independent reads of the same user's state -- run them in

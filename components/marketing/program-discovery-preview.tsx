@@ -12,7 +12,7 @@ export function ProgramDiscoveryPreview() {
   return (
     <p className="border-l-2 border-border-strong pl-4 text-sm text-ink-muted">
       Some organizations open their program to the whole community.{" "}
-      <Link href="/programs" className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+      <Link prefetch={false} href="/programs" className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
         See public programs →
       </Link>{" "}
       Most programs remain invitation-only.

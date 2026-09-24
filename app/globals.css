@@ -8,7 +8,7 @@
   --color-zone-amber-surface: var(--zone-amber-surface); --color-zone-amber-surface-raised: var(--zone-amber-surface-raised); --color-zone-amber-ink: var(--zone-amber-ink); --color-zone-amber-ink-muted: var(--zone-amber-ink-muted); --color-zone-amber-border: var(--zone-amber-border); --color-zone-amber-accent: var(--zone-amber-accent);
   --color-zone-green-surface: var(--zone-green-surface); --color-zone-green-surface-raised: var(--zone-green-surface-raised); --color-zone-green-ink: var(--zone-green-ink); --color-zone-green-ink-muted: var(--zone-green-ink-muted); --color-zone-green-border: var(--zone-green-border); --color-zone-green-accent: var(--zone-green-accent);
   --color-record-canvas: var(--record-canvas); --color-record-ink: var(--record-ink); --color-record-ink-muted: var(--record-ink-muted); --color-record-border: var(--record-border); --color-record-red: var(--record-red);
-  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), "Arial Black", ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   --animate-enter-rise: enter-rise 0.22s ease-out both;
@@ -42,46 +42,39 @@
    and was darkened for this reason); action-hover #A82917 vs white 7.01:1; ink-muted
    vs canvas 7.07:1. --severity-medium was previously darkened to #7a6b1a (5.32:1) for
    the same AA reason and is untouched here. */
+/* Tactical Telemetry (taste-skill:industrial-brutalist-ui, Option A -- full adoption).
+   ONE substrate for the whole product: a deactivated-CRT near-black, white-phosphor ink,
+   and hazard red as the only accent. The skill forbids mixing light and dark substrates,
+   so :root and .dark below resolve to the identical palette -- the theme toggle no
+   longer changes anything visually. --accent-2 is no longer a second brand hue: it is
+   the phosphor-white "slab" used for the primary CTA fill, a neutral, not an accent.
+
+   Semantic status/severity colors are KEPT (they carry meaning -- a critical finding must
+   not look like a low one), re-tuned for this substrate; the old light-theme values were
+   never re-checked against a dark ground and several were illegible on it.
+
+   Contrast on --canvas #0A0A0A, computed (WCAG relative luminance, not eyeballed):
+   ink #EAEAEA 16.5:1; ink-muted #9A9A9A 7.0:1; action #FF2A2A 5.3:1 (text/links/focus);
+   on-action #0A0A0A on #FF2A2A 5.3:1 (white on this red is only 3.7:1, so button text is
+   dark); info #6FA8FF 8.2:1; success #6BCB77 9.8:1; warning #F2B233 10.6:1;
+   severity-medium #D9C75A 11.6:1; severity-none #8A8A8A 5.7:1 -- all clear AA 4.5:1. */
 :root {
-  color-scheme: light;
-  --canvas: #fdfcfb; --surface: #fdfcfb; --surface-muted: #f3f0ed; --surface-raised: #ffffff; --surface-hover: #e9e4df;
-  --ink: #0f0d0c; --ink-muted: #5b5652;
-  --border: #dedad5; --border-strong: #a89f97;
-  --action: #c7331e; --action-hover: #a82917; --on-action: #ffffff; --focus: #c7331e;
-  --accent-2: #1b3a34; --on-accent-2: #ffffff;
-  --info: #2f6fb0; --success: #3f6b3a; --warning: #b5760f; --danger: #c1401f; --on-danger: #ffffff;
-  --severity-critical: #c1401f; --severity-high: #b5760f; --severity-medium: #7a6b1a; --severity-low: #2f6fb0; --severity-none: #5b6355;
-  --glass-border: rgba(15, 13, 12, 0.08); --glass-border-strong: rgba(15, 13, 12, 0.35);
-  --glow-action: rgba(199, 51, 30, 0.16); --glow-accent-2: rgba(27, 58, 52, 0.14);
+  color-scheme: dark;
+  --canvas: #0a0a0a; --surface: #0a0a0a; --surface-muted: #121212; --surface-raised: #161616; --surface-hover: #1e1e1e;
+  --ink: #eaeaea; --ink-muted: #9a9a9a;
+  --border: #2e2e2e; --border-strong: #4a4a4a;
+  --action: #ff2a2a; --action-hover: #ff5454; --on-action: #0a0a0a; --focus: #ff2a2a;
+  --accent-2: #eaeaea; --on-accent-2: #0a0a0a;
+  --info: #6fa8ff; --success: #6bcb77; --warning: #f2b233; --danger: #ff2a2a; --on-danger: #0a0a0a;
+  --severity-critical: #ff2a2a; --severity-high: #f2b233; --severity-medium: #d9c75a; --severity-low: #6fa8ff; --severity-none: #8a8a8a;
+  --glass-border: #2e2e2e; --glass-border-strong: #4a4a4a;
+  --glow-action: transparent; --glow-accent-2: transparent;
 }
 
-/* Real app-wide dark mode (docs/decisions/0081) -- ThemeProvider (components/
-   theme-provider.tsx) has toggled a `.dark`/`.light` class on <html> since 0062, but no
-   token ever branched on it: toggling dark mode previously did nothing visually. This is
-   the first real .dark override, added specifically so the hero-art component (bug
-   specimen + audit seal, docs/decisions/0082) has a genuine dark palette to draw in.
-   Background/line colors are the unpatched-hero-art skill's exact reference values
-   (Prussian-blue canvas, pale line). --action is NOT the reference's literal seal-red
-   #E4523D -- that value is only 4.28:1 on this canvas (computed, not guessed), failing
-   WCAG AA's 4.5:1 for the text/link/focus-ring uses --action already has throughout this
-   app (e.g. the header's Sign in hover, focus outlines). Brightened to #ee6a56 (5.24:1)
-   instead, same hue family, still reads as the identical accent. The seal's own filled
-   disc in hero-art.tsx keeps the reference's exact #E4523D, since a large filled shape
-   only needs 3:1 (WCAG non-text contrast), not the 4.5:1 text threshold. Scoped to only
-   the base chrome tokens the hero and header actually use -- other token groups
-   (--border, --severity-*, --zone-*, --hero-*) are untouched, since widening this to
-   the whole app's every token is a larger, separate migration than this task's scope.
-   Contrast, computed: --ink (#EAF2F8) on --canvas (#0E2237) 14.2:1; --ink-muted
-   (#94AEC3) 7.0:1; --action (#EE6A56) 5.2:1 -- all three clear WCAG AA (4.5:1). */
-.dark {
-  color-scheme: dark;
-  --canvas: #0e2237; --surface: #0e2237; --surface-muted: #132a42; --surface-raised: #16324d; --surface-hover: #1a3a59;
-  --ink: #eaf2f8; --ink-muted: #94aec3;
-  --border: #1c3f5e; --border-strong: #2c567c;
-  --action: #ee6a56; --action-hover: #f4826c; --on-action: #08131f; --focus: #ee6a56;
-  --glass-border: rgba(234, 242, 248, 0.08); --glass-border-strong: rgba(234, 242, 248, 0.28);
-  --glow-action: rgba(228, 82, 61, 0.22); --glow-accent-2: rgba(148, 174, 195, 0.14);
-}
+/* Superseded by the single Tactical Telemetry substrate above: .dark no longer defines
+   its own palette (the old Prussian-blue values are gone), so the class ThemeProvider
+   toggles has no visual effect -- one substrate, per the brutalist skill's rule. */
+.dark { color-scheme: dark; }
 
 :root {
   /* Public-marketing-only dark hero surface (docs/decisions/0075, re-themed 0079) -- a
@@ -99,14 +92,20 @@
      the same #c7331e fails AA against this dark teal (2.7:1); this brighter tint clears
      5.8:1 for the small eyebrow/label text that sits directly on these dark panels
      (see components/dashboard/command-row.tsx's eyebrow label). */
-  --hero-surface: #10231f; --hero-surface-raised: #16332c;
-  --hero-ink: #f7f3ee; --hero-ink-muted: #b8c4c0;
-  --hero-border: rgba(255, 255, 255, 0.1); --hero-border-strong: rgba(255, 255, 255, 0.18);
-  --hero-glass-fill: rgba(255, 255, 255, 0.06);
-  --action-on-dark: #ff6b4a;
-  --hero-gradient: radial-gradient(ellipse 85% 65% at 18% -10%, rgba(199, 51, 30, 0.32), transparent 60%),
-    radial-gradient(ellipse 70% 60% at 100% 10%, rgba(27, 58, 52, 0.55), transparent 55%),
-    linear-gradient(180deg, #10231f 0%, #0d1c18 100%);
+  /* Tactical Telemetry: these "dark panel" tokens now resolve to the same single
+     substrate as everything else (see the top :root block) -- no teal hue, no glass
+     fill, no gradient. --hero-gradient stays as a token (callers still reference it)
+     but is a flat color, per the brutalist rule against gradients. */
+  --hero-surface: #0a0a0a; --hero-surface-raised: #161616;
+  --hero-ink: #eaeaea; --hero-ink-muted: #9a9a9a;
+  --hero-border: #2e2e2e; --hero-border-strong: #4a4a4a;
+  --hero-glass-fill: #121212;
+  /* Every use of this token sits on a `bg-ink` panel, which under the single dark
+     substrate is now an INVERTED phosphor-white slab (#EAEAEA) -- so it needs a red that
+     passes on white, not on black. #FF2A2A on #EAEAEA is only 3.3:1 (fails AA for the
+     small eyebrow text it renders); #B00000 is 6.5:1, computed. */
+  --action-on-dark: #b00000;
+  --hero-gradient: #0a0a0a;
 
   /* Chapter zones (docs/decisions/0076) -- the homepage's visual-rhythm system. Each
      zone is a full-width SECTION background, not a card fill: the user asked for
@@ -120,21 +119,21 @@
      --ink-muted tokens (those stay pure black/grey and would fail on a colored
      ground). Scoped to the public marketing page's chapter sections only -- none of
      these tokens touch 0073's authenticated-app chrome. */
-  --zone-blue-surface: #0e2340; --zone-blue-surface-raised: #14335c;
-  --zone-blue-ink: #f3f7fc; --zone-blue-ink-muted: #b9cbe6; --zone-blue-border: rgba(255, 255, 255, 0.14);
-  --zone-blue-accent: #7ab8ff;
+  /* Tactical Telemetry: the per-chapter blue/amber/green grounds collapse onto the one
+     substrate -- multiple colored section grounds is exactly the mixed-palette pattern
+     the brutalist skill rejects. Every zone accent becomes the single hazard red. Chapters
+     are now separated by rules and ground steps (#0A0A0A / #121212), not by hue. */
+  --zone-blue-surface: #0a0a0a; --zone-blue-surface-raised: #161616;
+  --zone-blue-ink: #eaeaea; --zone-blue-ink-muted: #9a9a9a; --zone-blue-border: #2e2e2e;
+  --zone-blue-accent: #ff2a2a;
 
-  --zone-amber-surface: #2e230f; --zone-amber-surface-raised: #3d2e14;
-  --zone-amber-ink: #fbf3e7; --zone-amber-ink-muted: #d9c3a0; --zone-amber-border: rgba(255, 255, 255, 0.12);
-  --zone-amber-accent: #f0a93c;
+  --zone-amber-surface: #121212; --zone-amber-surface-raised: #1a1a1a;
+  --zone-amber-ink: #eaeaea; --zone-amber-ink-muted: #9a9a9a; --zone-amber-border: #2e2e2e;
+  --zone-amber-accent: #ff2a2a;
 
-  --zone-green-surface: #0f261d; --zone-green-surface-raised: #17362a;
-  --zone-green-ink: #eef7f1; --zone-green-ink-muted: #a9c9b8; --zone-green-border: rgba(255, 255, 255, 0.12);
-  --zone-green-accent: #4fb374;
-  /* Contrast-checked (real luminance/ratio computation, not eyeballed): blue ink
-     14.6:1, ink-muted 9.6:1, accent 7.6:1; amber ink 14.0:1, ink-muted 9.0:1, accent
-     7.7:1; green ink 14.6:1, ink-muted 8.9:1, accent 6.1:1 -- every pair clears WCAG
-     AA (4.5:1) with margin, most clear AAA (7:1). */
+  --zone-green-surface: #0a0a0a; --zone-green-surface-raised: #161616;
+  --zone-green-ink: #eaeaea; --zone-green-ink-muted: #9a9a9a; --zone-green-border: #2e2e2e;
+  --zone-green-accent: #ff2a2a;
 
   /* "Security Record" visual-identity prototype tokens (docs/decisions/0077/0078/
      0080) -- scoped to components/marketing/security-record-prototype.tsx and its
@@ -147,9 +146,11 @@
      brutalist mode prohibits ("pick ONE accent, remove the rest"). Contrast,
      computed: ink 16.9:1, ink-muted 5.0:1, red 4.84:1 -- both text pairs clear WCAG
      AA (4.5:1). */
-  --record-canvas: #f7f6f2; --record-ink: #151513; --record-ink-muted: #6b6a63;
-  --record-border: #dedcd3;
-  --record-red: #d81212;
+  /* Moved from the light Swiss-print substrate onto the product's single dark one --
+     the preview route must not be the one place a second substrate survives. */
+  --record-canvas: #0a0a0a; --record-ink: #eaeaea; --record-ink-muted: #9a9a9a;
+  --record-border: #2e2e2e;
+  --record-red: #ff2a2a;
 }
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--canvas); }
@@ -162,17 +163,76 @@ html { min-width: 320px; background: var(--canvas); }
    -- felt as a very faint warmth in the corners, not a decoration competing with
    content; `background-attachment: fixed` keeps it a page-level backdrop rather than a
    texture that scrolls oddly with content sections. */
+/* Flat substrate: the old ambient radial washes are gone (the brutalist skill prohibits
+   gradients). */
 body {
   min-width: 320px; margin: 0; color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5;
-  background:
-    radial-gradient(ellipse 60% 50% at 100% 0%, color-mix(in srgb, var(--action) 6%, transparent), transparent 60%),
-    radial-gradient(ellipse 55% 45% at 0% 100%, color-mix(in srgb, var(--accent-2) 8%, transparent), transparent 60%),
-    var(--canvas);
-  background-attachment: fixed;
+  background: var(--canvas);
 }
 button, input, textarea, select { font: inherit; }
-code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+code, pre, kbd, samp { font-family: var(--font-mono); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+
+/* ---------- Tactical Telemetry: global geometry + surface rules ----------
+   Deliberately global and !important: the skill's rules are absolute ("all corners must
+   be exactly 90 degrees", "soft drop shadows and translucency are strictly prohibited"),
+   and there are ~290 rounded-* and ~40 shadow call sites. Enforcing it here, once, means
+   no component can drift back -- rather than hand-editing every call site and hoping none
+   is missed. */
+*, *::before, *::after {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  text-shadow: none !important;
+}
+
+/* Focus backstop. Killing box-shadow above also kills Tailwind's `ring-*` utilities
+   (they are implemented as box-shadow), and a few inputs used a ring as part of their
+   focus state -- without this, keyboard focus could become invisible there. A solid
+   2px hazard-red outline on every :focus-visible element guarantees focus is always
+   visible, and matches the outline style buttons and links already used. */
+:focus-visible {
+  outline: 2px solid var(--focus) !important;
+  outline-offset: 2px;
+}
+
+/* Macro-typography: heavy grotesque, uppercase, tight tracking/leading. h1/h2 only --
+   the skill scopes this treatment to structural headers, and tight negative tracking at
+   small sizes (h3 and below, body) hurts legibility. !important on font-family because
+   some pages set their own display face via a next/font className (a single class
+   outranks an element selector); the skill requires one heavy grotesque, so it must win. */
+h1, h2 {
+  font-family: var(--font-display) !important;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+/* Micro-typography: mono gets the skill's generous terminal tracking everywhere. It is
+   NOT uppercased globally: font-mono also renders scope targets, URLs, report IDs, and
+   code, and uppercasing a case-sensitive URL path or code sample would misrepresent the
+   data itself. Uppercase is applied to labels/nav/metadata at the component level. */
+.font-mono, code, kbd, samp, data, output {
+  letter-spacing: 0.06em;
+}
+
+/* Mechanical grain + CRT scanlines: one fixed, non-interactive overlay over the whole
+   viewport. Static (no animation), so there is nothing to disable under reduced motion.
+   Kept low-opacity so it reads as a physical texture, never as reduced text contrast. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0, 0, 0, 0.22) 2px, rgba(0, 0, 0, 0.22) 3px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+@media print { body::after { display: none; } }
 
 /* Shared soft-glass surface: a mostly-opaque tinted fill + a light backdrop blur + a
    thin border, used by Card/Panel/PrimaryActionPanel instead of a flat background so the
@@ -182,17 +242,16 @@ code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
    premium. A plain CSS class (not a Tailwind utility) because `backdrop-filter` plus a
    `color-mix`-derived translucent fill isn't expressible as a one-off utility without an
    arbitrary-value class at every call site -- one definition here, reused everywhere. */
+/* Tactical Telemetry: the class names are kept (dozens of call sites use them) but they
+   are no longer glass -- a solid, opaque fill plus a hard 1px rule. Translucency and
+   blur are prohibited by the brutalist skill; a compartment is defined by its border. */
 .glass-surface {
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(8px) saturate(120%);
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  background: var(--surface);
   border: 1px solid var(--border);
 }
 .glass-surface-raised {
-  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
-  backdrop-filter: blur(10px) saturate(125%);
-  -webkit-backdrop-filter: blur(10px) saturate(125%);
-  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
 }
 
 /* The dark hero's own glass surface (docs/decisions/0075) -- same recipe as
@@ -202,8 +261,6 @@ code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
    smear on this background. Scoped to the public hero only via --hero-* tokens. */
 .hero-glass {
   background: var(--hero-glass-fill);
-  backdrop-filter: blur(12px) saturate(130%);
-  -webkit-backdrop-filter: blur(12px) saturate(130%);
   border: 1px solid var(--hero-border);
 }
 
@@ -212,11 +269,9 @@ code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
    as a flat outline pasted under a box). Applied sitewide in place of ad hoc one-layer
    shadow arbitrary values -- swap the color mix for --hero-* alpha values on dark
    surfaces via the sibling class below. */
-.elevation-shadow {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 16px 40px -12px rgba(0, 0, 0, 0.18);
-}
-.elevation-shadow-dark {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 60px -16px rgba(0, 0, 0, 0.55);
+/* Tactical Telemetry: no soft shadows. "Elevation" is expressed as a stronger rule. */
+.elevation-shadow, .elevation-shadow-dark {
+  border: 1px solid var(--border-strong);
 }
 
 /* A restrained dot-grid texture (docs/decisions/0062) for the app's dark `bg-ink`
@@ -364,7 +419,7 @@ code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
 .hero-art-dot { fill: var(--ink-muted); stroke: none; }
 .hero-art-mk { fill: var(--ink); stroke: none; }
 .hero-art-labels text { font: 400 12.5px var(--font-mono); fill: var(--ink-muted); stroke: none; letter-spacing: 0.01em; }
-.hero-art-ring-text { font: 600 32px var(--font-display); letter-spacing: 0.34em; fill: var(--ink); stroke: none; opacity: 0.8; }
+.hero-art-ring-text { font: 400 32px var(--font-display); letter-spacing: 0.34em; fill: var(--ink); stroke: none; opacity: 0.8; }
 .hero-art-stamp { fill: var(--action); stroke: none; opacity: 0.92; }
 .hero-art-stamp-ring { fill: none; stroke: var(--on-action); stroke-width: 1.6; opacity: 0.55; }
 

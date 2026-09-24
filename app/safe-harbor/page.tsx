@@ -1,8 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { AppShell } from "../../components/app-shell";
-import { Breadcrumbs } from "../../components/ui/navigation";
+import { SimplePageShell } from "../../components/simple-page-shell";
 import { SectionLabel } from "../../components/ui/security-primitives";
 import { getCurrentUser } from "../../lib/auth/current-user";
 
@@ -22,13 +21,10 @@ export default async function SafeHarborPage() {
   const user = await getCurrentUser();
 
   return (
-    <AppShell title="Safe Harbor & Code of Conduct" user={user}>
-      <div className="mx-auto max-w-3xl space-y-8">
-        <Breadcrumbs items={[{ label: "Safe Harbor & Code of Conduct" }]} />
-
+    <SimplePageShell title="Safe Harbor & Code of Conduct" user={user}>
+      <div className="space-y-8">
         <div>
           <SectionLabel>Trust & safety</SectionLabel>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">Safe Harbor & Code of Conduct</h1>
           <p className="mt-2 text-sm text-ink-muted">What good-faith security research looks like on Unpatched, and what protection it carries.</p>
         </div>
 
@@ -60,7 +56,7 @@ export default async function SafeHarborPage() {
           </ul>
           <p className="text-sm leading-relaxed text-ink-muted">
             A violation can result in removal from a program, or from Unpatched, depending on severity. If you believe a researcher or an organization has violated this code, contact us through{" "}
-            <Link href={"/settings/feedback" as Route} className="font-medium text-action underline underline-offset-2">
+            <Link prefetch={false} href={"/settings/feedback" as Route} className="font-medium text-action underline underline-offset-2">
               Help & feedback
             </Link>
             .
@@ -75,6 +71,6 @@ export default async function SafeHarborPage() {
           </p>
         </section>
       </div>
-    </AppShell>
+    </SimplePageShell>
   );
 }

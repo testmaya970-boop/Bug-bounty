@@ -15,6 +15,7 @@ import {
   setProgramKycRequirement,
   setProgramVisibility,
   submitProgramForReview,
+  updateProgramAccessInstructions,
   updateProgramDescription,
 } from "@/services/programs";
 import type { EngagementType, ProgramSummary, ProgramType, PublicProgramSummary } from "@/types/program";
@@ -155,6 +156,21 @@ export async function updateProgramDescriptionAction(input: { organizationId: st
   const result = await toLifecycleResult(updateProgramDescription(parsed.data.programId, parsed.data.description));
   if (result.ok) revalidateProgramPaths(parsed.data.organizationId, parsed.data.programId);
   return result;
+}
+
+const updateAccessInstructionsSchema = z.object({ organizationId: z.string().uuid(), programId: z.string().uuid(), accessInstructions: z.string().max(5000, "Use 5000 characters or fewer.") });
+
+export async function updateProgramAccessInstructionsAction(input: { organizationId: string; programId: string; accessInstructions: string }): Promise<ActionResult<string | null>> {
+  const parsed = updateAccessInstructionsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  try {
+    const data = await updateProgramAccessInstructions(parsed.data.programId, parsed.data.accessInstructions);
+    revalidateProgramPaths(parsed.data.organizationId, parsed.data.programId);
+    return { ok: true, data };
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
+    throw error;
+  }
 }
 
 const focusAreaEnum = z.enum(["web_applications", "mobile_applications", "apis", "networks", "databases", "cloud_infrastructure", "desktop_applications", "iot_hardware", "other"]);

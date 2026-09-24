@@ -25,7 +25,6 @@ export default async function LearnPage() {
 
         <div>
           <SectionLabel>Training</SectionLabel>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight">Learn</h1>
           <p className="mt-1 text-sm text-ink-muted">Free lessons on real vulnerability classes and how to find them. Read one, then try the matching challenge in CTF.</p>
         </div>
 

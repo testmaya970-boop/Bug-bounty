@@ -15,10 +15,6 @@ export function YourPositionPanel({ position, leaderScore }: { position: MyLeade
   return (
     <div className="relative overflow-hidden rounded-lg bg-ink p-5 text-canvas shadow-sm sm:p-6">
       <div aria-hidden="true" className="dot-grid pointer-events-none absolute inset-0 text-canvas" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,var(--glow-action),transparent_55%),radial-gradient(ellipse_at_bottom_right,var(--glow-accent-2),transparent_50%)] opacity-70"
-      />
       <div className="relative">
         <SectionLabel className="text-canvas/55">Your position</SectionLabel>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-3">

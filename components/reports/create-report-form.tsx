@@ -123,9 +123,8 @@ type StagedFile = { localId: string; file: File };
  * localStorage, so attached files are never part of a restored draft (the researcher
  * re-attaches them, same as they would after any other kind of page reload). Keyed per
  * program (`sentinel-report-draft-${programId}`) so drafts for two different programs
- * never collide or overwrite each other. Follows components/theme-provider.tsx's own
- * localStorage pattern (read once on mount inside useEffect, write on change), including
- * its try/catch discipline -- localStorage can throw in a private-browsing context or when
+ * never collide or overwrite each other. Standard localStorage pattern (read once on
+ * mount inside useEffect, write on change) with try/catch discipline -- localStorage can throw in a private-browsing context or when
  * site data is blocked, and a draft failing to save/load must never break the form itself. */
 type DraftFields = {
   assetType: ProgramAssetType;
@@ -194,7 +193,17 @@ function formatFileSize(bytes: number): string {
  * didn't attach and can add it again using the identical composer already there. Nothing
  * here pretends this is one atomic operation; it deliberately is not one.
  */
-export function CreateReportForm({ organizationId, programId, programName }: { organizationId: string; programId: string; programName: string }) {
+export function CreateReportForm({
+  organizationId,
+  programId,
+  programName,
+  inScopeTargets = [],
+}: {
+  organizationId: string;
+  programId: string;
+  programName: string;
+  inScopeTargets?: { assetType: ProgramAssetType; displayTarget: string }[];
+}) {
   const router = useRouter();
   const [assetType, setAssetType] = useState<ProgramAssetType>("domain");
   const [target, setTarget] = useState("");
@@ -212,6 +221,13 @@ export function CreateReportForm({ organizationId, programId, programName }: { o
   const [failure, setFailure] = useState<SubmitFailure | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Real published in-scope targets for the currently-selected asset type, offered as
+  // autocomplete suggestions (a native <datalist>, not a hard-enforced picker) -- a
+  // researcher can still type a target that isn't listed yet; the server RPC makes the
+  // final scope decision regardless, same as before. Matches the target-suggestion pattern
+  // HackerOne/Bugcrowd's own report forms use.
+  const matchingScopeTargets = inScopeTargets.filter((entry) => entry.assetType === assetType).map((entry) => entry.displayTarget);
+
   const [stagedEvidence, setStagedEvidence] = useState<StagedEvidence[]>([]);
   const [draftEvidenceType, setDraftEvidenceType] = useState<TextualEvidenceType>("text");
   const [draftEvidenceContent, setDraftEvidenceContent] = useState("");
@@ -219,6 +235,7 @@ export function CreateReportForm({ organizationId, programId, programName }: { o
 
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
 
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
@@ -227,8 +244,7 @@ export function CreateReportForm({ organizationId, programId, programName }: { o
 
   // Restore once on mount only -- never re-runs on programId change since this component
   // is remounted (not re-parameterized) per program page. Runs after the initial render so
-  // it never disagrees with server-rendered markup (the same reason theme-provider.tsx's
-  // own restore also lives inside a mount-only effect).
+  // it never disagrees with server-rendered markup (localStorage is unavailable during SSR).
   useEffect(() => {
     if (hasRestoredDraft.current) return;
     hasRestoredDraft.current = true;
@@ -291,6 +307,11 @@ export function CreateReportForm({ organizationId, programId, programName }: { o
     setStagedEvidence((current) => current.filter((item) => item.localId !== localId));
   }
 
+  function clearSelectedFile() {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setSelectedFileName(null);
+  }
+
   function addStagedFile() {
     const file = fileInputRef.current?.files?.[0];
     if (!file) {
@@ -302,7 +323,7 @@ export function CreateReportForm({ organizationId, programId, programName }: { o
       return;
     }
     setStagedFiles((current) => [...current, { localId: crypto.randomUUID(), file }]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    clearSelectedFile();
     setFileError(null);
   }
 
@@ -436,7 +457,15 @@ export function CreateReportForm({ organizationId, programId, programName }: { o
               className="[&_input]:font-mono"
               maxLength={2048}
               error={failure?.targetError}
+              list={matchingScopeTargets.length > 0 ? "in-scope-targets" : undefined}
             />
+            {matchingScopeTargets.length > 0 && (
+              <datalist id="in-scope-targets">
+                {matchingScopeTargets.map((displayTarget) => (
+                  <option key={displayTarget} value={displayTarget} />
+                ))}
+              </datalist>
+            )}
           </div>
         </div>
 
@@ -588,7 +617,7 @@ export function CreateReportForm({ organizationId, programId, programName }: { o
           )}
 
           <div className="mt-3 space-y-3 rounded-lg border border-dashed border-border-strong p-3">
-            <FileField inputRef={fileInputRef} error={fileError ?? undefined} />
+            <FileField inputRef={fileInputRef} error={fileError ?? undefined} selectedName={selectedFileName} onClear={clearSelectedFile} onFileChange={(name) => setSelectedFileName(name)} />
             <div className="flex justify-end">
               <Button type="button" variant="secondary" onClick={addStagedFile}>
                 Add attachment

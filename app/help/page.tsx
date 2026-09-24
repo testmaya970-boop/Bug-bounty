@@ -4,7 +4,7 @@ import path from "node:path";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
-import { AppShell } from "../../components/app-shell";
+import { SimplePageShell } from "../../components/simple-page-shell";
 import { SectionLabel } from "../../components/ui/security-primitives";
 import { getCurrentUser } from "../../lib/auth/current-user";
 
@@ -12,9 +12,17 @@ import { getCurrentUser } from "../../lib/auth/current-user";
  * Help (Turn 6, phase/9-ia): item 12 of the 15-point nav map, minimal honest size. Real
  * support channel (the one that already exists -- /settings/feedback, see
  * app-shell-client.tsx's own HelpLink comment on why no dedicated support inbox exists
- * yet), a real existing doc (/safe-harbor), and real release notes read live from this
- * repository's own CHANGELOG.md -- never a fabricated support email or an invented docs
- * site. No search, no article library: nothing here promises more than what exists today.
+ * yet), a real existing doc (/safe-harbor), and real release notes read live from
+ * docs/user-changelog.md -- a small, deliberately curated file separate from this
+ * repository's own CHANGELOG.md.
+ *
+ * That separation is load-bearing, not stylistic: CHANGELOG.md is the real engineering
+ * history and can legitimately gain an internal-implementation-detail entry (a migration
+ * name, a vendor/library reference, an infra note) at any time with no review gate before
+ * the next commit -- confirmed live as a real information-disclosure risk when this page
+ * used to read that file directly, rendering whatever it contained straight to every
+ * signed-in user with nothing curating it. docs/user-changelog.md is written and reviewed
+ * specifically for this page; nothing reads CHANGELOG.md here anymore.
  */
 export default async function HelpPage() {
   const user = await getCurrentUser();
@@ -22,7 +30,7 @@ export default async function HelpPage() {
 
   let changelog = "";
   try {
-    changelog = await readFile(path.join(process.cwd(), "CHANGELOG.md"), "utf-8");
+    changelog = await readFile(path.join(process.cwd(), "docs", "user-changelog.md"), "utf-8");
   } catch {
     changelog = "";
   }
@@ -44,15 +52,15 @@ export default async function HelpPage() {
   }
 
   return (
-    <AppShell title="Help" user={user}>
-      <div className="mx-auto max-w-2xl space-y-8">
+    <SimplePageShell title="Help" user={user}>
+      <div className="space-y-8">
         <div>
           <SectionLabel>Support</SectionLabel>
           <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">Get help</h2>
           <p className="mt-2 text-sm text-ink-muted">
             Something not working, or have feedback? Use the feedback form -- it goes to the same place a dedicated support inbox would today.
           </p>
-          <Link href={"/settings/feedback" as Route} className="mt-3 inline-flex text-sm font-medium text-action hover:text-action-hover">
+          <Link prefetch={false} href={"/settings/feedback" as Route} className="mt-3 inline-flex text-sm font-medium text-action hover:text-action-hover">
             Send feedback →
           </Link>
         </div>
@@ -63,7 +71,7 @@ export default async function HelpPage() {
           <p className="mt-2 text-sm text-ink-muted">A dedicated documentation site doesn't exist yet. What's real today:</p>
           <ul className="mt-3 space-y-2">
             <li>
-              <Link href={"/safe-harbor" as Route} className="text-sm font-medium text-action hover:text-action-hover">
+              <Link prefetch={false} href={"/safe-harbor" as Route} className="text-sm font-medium text-action hover:text-action-hover">
                 Safe harbor policy →
               </Link>
             </li>
@@ -87,6 +95,6 @@ export default async function HelpPage() {
           )}
         </div>
       </div>
-    </AppShell>
+    </SimplePageShell>
   );
 }

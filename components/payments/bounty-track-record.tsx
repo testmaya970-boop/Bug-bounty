@@ -45,7 +45,7 @@ export function BountyTrackRecord({ obligations }: { obligations: MyPaymentOblig
           {paidByCurrency.map(({ currency, amountMinorUnits }) => (
             <div key={`paid-${currency}`}>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Total paid ({currency})</dt>
-              <dd className="mt-0.5 font-mono text-2xl font-semibold tabular-nums text-success">
+              <dd className="mt-0.5 font-mono text-2xl font-semibold tabular-nums text-ink">
                 {currency} {minorUnitsToDecimalString(amountMinorUnits)}
               </dd>
             </div>

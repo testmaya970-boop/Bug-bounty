@@ -37,7 +37,7 @@ const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2,
 function ActionQueueRow({ organizationId, report, programName }: { organizationId: string; report: Report; programName: string }) {
   return (
     <li>
-      <Link
+      <Link prefetch={false}
         href={`/organizations/${organizationId}/programs/${report.programId}/inbox?reportId=${report.id}` as Route}
         className="block px-4 py-3 transition-colors duration-150 hover:bg-surface-hover motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus sm:px-5"
       >
@@ -206,10 +206,10 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
               </RegistryList>
             )}
             <div className="mt-3 flex flex-wrap gap-4 text-sm">
-              <Link href={`/organizations/${organizationId}/findings` as Route} className="font-medium text-action hover:text-action-hover">
+              <Link prefetch={false} href={`/organizations/${organizationId}/findings` as Route} className="font-medium text-action hover:text-action-hover">
                 View all findings →
               </Link>
-              <Link href={`/organizations/${organizationId}/programs` as Route} className="font-medium text-action hover:text-action-hover">
+              <Link prefetch={false} href={`/organizations/${organizationId}/programs` as Route} className="font-medium text-action hover:text-action-hover">
                 View all engagements →
               </Link>
             </div>
@@ -225,7 +225,7 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
                 <SectionLabel>Activity</SectionLabel>
                 <h2 className="mt-0.5 text-base font-semibold text-ink">Recent activity</h2>
               </div>
-              <Link href={`/organizations/${organizationId}/hactivity` as Route} className="text-sm font-medium text-action hover:text-action-hover">
+              <Link prefetch={false} href={`/organizations/${organizationId}/hactivity` as Route} className="text-sm font-medium text-action hover:text-action-hover">
                 View all activity →
               </Link>
             </div>

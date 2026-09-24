@@ -110,11 +110,11 @@ async function MyProgramsTab({ participationsRaw }: { participationsRaw: Awaited
     return (
       <EmptyState title="You don't participate in any program yet">
         A program manager invites researchers directly by email. If you were expecting an invitation, check{" "}
-        <Link href="/programs?tab=invitations" className="font-medium text-action hover:underline">
+        <Link prefetch={false} href="/programs?tab=invitations" className="font-medium text-action hover:underline">
           Pending invitations
         </Link>
         , or browse{" "}
-        <Link href="/programs?tab=all" className="font-medium text-action hover:underline">
+        <Link prefetch={false} href="/programs?tab=all" className="font-medium text-action hover:underline">
           All programs
         </Link>
         .
@@ -163,10 +163,10 @@ async function AnonymousProgramsPage({ searchParams }: { searchParams: ProgramsS
     <div className="min-h-dvh bg-canvas text-ink">
       <header className="border-b border-border px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
-          <Link href="/" className="text-lg font-bold tracking-tight">
+          <Link prefetch={false} href="/" className="text-lg font-bold tracking-tight">
             Unpatched
           </Link>
-          <Link href="/sign-in" className="text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+          <Link prefetch={false} href="/sign-in" className="text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
             Sign in
           </Link>
         </div>
@@ -216,7 +216,7 @@ async function AnonymousProgramsPage({ searchParams }: { searchParams: ProgramsS
       <footer className="border-t border-border px-4 py-8 sm:px-6">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 text-sm text-ink-muted">
           <span>Unpatched</span>
-          <Link href="/sign-in" className="font-medium hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+          <Link prefetch={false} href="/sign-in" className="font-medium hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
             Sign in
           </Link>
         </div>
@@ -254,11 +254,9 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
   return (
     <AppShell title="Programs" user={user}>
       <div className="space-y-6">
-        <div>
-          <SectionLabel>Registry</SectionLabel>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">Programs</h1>
-        </div>
-
+        {/* No second heading here: AppShell already renders this page's one <h1>
+            ("Programs"). A duplicate h1 repeated the title and gave the page two
+            top-level headings. */}
         <Tabs items={tabs} active={tab} />
 
         <div>

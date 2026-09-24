@@ -29,6 +29,58 @@ export type ScopeImportRowResult =
 const VALID_ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 const VALID_SCOPE_STATES: ScopeState[] = ["in_scope", "out_of_scope"];
 
+// Imported files come from other platforms (HackerOne, Bugcrowd exports) and from humans
+// editing spreadsheets by hand -- neither reliably matches this app's own lowercase
+// snake_case vocabulary. Normalize case/spacing first, then map the asset-type words other
+// platforms actually use onto ours, before falling back to VALID_ASSET_TYPES' exact match.
+const ASSET_TYPE_ALIASES: Record<string, ProgramAssetType> = {
+  domain: "domain",
+  wildcard: "domain",
+  url: "url",
+  uri: "url",
+  website: "url",
+  webapplication: "url",
+  ip: "ip_cidr",
+  ipaddress: "ip_cidr",
+  cidr: "ip_cidr",
+  ipcidr: "ip_cidr",
+  ios: "ios_app",
+  iosapp: "ios_app",
+  iosapplication: "ios_app",
+  apple: "ios_app",
+  android: "android_app",
+  androidapp: "android_app",
+  androidapplication: "android_app",
+  googleplay: "android_app",
+  sourcecode: "source_code",
+  source: "source_code",
+  code: "source_code",
+  github: "source_code",
+  hardware: "hardware",
+  device: "hardware",
+  iot: "hardware",
+  aimodel: "ai_model",
+  ai: "ai_model",
+  llm: "ai_model",
+  model: "ai_model",
+  other: "url",
+};
+
+function normalizeAssetType(raw: string): string {
+  const trimmed = raw.trim();
+  const lower = trimmed.toLowerCase();
+  if ((VALID_ASSET_TYPES as string[]).includes(lower)) return lower;
+  const compact = lower.replace(/[\s_-]+/g, "");
+  return ASSET_TYPE_ALIASES[compact] ?? lower;
+}
+
+function normalizeScopeState(raw: string): string {
+  const lower = raw.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (lower === "" || lower === "in" || lower === "instance") return "in_scope";
+  if (lower === "out" || lower === "outofscope" || lower === "excluded" || lower === "exclude") return "out_of_scope";
+  return lower;
+}
+
 /** Deliberately shallow -- presence/shape only (matches actions/scope.ts's own addSchema:
  * "Real validation and canonicalization is the database's job... never duplicated here").
  * A row that passes this still goes through private.canonicalize_scope_target for real
@@ -39,13 +91,15 @@ const VALID_SCOPE_STATES: ScopeState[] = ["in_scope", "out_of_scope"];
  * target, unrecognized asset type/scope state, an over-length field) -- never to predict
  * whether the database will accept the target. */
 function validateRow(raw: Record<string, unknown>, line: number): ScopeImportRowResult {
-  const assetTypeRaw = String(raw.assetType ?? raw.asset_type ?? "").trim();
+  const assetTypeInput = String(raw.assetType ?? raw.asset_type ?? "").trim();
+  const assetTypeRaw = normalizeAssetType(assetTypeInput);
   const target = String(raw.target ?? "").trim();
-  const scopeStateRaw = String(raw.scopeState ?? raw.scope_state ?? "in_scope").trim();
+  const scopeStateInput = String(raw.scopeState ?? raw.scope_state ?? "in_scope").trim();
+  const scopeStateRaw = normalizeScopeState(scopeStateInput);
   const descriptionRaw = raw.description != null ? String(raw.description).trim() : "";
 
   if (!VALID_ASSET_TYPES.includes(assetTypeRaw as ProgramAssetType)) {
-    return { line, ok: false, raw, error: `Row ${line}: "${assetTypeRaw || "(empty)"}" is not a valid asset type (expected one of ${VALID_ASSET_TYPES.join(", ")}).` };
+    return { line, ok: false, raw, error: `Row ${line}: "${assetTypeInput || "(empty)"}" is not a valid asset type (expected one of ${VALID_ASSET_TYPES.join(", ")}).` };
   }
   if (target.length === 0) {
     return { line, ok: false, raw, error: `Row ${line}: target is required.` };
@@ -54,7 +108,7 @@ function validateRow(raw: Record<string, unknown>, line: number): ScopeImportRow
     return { line, ok: false, raw, error: `Row ${line}: target must be 2048 characters or fewer.` };
   }
   if (!VALID_SCOPE_STATES.includes(scopeStateRaw as ScopeState)) {
-    return { line, ok: false, raw, error: `Row ${line}: "${scopeStateRaw}" is not a valid scope state (expected in_scope or out_of_scope).` };
+    return { line, ok: false, raw, error: `Row ${line}: "${scopeStateInput}" is not a valid scope state (expected in_scope or out_of_scope).` };
   }
   if (descriptionRaw.length > 500) {
     return { line, ok: false, raw, error: `Row ${line}: description must be 500 characters or fewer.` };

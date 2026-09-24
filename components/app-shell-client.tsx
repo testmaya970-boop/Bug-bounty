@@ -296,13 +296,25 @@ function HelpLink() {
   );
 }
 
-/** docs/decisions/0074 -- active reads as a precise system state, not a large grey rounded
- * pill: a solid 2px ink rail (never the translucent green fill/glow this used before),
- * the label at full ink weight, and the icon filled solid ink -- the same "confirmed/
- * authoritative = black" rule the rest of this pass's color system uses. An inactive item
- * stays quiet (muted text, transparent rail) until hover, which only lightens the
- * background -- no color, no glow, so the one meaningful color signal in this sidebar
- * stays reserved for the badge counts below, not spent on "you are here." */
+// Tactical Telemetry nav: uppercase JetBrains Mono (the brutalist skill's micro-typography
+// rule for navigation), and "you are here" marked by a hazard-red rail -- the one accent,
+// spent on the one vital state. Shared by NavLink and OrgNavGroup so the two nav zones can
+// never drift into two different styles again.
+const NAV_LINK_BASE =
+  "flex min-h-10 items-center gap-2.5 border-l-2 py-2 pl-2.5 pr-2.5 font-mono text-xs uppercase tracking-[0.08em] transition-[background-color,border-color,color] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus";
+const NAV_LINK_ACTIVE = "border-action bg-surface-muted font-bold text-ink";
+const NAV_LINK_IDLE = "border-transparent font-medium text-ink-muted hover:bg-surface-hover hover:text-ink";
+
+function NavGroupLabel({ label }: { label: string }) {
+  return (
+    <p className="px-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted">
+      <span aria-hidden="true">[ </span>
+      {label}
+      <span aria-hidden="true"> ]</span>
+    </p>
+  );
+}
+
 function NavLink({ item, active, onClick }: { item: NavItem; active: boolean; onClick: () => void }) {
   const Icon = item.icon;
   return (
@@ -311,10 +323,7 @@ function NavLink({ item, active, onClick }: { item: NavItem; active: boolean; on
       prefetch={false}
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex min-h-10 items-center gap-2.5 border-l-2 py-2 pl-2.5 pr-2.5 text-sm transition-[background-color,border-color,color] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
-        active ? "border-ink bg-surface-muted font-semibold text-ink" : "border-transparent font-medium text-ink-muted hover:bg-surface-hover hover:text-ink",
-      )}
+      className={cn(NAV_LINK_BASE, active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE)}
     >
       <Icon aria-hidden="true" className={cn("size-4 shrink-0", active ? "text-ink" : "text-ink-muted")} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -330,7 +339,7 @@ function NavLink({ item, active, onClick }: { item: NavItem; active: boolean; on
 function NavGroup({ label, items, path, onNavigate }: { label: string; items: NavItem[]; path: string; onNavigate: () => void }) {
   return (
     <div>
-      <p className="px-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted/60">{label}</p>
+      <NavGroupLabel label={label} />
       <div className="mt-1.5 space-y-0.5">
         {items.map((item) => (
           <NavLink key={`${item.href}-${item.label}`} item={item} active={path === item.href} onClick={onNavigate} />
@@ -346,7 +355,7 @@ function NavGroup({ label, items, path, onNavigate }: { label: string; items: Na
 function OrgNavGroup({ label, items, organizationId, path, onNavigate }: { label: string; items: OrgNavItem[]; organizationId: string; path: string; onNavigate: () => void }) {
   return (
     <div>
-      <p className="px-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted/60">{label}</p>
+      <NavGroupLabel label={label} />
       <div className="mt-1.5 space-y-0.5">
         {items.map((item) => {
           const href = item.href(organizationId);
@@ -359,10 +368,7 @@ function OrgNavGroup({ label, items, organizationId, path, onNavigate }: { label
               prefetch={false}
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex min-h-10 items-center gap-2.5 border-l-2 py-2 pl-2.5 pr-2.5 text-sm transition-[background-color,border-color,color] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
-                active ? "border-ink bg-surface-muted font-semibold text-ink" : "border-transparent font-medium text-ink-muted hover:bg-surface-hover hover:text-ink",
-              )}
+              className={cn(NAV_LINK_BASE, active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE)}
             >
               <Icon aria-hidden="true" className={cn("size-4 shrink-0", active ? "text-ink" : "text-ink-muted")} />
               <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -477,10 +483,16 @@ function SidebarBrand() {
  * case: organization-only.
  *
  * The org-side zones only render when there is a real `currentOrganizationId` to resolve
- * their hrefs against (an org-only/both-context user on a non-org-scoped page, e.g. their
- * own /settings, has organizations but no "current" one -- the switcher itself still
- * shows so they can navigate INTO an organization, but the zone links below it don't
- * render for a context that doesn't exist yet).
+ * their hrefs against. On an org-scoped page that id is the URL's own org segment; on a
+ * non-org-scoped page (Settings, Help, Notifications) AppShell (components/app-shell.tsx)
+ * already resolved it from the `last_organization_id` cookie -- the real org this user
+ * most recently navigated into, re-validated there against their actual memberships --
+ * before this component ever runs. This component itself never guesses: with zero real
+ * signal (a brand-new account, or a cookie naming an org this user has since left),
+ * `currentOrganizationId` is genuinely absent and the zone links correctly don't render,
+ * same as before this fallback existed -- see the array-order-guessing bug this codebase
+ * already fixed once (organizations[0] used as "current" made a nav link silently open the
+ * wrong organization's data), which is exactly what re-validating the cookie prevents.
  */
 function SidebarNav({
   path,

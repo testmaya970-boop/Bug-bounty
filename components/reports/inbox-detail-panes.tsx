@@ -124,7 +124,7 @@ function InboxMiddlePane({
         <div className="flex flex-wrap items-center gap-2">
           {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
           <StatusBadge status={report.status} />
-          <Link
+          <Link prefetch={false}
             href={`/organizations/${organizationId}/programs/${programId}/reports/${report.id}` as Route}
             className="ml-auto text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >

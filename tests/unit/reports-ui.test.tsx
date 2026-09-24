@@ -49,6 +49,30 @@ describe("CreateReportForm", () => {
     expect(html).toContain("Cross-Site Scripting (XSS)");
     expect(html).toContain("Not set"); // the real "no severity chosen" option, not a missing one
   });
+
+  it("offers real in-scope targets for the default asset type (domain) as datalist suggestions, not a hard-enforced picker", () => {
+    const html = renderToStaticMarkup(
+      <CreateReportForm
+        organizationId="org-1"
+        programId="prog-1"
+        programName="Acme Bounty"
+        inScopeTargets={[
+          { assetType: "domain", displayTarget: "api.example.com" },
+          { assetType: "url", displayTarget: "https://example.com/admin" },
+        ]}
+      />,
+    );
+    expect(html).toContain('list="in-scope-targets"');
+    expect(html).toContain("api.example.com");
+    // The URL-type target must not leak into the domain datalist -- only the
+    // currently-selected asset type's own entries are offered.
+    expect(html).not.toContain("https://example.com/admin");
+  });
+
+  it("renders no datalist at all when there are no in-scope targets for the current asset type", () => {
+    const html = renderToStaticMarkup(<CreateReportForm organizationId="org-1" programId="prog-1" programName="Acme Bounty" inScopeTargets={[]} />);
+    expect(html).not.toContain("in-scope-targets");
+  });
 });
 
 describe("classifyFailure: every submit_report error code maps to a calm, specific, safe state", () => {

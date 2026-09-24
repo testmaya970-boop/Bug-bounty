@@ -68,7 +68,7 @@ export function ReferenceStrip({ activityWeeks }: { activityWeeks: number[][] })
       <div className="bg-surface p-4">
         <SectionLabel>Need help?</SectionLabel>
         <p className="mt-1.5 text-xs text-ink-muted">Questions, feedback, or something not working as expected.</p>
-        <Link href={"/settings/feedback" as Route} className="mt-2.5 inline-block text-[11px] font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+        <Link prefetch={false} href={"/settings/feedback" as Route} className="mt-2.5 inline-block text-[11px] font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
           Get help & give feedback →
         </Link>
       </div>

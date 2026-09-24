@@ -307,7 +307,7 @@ export function ReportInboxTable({
                     </td>
                     <td className="px-4 py-3">{report.confirmedSeverity ? <SeverityBadge severity={report.confirmedSeverity} /> : <span className="text-sm text-ink-muted">Not set</span>}</td>
                     <td className="px-4 py-3">
-                      <Link
+                      <Link prefetch={false}
                         href={`/organizations/${organizationId}/programs/${programId}/reports/${report.id}` as Route}
                         className="font-medium text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                       >
@@ -341,7 +341,7 @@ export function ReportInboxTable({
                     onChange={() => toggleSelected(report.id)}
                     className="mt-0.5 size-4 shrink-0 accent-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                   />
-                  <Link
+                  <Link prefetch={false}
                     href={`/organizations/${organizationId}/programs/${programId}/reports/${report.id}` as Route}
                     className="font-medium text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                   >

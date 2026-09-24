@@ -71,11 +71,6 @@ export default async function OrganizationResearcherDetailPage({ params }: { par
           ]}
         />
 
-        <div>
-          <SectionLabel>Researcher</SectionLabel>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">{researcher.displayName}</h1>
-        </div>
-
         <div className="grid grid-cols-3 gap-6 border-y border-border py-4">
           <div>
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted/70">Resolved</p>
@@ -101,7 +96,7 @@ export default async function OrganizationResearcherDetailPage({ params }: { par
                 <span className="text-sm font-medium text-ink">{program.programName}</span>
                 <span className="flex items-center gap-3">
                   <ResearcherStatusBadge status={program.status} />
-                  <Link
+                  <Link prefetch={false}
                     href={`/organizations/${organizationId}/programs/${program.programId}#researchers` as Route}
                     className="text-sm font-medium text-ink-muted transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none"
                   >

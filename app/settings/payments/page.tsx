@@ -41,7 +41,7 @@ export default async function PaymentsSettingsPage() {
         <h1 className="text-xl font-semibold tracking-tight">Rewards & Payments</h1>
         <p className="mt-1 text-sm text-ink-muted">
           Every real bounty your reports have earned. The same record, with more context, lives at{" "}
-          <Link href={"/bounties" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+          <Link prefetch={false} href={"/bounties" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
             Bounties
           </Link>
           .

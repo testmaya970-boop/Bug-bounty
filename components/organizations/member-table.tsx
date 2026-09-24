@@ -16,7 +16,7 @@ export function MemberTable({ organizationId, members, lastActivityByUserId }: {
       id: "member",
       header: "Member",
       cell: (row) => (
-        <Link href={`/organizations/${organizationId}/members/${row.userId}` as Route} className="flex items-center gap-3 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+        <Link prefetch={false} href={`/organizations/${organizationId}/members/${row.userId}` as Route} className="flex items-center gap-3 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
           <Avatar name={row.displayName} />
           <span>
             <span className="block font-medium text-ink">{row.displayName}</span>
@@ -45,7 +45,7 @@ export function MemberTable({ organizationId, members, lastActivityByUserId }: {
       id: "actions",
       header: "Actions",
       cell: (row) => (
-        <Link href={`/organizations/${organizationId}/members/${row.userId}` as Route} className="text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+        <Link prefetch={false} href={`/organizations/${organizationId}/members/${row.userId}` as Route} className="text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
           Manage
         </Link>
       ),

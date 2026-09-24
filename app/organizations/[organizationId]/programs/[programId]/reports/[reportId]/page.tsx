@@ -419,7 +419,7 @@ export default async function ReportDetailPage({
                   <Alert tone="warning" title="Complete your payout details to get paid." className="mt-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <span>Your bounty was finalized, but you haven&apos;t submitted KYC or payout details yet.</span>
-                      <Link href={"/settings/payments" as Route} className="shrink-0 font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+                      <Link prefetch={false} href={"/settings/payments" as Route} className="shrink-0 font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                         Complete now →
                       </Link>
                     </div>

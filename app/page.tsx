@@ -2,7 +2,6 @@ import React from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { AppShell } from "../components/app-shell";
 import { SectionLabel } from "../components/ui/security-primitives";
@@ -10,6 +9,7 @@ import { HeroArt } from "../components/marketing/hero-art/hero-art";
 import { BugSpecimen } from "../components/marketing/hero-art/bug-specimen";
 import { AuditSeal } from "../components/marketing/hero-art/audit-seal";
 import { WorkflowDiagramPair } from "../components/marketing/workflow-diagram";
+import { PublicHomeMotion } from "../components/marketing/public-home-motion";
 import { ProgramDiscoveryPreview } from "../components/marketing/program-discovery-preview";
 import { StateMachineDiagram } from "../components/marketing/state-machine-diagram";
 import { getCurrentUser } from "../lib/auth/current-user";
@@ -34,28 +34,20 @@ import { computeReportActivityWeeks } from "../lib/activity-calendar";
 import { listTopBountyPrograms } from "../services/programs";
 import { perfTimed } from "../lib/perf-trace";
 
-// Public-homepage layout reskin (docs/decisions/0056), now the whole app's palette
-// (docs/decisions/0062): PublicHome's warm cream/green/orange colors are no longer a
-// component-scoped override -- they ARE app/globals.css's `:root` theme, so every
-// existing shared primitive (Badge, SectionLabel, HeroArt,
-// AppShell, and every authenticated screen) reads the identical
-// tokens with zero prop changes. Only this page's typeface stays a deliberate, disclosed
-// exception (Plus Jakarta Sans, per 0056) to the app-wide Space Grotesk/Inter pairing.
-const displayFont = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["500", "600", "700", "800"], display: "swap" });
+// Tactical Telemetry reskin (taste-skill:industrial-brutalist-ui): this page reads the
+// same single-substrate tokens as every other screen, and headings use the app-wide heavy
+// display face (Archivo Black, via globals.css's h1/h2 rule) -- the page's former private
+// display font (Plus Jakarta Sans) is gone, one fewer font download.
+const headingClass = "font-display text-ink";
 
-const headingClass = `${displayFont.className} font-extrabold tracking-tight text-ink`;
-
-// Every pressable link on this page gets the same real press feedback (scale(0.97) on
-// :active) -- previously only the accent-2-filled primary link had it; the two outline
-// variants had a hover color shift but no confirmation on press. Explicit transition
-// properties (never the `transition`/`transition-all` shorthand) plus a real ease-out
-// curve, per this session's own emil-design-eng review pass -- a filled button pressed
-// hundreds of times a day should feel like it heard the click, and an unspecified
-// `transition: all` risks animating layout properties it was never meant to.
+// Every pressable link keeps real press feedback (scale(0.97) on :active) with explicit
+// transition properties, never the `transition`/`transition-all` shorthand.
+// Tactical Telemetry: square slabs, uppercase mono labels. The primary CTA is the
+// page's one solid hazard-red block (dark text -- white on this red fails AA at 3.7:1).
 const primaryLinkClass =
-  "inline-flex min-h-12 items-center gap-2 rounded-full bg-accent-2 px-7 text-sm font-bold text-on-accent-2 shadow-[0_8px_20px_-8px_var(--glow-accent-2)] transition-[transform,filter,box-shadow] duration-200 ease-out hover:brightness-90 hover:shadow-[0_10px_28px_-8px_var(--glow-accent-2)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+  "inline-flex min-h-12 items-center gap-2 bg-action px-7 font-mono text-xs font-bold uppercase tracking-[0.1em] text-on-action transition-[transform,background-color] duration-200 ease-out hover:bg-action-hover active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 const secondaryLinkClass =
-  "inline-flex min-h-12 items-center gap-2 rounded-full border border-border-strong bg-surface px-7 text-sm font-bold text-ink transition-[transform,background-color,border-color] duration-200 ease-out hover:bg-surface-muted active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+  "inline-flex min-h-12 items-center gap-2 border border-ink bg-surface px-7 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink transition-[transform,background-color,color] duration-200 ease-out hover:bg-ink hover:text-canvas active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 // The `+`/rotate icon gets an explicit duration/ease (was `transition-transform` alone,
 // resolving to Tailwind's default 150ms/default ease -- fine, but undocumented). The
@@ -124,6 +116,7 @@ const PHILOSOPHY_STAGES = [
 function PublicHome() {
   return (
     <div className="min-h-dvh bg-canvas text-ink">
+      <PublicHomeMotion />
       {/* NAVIGATION (docs/decisions/0083, chaptered-editorial grammar) -- no fixed
           bar: the grammar explicitly forbids the pill-shaped sticky wordmark+CTA
           bar every earlier version of this page carried. A plain top rule with
@@ -132,13 +125,13 @@ function PublicHome() {
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck aria-hidden="true" className="size-5 text-action" />
-            <span className={`${displayFont.className} text-lg font-extrabold tracking-tight`}>Unpatched</span>
+            <span className="font-display text-lg uppercase tracking-tight">Unpatched</span>
           </div>
           <div className="flex items-center gap-5 text-sm font-semibold text-ink-muted">
-            <Link href="/sign-in" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+            <Link prefetch={false} href="/sign-in" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
               Sign in
             </Link>
-            <Link href="/programs" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+            <Link prefetch={false} href="/programs" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
               Programs
             </Link>
           </div>
@@ -152,17 +145,17 @@ function PublicHome() {
           <section className="relative overflow-hidden px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
             <HeroArt />
             <div className="relative mx-auto max-w-2xl text-center">
-              <h1 className={`${headingClass} text-4xl leading-[1.05] sm:text-5xl lg:text-[3.4rem]`}>
+              <h1 data-motion="hero-heading" className={`${headingClass} text-4xl leading-[1.05] sm:text-5xl lg:text-[3.4rem]`}>
                 Every finding becomes a record no one can quietly change.
               </h1>
-              <p className="mx-auto mt-6 max-w-xl text-base text-ink-muted sm:text-lg">
+              <p data-motion="hero-copy" className="mx-auto mt-6 max-w-xl text-base text-ink-muted sm:text-lg">
                 Researchers submit real findings. Organizations triage and decide. Every step, evidence, response, and resolution is written once and never silently overwritten.
               </p>
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                <Link href={"/researchers/sign-up" as Route} className={primaryLinkClass}>
+              <div data-motion="hero-ctas" className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <Link prefetch={false} href={"/researchers/sign-up" as Route} className={primaryLinkClass}>
                   Explore security research <ArrowRight aria-hidden="true" className="size-4" />
                 </Link>
-                <Link href={"/organizations/sign-up" as Route} className={secondaryLinkClass}>
+                <Link prefetch={false} href={"/organizations/sign-up" as Route} className={secondaryLinkClass}>
                   Run a security program
                 </Link>
               </div>
@@ -178,14 +171,14 @@ function PublicHome() {
           <section id="how-it-works" className="relative overflow-hidden border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
               <div className="relative z-10">
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">Chapter one</p>
-                <h2 className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Signal, then evidence.</h2>
-                <p className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action">[ 01 ] /// </span>Chapter one</p>
+                <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Signal, then evidence.</h2>
+                <p data-motion="chapter-body" className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
                   A researcher notices something worth a second look. Domains, URLs, or IP ranges: the single most-specific scope match decides what&rsquo;s authorized before anyone tests anything. Text,
                   code, request/response logs, or a file, up to 10 MB, attached at submission or added afterward.
                 </p>
               </div>
-              <figure className="chapter-art-full relative -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:mx-0 lg:h-[64vh]" aria-hidden="true">
+              <figure data-motion="chapter-figure" className="chapter-art-full relative -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:mx-0 lg:h-[64vh]" aria-hidden="true">
                 <BugSpecimen />
                 <figcaption className="sr-only">A specimen-plate diagram of a security finding, annotated with real vulnerability classes: unvalidated input, broken access control, session token exposed, outdated dependency.</figcaption>
               </figure>
@@ -197,12 +190,12 @@ function PublicHome() {
               chapter's one real "second-read" moment. */}
           <section className="border-t border-border bg-surface-muted px-4 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto max-w-4xl">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">Chapter two</p>
-              <h2 className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Not a status field. A state machine.</h2>
-              <p className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action">[ 02 ] /// </span>Chapter two</p>
+              <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Not a status field. A state machine.</h2>
+              <p data-motion="chapter-body" className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
                 Every report moves through a fixed, real transition table — the exact same one that runs in production, not a simplified version for this page.
               </p>
-              <div className="mt-12">
+              <div data-motion="chapter-figure" className="mt-12">
                 <StateMachineDiagram />
               </div>
             </div>
@@ -215,22 +208,22 @@ function PublicHome() {
               tinted card. */}
           <section id="for-researchers" className="border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto max-w-6xl">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">Chapter three</p>
-              <h2 className={`${headingClass} mt-3 max-w-2xl text-3xl sm:text-4xl`}>Decision, fix, verification: two real paths through the same record.</h2>
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action">[ 03 ] /// </span>Chapter three</p>
+              <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 max-w-2xl text-3xl sm:text-4xl`}>Decision, fix, verification: two real paths through the same record.</h2>
               <div className="mt-12 grid gap-6 lg:grid-cols-2 lg:gap-12">
                 <h3 className="text-xl font-bold text-ink lg:pr-12">Find real work. Keep the record.</h3>
                 <h3 id="for-organizations" className="text-xl font-bold text-ink lg:pl-12">
                   Run a program, not a vulnerability inbox.
                 </h3>
               </div>
-              <div className="mt-6">
+              <div data-motion="chapter-figure" className="mt-6">
                 <WorkflowDiagramPair left={RESEARCHER_STAGES} right={ORGANIZATION_STAGES} />
               </div>
               <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:gap-12">
-                <Link href={"/researchers/sign-up" as Route} className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pr-12">
+                <Link prefetch={false} href={"/researchers/sign-up" as Route} className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pr-12">
                   Continue as researcher
                 </Link>
-                <Link href={"/organizations/sign-up" as Route} className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pl-12">
+                <Link prefetch={false} href={"/organizations/sign-up" as Route} className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pl-12">
                   Continue as organization
                 </Link>
               </div>
@@ -246,15 +239,15 @@ function PublicHome() {
             feel.md's peak rules. */}
         <section className="relative overflow-hidden border-t border-border bg-surface-muted px-4 py-24 sm:px-6 sm:py-32">
           <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
-            <figure className="chapter-art-full relative order-2 -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:order-1 lg:mx-0 lg:h-[68vh]" aria-hidden="true">
+            <figure data-motion="chapter-figure" className="chapter-art-full relative order-2 -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:order-1 lg:mx-0 lg:h-[68vh]" aria-hidden="true">
               <AuditSeal />
               <figcaption className="sr-only">A notary-style audit seal, its ring reading RECEIVED, TRIAGED, DECIDED, RECORDED -- the real Unpatched report lifecycle.</figcaption>
             </figure>
             <div className="relative z-10 order-1 lg:order-2">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">Chapter four</p>
-              <h2 className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Security work should leave a record.</h2>
-              <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-ink-muted">Not a status that quietly changed. Not a decision no one can trace back to a reason.</p>
-              <dl className="mt-8 space-y-5 border-t border-border pt-6">
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action">[ 04 ] /// </span>Chapter four</p>
+              <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Security work should leave a record.</h2>
+              <p data-motion="chapter-body" className="mt-4 max-w-[54ch] text-base leading-relaxed text-ink-muted">Not a status that quietly changed. Not a decision no one can trace back to a reason.</p>
+              <dl data-motion="chapter-body" className="mt-8 space-y-5 border-t border-border pt-6">
                 {PHILOSOPHY_STAGES.map((stage) => (
                   <div key={stage.label}>
                     <dt className="text-sm font-bold text-ink">{stage.label}</dt>
@@ -302,14 +295,14 @@ function PublicHome() {
             bands. The CTA is set as running text. */}
         <section className="border-t border-border px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">REC-0000842 · closed</p>
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true">[ </span>REC-0000842<span aria-hidden="true"> ] /// </span>closed</p>
             <h2 className={`${headingClass} mt-4 text-2xl sm:text-3xl`}>The record does not disappear.</h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-muted">
-              <Link href={"/researchers/sign-up" as Route} className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              <Link prefetch={false} href={"/researchers/sign-up" as Route} className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                 Continue as researcher
               </Link>
               {" · "}
-              <Link href={"/organizations/sign-up" as Route} className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              <Link prefetch={false} href={"/organizations/sign-up" as Route} className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                 Continue as organization
               </Link>
             </p>
@@ -322,7 +315,7 @@ function PublicHome() {
             <div>
               <div className="flex items-center gap-2">
                 <ShieldCheck aria-hidden="true" className="size-5 text-action" />
-                <span className={`${displayFont.className} text-lg font-bold text-ink`}>Unpatched</span>
+                <span className="font-display text-lg uppercase text-ink">Unpatched</span>
               </div>
               <p className="mt-3 max-w-xs text-sm text-ink-muted">Every finding becomes a record no one can quietly change.</p>
             </div>
@@ -331,17 +324,17 @@ function PublicHome() {
               <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">Product</p>
               <ul className="mt-4 space-y-2.5 text-sm text-ink-muted">
                 <li>
-                  <Link href="/programs" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link prefetch={false} href="/programs" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
                     Browse programs
                   </Link>
                 </li>
                 <li>
-                  <Link href="/learn" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link prefetch={false} href="/learn" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
                     Learn
                   </Link>
                 </li>
                 <li>
-                  <Link href="/ctf" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link prefetch={false} href="/ctf" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
                     CTF challenges
                   </Link>
                 </li>
@@ -352,17 +345,17 @@ function PublicHome() {
               <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">Get started</p>
               <ul className="mt-4 space-y-2.5 text-sm text-ink-muted">
                 <li>
-                  <Link href={"/researchers/sign-up" as Route} className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link prefetch={false} href={"/researchers/sign-up" as Route} className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
                     For researchers
                   </Link>
                 </li>
                 <li>
-                  <Link href={"/organizations/sign-up" as Route} className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link prefetch={false} href={"/organizations/sign-up" as Route} className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
                     For organizations
                   </Link>
                 </li>
                 <li>
-                  <Link href="/sign-in" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link prefetch={false} href="/sign-in" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
                     Sign in
                   </Link>
                 </li>
@@ -373,17 +366,17 @@ function PublicHome() {
               <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">Trust</p>
               <ul className="mt-4 space-y-2.5 text-sm text-ink-muted">
                 <li>
-                  <Link href="/safe-harbor" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link prefetch={false} href="/safe-harbor" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
                     Safe Harbor & Code of Conduct
                   </Link>
                 </li>
                 <li>
-                  <Link href="/disclosures" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link prefetch={false} href="/disclosures" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
                     Disclosures
                   </Link>
                 </li>
                 <li>
-                  <Link href="/help" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link prefetch={false} href="/help" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
                     Help
                   </Link>
                 </li>
@@ -568,7 +561,7 @@ async function renderHomePage() {
               only content is "you don't have one yet, create one," which is not a real
               next step to surface on a researcher's own home screen. */}
           {hasOrganization && (
-            <Link href="/organizations" className="mt-2 inline-block font-medium text-ink-muted hover:text-ink">
+            <Link prefetch={false} href="/organizations" className="mt-2 inline-block font-medium text-ink-muted hover:text-ink">
               Manage an organization instead?
             </Link>
           )}

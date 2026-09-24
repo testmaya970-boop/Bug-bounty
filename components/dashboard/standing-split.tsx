@@ -39,7 +39,7 @@ export function StandingSplit({
             <SectionLabel>Verified impact</SectionLabel>
             <h2 className="mt-0.5 text-base font-semibold text-ink">Your reputation</h2>
           </div>
-          <Link href={"/researchers" as Route} className="shrink-0 font-mono text-xs font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+          <Link prefetch={false} href={"/researchers" as Route} className="shrink-0 font-mono text-xs font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
             Full record →
           </Link>
         </div>
@@ -59,7 +59,7 @@ export function StandingSplit({
             <SectionLabel>Leaderboard</SectionLabel>
             <h2 className="mt-0.5 text-base font-semibold text-ink">Top researchers</h2>
           </div>
-          <Link href={"/researchers" as Route} className="shrink-0 font-mono text-xs font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+          <Link prefetch={false} href={"/researchers" as Route} className="shrink-0 font-mono text-xs font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
             Full board →
           </Link>
         </div>

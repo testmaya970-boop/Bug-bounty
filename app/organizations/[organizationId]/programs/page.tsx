@@ -88,7 +88,7 @@ export default async function OrganizationEngagementsPage({ params, searchParams
                 filter convention), each carrying a real count derived from the same
                 fetch above. "All" always shows the full real total. */}
             <nav aria-label="Filter by engagement type" className="flex flex-wrap gap-1 border-b border-border">
-              <Link
+              <Link prefetch={false}
                 href={`/organizations/${organizationId}/programs` as Route}
                 aria-current={!selectedType ? "page" : undefined}
                 className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus ${!selectedType ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
@@ -96,7 +96,7 @@ export default async function OrganizationEngagementsPage({ params, searchParams
                 All <span className="font-mono text-xs tabular-nums text-ink-muted">{programs.length}</span>
               </Link>
               {ENGAGEMENT_TYPE_ORDER.filter((type) => (countByType.get(type) ?? 0) > 0).map((type) => (
-                <Link
+                <Link prefetch={false}
                   key={type}
                   href={`/organizations/${organizationId}/programs?type=${type}` as Route}
                   aria-current={selectedType === type ? "page" : undefined}
@@ -113,7 +113,7 @@ export default async function OrganizationEngagementsPage({ params, searchParams
               <ul className="divide-y divide-border">
                 {visiblePrograms.map((program) => (
                   <li key={program.id} className="flex items-center justify-between gap-3 py-3">
-                    <Link
+                    <Link prefetch={false}
                       href={`/organizations/${organizationId}/programs/${program.id}` as Route}
                       className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                     >

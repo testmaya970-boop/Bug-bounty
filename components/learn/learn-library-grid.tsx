@@ -76,7 +76,7 @@ export function LearnLibraryGrid({ articles }: { articles: TrainingArticle[] }) 
 
       <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {visibleArticles.map((article) => (
-          <Link
+          <Link prefetch={false}
             key={article.id}
             href={`/learn/${article.slug}` as Route}
             className="rounded-lg border border-border bg-surface p-4 transition-colors duration-150 hover:bg-surface-muted motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"

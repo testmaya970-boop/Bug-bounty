@@ -28,10 +28,7 @@ export default async function BountiesPage() {
   return (
     <AppShell title="Bounties" user={user}>
       <div className="max-w-4xl space-y-8">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Bounties</h1>
-          <p className="mt-1 text-sm text-ink-muted">Your bounty track record: every payment your accepted reports have earned.</p>
-        </div>
+        <p className="text-sm text-ink-muted">Your bounty track record: every payment your accepted reports have earned.</p>
 
         <BountyTrackRecord obligations={obligations} />
       </div>

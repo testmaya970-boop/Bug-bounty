@@ -70,8 +70,6 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <div className="group relative overflow-hidden rounded-xl bg-ink px-6 py-8 text-canvas shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] transition-shadow duration-200 sm:px-10 sm:py-10 motion-safe:animate-hero-reveal motion-reduce:transition-none hover:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65),0_0_40px_-8px_var(--glow-action)]">
         <div aria-hidden="true" className="dot-grid pointer-events-none absolute inset-0 text-canvas" />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,var(--glow-action),transparent_60%)] opacity-60" />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,var(--glow-accent-2),transparent_55%)] opacity-30" />
         <div className="relative">
           {/* text-action-on-dark, not text-action: --action (#c7331e) is AA-safe for
               button/link text on the light canvas but fails contrast against this dark
@@ -85,7 +83,7 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
               without a competing heading element -- one real <h1> per screen. */}
           <p className="mt-2.5 text-2xl font-semibold tracking-tight sm:text-3xl">{action.title}</p>
           <p className="mt-3 max-w-lg text-sm text-canvas/70">{action.description}</p>
-          <Link
+          <Link prefetch={false}
             href={action.href}
             className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md bg-canvas px-5 text-sm font-semibold text-ink transition duration-200 hover:bg-canvas/90 hover:shadow-[0_0_24px_var(--glow-action)] active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas"
           >
@@ -113,7 +111,7 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
             </p>
           </div>
         ))}
-        <Link
+        <Link prefetch={false}
           href={"/researchers" as Route}
           className="glass-surface group/reward col-span-2 flex items-center justify-between rounded-lg p-3.5 transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none hover:border-glass-border-strong hover:shadow-[0_0_20px_-6px_var(--glow-accent-2)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
         >

@@ -164,6 +164,11 @@ describe("Evidence composers", () => {
     expect(html).not.toContain("Visible to");
   });
 
+  it("ResearcherFileEvidenceComposer shows no Clear button before any file is chosen -- the button only appears once a file is actually selected (verified live in a real browser; a native file input cannot be programmatically populated in a static/jsdom render)", () => {
+    const html = renderToStaticMarkup(<ResearcherFileEvidenceComposer {...REF} />);
+    expect(html).not.toContain(">Clear<");
+  });
+
   it("OrganizationFileEvidenceComposer offers a file input and a visibility choice", () => {
     const html = renderToStaticMarkup(<OrganizationFileEvidenceComposer {...REF} />);
     expect(html).toMatch(/type="file"/);

@@ -86,27 +86,18 @@ export function AuthLayout({
           (docs/decisions/0062) -- a flat solid identity band was the single largest area
           of unbroken color on the entire auth flow and read as an unfinished block rather
           than a deliberate dark panel. Deliberately static (no drift/motion), matching
-          this component's own "auth stays calm" note above. The glow's dominant corner
-          flips per identity.accent (researcher keeps action/red leading, organization
-          leads with accent-2/teal instead) -- the one visual signal separating the two
-          signup entry points beyond copy alone. */}
+          this component's own "auth stays calm" note above. The ambient corner glow was
+          removed under the Tactical Telemetry reskin (gradients are prohibited); the
+          researcher/organization entry points are still distinguished by the signal dot's
+          color below and by their copy. */}
       <div className="relative overflow-hidden bg-ink px-4 py-8 text-canvas sm:px-6 lg:flex lg:w-[26rem] lg:shrink-0 lg:flex-col lg:justify-between lg:py-12">
         <div aria-hidden="true" className="dot-grid pointer-events-none absolute inset-0 text-canvas" />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-70"
-          style={{
-            backgroundImage: isAccent2
-              ? "radial-gradient(ellipse at top left, var(--glow-accent-2), transparent 55%), radial-gradient(ellipse at bottom right, var(--glow-action), transparent 50%)"
-              : "radial-gradient(ellipse at top left, var(--glow-action), transparent 55%), radial-gradient(ellipse at bottom right, var(--glow-accent-2), transparent 50%)",
-          }}
-        />
         <div className="relative flex items-center gap-3">
           <span className="text-lg font-bold tracking-tight">Unpatched</span>
           <span className="hidden border-l border-canvas/25 pl-3 text-[11px] font-semibold uppercase tracking-wider text-canvas/50 sm:inline">Security operations</span>
         </div>
         <p className="relative mt-6 flex max-w-sm items-center gap-2 text-lg font-semibold tracking-tight lg:mt-0">
-          <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full motion-safe:animate-[signal-pulse-once_900ms_ease-out_1]", isAccent2 ? "bg-accent-2" : "bg-action")} />
+          <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full motion-safe:animate-[signal-pulse-once_900ms_ease-out_1]", isAccent2 ? "bg-canvas" : "bg-action")} />
           {identity.tagline}
         </p>
         <div className="relative mt-8 hidden lg:block">

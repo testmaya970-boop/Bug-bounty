@@ -16,7 +16,7 @@ export function AudienceChoice() {
       <div className="py-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Researcher</p>
         <p className="mt-2 text-sm text-ink-muted">Find programs, submit vulnerabilities, and build a reputation backed by organization-confirmed outcomes. Never a score.</p>
-        <Link
+        <Link prefetch={false}
           href={"/researchers/sign-up" as Route}
           className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
@@ -26,7 +26,7 @@ export function AudienceChoice() {
       <div className="py-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Organization</p>
         <p className="mt-2 text-sm text-ink-muted">Run programs, define scope, and triage reports through to a bounty decision, with a real audit trail at every step.</p>
-        <Link
+        <Link prefetch={false}
           href={"/organizations/sign-up" as Route}
           className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >

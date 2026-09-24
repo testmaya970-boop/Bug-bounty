@@ -25,7 +25,7 @@ export function ProgramParticipationCard({ participation }: { participation: Pro
   const isActionable = participation.status === "active";
   return (
     <li className={cn(!isActionable && "opacity-70")}>
-      <Link
+      <Link prefetch={false}
         href={`/organizations/${participation.organizationId}/programs/${participation.programId}` as Route}
         className="block px-4 py-3.5 hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus sm:px-5"
       >

@@ -42,7 +42,7 @@ export function ProgramReportList({ organizationId, programId, initialReports, i
         {reports.map((report) => (
           <li key={report.id}>
             <Card className="p-5">
-              <Link href={`/organizations/${organizationId}/programs/${programId}/reports/${report.id}` as Route} className="rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              <Link prefetch={false} href={`/organizations/${organizationId}/programs/${programId}/reports/${report.id}` as Route} className="rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                 <h3 className="text-base font-semibold text-ink">{report.title}</h3>
               </Link>
               <p className="mt-2 break-all font-mono text-xs text-ink-muted">{report.displayTarget}</p>

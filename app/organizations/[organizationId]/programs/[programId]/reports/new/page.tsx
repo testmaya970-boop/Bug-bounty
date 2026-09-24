@@ -8,6 +8,7 @@ import { SectionLabel } from "../../../../../../../components/ui/security-primit
 import { CreateReportForm } from "../../../../../../../components/reports/create-report-form";
 import { getProgram } from "../../../../../../../services/programs";
 import { getMyParticipation } from "../../../../../../../services/program-researchers";
+import { listActiveScopeEntries } from "../../../../../../../services/scope";
 import { getCurrentUser } from "../../../../../../../lib/auth/current-user";
 
 export default async function NewReportPage({ params }: { params: Promise<{ organizationId: string; programId: string }> }) {
@@ -41,6 +42,13 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
     );
   }
 
+  // Real in-scope targets, suggested (not enforced -- the server RPC still makes the final
+  // scope decision, per this page's own existing copy above the Target field) so a
+  // researcher can pick a published target instead of retyping it from memory and risking
+  // a typo. The same pattern HackerOne/Bugcrowd's own report forms use.
+  const scopeEntries = await listActiveScopeEntries(programId);
+  const inScopeTargets = scopeEntries.filter((entry) => entry.scopeState === "in_scope");
+
   return (
     <AppShell title="Report a vulnerability" user={user} organizationId={organizationId}>
       <div className="mx-auto max-w-2xl space-y-6">
@@ -56,7 +64,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
           <SectionLabel>Document a security finding</SectionLabel>
           <p className="mt-1 text-sm text-ink-muted">Every field below becomes part of the report record. Nothing here is discarded on submission.</p>
         </div>
-        <CreateReportForm organizationId={organizationId} programId={programId} programName={program.name} />
+        <CreateReportForm organizationId={organizationId} programId={programId} programName={program.name} inScopeTargets={inScopeTargets} />
       </div>
     </AppShell>
   );

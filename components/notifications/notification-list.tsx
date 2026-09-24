@@ -62,7 +62,7 @@ function NotificationRow({ notification, onRead }: { notification: Notification;
           {formatDateTime(notification.createdAt)}
         </p>
         <div className="mt-1.5 flex items-center gap-3">
-          <Link href={reportHref} className="text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+          <Link prefetch={false} href={reportHref} className="text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
             Open report →
           </Link>
           {!isRead && (

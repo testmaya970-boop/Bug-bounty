@@ -57,7 +57,7 @@ Unlike organization/program creation's idempotency-key pattern (which exists to 
 
 ## Lifecycle interaction
 
-Every scope mutation requires `program.status = 'draft'`. Today this check is unconditionally true (no transition RPC exists yet — see `0005-program-lifecycle.md`), so it is a forward-looking guard, not a currently-observable restriction — but it is real, tested code, not a comment promising future behavior. Whether `review` or `active` should also permit scope changes (and if so, which ones) is an open question for whichever slice actually adds status transitions; deciding it now, before a single transition exists, would be inventing domain rules the task explicitly warned against.
+Every scope mutation originally required `program.status = 'draft'`. **Superseded:** `db/migrations/202609230001_scope_editable_after_launch.sql` removes this check from `add_scope_entry`, `update_scope_entry`, and `remove_scope_entry` entirely — an org can now add, edit, or retire scope entries at any lifecycle stage, including `review` and `active`. This is safe because a report snapshots the scope state/target it matched at submission time (`matched_scope_state`/`matched_target` on `public.reports`, set by `link_report_to_scope_entry` and report submission) — editing scope after launch never retroactively changes what an already-submitted report is recorded as having matched. Removing a target a researcher currently relies on is not announced to them by this migration; that is a disclosed gap, not an oversight — a future slice should notify researchers when scope narrows on an active program, matching how other program-state changes already notify.
 
 ## `evaluate_program_scope`: the internal scope-decision boundary, not a researcher-facing API
 

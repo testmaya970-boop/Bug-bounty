@@ -24,6 +24,7 @@ export function TopBountyProgramsList({ programs }: { programs: TopBountyProgram
       {programs.map((program) => (
         <li key={program.id} className="motion-safe:animate-enter-rise">
           <Link
+            prefetch={false}
             href={`/organizations/${program.organizationId}/programs/${program.id}` as Route}
             className="group flex h-full flex-col justify-between gap-3 rounded-xl border border-border-strong bg-surface p-5 transition duration-150 hover:-translate-y-0.5 hover:border-success/40 hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
@@ -35,7 +36,7 @@ export function TopBountyProgramsList({ programs }: { programs: TopBountyProgram
               <p className="mt-1 truncate text-base font-semibold text-ink">{program.name}</p>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-2xl font-bold tracking-tight text-success">{formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)}</p>
+              <p className="text-2xl font-bold tracking-tight text-ink">{formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)}</p>
               <span aria-hidden="true" className="shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none">
                 →
               </span>

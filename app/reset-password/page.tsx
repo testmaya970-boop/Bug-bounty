@@ -23,7 +23,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
   if (!valid || !token) {
     return (
       <AuthLayout eyebrow="Unpatched" title="This link has expired" description="Password reset links are single-use and expire after a short time.">
-        <Link
+        <Link prefetch={false}
           href={"/forgot-password" as Route}
           className="inline-flex min-h-11 items-center rounded-md bg-ink px-4 text-sm font-semibold text-canvas hover:bg-ink/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >

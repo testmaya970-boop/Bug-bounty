@@ -216,20 +216,46 @@ export function OrganizationEvidenceComposer({ organizationId, programId, report
   );
 }
 
-export function FileField({ inputRef, error }: { inputRef: React.RefObject<HTMLInputElement | null>; error?: string }) {
+/** A native `<input type="file">` has no built-in way to clear a chosen file short of
+ * picking a different one -- confirmed live as a real gap: choosing the wrong file, then
+ * wanting to deselect it before staging it, had no control to do that with. `selectedName`
+ * is lifted into the parent (rather than read imperatively off the ref on click) so this
+ * component can render its own "Clear" action and re-render the moment a file is chosen,
+ * without either composer needing its own copy of this same file-cleared-vs-chosen state. */
+export function FileField({
+  inputRef,
+  error,
+  selectedName,
+  onClear,
+  onFileChange,
+}: {
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  error?: string;
+  selectedName?: string | null;
+  onClear?: () => void;
+  onFileChange?: (name: string | null) => void;
+}) {
   const id = "file-evidence-input";
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
         File <span aria-hidden="true"> *</span>
       </label>
-      <input
-        ref={inputRef}
-        id={id}
-        type="file"
-        required
-        className="block w-full text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-muted"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          ref={inputRef}
+          id={id}
+          type="file"
+          required
+          onChange={(event) => onFileChange?.(event.target.files?.[0]?.name ?? null)}
+          className="block flex-1 text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-muted"
+        />
+        {selectedName && onClear && (
+          <Button type="button" variant="quiet" onClick={onClear}>
+            Clear
+          </Button>
+        )}
+      </div>
       <p className="mt-1 text-xs text-ink-muted">Up to 10 MB. Downloaded as a file, never previewed or executed.</p>
       {error && (
         <p role="alert" className="mt-1 text-xs font-medium text-danger">
@@ -243,8 +269,14 @@ export function FileField({ inputRef, error }: { inputRef: React.RefObject<HTMLI
 export function ResearcherFileEvidenceComposer({ organizationId, programId, reportId }: ReportRef) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function clearFile() {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setSelectedName(null);
+  }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -265,14 +297,14 @@ export function ResearcherFileEvidenceComposer({ organizationId, programId, repo
         setError(result.message);
         return;
       }
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      clearFile();
       router.refresh();
     });
   }
 
   return (
     <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-      <FileField inputRef={fileInputRef} error={error ?? undefined} />
+      <FileField inputRef={fileInputRef} error={error ?? undefined} selectedName={selectedName} onClear={clearFile} onFileChange={(name) => setSelectedName(name)} />
       <div className="flex justify-end">
         <Button type="submit" pending={pending}>
           Upload file
@@ -285,9 +317,15 @@ export function ResearcherFileEvidenceComposer({ organizationId, programId, repo
 export function OrganizationFileEvidenceComposer({ organizationId, programId, reportId }: ReportRef) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<ReportVisibility>("researcher_visible");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function clearFile() {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setSelectedName(null);
+  }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -308,7 +346,7 @@ export function OrganizationFileEvidenceComposer({ organizationId, programId, re
         setError(result.message);
         return;
       }
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      clearFile();
       router.refresh();
     });
   }
@@ -319,7 +357,7 @@ export function OrganizationFileEvidenceComposer({ organizationId, programId, re
         <option value="researcher_visible">Researcher and organization</option>
         <option value="internal">Internal only</option>
       </Select>
-      <FileField inputRef={fileInputRef} error={error ?? undefined} />
+      <FileField inputRef={fileInputRef} error={error ?? undefined} selectedName={selectedName} onClear={clearFile} onFileChange={(name) => setSelectedName(name)} />
       <div className="flex justify-end">
         <Button type="submit" pending={pending}>
           Upload file

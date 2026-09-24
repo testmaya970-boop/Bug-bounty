@@ -93,7 +93,7 @@ export default async function OrganizationResearchersPage({ params }: { params: 
                     return (
                       <tr key={researcher.researcherId} className="group border-b border-border/70 transition-colors duration-150 last:border-0 hover:bg-surface-muted motion-reduce:transition-none">
                         <td className="py-3 pr-4 align-top">
-                          <Link
+                          <Link prefetch={false}
                             href={`/organizations/${organizationId}/researchers/${researcher.researcherId}` as Route}
                             className="font-semibold text-ink transition-colors duration-150 hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none"
                           >

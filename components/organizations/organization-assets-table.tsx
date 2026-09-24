@@ -137,7 +137,7 @@ export function OrganizationAssetsTable({
                     {entry.description && <p className="mt-0.5 text-xs text-ink-muted">{entry.description}</p>}
                   </td>
                   <td className="px-4 py-3">
-                    <Link
+                    <Link prefetch={false}
                       href={`/organizations/${organizationId}/programs/${entry.programId}#scope` as Route}
                       className="text-sm text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                     >

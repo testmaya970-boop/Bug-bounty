@@ -43,7 +43,7 @@ export function InboxReportList({
         const isUnread = report.status === "new";
         return (
           <li key={report.id}>
-            <Link
+            <Link prefetch={false}
               href={buildHref(report.id)}
               aria-current={isSelected ? "true" : undefined}
               className={cn(

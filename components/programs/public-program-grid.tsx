@@ -20,6 +20,7 @@ export function PublicProgramGrid({ programs }: { programs: PublicProgramSummary
       {programs.map((program) => (
         <li key={program.id} className="motion-safe:animate-enter-rise">
           <Link
+            prefetch={false}
             href={`/organizations/${program.organizationId}/programs/${program.id}` as Route}
             className="group flex h-full flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
@@ -52,7 +53,7 @@ export function PublicProgramGrid({ programs }: { programs: PublicProgramSummary
             )}
 
             <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-2.5">
-              <p className={program.bountyMinMinorUnits !== null && program.bountyMaxMinorUnits !== null && program.bountyCurrency ? "text-base font-bold text-success" : "text-xs font-medium text-ink-muted"}>
+              <p className={program.bountyMinMinorUnits !== null && program.bountyMaxMinorUnits !== null && program.bountyCurrency ? "text-base font-bold text-ink" : "text-xs font-medium text-ink-muted"}>
                 {program.bountyMinMinorUnits !== null && program.bountyMaxMinorUnits !== null && program.bountyCurrency
                   ? formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)
                   : "No bounty"}

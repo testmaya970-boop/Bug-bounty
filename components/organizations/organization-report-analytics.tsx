@@ -86,7 +86,7 @@ export function OrganizationReportAnalytics({
 
       <OrganizationResolutionPerformanceTiles performance={resolutionPerformance} />
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
         <div>
           <SectionLabel>Aging (open reports)</SectionLabel>
           <p className="mt-1 text-sm text-ink-muted">How long currently-open reports have been waiting.</p>

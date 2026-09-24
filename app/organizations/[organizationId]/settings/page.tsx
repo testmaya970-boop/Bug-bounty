@@ -102,7 +102,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
                 {activeMembers.length} active{suspendedMembers.length > 0 ? ` · ${suspendedMembers.length} suspended` : ""}
                 {invitations && invitations.length > 0 ? ` · ${invitations.length} pending invitation${invitations.length === 1 ? "" : "s"}` : ""}
               </p>
-              <Link
+              <Link prefetch={false}
                 href={`/organizations/${organizationId}/members` as Route}
                 className="mt-2 inline-block text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
@@ -119,7 +119,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
           <p className="mt-2 text-sm text-ink-muted">
             {programs.length} program{programs.length === 1 ? "" : "s"} in this organization.
           </p>
-          <Link
+          <Link prefetch={false}
             href={`/organizations/${organizationId}/programs` as Route}
             className="mt-2 inline-block text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >

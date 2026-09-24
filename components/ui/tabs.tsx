@@ -50,8 +50,8 @@ export function Tabs({ items, active, className }: { items: TabItem[]; active: s
               onClick={(event) => handleClick(event, item)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm font-semibold transition-[color,border-color,opacity,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
-                isActive ? "border-action text-ink shadow-[0_1px_8px_var(--glow-action)]" : "border-transparent text-ink-muted hover:text-ink",
+                "flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 font-mono text-xs font-bold uppercase tracking-[0.08em] transition-[color,border-color,opacity] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
+                isActive ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink",
                 isPending && item.key !== optimisticActive && "opacity-60",
               )}
             >
@@ -59,8 +59,8 @@ export function Tabs({ items, active, className }: { items: TabItem[]; active: s
               {item.count !== undefined && item.count > 0 && (
                 <span
                   className={cn(
-                    "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold",
-                    isActive ? "bg-action/15 text-action" : "bg-surface-muted text-ink-muted",
+                    "inline-flex min-w-5 items-center justify-center border px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                    isActive ? "border-action text-action" : "border-border-strong text-ink-muted",
                   )}
                 >
                   {item.count}

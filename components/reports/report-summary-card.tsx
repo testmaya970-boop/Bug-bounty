@@ -9,7 +9,7 @@ import type { ReportSummary } from "../../types/report";
 export function ReportSummaryCard({ report }: { report: ReportSummary }) {
   return (
     <Card className="p-5">
-      <Link
+      <Link prefetch={false}
         href={`/organizations/${report.organizationId}/programs/${report.programId}/reports/${report.id}` as Route}
         className="rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >

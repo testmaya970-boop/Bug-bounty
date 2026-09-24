@@ -54,6 +54,7 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
                 {activePrograms.map((participation) => (
                   <li key={participation.programId}>
                     <Link
+                      prefetch={false}
                       href={`/organizations/${participation.organizationId}/programs/${participation.programId}` as Route}
                       className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors duration-150 hover:bg-surface-hover motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
                     >
@@ -80,6 +81,7 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
               {featuredPrograms.map((program) => (
                 <li key={program.id}>
                   <Link
+                    prefetch={false}
                     href={`/organizations/${program.organizationId}/programs/${program.id}` as Route}
                     className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-150 hover:bg-surface-hover motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
                   >
@@ -87,7 +89,7 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
                       <span className="block truncate text-sm font-medium text-ink">{program.name}</span>
                       <span className="block text-xs uppercase tracking-wide text-ink-muted">{program.organizationName}</span>
                     </span>
-                    <span className="shrink-0 font-mono text-xs font-semibold text-success">{formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)}</span>
+                    <span className="shrink-0 font-mono text-xs font-semibold text-ink">{formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)}</span>
                   </Link>
                 </li>
               ))}
@@ -106,7 +108,7 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
                     <span className={cn("font-semibold", DIFFICULTY_TONE[challenge.difficulty])}>{challenge.difficulty}</span> · ~{challenge.estimatedMinutes} min
                   </p>
                 </div>
-                <Link href={"/ctf" as Route} className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-md bg-action px-3 text-xs font-semibold text-on-action transition hover:bg-action-hover">
+                <Link prefetch={false} href={"/ctf" as Route} className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-md bg-action px-3 text-xs font-semibold text-on-action transition hover:bg-action-hover">
                   Start
                 </Link>
               </li>

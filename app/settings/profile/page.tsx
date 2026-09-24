@@ -28,7 +28,7 @@ export default async function PublicProfileSettingsPage() {
           <SectionLabel>Organization</SectionLabel>
           {organizations.length === 1 ? (
             <p className="mt-2 text-sm text-ink-muted">
-              <Link href={`/organizations/${organizations[0].id}/settings` as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              <Link prefetch={false} href={`/organizations/${organizations[0].id}/settings` as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                 Configure {organizations[0].name} →
               </Link>
             </p>
@@ -38,7 +38,7 @@ export default async function PublicProfileSettingsPage() {
               <RegistryList>
                 {organizations.map((organization) => (
                   <li key={organization.id}>
-                    <Link
+                    <Link prefetch={false}
                       href={`/organizations/${organization.id}/settings` as Route}
                       className="flex items-center justify-between gap-3 px-4 py-3.5 hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus sm:px-5"
                     >

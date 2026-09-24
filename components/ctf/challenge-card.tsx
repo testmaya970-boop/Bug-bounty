@@ -11,7 +11,7 @@ import { MOCK_CTF_CATEGORY_META, type MockCtfChallenge } from "../../lib/mock/ct
  * at the solved state, matching the flag form's own Solved badge treatment. */
 export function ChallengeCard({ challenge, solved }: { challenge: MockCtfChallenge; solved: boolean }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={`/ctf/${challenge.slug}` as Route}
       className={cn(
         "group flex flex-col gap-3 rounded-lg border p-4 transition duration-150 hover:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.4)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",

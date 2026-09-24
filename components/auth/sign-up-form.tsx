@@ -107,7 +107,7 @@ export function SignUpForm({ intent }: { intent?: "researcher" | "organization" 
         </Button>
         <p className="text-center text-sm text-ink-muted">
           Already have an account?{" "}
-          <Link href={"/sign-in" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
+          <Link prefetch={false} href={"/sign-in" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
             Sign in
           </Link>
         </p>

@@ -48,10 +48,7 @@ async function renderCtfPage({ searchParams }: { searchParams: Promise<{ categor
       <div className="max-w-6xl space-y-8">
         <Breadcrumbs items={[{ label: "Dashboard", href: "/" }, { label: "CTF" }]} />
 
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">CTF</h1>
-          <p className="mt-1 text-sm text-ink-muted">Practice real-world exploitation techniques and earn points before you take them into a live program.</p>
-        </div>
+        <p className="text-sm text-ink-muted">Practice real-world exploitation techniques and earn points before you take them into a live program.</p>
 
         <CtfHero
           totalChallenges={MOCK_CTF_CHALLENGES.length}
