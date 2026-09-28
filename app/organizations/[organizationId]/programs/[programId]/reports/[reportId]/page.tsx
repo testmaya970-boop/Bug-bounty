@@ -38,7 +38,7 @@ import { getCurrentUser } from "../../../../../../../lib/auth/current-user";
 import { reportStatusMeaning, reportNextActionLabel, researcherNextActionLabel, REPORT_STATUS_TRANSITIONS } from "../../../../../../../lib/report-status";
 import { weaknessTypeLabel } from "../../../../../../../lib/report-weakness-labels";
 import { getResearcherBiography } from "../../../../../../../services/researcher-profiles";
-import { formatDateTime } from "../../../../../../../lib/format-date";
+import { LocalTime } from "../../../../../../../components/ui/local-time";
 
 export default async function ReportDetailPage({
   params,
@@ -79,14 +79,19 @@ export default async function ReportDetailPage({
   // private.lock_and_authorize_report_for_triage use -- the existing centralized
   // capability model, not a new page-local check. See docs/decisions/0009.
   const [members, actorMembership, program] = await Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId), getProgram(programId)]);
-  const isProgramManager = members.some((member) => member.userId === user.id);
+  // program_members (202609250012): "manager" runs the program; any assignment, including
+  // "triager", works its reports. The database enforces the same split.
+  const isProgramManager = members.some((member) => member.userId === user.id && member.role === "manager");
+  const isProgramTriager = members.some((member) => member.userId === user.id);
   const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
-  const canTriage = isProgramManager || isOrgAdmin;
+  const canTriage = isProgramTriager || isOrgAdmin;
 
-  // Narrow, org owner/security_admin-only authorization -- committing an actual
-  // financial figure is a materially more sensitive action than triage. See
-  // docs/decisions/0013-bounty-decision-engine.md.
-  const canFinalizeBounty = isOrgAdmin;
+  // Committing a financial figure is more sensitive than triage: org admins and the
+  // program's own manager, never a triager (lock_and_authorize_report_for_finance).
+  const canFinalizeBounty = isOrgAdmin || isProgramManager;
+  // Payouts and platform fees: org admins here; billing admins use the Payments page
+  // (they can't open report contents). Never program managers or triagers.
+  const canManagePaymentsHere = isOrgAdmin;
 
   const [auditEvents, messages, evidence, bountyDecision, paymentObligation, researcherBiography, disclosure, collaborators, retests, mediations] = await Promise.all([
     canTriage ? getReportAuditActivity(reportId) : Promise.resolve([]),
@@ -204,7 +209,7 @@ export default async function ReportDetailPage({
               <SectionLabel>Submitted by researcher</SectionLabel>
               <div className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
                 <MetadataPair label="Researcher" value={isOwnReport ? "You" : report.researcherName} />
-                <MetadataPair label="Submitted" value={formatDateTime(report.submittedAt)} />
+                <MetadataPair label="Submitted" value=<LocalTime value={report.submittedAt} /> />
                 {/* weaknessType/researcherSeverity are null for a report submitted before
                     docs/decisions/0047 — degrade to "Not specified" rather than hiding
                     the field entirely, so the layout doesn't shift between old and new
@@ -391,8 +396,8 @@ export default async function ReportDetailPage({
                   length. */}
               {!canTriage && (
                 <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
-                  <MetadataPair label="Submitted" value={formatDateTime(report.submittedAt)} />
-                  <MetadataPair label="Last updated" value={formatDateTime(report.updatedAt)} />
+                  <MetadataPair label="Submitted" value=<LocalTime value={report.submittedAt} /> />
+                  <MetadataPair label="Last updated" value=<LocalTime value={report.updatedAt} /> />
                 </div>
               )}
             </Card>
@@ -404,7 +409,7 @@ export default async function ReportDetailPage({
               <Card className="p-5 sm:p-6">
                 <SectionLabel>Bounty</SectionLabel>
                 <div className="mt-3">
-                  <BountyDecisionSection decision={bountyDecision} canCalculate={canTriage} canFinalize={canFinalizeBounty} organizationId={organizationId} programId={programId} reportId={reportId} />
+                  <BountyDecisionSection decision={bountyDecision} canCalculate={canTriage} reportIsFinal={isFinal} canFinalize={canFinalizeBounty} organizationId={organizationId} programId={programId} reportId={reportId} />
                 </div>
               </Card>
             )}
@@ -429,7 +434,7 @@ export default async function ReportDetailPage({
                   <PaymentStatusSection
                     obligation={paymentObligation}
                     latestAttempt={latestPaymentAttempt}
-                    canManage={canFinalizeBounty}
+                    canManage={canManagePaymentsHere}
                     bountyCurrency={bountyDecision.currency}
                     bountyAmountMinorUnits={bountyDecision.finalAmountMinorUnits}
                     organizationId={organizationId}

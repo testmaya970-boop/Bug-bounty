@@ -1,8 +1,9 @@
 import type { ProgramAssetType, ScopeState } from "./scope";
 import type { ResearcherFocusArea } from "./researcher-identity";
 
-export type ProgramStatus = "draft" | "review" | "active" | "paused" | "closed";
-export type ProgramMemberRole = "manager";
+export type ProgramStatus = "draft" | "review" | "active" | "paused" | "closed" | "suspended";
+// "triager" (202609250011): works reports in the program; "manager" also runs it.
+export type ProgramMemberRole = "manager" | "triager";
 export type ProgramVisibility = "private" | "public";
 
 /** bounty: may configure a paid bounty policy. vdp: vulnerability-disclosure-only, no

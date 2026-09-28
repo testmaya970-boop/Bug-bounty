@@ -2,9 +2,9 @@ import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { ProgramStatusBadge, ResearcherStatusBadge } from "../ui/badge";
-import { formatDate } from "../../lib/format-date";
 import { cn } from "../../lib/cn";
-import type { ProgramParticipation } from "../../types/researcher";
+import type { ProgramParticipation } from "../../types/researcher";
+import { LocalTime } from "../ui/local-time";
 
 /** A short, honest "what can I do here right now" line -- the directory's own answer to
  * this task's "how to start" requirement -- derived purely from the two states already
@@ -48,7 +48,7 @@ export function ProgramParticipationCard({ participation }: { participation: Pro
           <p className="mt-2 text-sm font-medium text-action sm:mt-0">{isActionable ? "View" : "View history"}</p>
         </div>
         <p className="mt-2 text-sm text-ink-muted">{accessSummary(participation)}</p>
-        <p className="mt-1 text-xs text-ink-muted">Joined {formatDate(participation.joinedAt)}</p>
+        <p className="mt-1 text-xs text-ink-muted">Joined <LocalTime value={participation.joinedAt} dateOnly /></p>
       </Link>
     </li>
   );

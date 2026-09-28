@@ -31,7 +31,7 @@ function queryReturning(rows: unknown[]) {
 beforeEach(() => {
   fakeClient.query.mockReset();
   mockedGetCurrentUser.mockReset();
-  mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, username: "actor", displayName: "Actor", email: null });
+  mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, accountType: "researcher", username: "actor", displayName: "Actor", email: null });
 });
 
 describe("listReportsForProgramPageAction: validates input before ever reaching the service", () => {

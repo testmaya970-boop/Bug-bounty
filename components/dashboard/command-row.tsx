@@ -68,10 +68,12 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
   const [heroStat, ...restStats] = STAT_ITEMS;
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-      <div className="group relative overflow-hidden rounded-xl bg-ink px-6 py-8 text-canvas shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] transition-shadow duration-200 sm:px-10 sm:py-10 motion-safe:animate-hero-reveal motion-reduce:transition-none hover:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65),0_0_40px_-8px_var(--glow-action)]">
+      {/* shadow and transition-shadow removed: box-shadow is stripped globally (see
+          app/globals.css) and --glow-action no longer exists. */}
+      <div className="group relative overflow-hidden rounded-xl bg-ink px-6 py-8 text-canvas sm:px-10 sm:py-10 motion-safe:animate-hero-reveal motion-reduce:transition-none">
         <div aria-hidden="true" className="dot-grid pointer-events-none absolute inset-0 text-canvas" />
         <div className="relative">
-          {/* text-action-on-dark, not text-action: --action (#c7331e) is AA-safe for
+          {/* text-action-on-dark, not text-action: --action (#ff2a2a) is AA-safe for
               button/link text on the light canvas but fails contrast against this dark
               panel (2.7:1) -- --action-on-dark is the brighter, dark-surface-only
               variant (5.8:1 here), see app/globals.css's own token comment. */}
@@ -85,7 +87,7 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
           <p className="mt-3 max-w-lg text-sm text-canvas/70">{action.description}</p>
           <Link prefetch={false}
             href={action.href}
-            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md bg-canvas px-5 text-sm font-semibold text-ink transition duration-200 hover:bg-canvas/90 hover:shadow-[0_0_24px_var(--glow-action)] active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas"
+            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md bg-canvas px-5 text-sm font-semibold text-ink transition duration-200 hover:bg-canvas/90 active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas"
           >
             {action.label} <span aria-hidden="true">→</span>
           </Link>
@@ -97,7 +99,7 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
         {/* The rail's own oversized hero metric -- bigger type, a luminous border, and a
             hover glow so it reads as a second point of gravity beside the action panel,
             not a fourth equally-weighted tile. */}
-        <div className="glass-surface-raised col-span-2 rounded-lg p-4 transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none hover:border-glass-border-strong hover:shadow-[0_0_24px_-4px_var(--glow-action)]">
+        <div className="glass-surface-raised col-span-2 rounded-lg p-4 transition-colors duration-200 motion-reduce:transition-none hover:border-glass-border-strong">
           <SectionLabel>{heroStat.label}</SectionLabel>
           <p className="mt-1.5 font-mono text-4xl font-semibold tabular-nums text-ink">
             <StatValue value={status[heroStat.key]} />
@@ -113,7 +115,7 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
         ))}
         <Link prefetch={false}
           href={"/researchers" as Route}
-          className="glass-surface group/reward col-span-2 flex items-center justify-between rounded-lg p-3.5 transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none hover:border-glass-border-strong hover:shadow-[0_0_20px_-6px_var(--glow-accent-2)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
+          className="glass-surface group/reward col-span-2 flex items-center justify-between rounded-lg p-3.5 transition-colors duration-200 motion-reduce:transition-none hover:border-glass-border-strong focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
         >
           <div>
             <SectionLabel>Lifetime rewards</SectionLabel>

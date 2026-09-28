@@ -7,11 +7,13 @@ import type {
   NeedsRecoveryNotificationDelivery,
   NeedsRecoveryOutboxEvent,
   NeedsRecoveryPaymentAttempt,
+  AdminProgramRow,
+  AppErrorGroup,
   ProgramPendingReview,
   SuspendedOrganization,
   SuspendedResearcher,
 } from "@/types/platform-operations";
-import type { ProgramSummary, ProgramType, EngagementType, ProgramVisibility } from "@/types/program";
+import type { ProgramSummary, ProgramStatus, ProgramType, EngagementType, ProgramVisibility } from "@/types/program";
 
 /** Self-check only -- never another user's platform-admin status. Safe to call before
  * the caller is known to be a platform admin, since it just answers "am I one." */
@@ -381,4 +383,110 @@ export async function findOrganizationIdBySlug(slug: string): Promise<{ id: stri
   }
   const row = rows[0];
   return row ? { id: row.id, name: row.name } : null;
+}
+
+// --- Platform program oversight (see db/migrations/202609250003_platform_program_oversight.sql) ---
+
+type AdminProgramDbRow = {
+  id: string;
+  name: string;
+  status: ProgramStatus;
+  visibility: ProgramVisibility;
+  program_type: ProgramType;
+  engagement_type: EngagementType;
+  organization_id: string;
+  organization_name: string;
+  organization_slug: string;
+  report_count: string;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Counts and list run in one transaction -- one round trip's worth of setup for a page
+ * that always needs both. */
+export async function getProgramDirectoryForAdmin(filters: { search?: string; status?: ProgramStatus }): Promise<{ counts: Partial<Record<ProgramStatus, number>>; programs: AdminProgramRow[] }> {
+  const actor = await getCurrentUser();
+  let result;
+  try {
+    result = await withActorTransaction(actor?.id ?? null, async (client) => ({
+      counts: await callRpc<{ status: ProgramStatus; program_count: string }>(client, "public.get_platform_program_status_counts"),
+      programs: await callRpc<AdminProgramDbRow>(client, "public.list_programs_for_admin", [filters.search ?? null, filters.status ?? null]),
+    }));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return {
+    counts: Object.fromEntries(result.counts.map((row) => [row.status, Number(row.program_count)])),
+    programs: result.programs.map((row) => ({
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      visibility: row.visibility,
+      programType: row.program_type,
+      engagementType: row.engagement_type,
+      organizationId: row.organization_id,
+      organizationName: row.organization_name,
+      organizationSlug: row.organization_slug,
+      reportCount: Number(row.report_count),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    })),
+  };
+}
+
+export async function suspendProgram(programId: string, reason: string): Promise<{ organizationId: string }> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<{ organization_id: string }>(client, "public.suspend_program", [programId, reason]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return { organizationId: rows[0].organization_id };
+}
+
+export async function reinstateProgram(programId: string, reason: string): Promise<{ organizationId: string }> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<{ organization_id: string }>(client, "public.reinstate_program", [programId, reason]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return { organizationId: rows[0].organization_id };
+}
+
+// --- In-house error tracking (db/migrations/202609250008_app_errors.sql) ---
+
+type AppErrorGroupRow = {
+  fingerprint: string;
+  source: "server" | "client";
+  message: string;
+  stack: string | null;
+  route: string | null;
+  occurrences: string;
+  affected_users: string;
+  first_seen: string;
+  last_seen: string;
+};
+
+export async function listAppErrorGroupsForAdmin(sinceDays: number): Promise<AppErrorGroup[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<AppErrorGroupRow>(client, "public.list_app_error_groups_for_admin", [`${sinceDays} days`]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({
+    fingerprint: row.fingerprint,
+    source: row.source,
+    message: row.message,
+    stack: row.stack,
+    route: row.route,
+    occurrences: Number(row.occurrences),
+    affectedUsers: Number(row.affected_users),
+    firstSeen: row.first_seen,
+    lastSeen: row.last_seen,
+  }));
 }

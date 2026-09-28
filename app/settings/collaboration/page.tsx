@@ -1,7 +1,8 @@
 import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { EmptyState } from "../../../components/ui/feedback";
+import { EmptyState } from "../../../components/ui/feedback";
+import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
 /** Collaboration is real and shipped (see docs/decisions/0064-report-collaboration-scope.md,
  * components/reports/report-collaborators.tsx) -- but it's scoped to one report at a
@@ -10,7 +11,8 @@ import { EmptyState } from "../../../components/ui/feedback";
  * This page used to render NotApplicableSettings, which became factually wrong the moment
  * collaboration shipped; it now correctly points at where the real feature actually
  * lives instead of denying it exists. */
-export default function CollaborationSettingsPage() {
+export default async function CollaborationSettingsPage() {
+  await requireResearcherSettings();
   return (
     <div className="space-y-8">
       <div>

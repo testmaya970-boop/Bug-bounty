@@ -44,6 +44,25 @@ export const E2E_ADMIN_EMAIL = "e2e.admin@unpatched.demo";
 export const E2E_INVITED_EMAIL = "e2e.invited@unpatched.demo";
 export const E2E_VETERAN_EMAIL = "e2e.veteran@unpatched.demo";
 export const E2E_NEWCOMER_EMAIL = "e2e.newcomer@unpatched.demo";
+// e2e/functional-cases.spec.ts changes this account's password and profile; every seed
+// run puts them back (resetSettingsAccount).
+export const E2E_SETTINGS_EMAIL = "e2e.settings@unpatched.demo";
+// The password case alone: it spends several sign-in-limited attempts (10 per 15 min).
+export const E2E_PASSWORD_CASE_EMAIL = "e2e.password@unpatched.demo";
+// e2e/program-launch-journey.spec.ts: a standing platform admin (approves the launch review
+// through /platform/programs, the real UI path) and a researcher used only by that spec.
+export const E2E_PLATFORM_ADMIN_EMAIL = "e2e.platform-admin@unpatched.demo";
+export const E2E_HUNTER_EMAIL = "e2e.hunter@unpatched.demo";
+// Those specs (and scope-import-hackerone.spec.ts) create a program -- and a report -- on
+// every run. Their own org keeps that data out of E2E Journey Org, whose Home action queue
+// (8 slots) org-journey.spec.ts asserts on: 8 accumulated launch-journey reports had
+// pushed its seeded report out of the queue.
+export const E2E_LAUNCH_ADMIN_EMAIL = "e2e.launch-admin@unpatched.demo";
+export const E2E_LAUNCH_ORG_NAME = "E2E Launch Org";
+// e2e/org-roles.spec.ts -- the three limited organization roles.
+export const E2E_PROGRAM_MANAGER_EMAIL = "e2e.program-manager@unpatched.demo";
+export const E2E_TRIAGER_EMAIL = "e2e.triager@unpatched.demo";
+export const E2E_BILLING_ADMIN_EMAIL = "e2e.billing-admin@unpatched.demo";
 export const E2E_ORG_NAME = "E2E Journey Org";
 export const E2E_PUBLIC_PROGRAM_NAME = "E2E Public Program";
 export const E2E_PRIVATE_PROGRAM_NAME = "E2E Private Program";
@@ -137,9 +156,20 @@ async function ensureUser(email: string, displayName: string, username: string):
   return created;
 }
 
+async function resetSettingsAccount(user: UserRow) {
+  const passwordHash = await argon2.hash(E2E_PASSWORD, { type: argon2.argon2id });
+  await withServiceRole((client) => client.query("update public.users set password_hash = $2, display_name = 'E2E Settings Researcher' where id = $1", [user.id, passwordHash]));
+}
+
 type OrgRow = { id: string; name: string };
 
+/** Organization-side test accounts: only these may create an organization (202609280002). */
+async function markOrganizationAccount(userId: string) {
+  await withServiceRole((client) => client.query("update public.users set account_type = 'organization' where id = $1", [userId]));
+}
+
 async function ensureOrganization(ownerId: string, name: string): Promise<OrgRow> {
+  await markOrganizationAccount(ownerId);
   const existing = await withServiceRole(async (client) => {
     const { rows } = await client.query<OrgRow>("select id, name from public.organizations where name = $1 and created_by = $2", [name, ownerId]);
     return rows[0] ?? null;
@@ -216,7 +246,9 @@ function hashInvitationToken(token: string): string {
 
 async function ensurePendingInvitation(ownerId: string, programId: string, orgId: string, email: string): Promise<void> {
   const existing = await withServiceRole(async (client) => {
-    const { rows } = await client.query("select id from public.program_invitations where program_id = $1 and email = $2 and accepted_at is null and revoked_at is null", [programId, email]);
+    // expires_at: an expired invitation is not pending -- reusing one silently broke the
+    // invited-researcher journey once the Sep 9 seed invitation lapsed.
+    const { rows } = await client.query("select id from public.program_invitations where program_id = $1 and email = $2 and accepted_at is null and revoked_at is null and expires_at > now()", [programId, email]);
     return rows[0] ?? null;
   });
   if (existing) {
@@ -415,13 +447,52 @@ async function ensureUnrelatedOrg(): Promise<void> {
   await ensureScopeAndActivate(unrelatedAdmin.id, unrelatedProgram, "api.e2e-unrelated.example", "public");
 }
 
+// Security: this creates accounts whose passwords are in the source code, including a
+// platform admin. Never against a real deployment -- only when asked for explicitly.
+if (process.env.ALLOW_TEST_ACCOUNTS !== "1") {
+  console.error("Refusing to seed: this creates accounts with passwords published in the repo. Set ALLOW_TEST_ACCOUNTS=1 for a local or CI test database only.");
+  process.exit(1);
+}
+
 async function main() {
   console.log("Seeding the E2E journey dataset...\n");
+
+  // One suite run signs e2e.admin in ~9 times; check_sign_in_rate_limit allows 10 per email
+  // per 15 minutes, so a second run inside that window was locked out and failed with
+  // misleading sign-in timeouts. Reset only these seeded test accounts' counters -- the
+  // limit itself is untouched. private.* is owner-only (the app role correctly can't write
+  // it), so this one statement uses the schema-owner connection instead of widening grants.
+  if (process.env.MIGRATION_DATABASE_URL) {
+    const owner = new Pool({ connectionString: process.env.MIGRATION_DATABASE_URL, max: 1 });
+    const cleared = await owner.query("delete from private.rate_limit_counters where bucket_key like 'auth_sign_in:e2e.%@unpatched.demo'");
+    // Leftovers from before those specs moved to E2E Launch Org (see E2E_LAUNCH_ORG_NAME).
+    // Programs only -- every dependent row (reports, scope, members...) cascades.
+    const removed = await owner.query(
+      `delete from public.programs p using public.organizations o
+        where o.id = p.organization_id and o.name = $1 and (p.name like 'Acme Payments Bug Bounty %' or p.name like 'H1 Import %')`,
+      [E2E_ORG_NAME],
+    );
+    // notifications.spec.ts proves cross-org isolation by asserting this account has NO
+    // notifications at all -- anything it legitimately received (e.g. a manual
+    // suspend/reinstate check of its own org) would break that proof, so start it clean.
+    await owner.query("delete from public.notifications where recipient_id = (select id from public.users where email = $1)", [E2E_UNRELATED_ADMIN_EMAIL]);
+    await owner.end();
+    console.log(`Cleared ${cleared.rowCount} sign-in rate-limit counter(s) for E2E accounts; removed ${removed.rowCount} stray test program(s) from ${E2E_ORG_NAME}.\n`);
+  } else {
+    console.log("MIGRATION_DATABASE_URL not set -- sign-in rate-limit counters NOT cleared; back-to-back suite runs may be locked out.\n");
+  }
 
   const admin = await ensureUser(E2E_ADMIN_EMAIL, "E2E Admin", "e2e_admin");
   await ensureUser(E2E_INVITED_EMAIL, "E2E Invited Researcher", "e2e_invited");
   const veteran = await ensureUser(E2E_VETERAN_EMAIL, "E2E Veteran Researcher", "e2e_veteran");
   await ensureUser(E2E_NEWCOMER_EMAIL, "E2E Newcomer Researcher", "e2e_newcomer");
+  await resetSettingsAccount(await ensureUser(E2E_SETTINGS_EMAIL, "E2E Settings Researcher", "e2e_settings"));
+  await resetSettingsAccount(await ensureUser(E2E_PASSWORD_CASE_EMAIL, "E2E Settings Researcher", "e2e_password"));
+  await ensureUser(E2E_HUNTER_EMAIL, "E2E Hunter Researcher", "e2e_hunter");
+  const platformAdmin = await ensureUser(E2E_PLATFORM_ADMIN_EMAIL, "E2E Platform Admin", "e2e_platform_admin");
+  await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [platformAdmin.id]));
+  const launchAdmin = await ensureUser(E2E_LAUNCH_ADMIN_EMAIL, "E2E Launch Admin", "e2e_launch_admin");
+  await ensureOrganization(launchAdmin.id, E2E_LAUNCH_ORG_NAME);
   console.log("");
 
   const org = await ensureOrganization(admin.id, E2E_ORG_NAME);
@@ -435,10 +506,53 @@ async function main() {
   privateProgram = await ensureScopeAndActivate(admin.id, privateProgram, "api.e2e-private.example", "private");
   console.log("");
 
+  // e2e/org-roles.spec.ts: one member per limited role. The manager and triager are
+  // assigned to the PUBLIC program only, so the private program proves the scoping.
+  for (const [email, name, username, role] of [
+    [E2E_PROGRAM_MANAGER_EMAIL, "E2E Program Manager", "e2e_program_manager", "program_manager"],
+    [E2E_TRIAGER_EMAIL, "E2E Triager", "e2e_triager", "triager"],
+    [E2E_BILLING_ADMIN_EMAIL, "E2E Billing Admin", "e2e_billing_admin", "billing_admin"],
+  ] as const) {
+    const member = await ensureUser(email, name, username);
+    await markOrganizationAccount(member.id);
+    await withServiceRole((client) =>
+      client.query(
+        `insert into public.organization_members (organization_id, user_id, role, status, invited_by, joined_at)
+         values ($1, $2, $3, 'active', $4, now())
+         on conflict (organization_id, user_id) do update set role = excluded.role, status = 'active', suspended_at = null, removed_at = null`,
+        [org.id, member.id, role, admin.id],
+      ),
+    );
+    if (role !== "billing_admin") {
+      await withActor(admin.id, (client) => client.query("select public.assign_program_member($1, $2)", [publicProgram.id, member.id]));
+      await withServiceRole((client) => client.query("delete from public.program_members where program_id = $1 and user_id = $2", [privateProgram.id, member.id]));
+    }
+    console.log(`${email} is a ${role} of ${E2E_ORG_NAME}${role !== "billing_admin" ? `, assigned to ${E2E_PUBLIC_PROGRAM_NAME} only` : ""}.`);
+  }
+  // Staff may not be researchers on their own organization's programs (202609280001 now
+  // refuses it); drop any such row an earlier run created before that rule existed.
+  const staffAsResearcher = await withServiceRole((client) =>
+    client.query("delete from public.program_researchers pr using public.organization_members m where m.organization_id = pr.organization_id and m.user_id = pr.user_id and pr.organization_id = $1", [org.id]),
+  );
+  if (staffAsResearcher.rowCount) console.log(`Removed ${staffAsResearcher.rowCount} researcher row(s) held by ${E2E_ORG_NAME}'s own staff.`);
+  console.log("");
+
   await ensurePendingInvitation(admin.id, privateProgram.id, org.id, E2E_INVITED_EMAIL);
   console.log("");
 
   await ensureReputationHistory(admin.id, org.id, veteran.id, publicProgram, "api.e2e-public.example");
+  // e2e/org-roles.spec.ts: one real payment obligation (the $1,500 finalized bounty above)
+  // for the billing admin's Payments page. Recreated every run (its attempts cascade), so
+  // e2e/functional-cases.spec.ts's payout case always starts from a pending obligation.
+  const resolvedTitle = "E2E seed: resolved report with finalized bounty";
+  await withServiceRole((client) =>
+    client.query("delete from public.payment_obligations o using public.reports r where r.id = o.report_id and r.program_id = $1 and r.title = $2", [publicProgram.id, resolvedTitle]),
+  );
+  await tryStep(
+    withActor(admin.id, (client) => client.query("select public.create_payment_obligation((select id from public.reports where program_id = $1 and title = $2))", [publicProgram.id, resolvedTitle])),
+    "create_payment_obligation (veteran report)",
+  );
+  console.log("Created a fresh payment obligation for the veteran's finalized bounty.");
   console.log("");
 
   await ensureFreshReportForTriageWalk(veteran.id, publicProgram, "api.e2e-public.example");

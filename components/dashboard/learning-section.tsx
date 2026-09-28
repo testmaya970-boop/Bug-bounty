@@ -30,7 +30,7 @@ export function LearningSection({ categories }: { categories: MockChallengeCateg
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Link prefetch={false}
           href={"/ctf" as Route}
-          className="group relative flex min-h-40 flex-col justify-end overflow-hidden rounded-lg bg-ink p-6 text-canvas shadow-sm transition-shadow duration-200 motion-reduce:transition-none hover:shadow-[0_16px_36px_-14px_var(--glow-action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          className="group relative flex min-h-40 flex-col justify-end overflow-hidden rounded-lg bg-ink p-6 text-canvas motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           <div aria-hidden="true" className="dot-grid pointer-events-none absolute inset-0 text-canvas" />
           <Swords

@@ -7,8 +7,8 @@ import { ArrowUpDown } from "lucide-react";
 import { Avatar } from "../ui/navigation";
 import { ProgramStatusBadge } from "../ui/badge";
 import { formatBountyRange } from "../../lib/money";
-import { formatDate } from "../../lib/format-date";
-import type { PublicProgramSummary } from "../../types/program";
+import type { PublicProgramSummary } from "../../types/program";
+import { LocalTime } from "../ui/local-time";
 
 type SortKey = "name" | "bounty" | "researchers" | "resolved" | "updated";
 
@@ -110,7 +110,7 @@ export function PublicProgramTable({ programs }: { programs: PublicProgramSummar
               </td>
               <td className="whitespace-nowrap px-3 py-3 text-ink-muted">{program.activeResearcherCount}</td>
               <td className="whitespace-nowrap px-3 py-3 text-ink-muted">{program.resolvedReportCount}</td>
-              <td className="whitespace-nowrap px-3 py-3 text-ink-muted">{formatDate(program.updatedAt)}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-ink-muted"><LocalTime value={program.updatedAt} dateOnly /></td>
               <td className="whitespace-nowrap px-4 py-3 pr-5">
                 <ProgramStatusBadge status={program.status} />
               </td>

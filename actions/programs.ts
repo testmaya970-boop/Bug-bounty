@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
 import {
+  assignProgramMember,
   closeProgram,
   createProgram,
   deleteDraftProgram,
@@ -15,6 +16,7 @@ import {
   setProgramKycRequirement,
   setProgramVisibility,
   submitProgramForReview,
+  unassignProgramMember,
   updateProgramAccessInstructions,
   updateProgramDescription,
 } from "@/services/programs";
@@ -148,7 +150,7 @@ export async function setProgramKycRequirementAction(input: { organizationId: st
   return result;
 }
 
-const updateDescriptionSchema = z.object({ organizationId: z.string().uuid(), programId: z.string().uuid(), description: z.string().max(5000, "Use 5000 characters or fewer.") });
+const updateDescriptionSchema = z.object({ organizationId: z.string().uuid(), programId: z.string().uuid(), description: z.string().max(20000, "Use 20000 characters or fewer.") });
 
 export async function updateProgramDescriptionAction(input: { organizationId: string; programId: string; description: string }): Promise<ActionResult<ProgramSummary>> {
   const parsed = updateDescriptionSchema.safeParse(input);
@@ -224,4 +226,28 @@ export async function joinPublicProgramAction(input: { programId: string }): Pro
     if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
     throw error;
   }
+}
+
+const programTeamSchema = z.object({ organizationId: z.string().uuid(), programId: z.string().uuid(), userId: z.string().uuid() });
+
+/** Authorization is the database's (owner/security_admin only, in the RPC). */
+export async function assignProgramMemberAction(input: { organizationId: string; programId: string; userId: string }): Promise<ActionResult<void>> {
+  return changeProgramTeam(input, assignProgramMember);
+}
+
+export async function unassignProgramMemberAction(input: { organizationId: string; programId: string; userId: string }): Promise<ActionResult<void>> {
+  return changeProgramTeam(input, unassignProgramMember);
+}
+
+async function changeProgramTeam(input: { organizationId: string; programId: string; userId: string }, change: (programId: string, userId: string) => Promise<void>): Promise<ActionResult<void>> {
+  const parsed = programTeamSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: "Check the request and try again." };
+  try {
+    await change(parsed.data.programId, parsed.data.userId);
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
+    throw error;
+  }
+  revalidateProgramPaths(parsed.data.organizationId, parsed.data.programId);
+  return { ok: true, data: undefined };
 }

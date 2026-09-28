@@ -8,6 +8,9 @@ import { Switch, Textarea } from "../ui/form";
 import { setProgramVisibilityAction, updateProgramDescriptionAction } from "../../actions/programs";
 import type { ProgramVisibility } from "../../types/program";
 
+// Matches update_program_description / programs_description_check (202609250004).
+const DESCRIPTION_MAX_LENGTH = 20000;
+
 /**
  * The minimum UI needed to make a program public (see docs/decisions/0041) -- not a
  * marketplace management dashboard. Visibility can be toggled at any lifecycle stage;
@@ -65,10 +68,11 @@ export function ProgramVisibilityPanel({
 
       <Textarea
         label="Public description"
-        helperText="Shown on the program's public page once it is Public and Active. Company overview, what to test, submission notes."
+        helperText={`Shown on the program's public page once it is Public and Active. Company overview, what to test, submission notes. ${descriptionValue.length.toLocaleString("en-US")} / ${DESCRIPTION_MAX_LENGTH.toLocaleString("en-US")} characters.`}
         value={descriptionValue}
         onChange={(event) => setDescriptionValue(event.target.value)}
-        maxLength={5000}
+        maxLength={DESCRIPTION_MAX_LENGTH}
+        rows={10}
       />
       <Button variant="secondary" onClick={handleDescriptionSave} pending={descriptionPending}>
         Save description

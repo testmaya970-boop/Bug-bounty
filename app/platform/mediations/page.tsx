@@ -8,7 +8,7 @@ import { ResolveMediationForm } from "../../../components/platform/resolve-media
 import { isPlatformAdmin } from "../../../services/platform-operations";
 import { listEscalatedMediationsForAdmin } from "../../../services/reports";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { formatDateTime } from "../../../lib/format-date";
+import { LocalTime } from "../../../components/ui/local-time";
 
 const MEDIATION_REASON_LABEL: Record<string, string> = {
   disagree_with_outcome: "Disagrees with the outcome",
@@ -52,7 +52,7 @@ export default async function PlatformMediationsPage() {
           <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
             {mediations.map((mediation) => (
               <li key={mediation.id} className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-danger">Escalated · {formatDateTime(mediation.escalatedAt ?? mediation.openedAt)}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-danger">Escalated · <LocalTime value={mediation.escalatedAt ?? mediation.openedAt} /></p>
                 <p className="mt-1 text-sm font-medium text-ink">{mediation.reportTitle}</p>
                 <p className="mt-0.5 text-sm text-ink-muted">
                   {mediation.organizationName} / {mediation.programName} · Raised by {mediation.openedByName}

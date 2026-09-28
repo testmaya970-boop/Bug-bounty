@@ -10,6 +10,7 @@ import { changeMyPasswordAction } from "../../actions/account";
  * flow (which requires a fresh recovery-email session instead). See
  * docs/decisions/0055. */
 export function ChangePasswordForm() {
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -21,18 +22,20 @@ export function ChangePasswordForm() {
     setError(null);
     setSaved(false);
     startTransition(async () => {
-      const result = await changeMyPasswordAction({ password });
+      const result = await changeMyPasswordAction({ currentPassword, password });
       if (!result.ok) {
         setError(result.message);
         return;
       }
       setSaved(true);
       setPassword("");
+      setCurrentPassword("");
     });
   }
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+      <PasswordInput label="Current password" autoComplete="current-password" required value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); setSaved(false); }} />
       <PasswordInput
         label="New password"
         autoComplete="new-password"

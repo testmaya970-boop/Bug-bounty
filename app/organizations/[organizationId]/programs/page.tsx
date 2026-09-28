@@ -14,9 +14,9 @@ import { getActorMembership } from "../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listProgramsForOrganization } from "../../../../services/programs";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
-import { formatDate } from "../../../../lib/format-date";
 import { ENGAGEMENT_TYPE_ORDER, engagementTypeLabel } from "../../../../lib/program-status";
 import type { EngagementType } from "../../../../types/program";
+import { LocalTime } from "../../../../components/ui/local-time";
 
 function parseEngagementTypeParam(value: string | undefined): EngagementType | undefined {
   return value && (ENGAGEMENT_TYPE_ORDER as string[]).includes(value) ? (value as EngagementType) : undefined;
@@ -87,10 +87,12 @@ export default async function OrganizationEngagementsPage({ params, searchParams
                 filter, matching this codebase's own established GET-form/query-param
                 filter convention), each carrying a real count derived from the same
                 fetch above. "All" always shows the full real total. */}
+            {/* aria-current="true", not "page": these filter one list; "page" belongs to the
+                sidebar's Engagements link alone (AGENTS.md: one nav control per level). */}
             <nav aria-label="Filter by engagement type" className="flex flex-wrap gap-1 border-b border-border">
               <Link prefetch={false}
                 href={`/organizations/${organizationId}/programs` as Route}
-                aria-current={!selectedType ? "page" : undefined}
+                aria-current={!selectedType ? "true" : undefined}
                 className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus ${!selectedType ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
               >
                 All <span className="font-mono text-xs tabular-nums text-ink-muted">{programs.length}</span>
@@ -99,7 +101,7 @@ export default async function OrganizationEngagementsPage({ params, searchParams
                 <Link prefetch={false}
                   key={type}
                   href={`/organizations/${organizationId}/programs?type=${type}` as Route}
-                  aria-current={selectedType === type ? "page" : undefined}
+                  aria-current={selectedType === type ? "true" : undefined}
                   className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus ${selectedType === type ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
                 >
                   {engagementTypeLabel(type)} <span className="font-mono text-xs tabular-nums text-ink-muted">{countByType.get(type)}</span>
@@ -122,7 +124,7 @@ export default async function OrganizationEngagementsPage({ params, searchParams
                         <ProgramStatusBadge status={program.status} />
                         <span className="font-mono text-xs uppercase tracking-wide text-ink-muted">{engagementTypeLabel(program.engagementType)}</span>
                       </span>
-                      <span className="text-sm text-ink-muted">Created {formatDate(program.createdAt)}</span>
+                      <span className="text-sm text-ink-muted">Created <LocalTime value={program.createdAt} dateOnly /></span>
                     </Link>
                     {/* Draft-only: a program that has ever left draft carries real
                         history (once submitted -- and always for review/active/paused/

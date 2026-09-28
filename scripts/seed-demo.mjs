@@ -25,6 +25,13 @@
 import pg from "pg";
 import argon2 from "argon2";
 
+// Security: this creates/resets accounts whose passwords are in the source code (and for
+// seed-e2e, a platform admin). Never against a real deployment -- only when asked explicitly.
+if (process.env.ALLOW_TEST_ACCOUNTS !== "1") {
+  console.error("Refusing to seed: this creates accounts with passwords published in the repo. Set ALLOW_TEST_ACCOUNTS=1 for a local or CI test database only.");
+  process.exit(1);
+}
+
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
   console.error("DATABASE_URL is required (e.g. run with `npm run seed:demo`, which loads .env.local).");

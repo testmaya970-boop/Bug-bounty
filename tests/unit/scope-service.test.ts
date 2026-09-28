@@ -78,7 +78,7 @@ describe("scope service: addScopeEntry", () => {
 });
 
 describe("scope service: updateScopeEntry / removeScopeEntry", () => {
-  it("update sends only entry_id, scope_state, and description -- never a target/asset_type change", async () => {
+  it("a state-only update sends null asset_type and target (the RPC keeps both unchanged) -- never a silent target change", async () => {
     let captured: unknown[] | undefined;
     fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
       if (sql.includes("update_scope_entry")) {
@@ -93,7 +93,7 @@ describe("scope service: updateScopeEntry / removeScopeEntry", () => {
 
     const result = await updateScopeEntry("entry-1", "out_of_scope");
 
-    expect(captured).toEqual(["entry-1", "out_of_scope", null]);
+    expect(captured).toEqual(["entry-1", "out_of_scope", null, null, null]);
     expect(result.scopeState).toBe("out_of_scope");
   });
 

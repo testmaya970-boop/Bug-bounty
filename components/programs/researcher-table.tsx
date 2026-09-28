@@ -3,8 +3,8 @@ import { DataTable, type DataColumn } from "../ui/data-display";
 import { Avatar } from "../ui/navigation";
 import { ResearcherStatusBadge } from "../ui/badge";
 import { ReinstateResearcherDialog, RevokeResearcherDialog, SuspendResearcherDialog } from "./researcher-action-dialogs";
-import { formatDate } from "../../lib/format-date";
 import type { ProgramResearcherRecord } from "../../types/researcher";
+import { LocalTime } from "../ui/local-time";
 
 type Row = ProgramResearcherRecord & { id: string };
 
@@ -24,7 +24,7 @@ export function ResearcherTable({ organizationId, programId, researchers }: { or
       ),
     },
     { id: "status", header: "Status", cell: (row) => <ResearcherStatusBadge status={row.status} /> },
-    { id: "joined", header: "Joined", cell: (row) => <span className="text-sm text-ink-muted">{formatDate(row.joinedAt)}</span> },
+    { id: "joined", header: "Joined", cell: (row) => <span className="text-sm text-ink-muted"><LocalTime value={row.joinedAt} dateOnly /></span> },
     {
       id: "actions",
       header: "Actions",

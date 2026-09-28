@@ -12,8 +12,8 @@ type NotificationRow = {
   id: string;
   category: string;
   notification_type: string;
-  report_id: string;
-  program_id: string;
+  report_id: string | null;
+  program_id: string | null;
   organization_id: string;
   occurred_at: string;
   created_at: string;
@@ -31,7 +31,7 @@ function mapNotificationRow(row: NotificationRow, programNamesById: Map<string, 
     occurredAt: row.occurred_at,
     createdAt: row.created_at,
     readAt: row.read_at,
-    programName: programNamesById.get(row.program_id) ?? null,
+    programName: row.program_id ? (programNamesById.get(row.program_id) ?? null) : null,
   };
 }
 
@@ -65,7 +65,8 @@ export async function getMyNotifications(cursor?: string, limit?: number): Promi
         decoded ? [decoded.sortValue, pageSize] : [pageSize],
       );
 
-      const programIds = [...new Set(rows.map((row) => row.program_id))];
+      // Organization-level platform notices have no program.
+      const programIds = [...new Set(rows.flatMap((row) => (row.program_id ? [row.program_id] : [])))];
       const programNamesById = new Map<string, string>();
       if (programIds.length > 0) {
         const { rows: programRows } = await client.query<{ id: string; name: string }>("select id, name from public.programs where id = any($1)", [programIds]);

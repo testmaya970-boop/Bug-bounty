@@ -9,6 +9,9 @@ async function run() {
 
   const { rows: [userA] } = await client.query("select * from public.create_user($1, $2, $3, $4)", ["rls-a@example.com", "x", "A", null]);
   const { rows: [userB] } = await client.query("select * from public.create_user($1, $2, $3, $4)", ["rls-b@example.com", "x", "B", null]);
+  // Only organization accounts may create an organization (202609280002).
+  await client.query("set local role service_role");
+  await client.query("update public.users set account_type = 'organization' where id = $1", [userA.id]);
 
   // Act as A: create an org.
   await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: userA.id, role: "authenticated" })]);

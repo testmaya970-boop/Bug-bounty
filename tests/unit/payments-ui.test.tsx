@@ -19,6 +19,7 @@ const PENDING_OBLIGATION: PaymentObligation = {
   reportId: "report-1",
   bountyDecisionId: "decision-1",
   amountMinorUnits: 60000,
+  platformFeeMinorUnits: 12000,
   currency: "USD",
   status: "pending",
   createdAt: "2026-08-29T00:00:00Z",
@@ -65,11 +66,23 @@ describe("PaymentStatusSection: separates 'no obligation yet' from every real st
     expect(authorized).toContain("600.00");
     expect(authorized).toContain("Initiate manual payout");
     expect(authorized).toContain("Cancel payment obligation");
+    // The fee is billed to the organization ON TOP (202609250010): PENDING_OBLIGATION is a
+    // 600.00 bounty with a 120.00 fee, so the org's total due is 720.00 -- and nothing is
+    // deducted from the researcher (no 480.00 anywhere).
+    expect(authorized).toContain("Paid to the researcher in full");
+    expect(authorized).toContain("120.00");
+    expect(authorized).toContain("720.00");
+    expect(authorized).not.toContain("480.00");
 
     const researcher = renderToStaticMarkup(
       <PaymentStatusSection obligation={PENDING_OBLIGATION} latestAttempt={null} canManage={false} bountyCurrency="USD" bountyAmountMinorUnits={60000} {...REF} />,
     );
     expect(researcher).toContain("Payment pending");
+    expect(researcher).toContain("600.00");
+    // The researcher never sees the organization's fee, or a reduced amount.
+    expect(researcher).not.toMatch(/fee/i);
+    expect(researcher).not.toContain("480.00");
+    expect(researcher).not.toContain("720.00");
     expect(researcher).not.toContain("Initiate manual payout");
     expect(researcher).not.toContain("Cancel payment obligation");
   });
@@ -113,7 +126,7 @@ describe("dialogs default to closed and only show their trigger, never the confi
   });
 
   it("InitiateManualPayoutButton", () => {
-    const html = renderToStaticMarkup(<InitiateManualPayoutButton {...REF} obligationId="obligation-1" currency="USD" amountMinorUnits={60000} isRetry={false} />);
+    const html = renderToStaticMarkup(<InitiateManualPayoutButton {...REF} obligationId="obligation-1" currency="USD" amountMinorUnits={60000} platformFeeMinorUnits={12000} isRetry={false} />);
     expect(html).toContain("Initiate manual payout");
     expect(html).not.toContain("Unpatched does not transfer funds itself");
   });

@@ -1,6 +1,6 @@
 import "server-only";
 import { withActorTransaction, withServiceRoleTransaction } from "@/lib/db/pool";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { revokeAllSessionsForUser } from "@/lib/auth/session";
 import { getCurrentUser, getCurrentSessionId } from "@/lib/auth/current-user";
 import { AuthServiceError, signOut } from "@/services/auth";
@@ -19,18 +19,32 @@ async function requireCurrentUserId(): Promise<string> {
   return user.id;
 }
 
+/** A live session alone must not be enough to take the account over (new password, new
+ * email): the caller re-proves the current password. Shares the sign-in rate limit, so
+ * this form is no side door for guessing it. */
+async function requireCurrentPassword(currentPassword: string): Promise<string> {
+  const userId = await requireCurrentUserId();
+  const { password_hash: hash, allowed } = await withServiceRoleTransaction(async (client) => {
+    const { rows } = await client.query<{ password_hash: string; email: string }>("select password_hash, email from public.users where id = $1", [userId]);
+    const { rows: limit } = await client.query<{ check_sign_in_rate_limit: boolean }>("select public.check_sign_in_rate_limit($1)", [rows[0].email]);
+    return { password_hash: rows[0].password_hash, allowed: limit[0]?.check_sign_in_rate_limit !== false };
+  });
+  if (!allowed) throw new AuthServiceError("Too many attempts. Wait a moment and try again.", "RATE_LIMITED");
+  if (!(await verifyPassword(hash, currentPassword))) throw new AuthServiceError("Your current password is not correct.", "INVALID_CREDENTIALS");
+  return userId;
+}
+
 /**
- * Authorized by the caller's own current, already-authenticated session -- same contract
- * as the original Supabase-backed updateUser({ password }): no current-password
- * re-confirmation is required beyond the session itself. Unlike resetPasswordAction
+ * Authorized by the caller's session AND their current password (requireCurrentPassword).
+ * Unlike resetPasswordAction
  * (services/auth.ts), which requires a fresh reset-token instead of a session. Revokes
  * every OTHER session for this account (never the caller's own current one, unlike a
  * password reset, which revokes all of them -- a reset implies "I may not trust any prior
  * session," while an in-session change does not) so a stolen, still-logged-in session
  * elsewhere is cut off the moment the real owner changes their password.
  */
-export async function changeMyPassword(newPassword: string): Promise<void> {
-  const userId = await requireCurrentUserId();
+export async function changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+  const userId = await requireCurrentPassword(currentPassword);
   const currentSessionId = await getCurrentSessionId();
   const passwordHash = await hashPassword(newPassword);
 
@@ -59,8 +73,8 @@ export async function changeMyPassword(newPassword: string): Promise<void> {
  * confirmation round trip. Track re-implementing the original double-confirm guarantee as
  * a dedicated follow-up before this ships to a real deployment with existing users.
  */
-export async function changeMyEmail(newEmail: string): Promise<void> {
-  const userId = await requireCurrentUserId();
+export async function changeMyEmail(currentPassword: string, newEmail: string): Promise<void> {
+  const userId = await requireCurrentPassword(currentPassword);
   const normalizedEmail = newEmail.trim().toLowerCase();
 
   try {
@@ -87,8 +101,15 @@ export async function changeMyEmail(newEmail: string): Promise<void> {
 export async function deactivateMyAccount(): Promise<void> {
   const userId = await requireCurrentUserId();
 
-  await withActorTransaction(userId, async (client) => {
-    await client.query("select public.deactivate_my_account()");
-  });
+  try {
+    await withActorTransaction(userId, async (client) => {
+      await client.query("select public.deactivate_my_account()");
+    });
+  } catch (error) {
+    // An organization's only owner is refused (202609280003); say why, in their words.
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.startsWith("LAST_OWNER: ")) throw new AuthServiceError(message.slice("LAST_OWNER: ".length), "LAST_OWNER");
+    throw error;
+  }
   await signOut();
 }

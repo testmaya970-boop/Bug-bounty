@@ -290,6 +290,12 @@ export async function verifySignupCode(email: string, code: string): Promise<{ u
     const row = rows[0];
     if (!row || row.outcome !== "valid") throw new AuthServiceError("That code didn't match or has expired. Request a new one and try again.", "INVALID_CODE");
 
+    // Organization sign-up (work email enforced in signUpAction) is the only way to get an
+    // organization account -- the only kind allowed to create an organization (202609280002).
+    if (row.metadata?.intent === "organization") {
+      await client.query("update public.users set account_type = 'organization' where id = $1", [user.id]);
+    }
+
     return { userId: user.id, intent: row.metadata?.intent, companyName: row.metadata?.companyName };
   });
 

@@ -7,8 +7,8 @@ import { EmptyState } from "../../../components/ui/feedback";
 import { ProgramLaunchReviewForm } from "../../../components/platform/program-launch-review-form";
 import { isPlatformAdmin, listProgramsPendingReviewForAdmin } from "../../../services/platform-operations";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { formatDateTime } from "../../../lib/format-date";
 import { engagementTypeLabel } from "../../../lib/program-status";
+import { LocalTime } from "../../../components/ui/local-time";
 
 /**
  * A non-admin gets a real 404, not a "Permission denied" page -- same convention every
@@ -48,7 +48,7 @@ export default async function PlatformProgramsPage() {
           <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
             {programs.map((program) => (
               <li key={program.id} className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-warning">Submitted for review · {formatDateTime(program.submittedAt)}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-warning">Submitted for review · <LocalTime value={program.submittedAt} /></p>
                 <p className="mt-1 text-sm font-medium text-ink">{program.name}</p>
                 <p className="mt-0.5 text-sm text-ink-muted">{program.organizationName}</p>
 

@@ -9,7 +9,7 @@ import { redeemBackupCodeGateAction, requestMfaVerificationCodeAction, verifyMfa
  * The sign-in-time MFA gate: a real emailed 6-digit code (verified server-side, elevates
  * the session to AAL2) or a real backup code (verified against `mfa_backup_codes`,
  * tracked in `mfa_verified_sessions`) -- see docs/decisions/0052. Reached only when
- * middleware.ts's own gate has already confirmed this account has a verified email-OTP
+ * proxy.ts's own gate has already confirmed this account has a verified email-OTP
  * factor and this session hasn't cleared it yet. middleware's redirect into this page is
  * itself the trigger to send the first code (see app/mfa/verify/page.tsx).
  */

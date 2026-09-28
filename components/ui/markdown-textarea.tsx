@@ -75,18 +75,20 @@ export function MarkdownTextarea({
           {label}
           {required && <span aria-hidden="true"> *</span>}
         </Label>
-        <div className="flex overflow-hidden rounded-md border border-border text-xs font-semibold">
+        <div role="group" aria-label="Editor mode" className="flex overflow-hidden rounded-md border border-border text-xs font-semibold">
           <button
             type="button"
+            aria-pressed={mode === "write"}
             onClick={() => setMode("write")}
-            className={cn("px-2.5 py-1 transition-colors duration-150 ease-out", mode === "write" ? "bg-action text-on-action" : "bg-surface text-ink-muted hover:text-ink")}
+            className={cn("px-2.5 py-1 transition-colors duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus", mode === "write" ? "bg-action text-on-action" : "bg-surface text-ink-muted hover:text-ink")}
           >
             Write
           </button>
           <button
             type="button"
+            aria-pressed={mode === "preview"}
             onClick={() => setMode("preview")}
-            className={cn("px-2.5 py-1 transition-colors duration-150 ease-out", mode === "preview" ? "bg-action text-on-action" : "bg-surface text-ink-muted hover:text-ink")}
+            className={cn("px-2.5 py-1 transition-colors duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus", mode === "preview" ? "bg-action text-on-action" : "bg-surface text-ink-muted hover:text-ink")}
           >
             Preview
           </button>

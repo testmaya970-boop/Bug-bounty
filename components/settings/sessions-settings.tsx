@@ -5,8 +5,8 @@ import { Button } from "../ui/button";
 import { SectionLabel } from "../ui/security-primitives";
 import { Badge } from "../ui/badge";
 import { revokeAllOtherSessionsAction, revokeMySessionAction } from "../../actions/mfa";
-import { formatDateTime } from "../../lib/format-date";
 import type { MySession } from "../../services/mfa";
+import { LocalTime } from "../ui/local-time";
 
 /**
  * Real GoTrue session rows (auth.sessions), never an invented device concept -- see
@@ -71,7 +71,7 @@ export function SessionsSettings({ sessions: initialSessions }: { sessions: MySe
               </p>
               <p className="mt-0.5 text-xs text-ink-muted">
                 {session.ip ? `${session.ip} · ` : ""}
-                Last active {formatDateTime(session.updatedAt)}
+                Last active <LocalTime value={session.updatedAt} />
               </p>
             </div>
             {!session.isCurrent && (

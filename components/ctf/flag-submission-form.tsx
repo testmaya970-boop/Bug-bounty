@@ -6,9 +6,9 @@ import { Button } from "../ui/button";
 import { Alert } from "../ui/feedback";
 import { Badge } from "../ui/badge";
 import { submitCtfFlagAction } from "../../actions/ctf";
-import { formatDateTime } from "../../lib/format-date";
 import type { CtfSolve } from "../../services/ctf";
 import type { MockCtfChallenge } from "../../lib/mock/ctf";
+import { LocalTime } from "../ui/local-time";
 
 /**
  * The rail's one primary action on a challenge detail page -- a real Server Action call
@@ -47,7 +47,7 @@ export function FlagSubmissionForm({ challenge, initialSolve }: { challenge: Moc
           Solved
         </Badge>
         <Alert tone="success" title={`+${solve.pointsAwarded} points`}>
-          Solved {formatDateTime(solve.solvedAt)}.
+          Solved <LocalTime value={solve.solvedAt} />.
         </Alert>
       </div>
     );

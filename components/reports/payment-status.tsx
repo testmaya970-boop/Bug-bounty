@@ -101,8 +101,9 @@ export function CreatePaymentObligationButton({ organizationId, programId, repor
       title="Create a payment obligation?"
       description={
         <p>
-          This records that <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span> is owed for this
-          report's finalized bounty. It does not itself move any money. A payout must be initiated separately.
+          This records that <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span> is owed to the
+          researcher for this report's finalized bounty -- paid to them in full. A 20% platform fee is billed to your organization on top of it. This does not itself
+          move any money; a payout must be initiated separately.
         </p>
       }
       confirmLabel="Create obligation"
@@ -111,14 +112,27 @@ export function CreatePaymentObligationButton({ organizationId, programId, repor
   );
 }
 
-export function InitiateManualPayoutButton({ organizationId, programId, reportId, obligationId, currency, amountMinorUnits, isRetry }: ReportRef & { obligationId: string; currency: string; amountMinorUnits: number; isRetry: boolean }) {
+export function InitiateManualPayoutButton({
+  organizationId,
+  programId,
+  reportId,
+  obligationId,
+  currency,
+  amountMinorUnits,
+  platformFeeMinorUnits,
+  isRetry,
+}: ReportRef & { obligationId: string; currency: string; amountMinorUnits: number; platformFeeMinorUnits: number; isRetry: boolean }) {
   return (
     <ConfirmDialog
       triggerLabel={isRetry ? "Retry payout" : "Initiate manual payout"}
       title={isRetry ? "Retry this payout?" : "Initiate a manual payout?"}
       description={
         <p>
-          This starts a manual payout attempt for <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span>.
+          This starts a manual payout attempt. Transfer the full <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span>{" "}
+          bounty to the researcher.
+          {platformFeeMinorUnits > 0 && (
+            <> The {currency} {minorUnitsToDecimalString(platformFeeMinorUnits)} platform fee is billed to your organization separately and is not deducted from it.</>
+          )}
           Unpatched does not transfer funds itself. An authorized operator must complete the transfer outside Unpatched (e.g. a wire transfer), then record the result here.
         </p>
       }
@@ -371,6 +385,14 @@ export function PaymentStatusSection({
       <p className="text-sm text-ink">
         {STATUS_LABELS[obligation.status]}: <span className="font-mono font-semibold">{obligation.currency} {minorUnitsToDecimalString(obligation.amountMinorUnits)}</span>
       </p>
+      {/* The fee is the organization's charge (202609250010): shown to managers only, never
+          to the researcher, who is paid the full amount above. */}
+      {canManage && obligation.platformFeeMinorUnits > 0 && (
+        <p className="text-xs text-ink-muted">
+          Paid to the researcher in full. Platform fee billed to your organization: {obligation.currency} {minorUnitsToDecimalString(obligation.platformFeeMinorUnits)} --
+          total due {obligation.currency} {minorUnitsToDecimalString(obligation.amountMinorUnits + obligation.platformFeeMinorUnits)}.
+        </p>
+      )}
       {canManage && (obligation.status === "pending" || obligation.status === "failed") && (
         <div className="flex flex-wrap gap-2">
           <InitiateManualPayoutButton
@@ -380,6 +402,7 @@ export function PaymentStatusSection({
             obligationId={obligation.id}
             currency={obligation.currency}
             amountMinorUnits={obligation.amountMinorUnits}
+            platformFeeMinorUnits={obligation.platformFeeMinorUnits}
             isRetry={obligation.status === "failed"}
           />
           <CancelPaymentObligationDialog organizationId={organizationId} programId={programId} reportId={reportId} obligationId={obligation.id} />

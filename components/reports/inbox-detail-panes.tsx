@@ -9,7 +9,6 @@ import { InboxTimeline } from "./inbox-timeline";
 import { InboxTriageControls } from "./inbox-triage-controls";
 import { OrganizationMessageComposer } from "./report-communication";
 import { reportNextActionLabel, reportStatusMeaning, REPORT_STATUS_TRANSITIONS } from "../../lib/report-status";
-import { formatDateTime } from "../../lib/format-date";
 import { getReport } from "../../services/reports";
 import { getReportTimeline } from "../../services/timeline";
 import { listActiveScopeEntries } from "../../services/scope";
@@ -17,6 +16,7 @@ import { AssetLinkPicker } from "./asset-link-picker";
 import { ScopeStateBadge } from "../ui/badge";
 import type { Report } from "../../types/report";
 import type { ScopeEntry } from "../../types/scope";
+import { LocalTime } from "../ui/local-time";
 
 /** No report selected yet -- the inbox's own resting state for the middle/right panes,
  * distinct from "no reports exist at all" (InboxReportList's own EmptyState). */
@@ -96,7 +96,10 @@ export async function InboxSelectedReport({
   const linkablePicks: ScopeEntry[] = report.matchedScopeEntryId === null ? await listActiveScopeEntries(programId) : [];
 
   return (
-    <div className="grid h-full grid-cols-1 xl:grid-cols-[minmax(0,1fr)_20rem]">
+    // Side by side (each scrolling on its own) only at xl. Narrower, the two panes stack and
+    // share the detail column's single scroll -- stacked with their own scrollbars, each got
+    // half the height and hid most of its content.
+    <div className="grid grid-cols-1 xl:h-full xl:grid-cols-[minmax(0,1fr)_20rem]">
       <InboxMiddlePane organizationId={organizationId} programId={programId} report={report} timelinePage={timelinePage} actorNames={timelineActorNames} linkablePicks={linkablePicks} />
       <InboxRightPane organizationId={organizationId} programId={programId} report={report} allowedNext={allowedNext} isFinal={isFinal} />
     </div>
@@ -119,7 +122,7 @@ function InboxMiddlePane({
   linkablePicks: ScopeEntry[];
 }) {
   return (
-    <div className="min-w-0 space-y-6 overflow-y-auto border-b border-border p-4 xl:border-b-0 xl:border-r xl:p-5">
+    <div className="min-w-0 space-y-6 border-b border-border p-4 xl:overflow-y-auto xl:border-b-0 xl:border-r xl:p-5">
       <div>
         <div className="flex flex-wrap items-center gap-2">
           {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
@@ -134,7 +137,7 @@ function InboxMiddlePane({
         <h2 className="mt-2 text-lg font-semibold text-ink">{report.title}</h2>
         <div className="mt-2 grid gap-3 text-sm sm:grid-cols-2">
           <MetadataPair label="Researcher" value={report.researcherName} />
-          <MetadataPair label="Submitted" value={formatDateTime(report.submittedAt)} />
+          <MetadataPair label="Submitted" value=<LocalTime value={report.submittedAt} /> />
           <MetadataPair
             label="Target"
             className="sm:col-span-2"
@@ -209,7 +212,7 @@ function InboxRightPane({
   isFinal: boolean;
 }) {
   return (
-    <div className="space-y-5 overflow-y-auto p-4 xl:p-5">
+    <div className="space-y-5 p-4 xl:overflow-y-auto xl:p-5">
       <div>
         <SectionLabel>{isFinal ? "Final decision" : "Triage"}</SectionLabel>
         <p className="mt-1 text-sm text-ink-muted">{reportStatusMeaning(report.status)}</p>

@@ -28,10 +28,14 @@ export function ProfileSettings({
   initialDisplayName,
   initialBiography,
   initialPublicUsername,
+  researcherFields = true,
 }: {
   initialDisplayName: string;
   initialBiography: string;
   initialPublicUsername: string | null;
+  /** false for an organization account: a biography "shown to organizations reviewing
+   * your reports" and a public researcher profile do not apply to it. */
+  researcherFields?: boolean;
 }) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(initialDisplayName);
@@ -87,7 +91,7 @@ export function ProfileSettings({
         setUsernameError(result.message);
         return;
       }
-      setUsernameSaved(publicUsername.trim() || null);
+      setUsernameSaved(publicUsername.trim()); // "" = unpublished, which gets its own confirmation
       router.refresh();
     });
   }
@@ -96,7 +100,9 @@ export function ProfileSettings({
     <div className="space-y-8">
       <form className="space-y-3" onSubmit={handleSaveName}>
         <SectionLabel>Display name</SectionLabel>
-        <p className="text-sm text-ink-muted">Shown on your reports and to organizations you research for.</p>
+        <p className="text-sm text-ink-muted">
+          {researcherFields ? "Shown on your reports and to organizations you research for." : "Shown to your team, and to researchers on every message you send them about a report."}
+        </p>
         <Input
           label="Display name"
           value={displayName}
@@ -115,60 +121,65 @@ export function ProfileSettings({
         </div>
       </form>
 
-      <form className="space-y-3 border-t border-border pt-6" onSubmit={handleSaveBio}>
-        <SectionLabel>Biography</SectionLabel>
-        <p className="text-sm text-ink-muted">Optional. Shown to organizations reviewing your reports.</p>
-        <Textarea
-          label="Biography"
-          value={biography}
-          onChange={(event) => {
-            setBiography(event.target.value);
-            setBioSaved(false);
-          }}
-          maxLength={5000}
-          className="[&_textarea]:min-h-32"
-          error={bioError ?? undefined}
-        />
-        {bioSaved && <Alert tone="success" title="Biography updated." />}
-        <div className="flex justify-end">
-          <Button type="submit" pending={bioPending}>
-            Save
-          </Button>
-        </div>
-      </form>
+      {researcherFields && (
+        <>
+          <form className="space-y-3 border-t border-border pt-6" onSubmit={handleSaveBio}>
+            <SectionLabel>Biography</SectionLabel>
+            <p className="text-sm text-ink-muted">Optional. Shown to organizations reviewing your reports.</p>
+            <Textarea
+              label="Biography"
+              value={biography}
+              onChange={(event) => {
+                setBiography(event.target.value);
+                setBioSaved(false);
+              }}
+              maxLength={5000}
+              className="[&_textarea]:min-h-32"
+              error={bioError ?? undefined}
+            />
+            {bioSaved && <Alert tone="success" title="Biography updated." />}
+            <div className="flex justify-end">
+              <Button type="submit" pending={bioPending}>
+                Save
+              </Button>
+            </div>
+          </form>
 
-      <form className="space-y-3 border-t border-border pt-6" onSubmit={handleSaveUsername}>
-        <SectionLabel>Public profile</SectionLabel>
-        <p className="text-sm text-ink-muted">
-          Optional. Choose a public username to publish a profile at /researchers/{"{username}"} showing your display name, biography, stated focus areas, and your real reputation score. Clear this field
-          and save to unpublish it.
-        </p>
-        <Input
-          label="Public username"
-          placeholder="e.g. shiva-researches"
-          value={publicUsername}
-          onChange={(event) => {
-            setPublicUsername(event.target.value);
-            setUsernameSaved(null);
-          }}
-          maxLength={30}
-          helperText="3-30 characters: lowercase letters, numbers, and hyphens only."
-          error={usernameError ?? undefined}
-        />
-        {usernameSaved !== null && (
-          <Alert tone="success" title="Public profile published.">
-            <Link prefetch={false} href={`/researchers/${usernameSaved}` as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-              View your public profile →
-            </Link>
-          </Alert>
-        )}
-        {usernameSaved === null && publicUsername.trim() === "" && initialPublicUsername && <Alert tone="info" title="Saving with this field empty will unpublish your public profile." />}
-        <div className="flex justify-end">
-          <Button type="submit" pending={usernamePending}>
-            Save
-          </Button>
-        </div>
-      </form>
+          <form className="space-y-3 border-t border-border pt-6" onSubmit={handleSaveUsername}>
+            <SectionLabel>Public profile</SectionLabel>
+            <p className="text-sm text-ink-muted">
+              Optional. Choose a public username to publish a profile at /researchers/{"{username}"} showing your display name, biography, stated focus areas, and your real reputation score. Clear this field
+              and save to unpublish it.
+            </p>
+            <Input
+              label="Public username"
+              placeholder="e.g. shiva-researches"
+              value={publicUsername}
+              onChange={(event) => {
+                setPublicUsername(event.target.value);
+                setUsernameSaved(null);
+              }}
+              maxLength={30}
+              helperText="3-30 characters: lowercase letters, numbers, and hyphens only."
+              error={usernameError ?? undefined}
+            />
+            {usernameSaved === "" && <Alert tone="success" title="Public profile unpublished." />}
+            {!!usernameSaved && (
+              <Alert tone="success" title="Public profile published.">
+                <Link prefetch={false} href={`/researchers/${usernameSaved}` as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+                  View your public profile →
+                </Link>
+              </Alert>
+            )}
+            {usernameSaved === null && publicUsername.trim() === "" && initialPublicUsername && <Alert tone="info" title="Saving with this field empty will unpublish your public profile." />}
+            <div className="flex justify-end">
+              <Button type="submit" pending={usernamePending}>
+                Save
+              </Button>
+            </div>
+          </form>
+        </>
+      )}
     </div>
   );
 }

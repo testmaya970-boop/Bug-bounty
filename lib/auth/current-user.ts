@@ -18,8 +18,8 @@ import type { PoolClient } from "pg";
 // userId, rather than duplicating the query.
 async function loadProfile(client: PoolClient, userId: string): Promise<AuthenticatedUser> {
   const { rows } = await perfTimed("getCurrentUser users select", () =>
-    client.query<{ platform_role: AuthenticatedUser["platformRole"]; username: string; display_name: string; email: string | null }>(
-      "select platform_role, username, display_name, email from public.users where id = $1",
+    client.query<{ platform_role: AuthenticatedUser["platformRole"]; account_type: AuthenticatedUser["accountType"]; username: string; display_name: string; email: string | null }>(
+      "select platform_role, account_type, username, display_name, email from public.users where id = $1",
       [userId],
     ),
   );
@@ -30,6 +30,7 @@ async function loadProfile(client: PoolClient, userId: string): Promise<Authenti
   return {
     id: userId,
     platformRole: profile?.platform_role ?? null,
+    accountType: profile?.account_type ?? "researcher",
     username: profile?.username ?? "unknown",
     displayName: profile?.display_name ?? "Unknown user",
     email: profile?.email ?? null,

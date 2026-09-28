@@ -27,6 +27,7 @@ function revalidateReportPaths(organizationId: string, programId: string, report
   revalidatePath(`/organizations/${organizationId}/programs/${programId}`);
   revalidatePath(`/organizations/${organizationId}/programs/${programId}/reports/${reportId}`);
   revalidatePath("/reports");
+  revalidatePath(`/organizations/${organizationId}/payments`);
 }
 
 const reportActionBase = z.object({ organizationId: uuidSchema, programId: uuidSchema, reportId: uuidSchema });

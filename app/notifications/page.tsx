@@ -33,7 +33,7 @@ export default async function NotificationsPage() {
         <NotificationListSection initialNotifications={notificationsPage.items} initialNextCursor={notificationsPage.nextCursor} />
 
         <div className="border-t border-border pt-6">
-          <NotificationPreferencesSection preferences={preferences} />
+          <NotificationPreferencesSection preferences={preferences} accountType={user.accountType} />
         </div>
       </div>
     </AppShell>

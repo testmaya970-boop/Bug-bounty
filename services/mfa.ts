@@ -125,7 +125,8 @@ async function verifyChallengeCode(code: string): Promise<void> {
   }
 }
 
-export async function unenrollMfaFactor(factorId: string): Promise<void> {
+// Email-OTP MFA has one factor per account, so the RPC needs no factor id.
+export async function unenrollMfaFactor(): Promise<void> {
   const user = await requireCurrentUser();
   try {
     await withActorTransaction(user.id, (client) => callRpc(client, "public.unenroll_my_mfa_factor"));

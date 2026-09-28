@@ -222,7 +222,7 @@ describe("unenrollMfaFactor: a real unenroll RPC call", () => {
     });
     const { unenrollMfaFactor } = await import("../../services/mfa");
 
-    await expect(unenrollMfaFactor("user-1")).resolves.toBeUndefined();
+    await expect(unenrollMfaFactor()).resolves.toBeUndefined();
   });
 });
 

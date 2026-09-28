@@ -3,9 +3,9 @@ import { RegistryList, SectionLabel } from "../ui/security-primitives";
 import { EmptyState } from "../ui/feedback";
 import { PaymentObligationStatusBadge } from "../ui/badge";
 import { minorUnitsToDecimalString } from "../../lib/money";
-import { formatDateTime } from "../../lib/format-date";
 import type { MyPaymentObligation } from "../../services/payments";
-import type { PaymentObligationStatus } from "../../types/payment";
+import type { PaymentObligationStatus } from "../../types/payment";
+import { LocalTime } from "../ui/local-time";
 
 /** Every real payment_obligations amount, grouped by currency -- summed as integers
  * (minor units), never floating point, and never blended across currencies into one
@@ -69,7 +69,7 @@ export function BountyTrackRecord({ obligations }: { obligations: MyPaymentOblig
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-ink">{o.reportTitle}</p>
                 <p className="mt-0.5 text-xs text-ink-muted">
-                  {o.organizationName} · {o.programName} · {formatDateTime(o.createdAt)}
+                  {o.organizationName} · {o.programName} · <LocalTime value={o.createdAt} />
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-3">

@@ -55,9 +55,10 @@ export async function upsertMyReportTemplate(input: { id?: string; name: string;
   let rows;
   try {
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      // Positional: must match upsert_my_report_template(p_name, p_id, ...) exactly.
       callRpc<ReportTemplateRow>(client, "public.upsert_my_report_template", [
-        input.id ?? null,
         input.name,
+        input.id ?? null,
         input.weaknessType ?? null,
         input.descriptionTemplate ?? null,
         input.impactTemplate ?? null,

@@ -2,12 +2,12 @@
 
 import React, { useState, useTransition } from "react";
 import { describeOrganizationActivity } from "../../lib/organization-activity-labels";
-import { formatDateTime } from "../../lib/format-date";
 import { EmptyState, ErrorState } from "../ui/feedback";
 import { Markdown } from "../ui/markdown";
 import { Button } from "../ui/button";
 import { loadEarlierReportTimelineAction } from "../../actions/reports";
 import type { TimelineEntry } from "../../services/timeline";
+import { LocalTime } from "../ui/local-time";
 
 /**
  * The inbox's merged chronological timeline: a report's original submission is rendered
@@ -47,7 +47,7 @@ function StateChangeRow({ entry, actorNames }: { entry: Extract<TimelineEntry, {
           {title}
           {detail && <span className="text-ink-muted/70"> · {detail}</span>}
         </p>
-        <time className="text-xs text-ink-muted/70">{formatDateTime(entry.createdAt)}</time>
+        <time className="text-xs text-ink-muted/70"><LocalTime value={entry.createdAt} /></time>
       </div>
     </li>
   );
@@ -74,7 +74,7 @@ function CommentRow({ entry }: { entry: Extract<TimelineEntry, { kind: "message"
       </span>
       <div className={isInternal ? "min-w-0 flex-1 rounded-md border-l-2 border-warning bg-surface-muted p-3" : "min-w-0 flex-1"}>
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          {message.authorName} · {isHacker ? "Hacker" : isInternal ? "Internal note" : "Reply to hacker"} · <time>{formatDateTime(entry.createdAt)}</time>
+          {message.authorName} · {isHacker ? "Hacker" : isInternal ? "Internal note" : "Reply to hacker"} · <time><LocalTime value={entry.createdAt} /></time>
         </p>
         <Markdown content={message.body} className="mt-1" />
       </div>

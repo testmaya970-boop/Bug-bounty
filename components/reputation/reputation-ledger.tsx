@@ -7,10 +7,10 @@ import { RegistryList, SectionLabel } from "../ui/security-primitives";
 import { Button } from "../ui/button";
 import { ErrorState } from "../ui/feedback";
 import { SeverityBadge } from "../ui/badge";
-import { formatDate } from "../../lib/format-date";
 import { reputationFactTypeEventLabel } from "../../lib/reputation-labels";
 import { listReputationLedgerPageAction } from "../../actions/reputation";
-import type { ReputationLedgerEntry } from "../../types/reputation";
+import type { ReputationLedgerEntry } from "../../types/reputation";
+import { LocalTime } from "../ui/local-time";
 
 /** Report title/program name for one ledger row -- joined on client-side from the
  * researcher's own `listMyReports()`, since `reputation_ledger` carries no denormalized
@@ -35,7 +35,7 @@ function LedgerRow({ entry, evidence }: { entry: ReputationLedgerEntry; evidence
         </Link>
         <p className="mt-0.5 font-mono text-xs text-ink-muted">
           {evidence?.programName && <>{evidence.programName} · </>}
-          {formatDate(entry.occurredAt)}
+          <LocalTime value={entry.occurredAt} dateOnly />
         </p>
       </div>
       {showSeverity && <SeverityBadge severity={entry.confirmedSeverity!} />}

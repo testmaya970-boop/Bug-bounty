@@ -15,5 +15,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // A file's first test pays the cold import of next/* server modules: measured up to
+    // 3.5s alone on Next 16, and past the 5s default when every file imports in parallel.
+    testTimeout: 15_000,
   },
 });

@@ -54,10 +54,13 @@ function breadcrumbEngagements(page: Page) {
 /** Every one of the nine org routes must highlight exactly one nav control -- the sidebar item
  * matching that route (AGENTS.md's "One nav control per hierarchy level" rule, added closing the
  * Turn 8b defect where the deleted tab row and the sidebar could each independently show no
- * active item on the same page). Asserts both halves: exactly one aria-current="page" in the
- * whole document, and it is the expected sidebar link. */
+ * active item on the same page). Asserts both halves: exactly one org-level nav LINK marked
+ * aria-current="page", and it is the expected sidebar link. Not counted, because neither is a
+ * competing org-level control: the breadcrumb's current crumb (a plain <span>, the standard
+ * accessible breadcrumb pattern) and the program-level "Program sections" tabs, a different
+ * hierarchy level the rule explicitly allows. */
 async function expectSingleSidebarHighlight(page: Page, name: string) {
-  const current = page.locator('[aria-current="page"]');
+  const current = page.locator('a[aria-current="page"]:not(nav[aria-label="Program sections"] a)');
   await expect(current).toHaveCount(1);
   await expect(sidebarNav(page, name)).toHaveAttribute("aria-current", "page");
 }
@@ -228,18 +231,23 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   const severitySelect = page.getByLabel("Confirmed severity");
   await expect(severitySelect).toBeEnabled();
   await severitySelect.selectOption("high");
-
-  // Bounty eligibility must be calculated (get_effective_bounty_policy's recommendation)
-  // before it can be finalized -- Finalize bounty doesn't render until that's done.
-  await page.getByRole("button", { name: "Calculate bounty" }).click();
-  await expect(page.getByRole("button", { name: "Finalize bounty" })).toBeVisible();
+  // Before a final decision the bounty section explains why it can't be calculated yet,
+  // rather than offering a button calculate_bounty_recommendation would reject.
+  await expect(page.getByText(/can be calculated once this report reaches a final decision/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Calculate bounty" })).toHaveCount(0);
 
   // Resolve from this same page (TriageActionPanel is present here too, identical action
   // set to the Inbox's own panel).
   await page.getByRole("button", { name: "Resolve" }).click();
-  await page.getByLabel("How was this resolved?", { exact: true }).fill("Fixed for the E2E journey suite.");
+  // By accessible name: the label's text also carries the required asterisk.
+  await page.getByRole("textbox", { name: "How was this resolved?" }).fill("Fixed for the E2E journey suite.");
   await page.getByRole("button", { name: "Resolve report" }).click();
   await expect(page.getByText("Resolved", { exact: true }).first()).toBeVisible();
+
+  // Bounty is calculated only once the report is final (REPORT_NOT_FINALIZED otherwise),
+  // and must be calculated before Finalize bounty renders.
+  await page.getByRole("button", { name: "Calculate bounty" }).click();
+  await expect(page.getByRole("button", { name: "Finalize bounty" })).toBeVisible();
 
   // --- Finalize bounty: assert the payout wording is visible in the confirm step -------
   await page.getByRole("button", { name: "Finalize bounty" }).click();
@@ -247,17 +255,20 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("Payouts are processed off-platform by your program contact.")).toBeVisible();
   await page.getByRole("button", { name: "Confirm finalization" }).click();
-  await expect(page.getByText(/USD 500\.00/)).toBeVisible();
+  // .first(): once the outbox worker creates the payment obligation, the payment-status
+  // panel shows the amount too.
+  await expect(page.getByText(/USD 500\.00/).first()).toBeVisible();
 
   // --- Hactivity shows the transitions --------------------------------------------------
   // Currently on the Inbox page (ProgramHeader) -- breadcrumb back to Engagements, then
   // the org header's own Hactivity tab (Hactivity itself is org-scoped, not per-program).
   await breadcrumbEngagements(page).click();
   await sidebarNav(page, "Hactivity").click();
-  await expect(page.getByText(/started triage/)).toBeVisible();
-  await expect(page.getByText(/accepted a report/)).toBeVisible();
-  await expect(page.getByText(/resolved a report/)).toBeVisible();
-  await expect(page.getByText(/finalized a bounty/)).toBeVisible();
+  // .first(): Hactivity keeps every past run's events for this seeded report.
+  await expect(page.getByText(/started triage/).first()).toBeVisible();
+  await expect(page.getByText(/accepted a report/).first()).toBeVisible();
+  await expect(page.getByText(/resolved a report/).first()).toBeVisible();
+  await expect(page.getByText(/finalized a bounty/).first()).toBeVisible();
 
   // --- Bell shows the new notifications (proves the Turn 8 notification handlers) -------
   // report.accepted's notification routes to the report's own researcher (the veteran),
@@ -274,11 +285,15 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // --- Help / profile menu / switchers reachable ---------------------------------------
   await page.getByRole("link", { name: "Help", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Get help" })).toBeVisible();
+  // Help has its own minimal header (Back to workspace / Sign out), no account menu.
+  await page.getByRole("link", { name: "Back to workspace" }).click();
 
   await page.getByRole("button", { name: "Account menu" }).click();
-  await expect(page.getByRole("link", { name: "Profile" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Help & docs" })).toBeVisible();
+  // Scoped to the open dropdown: the sidebar has its own Settings link.
+  const accountMenu = page.getByRole("group", { name: "Account" });
+  await expect(accountMenu.getByRole("link", { name: "Profile" })).toBeVisible();
+  await expect(accountMenu.getByRole("link", { name: "Settings" })).toBeVisible();
+  await expect(accountMenu.getByRole("link", { name: "Help & docs" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   // --- Sign out --------------------------------------------------------------------------
@@ -373,13 +388,13 @@ test("org journey: researcher accepts an invitation, sees the finalized amount, 
   // The bell's accessible name includes the unread count when non-zero ("Notifications, N
   // unread") -- match either form.
   await page.getByRole("button", { name: /^Notifications/ }).click();
-  await expect(page.getByRole("menu", { name: "Recent notifications" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Recent notifications" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   // --- Researcher-visible finalized bounty amount ---------------------------------------
   await page.goto("/reports");
   await page.getByRole("link", { name: TRIAGE_WALK_REPORT_TITLE }).click();
-  await expect(page.getByText(/USD 500\.00/)).toBeVisible();
+  await expect(page.getByText(/USD 500\.00/).first()).toBeVisible(); // bounty + payment panels
   await expect(page.getByText("Payouts are processed off-platform by your program contact.")).toBeVisible();
 
   // --- Analytics preview badges present (researcher-side Reports analytics) -------------
@@ -409,7 +424,8 @@ test("visibility with teeth: an uninvited researcher cannot see the private prog
   // account has no participation in) still correctly appears (proves the list itself is
   // rendering real data, not silently empty).
   await page.goto("/programs");
-  await expect(page.getByText(PUBLIC_PROGRAM_NAME)).toBeVisible();
+  // .first(): it can appear in a featured section and the registry below it.
+  await expect(page.getByText(PUBLIC_PROGRAM_NAME).first()).toBeVisible();
   await expect(page.getByText(PRIVATE_PROGRAM_NAME)).not.toBeVisible();
 
   // Not in this account's own organizations list -- the newcomer has no org membership.

@@ -6,7 +6,7 @@
  * docs/decisions/0017-notification-routing-and-delivery-foundation.md for why
  * `triage_activity`/`researcher_activity` were considered and rejected for this slice.
  */
-export type NotificationCategory = "report_activity" | "bounty_activity";
+export type NotificationCategory = "report_activity" | "bounty_activity" | "platform_activity";
 
 /** The specific fact a notification records. Distinct from `NotificationCategory` --
  * category is the preference-grouping; notification_type is the specific event.
@@ -27,7 +27,13 @@ export type NotificationType =
   | "bounty_finalized"
   | "report_triage_started"
   | "report_accepted"
-  | "report_message_posted";
+  | "report_message_posted"
+  // platform_activity (202609250007): a platform admin suspended/reinstated a program or
+  // the organization itself. No report; org-level notices have no program either.
+  | "program_suspended"
+  | "program_reinstated"
+  | "organization_suspended"
+  | "organization_reinstated";
 
 /**
  * The durable in-app record. Deliberately content-free beyond identifiers and the fact
@@ -40,8 +46,10 @@ export type Notification = {
   id: string;
   category: NotificationCategory;
   notificationType: NotificationType;
-  reportId: string;
-  programId: string;
+  /** Null for platform_activity notices (about a program or organization, not a report). */
+  reportId: string | null;
+  /** Null for organization-level platform notices. */
+  programId: string | null;
   organizationId: string;
   occurredAt: string;
   createdAt: string;

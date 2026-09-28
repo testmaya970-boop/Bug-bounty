@@ -2,15 +2,15 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
-import type { Route } from "next";
 import { EmptyState, ErrorState } from "../ui/feedback";
 import { Button } from "../ui/button";
 import { SectionLabel } from "../ui/security-primitives";
 import { cn } from "../../lib/cn";
 import { markNotificationReadAction, listNotificationsPageAction } from "../../actions/notifications";
-import { formatDateTime } from "../../lib/format-date";
+import { notificationLink } from "../../lib/notification-links";
 import { emitNotificationRead } from "../../lib/notification-events";
 import type { Notification, NotificationType } from "../../types/notifications";
+import { LocalTime } from "../ui/local-time";
 
 /** Honest, content-free labels -- no report title/description is ever available here by
  * design (see docs/decisions/0017-notification-routing-and-delivery-foundation.md).
@@ -32,12 +32,16 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   report_triage_started: "A report entered triage",
   report_accepted: "A report was accepted",
   report_message_posted: "A new message was posted on a report",
+  program_suspended: "A program was suspended by the platform",
+  program_reinstated: "A program was reinstated by the platform",
+  organization_suspended: "Your organization was suspended by the platform",
+  organization_reinstated: "Your organization was reinstated by the platform",
 };
 
 function NotificationRow({ notification, onRead }: { notification: Notification; onRead: (id: string) => void }) {
   const [pending, startTransition] = useTransition();
   const isRead = notification.readAt !== null;
-  const reportHref = `/organizations/${notification.organizationId}/programs/${notification.programId}/reports/${notification.reportId}` as Route;
+  const link = notificationLink(notification);
 
   function handleMarkRead() {
     startTransition(async () => {
@@ -59,11 +63,11 @@ function NotificationRow({ notification, onRead }: { notification: Notification;
         <p className={cn("truncate text-sm", isRead ? "font-normal text-ink-muted" : "font-semibold text-ink")}>{NOTIFICATION_TYPE_LABELS[notification.notificationType]}</p>
         <p className="mt-0.5 font-mono text-xs text-ink-muted">
           {notification.programName && <>{notification.programName} · </>}
-          {formatDateTime(notification.createdAt)}
+          <LocalTime value={notification.createdAt} />
         </p>
         <div className="mt-1.5 flex items-center gap-3">
-          <Link prefetch={false} href={reportHref} className="text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-            Open report →
+          <Link prefetch={false} href={link.href} className="text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            {link.label} →
           </Link>
           {!isRead && (
             <Button variant="quiet" pending={pending} onClick={handleMarkRead} className="px-2 text-xs">

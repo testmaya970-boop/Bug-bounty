@@ -1,6 +1,6 @@
 "use client";
 
-import React, { type ReactNode, useEffect, useRef, useState } from "react";
+import React, { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
 
@@ -14,7 +14,11 @@ export function Tabs({ tabs, active, onChange }: { tabs: { id: string; label: st
 
 export function Tooltip({ label, children }: { label: string; children: ReactNode }) { return <span className="group relative inline-flex">{children}<span role="tooltip" className="glass-surface-raised pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-max max-w-52 -translate-x-1/2 rounded px-2 py-1 text-xs text-ink group-hover:block group-focus-within:block">{label}</span></span>; }
 
-export function DropdownMenu({ label, children }: { label: ReactNode; children: ReactNode }) {
+// A disclosure (button + aria-expanded/aria-controls + a named group of links), not an
+// ARIA menu: its contents are plain links and buttons, and role="menu" promises menuitems
+// and arrow-key navigation that a list of links does not have.
+export function DropdownMenu({ label, menuLabel = "Menu", children }: { label: ReactNode; menuLabel?: string; children: ReactNode }) {
+  const menuId = useId();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -32,10 +36,11 @@ export function DropdownMenu({ label, children }: { label: ReactNode; children: 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
-  return <div ref={ref} className="relative inline-block"><button ref={triggerRef} type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} className="min-h-11 rounded-md px-3 text-sm font-medium text-ink hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{label}</button>{open && <div role="menu" className="glass-surface-raised motion-safe:animate-enter-rise absolute right-0 z-30 mt-1 min-w-44 rounded-md p-1 shadow-xl">{children}</div>}</div>;
+  return <div ref={ref} className="relative inline-block"><button ref={triggerRef} type="button" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(!open)} className="min-h-11 rounded-md px-3 text-sm font-medium text-ink hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{label}</button>{open && <div id={menuId} role="group" aria-label={menuLabel} className="glass-surface-raised motion-safe:animate-enter-rise absolute right-0 z-30 mt-1 min-w-44 rounded-md p-1 shadow-xl">{children}</div>}</div>;
 }
 
 export function Dialog({ open, title, children, onClose }: { open: boolean; title: string; children: ReactNode; onClose: () => void }) {
+  const titleId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -95,9 +100,9 @@ export function Dialog({ open, title, children, onClose }: { open: boolean; titl
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-40 grid place-items-center bg-ink/40 p-4 backdrop-blur-sm motion-safe:animate-enter-fade" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="glass-surface-raised flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col rounded-lg p-5 shadow-2xl motion-safe:animate-enter-rise">
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="glass-surface-raised flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col rounded-lg p-5 shadow-2xl motion-safe:animate-enter-rise">
         <div className="flex items-start justify-between gap-4">
-          <h2 id="dialog-title" className="text-lg font-semibold">{title}</h2>
+          <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
           <button ref={closeRef} type="button" aria-label="Close dialog" onClick={onClose} className="min-h-11 min-w-11 rounded-md text-xl text-ink-muted hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">×</button>
         </div>
         <div className="mt-4 overflow-y-auto">{children}</div>

@@ -63,14 +63,20 @@ describe("CreateBountyPolicyDialog defaults to closed and only shows its trigger
 describe("BountyDecisionSection: separates eligibility, the calculated range, and the final decision", () => {
   it("shows 'not evaluated yet' with a Calculate button when no decision exists and the actor can triage", () => {
     const html = renderToStaticMarkup(
-      <BountyDecisionSection decision={null} canCalculate={true} canFinalize={false} {...REF} />,
+      <BountyDecisionSection decision={null} canCalculate={true} reportIsFinal={true} canFinalize={false} {...REF} />,
     );
     expect(html).toContain("not been evaluated yet");
     expect(html).toContain("Calculate bounty");
   });
 
+  it("explains instead of offering Calculate while the report can still change status (the RPC would reject it)", () => {
+    const html = renderToStaticMarkup(<BountyDecisionSection decision={null} canCalculate={true} reportIsFinal={false} canFinalize={false} {...REF} />);
+    expect(html).not.toContain("Calculate bounty");
+    expect(html).toContain("once this report reaches a final decision");
+  });
+
   it("hides the Calculate button entirely when the actor cannot triage, rather than disabling it", () => {
-    const html = renderToStaticMarkup(<BountyDecisionSection decision={null} canCalculate={false} canFinalize={false} {...REF} />);
+    const html = renderToStaticMarkup(<BountyDecisionSection decision={null} canCalculate={false} reportIsFinal={true} canFinalize={false} {...REF} />);
     expect(html).not.toContain("Calculate bounty");
   });
 
@@ -91,7 +97,7 @@ describe("BountyDecisionSection: separates eligibility, the calculated range, an
       createdAt: "2026-08-28T00:00:00Z",
       updatedAt: "2026-08-28T00:00:00Z",
     };
-    const html = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={true} canFinalize={true} {...REF} />);
+    const html = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={true} reportIsFinal={true} canFinalize={true} {...REF} />);
     expect(html).toContain("Not bounty-eligible");
     expect(html).not.toContain("Finalize bounty");
     expect(html).not.toContain("Calculate bounty");
@@ -114,14 +120,14 @@ describe("BountyDecisionSection: separates eligibility, the calculated range, an
       createdAt: "2026-08-28T00:00:00Z",
       updatedAt: "2026-08-28T00:00:00Z",
     };
-    const authorized = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={true} canFinalize={true} {...REF} />);
+    const authorized = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={true} reportIsFinal={true} canFinalize={true} {...REF} />);
     expect(authorized).toContain("250.00");
     expect(authorized).toContain("1000.00");
     expect(authorized).toContain("recommendation, not a final decision");
     expect(authorized).toContain("Recalculate bounty");
     expect(authorized).toContain("Finalize bounty");
 
-    const unauthorized = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={false} canFinalize={false} {...REF} />);
+    const unauthorized = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={false} reportIsFinal={true} canFinalize={false} {...REF} />);
     expect(unauthorized).not.toContain("Recalculate bounty");
     expect(unauthorized).not.toContain("Finalize bounty");
   });
@@ -143,7 +149,7 @@ describe("BountyDecisionSection: separates eligibility, the calculated range, an
       createdAt: "2026-08-28T00:00:00Z",
       updatedAt: "2026-08-28T01:00:00Z",
     };
-    const authorized = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={true} canFinalize={true} {...REF} />);
+    const authorized = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={true} reportIsFinal={true} canFinalize={true} {...REF} />);
     expect(authorized).toContain("Final bounty");
     expect(authorized).toContain("600.00");
     expect(authorized).toContain("Great find");
@@ -151,7 +157,7 @@ describe("BountyDecisionSection: separates eligibility, the calculated range, an
     expect(authorized).not.toContain("Finalize bounty");
     expect(authorized).not.toContain("Calculate bounty");
 
-    const unauthorized = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={false} canFinalize={false} {...REF} />);
+    const unauthorized = renderToStaticMarkup(<BountyDecisionSection decision={decision} canCalculate={false} reportIsFinal={true} canFinalize={false} {...REF} />);
     expect(unauthorized).not.toContain("Adjust bounty");
   });
 });

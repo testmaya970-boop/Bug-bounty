@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react";
 import { EmptyState, Panel } from "../ui/feedback";
 import { Button } from "../ui/button";
 import { cancelProgramInvitationAction } from "../../actions/program-researchers";
-import { formatDateTime } from "../../lib/format-date";
+import { LocalTime } from "../ui/local-time";
 import type { ProgramInvitationRecord } from "../../types/researcher";
 
 function CancelInvitationButton({ organizationId, programId, invitationId }: { organizationId: string; programId: string; invitationId: string }) {
@@ -54,7 +54,7 @@ export function PendingProgramInvitationsPanel({ organizationId, programId, invi
               <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
                 <div>
                   <p className="text-sm font-medium text-ink">{invitation.email}</p>
-                  <p className="mt-1 text-xs text-ink-muted">{expired ? "Expired" : `Expires ${formatDateTime(invitation.expiresAt)}`}</p>
+                  <p className="mt-1 text-xs text-ink-muted">{expired ? "Expired" : <>Expires <LocalTime value={invitation.expiresAt} /></>}</p>
                 </div>
                 <CancelInvitationButton organizationId={organizationId} programId={programId} invitationId={invitation.id} />
               </li>

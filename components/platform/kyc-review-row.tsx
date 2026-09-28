@@ -62,6 +62,7 @@ function KycFieldReview({ userId, field, onResolved }: { userId: string; field: 
         value={note}
         onChange={(event) => setNote(event.target.value)}
         placeholder="Note (optional)"
+        aria-label={`Review note for ${KYC_FIELD_LABELS[field]} (optional)`}
         className="min-h-9 min-w-0 flex-1 rounded-md border border-border bg-surface px-2 text-xs text-ink outline-none placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30"
       />
       <Button variant="secondary" pending={pending} onClick={() => decide("verified")}>

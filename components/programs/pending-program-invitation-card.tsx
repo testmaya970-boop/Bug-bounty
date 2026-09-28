@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Card } from "../ui/feedback";
 import { Button } from "../ui/button";
 import { acceptProgramInvitationByIdAction, cancelProgramInvitationAction } from "../../actions/program-researchers";
-import { formatDate as formatDateTime } from "../../lib/format-date";
 import type { PendingProgramInvitationForResearcher } from "../../types/researcher";
+import { LocalTime } from "../ui/local-time";
 
 export function PendingProgramInvitationCard({ invitation }: { invitation: PendingProgramInvitationForResearcher }) {
   const router = useRouter();
@@ -49,7 +49,7 @@ export function PendingProgramInvitationCard({ invitation }: { invitation: Pendi
       <p className="mt-1 text-sm text-ink-muted">{invitation.organizationName}</p>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
         {invitation.invitedByName && <span>Invited by {invitation.invitedByName}</span>}
-        <span>Expires {formatDateTime(invitation.expiresAt)}</span>
+        <span>Expires <LocalTime value={invitation.expiresAt} /></span>
       </div>
       {error && (
         <p role="alert" className="mt-3 text-sm font-medium text-danger">

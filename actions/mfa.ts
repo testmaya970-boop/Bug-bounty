@@ -64,7 +64,7 @@ export async function unenrollMfaFactorAction(input: z.infer<typeof factorIdSche
   const parsed = factorIdSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: "Check the form and try again." };
   try {
-    await unenrollMfaFactor(parsed.data.factorId);
+    await unenrollMfaFactor();
     await clearMyBackupCodes();
     revalidatePath("/settings");
     return { ok: true, data: undefined };

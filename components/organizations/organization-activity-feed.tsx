@@ -6,8 +6,8 @@ import { Button } from "../ui/button";
 import { SectionLabel } from "../ui/security-primitives";
 import { listOrganizationActivityPageAction } from "../../actions/organization-activity";
 import { describeOrganizationActivity } from "../../lib/organization-activity-labels";
-import { formatDateTime } from "../../lib/format-date";
 import type { OrganizationAuditEventRecord } from "../../types/organization";
+import { LocalTime } from "../ui/local-time";
 
 type ActivityEvent = OrganizationAuditEventRecord & { actorName: string };
 
@@ -21,7 +21,7 @@ function EventRow({ event }: { event: ActivityEvent }) {
       <div className="min-w-0 flex-1 pb-1">
         <p className="text-sm font-medium text-ink">{title}</p>
         <p className="mt-0.5 font-mono text-xs text-ink-muted">
-          {event.entityType.replaceAll("_", " ")} · {formatDateTime(event.createdAt)}
+          {event.entityType.replaceAll("_", " ")} · <LocalTime value={event.createdAt} />
         </p>
         {detail && <p className="mt-0.5 text-sm text-ink-muted">{detail}</p>}
       </div>
@@ -82,8 +82,9 @@ export function OrganizationActivityFeed({
           <SectionLabel className="shrink-0">Filter</SectionLabel>
           <button
             type="button"
+            aria-pressed={typeFilter === "all"}
             onClick={() => setTypeFilter("all")}
-            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors duration-150 ${typeFilter === "all" ? "border-ink bg-surface-muted text-ink" : "border-border text-ink-muted hover:text-ink"}`}
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus transition-colors duration-150 ${typeFilter === "all" ? "border-ink bg-surface-muted text-ink" : "border-border text-ink-muted hover:text-ink"}`}
           >
             All
           </button>
@@ -91,8 +92,9 @@ export function OrganizationActivityFeed({
             <button
               key={type}
               type="button"
+              aria-pressed={typeFilter === type}
               onClick={() => setTypeFilter(type)}
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-150 ${typeFilter === type ? "border-ink bg-surface-muted text-ink" : "border-border text-ink-muted hover:text-ink"}`}
+              className={`rounded-full border px-2.5 py-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus capitalize transition-colors duration-150 ${typeFilter === type ? "border-ink bg-surface-muted text-ink" : "border-border text-ink-muted hover:text-ink"}`}
             >
               {type.replaceAll("_", " ")}
             </button>

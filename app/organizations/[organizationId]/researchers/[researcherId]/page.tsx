@@ -10,8 +10,8 @@ import { SectionLabel } from "../../../../../components/ui/security-primitives";
 import { getActorMembership } from "../../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../../services/organizations";
 import { listResearchersForOrganization } from "../../../../../services/organization-analytics";
-import { formatDate } from "../../../../../lib/format-date";
-import { getCurrentUser } from "../../../../../lib/auth/current-user";
+import { getCurrentUser } from "../../../../../lib/auth/current-user";
+import { LocalTime } from "../../../../../components/ui/local-time";
 
 /**
  * One researcher's full per-program relationship breakdown for this organization -- the
@@ -84,7 +84,7 @@ export default async function OrganizationResearcherDetailPage({ params }: { par
           </div>
           <div>
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted/70">Last submission</p>
-            <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-ink">{researcher.lastSubmittedAt ? formatDate(researcher.lastSubmittedAt) : "Never"}</p>
+            <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-ink">{researcher.lastSubmittedAt ? <LocalTime value={researcher.lastSubmittedAt} dateOnly /> : "Never"}</p>
           </div>
         </div>
 

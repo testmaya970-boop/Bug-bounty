@@ -10,6 +10,7 @@ const PROGRAM_STATUS_LABELS: Record<ProgramStatus, string> = {
   active: "Active",
   paused: "Paused",
   closed: "Closed",
+  suspended: "Suspended",
 };
 
 export function programStatusLabel(status: ProgramStatus): string {

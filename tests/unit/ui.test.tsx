@@ -60,7 +60,9 @@ describe("Sentinel UI foundation", () => {
     expect(html).not.toContain("Acme Security");
     expect(html).not.toContain("Switch organization");
     expect(html).toContain("Riley Researcher avatar");
-    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain("Account menu");
+    // A disclosure of links, not an ARIA menu (it has no menuitems): see DropdownMenu.
+    expect(html).not.toContain('aria-haspopup="menu"');
   });
   it("organization-only (real org membership, zero researcher participation) hides the Research/Practice/Record zones entirely -- an org owner must never see researcher-only destinations like CTF/Learn/Bounties/the researcher dashboard, and the real organization switcher/nav zones render instead", () => {
     const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} hasResearcherParticipation={false} unreadNotificationCount={0} isPlatformAdmin={false}><p>Content</p></AppShellClient>);

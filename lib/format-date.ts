@@ -26,7 +26,13 @@
 //     reads as UTC for every viewer, not their own local time.
 //   - hour12: true, so the 12-hour "9:26 PM" style (already what most viewers were
 //     actually seeing post-hydration) is the format everyone sees, deterministically.
-export function formatDateTime(input: string | Date): string {
+//
+// Update 2026-09-28: unlabelled UTC read as local time ("11:22 AM" for an event at 4:52 PM
+// in India), so on-screen timestamps now render in the viewer's own zone through
+// components/ui/local-time.tsx, which passes that zone in here explicitly -- same input
+// and zone, same string, on server and client alike. The default stays "UTC" for callers
+// that cannot know the viewer (email, anything server-only); those must say "UTC".
+export function formatDateTime(input: string | Date, timeZone = "UTC"): string {
   const date = typeof input === "string" ? new Date(input) : input;
   return date.toLocaleString("en-US", {
     year: "numeric",
@@ -35,18 +41,34 @@ export function formatDateTime(input: string | Date): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    timeZone: "UTC",
+    timeZone,
   });
 }
 
-export function formatDate(input: string | Date): string {
+export function formatDate(input: string | Date, timeZone = "UTC"): string {
   const date = typeof input === "string" ? new Date(input) : input;
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
-    timeZone: "UTC",
+    timeZone,
   });
+}
+
+/** The cookie the browser reports its zone in (components/ui/local-time.tsx) and the root
+ * layout reads. Lives here, not in that "use client" module: a server component importing
+ * a plain value from a client module gets a client-reference placeholder, not the string. */
+export const TIME_ZONE_COOKIE = "tz";
+
+/** A real IANA zone Intl accepts. The zone arrives in a cookie (client-controlled), and
+ * Intl throws RangeError on anything else -- never let that reach a render. */
+export function isValidTimeZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Converts a `pg`-returned `date`-typed column to a real `YYYY-MM-DD` string (no time

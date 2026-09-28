@@ -10,8 +10,8 @@ import { ErrorState, EmptyState, Skeleton } from "../ui/feedback";
 import { ScopeStateBadge, AssetTypeBadge } from "../ui/badge";
 import { assetTypeLabel } from "../../lib/scope-labels";
 import { listScopeEntriesForOrganizationPageAction } from "../../actions/scope";
-import { formatDate } from "../../lib/format-date";
-import type { ProgramAssetType, ScopeEntry } from "../../types/scope";
+import type { ProgramAssetType, ScopeEntry } from "../../types/scope";
+import { LocalTime } from "../ui/local-time";
 
 const FILTERABLE_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -147,7 +147,7 @@ export function OrganizationAssetsTable({
                   <td className="px-4 py-3">
                     <ScopeStateBadge state={entry.scopeState} />
                   </td>
-                  <td className="px-4 py-3 text-sm text-ink-muted">{formatDate(entry.createdAt)}</td>
+                  <td className="px-4 py-3 text-sm text-ink-muted"><LocalTime value={entry.createdAt} dateOnly /></td>
                 </tr>
               ))}
             </tbody>

@@ -9,7 +9,9 @@
 // Shape, all three formats: one row/object per scope entry, four fields --
 // assetType, target, scopeState (both optional on import, default in_scope), description
 // (optional). CSV's header row uses these exact camelCase names so a round-tripped
-// export->edit->import needs no field renaming.
+// export->edit->import needs no field renaming. Import also accepts HackerOne's scope CSV
+// export as-is (identifier / asset_type / instruction / eligible_for_submission) -- see
+// FIELD_ALIASES and ASSET_TYPE_ALIASES.
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { ProgramAssetType, ScopeEntry, ScopeState } from "@/types/scope";
 
@@ -23,8 +25,11 @@ export type ScopeImportRow = {
 };
 
 export type ScopeImportRowResult =
-  | { line: number; ok: true; row: ScopeImportRow }
+  | { line: number; ok: true; row: ScopeImportRow; note?: string }
   | { line: number; ok: false; raw: unknown; error: string };
+
+// program_scope_entries.description's own cap (202608260005).
+const MAX_DESCRIPTION_LENGTH = 500;
 
 const VALID_ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 const VALID_SCOPE_STATES: ScopeState[] = ["in_scope", "out_of_scope"];
@@ -63,8 +68,29 @@ const ASSET_TYPE_ALIASES: Record<string, ProgramAssetType> = {
   ai: "ai_model",
   llm: "ai_model",
   model: "ai_model",
-  other: "url",
+  // HackerOne's own asset_type values (its scope CSV export), compacted.
+  applestoreappid: "ios_app",
+  testflight: "ios_app",
+  otheripa: "ios_app",
+  googleplayappid: "android_app",
+  otherapk: "android_app",
 };
+
+// Types whose target format depends on what the identifier actually is: HackerOne's "URL"
+// is routinely a bare hostname (www.example.com), and "OTHER" is anything at all. Resolved
+// per row from the target itself in resolveContentTypedAsset below.
+const CONTENT_TYPED_ASSET_TYPES = new Set(["url", "uri", "website", "webapplication", "other"]);
+
+const HOSTNAME_PATTERN = /^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\.?$/i;
+
+function resolveContentTypedAsset(target: string): { assetType: ProgramAssetType; target: string } | null {
+  if (/^https?:\/\//i.test(target)) return { assetType: "url", target };
+  if (HOSTNAME_PATTERN.test(target)) return { assetType: "domain", target };
+  // host/path with no scheme -- a URL missing its https://.
+  const slash = target.indexOf("/");
+  if (slash > 0 && HOSTNAME_PATTERN.test(target.slice(0, slash))) return { assetType: "url", target: `https://${target}` };
+  return null;
+}
 
 function normalizeAssetType(raw: string): string {
   const trimmed = raw.trim();
@@ -90,58 +116,119 @@ function normalizeScopeState(raw: string): string {
  * reject rows so structurally broken they'd be meaningless to even attempt (missing
  * target, unrecognized asset type/scope state, an over-length field) -- never to predict
  * whether the database will accept the target. */
-function validateRow(raw: Record<string, unknown>, line: number): ScopeImportRowResult {
-  const assetTypeInput = String(raw.assetType ?? raw.asset_type ?? "").trim();
-  const assetTypeRaw = normalizeAssetType(assetTypeInput);
-  const target = String(raw.target ?? "").trim();
-  const scopeStateInput = String(raw.scopeState ?? raw.scope_state ?? "in_scope").trim();
-  const scopeStateRaw = normalizeScopeState(scopeStateInput);
-  const descriptionRaw = raw.description != null ? String(raw.description).trim() : "";
+// Column names accepted per field, compared after lowercasing and dropping non-alphanumerics
+// (so assetType, asset_type, "Asset Type" all match). The first name in each list is this
+// app's own export header; the rest are HackerOne's scope CSV columns.
+const FIELD_ALIASES = {
+  assetType: ["assettype", "type"],
+  target: ["target", "identifier", "assetidentifier", "asset"],
+  scopeState: ["scopestate", "scope"],
+  description: ["description", "instruction", "instructions"],
+  // HackerOne marks out-of-scope assets with eligible_for_submission=false.
+  eligibleForSubmission: ["eligibleforsubmission"],
+};
 
-  if (!VALID_ASSET_TYPES.includes(assetTypeRaw as ProgramAssetType)) {
-    return { line, ok: false, raw, error: `Row ${line}: "${assetTypeInput || "(empty)"}" is not a valid asset type (expected one of ${VALID_ASSET_TYPES.join(", ")}).` };
+function readField(raw: Record<string, unknown>, aliases: string[]): string | undefined {
+  for (const [key, value] of Object.entries(raw)) {
+    if (value == null) continue;
+    if (aliases.includes(key.toLowerCase().replace(/[^a-z0-9]/g, ""))) return String(value).trim();
   }
+  return undefined;
+}
+
+function parseBoolean(raw: string): boolean | null {
+  const lower = raw.trim().toLowerCase();
+  if (["true", "yes", "y", "1"].includes(lower)) return true;
+  if (["false", "no", "n", "0"].includes(lower)) return false;
+  return null;
+}
+
+function validateRow(raw: Record<string, unknown>, line: number): ScopeImportRowResult {
+  const assetTypeInput = readField(raw, FIELD_ALIASES.assetType) ?? "";
+  let target = readField(raw, FIELD_ALIASES.target) ?? "";
+  const eligibleInput = readField(raw, FIELD_ALIASES.eligibleForSubmission);
+  const eligible = eligibleInput ? parseBoolean(eligibleInput) : null;
+  const scopeStateInput = readField(raw, FIELD_ALIASES.scopeState) || (eligible === false ? "out_of_scope" : "in_scope");
+  const scopeStateRaw = normalizeScopeState(scopeStateInput);
+  let description = readField(raw, FIELD_ALIASES.description) ?? "";
+
   if (target.length === 0) {
-    return { line, ok: false, raw, error: `Row ${line}: target is required.` };
+    return { line, ok: false, raw, error: `Row ${line}: target is required (a "target" or "identifier" column).` };
   }
   if (target.length > 2048) {
     return { line, ok: false, raw, error: `Row ${line}: target must be 2048 characters or fewer.` };
   }
+
+  let assetType: string;
+  const compactType = assetTypeInput.toLowerCase().replace(/[\s_-]+/g, "");
+  if (CONTENT_TYPED_ASSET_TYPES.has(compactType)) {
+    const resolved = resolveContentTypedAsset(target);
+    if (!resolved) {
+      return {
+        line,
+        ok: false,
+        raw,
+        error: `Row ${line}: "${target}" (${assetTypeInput}) is not a hostname or URL, and has no matching asset type here. Add it by hand with the closest type.`,
+      };
+    }
+    assetType = resolved.assetType;
+    target = resolved.target;
+  } else {
+    assetType = normalizeAssetType(assetTypeInput);
+  }
+
+  if (!VALID_ASSET_TYPES.includes(assetType as ProgramAssetType)) {
+    return { line, ok: false, raw, error: `Row ${line}: "${assetTypeInput || "(empty)"}" is not a supported asset type (expected one of ${VALID_ASSET_TYPES.join(", ")}).` };
+  }
   if (!VALID_SCOPE_STATES.includes(scopeStateRaw as ScopeState)) {
     return { line, ok: false, raw, error: `Row ${line}: "${scopeStateInput}" is not a valid scope state (expected in_scope or out_of_scope).` };
   }
-  if (descriptionRaw.length > 500) {
-    return { line, ok: false, raw, error: `Row ${line}: description must be 500 characters or fewer.` };
+
+  // Other platforms' instructions run long; the entry's description cap is 500. Shorten and
+  // say so in the preview rather than rejecting an otherwise valid target.
+  let note: string | undefined;
+  if (description.length > MAX_DESCRIPTION_LENGTH) {
+    note = `Instruction shortened from ${description.length} to ${MAX_DESCRIPTION_LENGTH} characters.`;
+    description = `${description.slice(0, MAX_DESCRIPTION_LENGTH - 1).trimEnd()}…`;
   }
 
   return {
     line,
     ok: true,
-    row: { assetType: assetTypeRaw as ProgramAssetType, target, scopeState: scopeStateRaw as ScopeState, description: descriptionRaw || undefined },
+    row: { assetType: assetType as ProgramAssetType, target, scopeState: scopeStateRaw as ScopeState, description: description || undefined },
+    ...(note ? { note } : {}),
   };
 }
 
-/** A minimal, deliberately strict CSV line-splitter -- handles double-quoted fields
- * (including an escaped "" inside a quoted field) since a target or description can
- * legitimately contain a comma, but nothing fancier (no embedded newlines inside a quoted
- * field). Real-world exported scope lists are simple flat rows; a spreadsheet-grade CSV
- * parser is not needed for that shape, and not adding one avoids a second, larger
- * dependency for a feature that already has one (yaml) for a genuinely irregular format. */
-function splitCsvLine(line: string): string[] {
-  const fields: string[] = [];
+/** RFC 4180-style CSV reader: double-quoted fields may contain commas, escaped "" quotes,
+ * and line breaks (HackerOne's multi-line `instruction` column relies on that). Returns
+ * each record with the 1-indexed file line it starts on, so errors point at the line a
+ * user sees in a text editor. Blank records are dropped. */
+function readCsvRecords(text: string): { line: number; fields: string[] }[] {
+  const records: { line: number; fields: string[] }[] = [];
+  let fields: string[] = [];
   let current = "";
   let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
+  let line = 1;
+  let recordLine = 1;
+
+  const endRecord = () => {
+    fields.push(current);
+    if (fields.some((field) => field.trim().length > 0)) records.push({ line: recordLine, fields });
+    fields = [];
+    current = "";
+  };
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
     if (inQuotes) {
-      if (char === '"') {
-        if (line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
+      if (char === '"' && text[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
       } else {
+        if (char === "\n") line++;
         current += char;
       }
     } else if (char === '"') {
@@ -149,30 +236,32 @@ function splitCsvLine(line: string): string[] {
     } else if (char === ",") {
       fields.push(current);
       current = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && text[i + 1] === "\n") i++;
+      endRecord();
+      line++;
+      recordLine = line;
     } else {
       current += char;
     }
   }
-  fields.push(current);
-  return fields;
+  endRecord();
+  return records;
 }
 
 function parseCsv(text: string): ScopeImportRowResult[] {
-  const lines = text.split(/\r\n|\r|\n/).filter((line) => line.trim().length > 0);
-  if (lines.length === 0) return [];
-  const header = splitCsvLine(lines[0]).map((h) => h.trim());
-  const results: ScopeImportRowResult[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const values = splitCsvLine(lines[i]);
+  // Excel and many exporters prefix a UTF-8 byte-order mark, which would otherwise glue
+  // itself onto the first header name.
+  const records = readCsvRecords(text.replace(/^﻿/, ""));
+  if (records.length === 0) return [];
+  const header = records[0].fields.map((h) => h.trim());
+  return records.slice(1).map(({ line, fields }) => {
     const raw: Record<string, unknown> = {};
     header.forEach((key, index) => {
-      raw[key] = values[index] ?? "";
+      raw[key] = fields[index] ?? "";
     });
-    // +1 for the header row, +1 for 1-indexing -- line numbers here match what a user
-    // would see opening the file in a spreadsheet or text editor.
-    results.push(validateRow(raw, i + 1));
-  }
-  return results;
+    return validateRow(raw, line);
+  });
 }
 
 function parseJson(text: string): ScopeImportRowResult[] {
@@ -203,6 +292,7 @@ function parseYamlRows(text: string): ScopeImportRowResult[] {
 
 export function parseScopeFile(text: string, format: ScopeImportFormat): ScopeImportRowResult[] {
   if (format === "csv") return parseCsv(text);
+  text = text.replace(/^﻿/, "");
   if (format === "json") return parseJson(text);
   return parseYamlRows(text);
 }
@@ -219,8 +309,12 @@ export function detectFormatFromFilename(filename: string): ScopeImportFormat | 
 }
 
 function csvEscape(value: string): string {
-  if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
-  return value;
+  // Formula injection: a cell starting with = + - @ (or tab/CR) runs as a formula when the
+  // export is opened in Excel/Sheets -- and scope text can now come from imported
+  // third-party files. The standard neutralizer (OWASP) is a leading apostrophe.
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  if (/[",\r\n]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`;
+  return safe;
 }
 
 /** Exports active scope entries in the given format -- `target` (the raw canonical form),

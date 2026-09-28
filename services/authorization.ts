@@ -67,6 +67,14 @@ export function canCreateProgram(role: OrganizationRole): boolean {
   return PROGRAM_CREATION_ROLES.includes(role);
 }
 
+const PAYMENT_ROLES: readonly OrganizationRole[] = ["owner", "security_admin", "billing_admin"];
+
+/** Payouts, payment obligations, platform fees. Matches lock_and_authorize_report_for_
+ * payments / lock_and_authorize_obligation_for_finance (202609250012). */
+export function canManagePayments(role: OrganizationRole): boolean {
+  return PAYMENT_ROLES.includes(role);
+}
+
 export type OrganizationAccessSummary = {
   role: OrganizationRole;
   label: string;
@@ -76,54 +84,65 @@ export type OrganizationAccessSummary = {
   note?: string;
 };
 
+// Mirrors what the database enforces (db/migrations/202609250012_organization_role_
+// permissions.sql) -- change both together. "Assigned" means an owner or security admin
+// put this person on the program (Program team panel on the program page).
 const ACCESS_SUMMARIES: Record<OrganizationRole, OrganizationAccessSummary> = {
   owner: {
     role: "owner",
     label: ROLE_LABELS.owner,
     organizationAccess: "Full",
     can: [
+      "Everything a Security Admin can do",
+      "Invite other owners and change anyone's role",
       "Manage organization identity and settings",
-      "Invite and manage members, including other owners",
-      "Change organization roles",
-      "View organization audit activity",
-      "Access every program in this organization",
     ],
     cannot: [],
+    note: "An organization always keeps at least one owner.",
   },
   security_admin: {
     role: "security_admin",
     label: ROLE_LABELS.security_admin,
     organizationAccess: "Full",
     can: [
-      "Invite members (except as owner)",
-      "Suspend, reactivate, or remove members",
-      "Manage program access where authorized",
-      "View organization security activity",
-      "Manage security-related settings",
+      "Create, launch, pause, and close every program",
+      "Edit scope, program settings, and researcher access on every program",
+      "Read and triage every report, and decide bounties",
+      "Run payouts and see platform fees",
+      "Invite, suspend, and remove members (except owners), and assign program teams",
     ],
-    cannot: ["Change an existing member's organization role", "Manage organization identity or billing", "Transfer ownership"],
+    cannot: ["Change an existing member's role", "Invite or remove owners"],
   },
   program_manager: {
     role: "program_manager",
     label: ROLE_LABELS.program_manager,
     organizationAccess: "Limited",
-    can: ["Manage assigned programs", "Manage members within assigned programs", "View data in assigned programs"],
-    cannot: ["Manage organization members or roles", "Access programs not assigned to them", "View organization-wide audit activity", "Manage billing"],
+    can: [
+      "Run the programs they are assigned to: scope, settings, researcher access, launch and pause",
+      "Read and triage every report in those programs",
+      "Decide and finalize bounty amounts in those programs",
+    ],
+    cannot: ["See programs they are not assigned to", "Run payouts or see platform fees", "Manage organization members or roles"],
   },
   triager: {
     role: "triager",
     label: ROLE_LABELS.triager,
     organizationAccess: "Limited",
-    can: ["Access triage workflows for assigned programs"],
-    cannot: ["Manage organization or program membership", "Access programs not assigned to them", "View organization-wide audit activity", "Manage billing"],
+    can: [
+      "Read every report in the programs they are assigned to",
+      "Triage those reports: status, severity, messages to the researcher, evidence",
+    ],
+    cannot: ["See programs they are not assigned to", "Change scope or program settings", "Decide bounties or run payouts", "Manage members"],
   },
   billing_admin: {
     role: "billing_admin",
     label: ROLE_LABELS.billing_admin,
     organizationAccess: "Limited",
-    can: [],
-    cannot: ["Manage members", "Change organization roles", "Manage organization settings", "Access program data"],
-    note: "Billing capabilities are intentionally not implemented in this slice; this role currently grants no additional access.",
+    can: [
+      "See every bounty payment and platform fee (Payments page)",
+      "Create payment obligations and record payouts",
+    ],
+    cannot: ["Read report contents -- only each payment's report title", "Triage reports or change programs", "Manage members"],
   },
 };
 

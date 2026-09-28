@@ -30,7 +30,7 @@ describe("programs service: createProgram", () => {
       return queryReturning([{ id: "prog-1", organization_id: "org-1", name: "Acme Program", status: "draft", created_by: "actor-1", created_at: "2026-08-26T00:00:00Z", updated_at: "2026-08-26T00:00:00Z" }]);
     });
     const { getCurrentUser } = await import("@/lib/auth/current-user");
-    vi.mocked(getCurrentUser).mockResolvedValue({ id: "actor-1", platformRole: null, username: "actor", displayName: "Actor One", email: "actor@example.com" });
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "actor-1", platformRole: null, accountType: "researcher", username: "actor", displayName: "Actor One", email: "actor@example.com" });
     const { createProgram } = await import("../../services/programs");
 
     const result = await createProgram("org-1", "Acme Program", "key-1");
@@ -52,7 +52,7 @@ describe("programs service: createProgram", () => {
       return queryReturning([]);
     });
     const { getCurrentUser } = await import("@/lib/auth/current-user");
-    vi.mocked(getCurrentUser).mockResolvedValue({ id: "actor-1", platformRole: null, username: "actor", displayName: "Actor One", email: "actor@example.com" });
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "actor-1", platformRole: null, accountType: "researcher", username: "actor", displayName: "Actor One", email: "actor@example.com" });
     const { createProgram } = await import("../../services/programs");
 
     await createProgram("org-1", "Acme Program", "key-1", "bounty", "pentest");

@@ -133,6 +133,8 @@ async function ensureOrganization(ownerId: string, name: string): Promise<OrgRow
     console.log(`Organization "${name}" already exists.`);
     return existing;
   }
+  // Only organization accounts may create one (202609280002).
+  await withServiceRole((client) => client.query("update public.users set account_type = 'organization' where id = $1", [ownerId]));
   const created = await withActor(ownerId, (client) => callRpc<OrgRow>(client, "public.create_organization", [name]));
   console.log(`Created organization "${name}".`);
   return created;
@@ -165,6 +167,13 @@ async function activateProgram(ownerId: string, programId: string): Promise<void
   await tryStep(withActor(ownerId, (client) => client.query("select public.activate_program($1)", [programId])), "activate_program");
   await withServiceRole((client) => client.query("delete from public.platform_admins where user_id = $1", [ownerId]));
   await tryStep(withActor(ownerId, (client) => client.query("select public.set_program_visibility($1, $2)", [programId, "public"])), "set_program_visibility");
+}
+
+// Security: this creates accounts whose passwords are in the source code. Never against a
+// real deployment -- only when asked for explicitly.
+if (process.env.ALLOW_TEST_ACCOUNTS !== "1") {
+  console.error("Refusing to seed: this creates accounts with passwords published in the repo. Set ALLOW_TEST_ACCOUNTS=1 for a local or CI test database only.");
+  process.exit(1);
 }
 
 async function main() {

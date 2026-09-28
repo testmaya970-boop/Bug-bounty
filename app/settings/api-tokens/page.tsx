@@ -1,8 +1,10 @@
 import React from "react";
 import { ApiTokensSettings } from "../../../components/settings/api-tokens-settings";
 import { listMyApiTokens } from "../../../services/api-tokens";
+import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
 export default async function ApiTokensSettingsPage() {
+  await requireResearcherSettings();
   const tokens = await listMyApiTokens();
 
   return (

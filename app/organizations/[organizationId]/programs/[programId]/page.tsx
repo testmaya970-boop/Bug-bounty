@@ -21,6 +21,7 @@ import { ProgramAccessFileEditor, ProgramAccessFileNotice } from "../../../../..
 import { getProgramAccessFile } from "../../../../../services/program-access-file";
 import { ProgramKycPanel } from "../../../../../components/programs/program-kyc-panel";
 import { ProgramLifecycleControls } from "../../../../../components/programs/program-lifecycle-controls";
+import { ProgramTeamPanel } from "../../../../../components/programs/program-team-panel";
 import { ProgramFocusAreasPanel } from "../../../../../components/programs/program-focus-areas-panel";
 import { JoinPublicProgramButton } from "../../../../../components/programs/join-public-program-button";
 import { ProgramHealthSection } from "../../../../../components/programs/program-health-section";
@@ -28,7 +29,7 @@ import { ProgramReportList } from "../../../../../components/reports/program-rep
 import { PrimaryActionPanel, RegistryList, SectionLabel } from "../../../../../components/ui/security-primitives";
 import { ProgramHeader } from "../../../../../components/programs/program-header";
 import { canCreateProgram } from "../../../../../services/authorization";
-import { getActorMembership } from "../../../../../services/organization-members";
+import { getActorMembership, listOrganizationMembers } from "../../../../../services/organization-members";
 import { getProgram, getProgramAccessInstructions, getProgramFocusAreas, getPublicProgram, listProgramMembers, listProgramsForOrganization, listPublicProgramScope } from "../../../../../services/programs";
 import { getProgramResolutionPerformance, getProgramSeverityStatusBreakdown, getProgramWeeklyReportVolume } from "../../../../../services/program-analytics";
 import { listActiveScopeEntries } from "../../../../../services/scope";
@@ -37,10 +38,10 @@ import type { ProgramInvitationRecord, ProgramResearcherRecord } from "../../../
 import { listReportsForProgram } from "../../../../../services/reports";
 import { getEffectiveBountyPolicy } from "../../../../../services/bounty";
 import { getCurrentUser } from "../../../../../lib/auth/current-user";
-import { formatDate } from "../../../../../lib/format-date";
 import { perfTimed } from "../../../../../lib/perf-trace";
 import type { ScopeState } from "../../../../../types/scope";
 import type { OrganizationResolutionPerformance, OrganizationSeverityStatusCount, OrganizationWeeklyReportVolume } from "../../../../../types/organization";
+import { LocalTime } from "../../../../../components/ui/local-time";
 
 const SCOPE_FILTERS: { value: "all" | ScopeState; label: string }[] = [
   { value: "all", label: "All" },
@@ -235,7 +236,10 @@ async function renderProgramControlCenterPage({
     // visibility/status server-side independently of anything this branch assumes.
     const publicProgram = await getPublicProgram(programId);
     if (publicProgram && publicProgram.organizationId === organizationId) {
-      const publicScope = await listPublicProgramScope(programId);
+      // Staff of the owning organization land here too (billing admins, triagers of other
+      // programs) -- they are not offered "Start researching": 202609280001 refuses it.
+      const [publicScope, staffMembership] = await Promise.all([listPublicProgramScope(programId), getActorMembership(user.id, organizationId)]);
+      const isOwnStaff = Boolean(staffMembership && staffMembership.status !== "removed");
       const inScope = publicScope.filter((entry) => entry.scopeState === "in_scope");
       const outOfScope = publicScope.filter((entry) => entry.scopeState === "out_of_scope");
 
@@ -258,7 +262,9 @@ async function renderProgramControlCenterPage({
             <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
               <p className="mt-2 text-sm text-canvas/70">This program is open to the community.</p>
-              {publicProgram.status === "active" ? (
+              {isOwnStaff ? (
+                <p className="mt-2 text-sm text-canvas/70">You are on this organization&apos;s team, so you can&apos;t research its programs.</p>
+              ) : publicProgram.status === "active" ? (
                 <div className="mt-4">
                   <JoinPublicProgramButton organizationId={organizationId} programId={programId} />
                 </div>
@@ -323,7 +329,10 @@ async function renderProgramControlCenterPage({
   // every read below (whether to fetch the manager-only roster at all), so nothing after
   // it can start until this resolves.
   const [members, actorMembership] = await perfTimed("program home: stage 1 (membership)", () => Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId)]));
-  const isProgramManager = members.some((member) => member.userId === user.id);
+  // program_members (202609250012): "manager" runs the program; any assignment, including
+  // "triager", works its reports. The database enforces the same split.
+  const isProgramManager = members.some((member) => member.userId === user.id && member.role === "manager");
+  const isProgramTriager = members.some((member) => member.userId === user.id);
   const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
   const canManageProgram = isProgramManager || isOrgAdmin;
   const isActiveResearcher = myParticipation?.status === "active";
@@ -334,7 +343,7 @@ async function renderProgramControlCenterPage({
   // each other -- every one of them depends only on canManageProgram/isActiveResearcher,
   // both already known above. Collapsed into one Promise.all so the whole page pays for
   // exactly the slowest single query in this batch, not the sum of all of them.
-  const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms] =
+  const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms, organizationMembers] =
     await perfTimed("program home: stage 2 (parallel batch)", () =>
       Promise.all([
         listActiveScopeEntries(programId),
@@ -354,7 +363,7 @@ async function renderProgramControlCenterPage({
         // filterable, paginated list lives at the dedicated triage inbox route this page
         // links to; a researcher's own report count on one program is small enough that
         // the default page size is fine.
-        listReportsForProgram(programId, undefined, canManageProgram ? 5 : undefined),
+        listReportsForProgram(programId, undefined, canManageProgram || isProgramTriager ? 5 : undefined),
         // RLS scopes this identically for a manager or an active, authorized researcher --
         // the same transparency every bounty program studied publishes. See
         // docs/decisions/0013-bounty-decision-engine.md.
@@ -373,6 +382,9 @@ async function renderProgramControlCenterPage({
         // every other manager-gated fetch in this batch; fetch ownership rule means this
         // page fetches it, never ProgramHeader itself.
         canManageProgram ? listProgramsForOrganization(organizationId) : Promise.resolve([]),
+        // Program team panel's assignable people (202609250012) -- org admins only, the
+        // only role allowed to assign.
+        isOrgAdmin ? listOrganizationMembers(organizationId) : Promise.resolve([]),
       ]),
     );
   // Scope editing is no longer locked to draft (202609230001_scope_editable_after_launch):
@@ -404,6 +416,7 @@ async function renderProgramControlCenterPage({
           programType={program.programType}
           active="overview"
           canManage={canManageProgram}
+          canWorkReports={canManageProgram || isProgramTriager}
           siblingPrograms={canManageProgram ? organizationPrograms.filter((p) => p.id !== programId).map((p) => ({ id: p.id, name: p.name, status: p.status })) : undefined}
         />
 
@@ -415,7 +428,7 @@ async function renderProgramControlCenterPage({
             </div>
             <div>
               <dt className="text-ink-muted">Created</dt>
-              <dd className="mt-0.5 font-medium text-ink">{formatDate(program.createdAt)}</dd>
+              <dd className="mt-0.5 font-medium text-ink"><LocalTime value={program.createdAt} dateOnly /></dd>
             </div>
             <div>
               <dt className="text-ink-muted">Program managers</dt>
@@ -432,9 +445,26 @@ async function renderProgramControlCenterPage({
         {isProgramManager && <p className="text-sm text-ink-muted">You manage this program.</p>}
 
         {canManageProgram && <ProgramLifecycleControls organizationId={organizationId} programId={programId} status={program.status} />}
+        {isOrgAdmin && (
+          <ProgramTeamPanel
+            organizationId={organizationId}
+            programId={programId}
+            // Only assigned Program Managers/Triagers: owners and security admins reach every
+            // program anyway (a creator's own manager row is not a team assignment).
+            members={members.filter((pm) => organizationMembers.some((m) => m.userId === pm.userId && (m.role === "program_manager" || m.role === "triager")))}
+            candidates={organizationMembers
+              .filter((m) => m.status === "active" && (m.role === "program_manager" || m.role === "triager") && !members.some((pm) => pm.userId === m.userId))
+              .map((m) => ({ userId: m.userId, displayName: m.displayName, email: m.email, role: m.role as "program_manager" | "triager" }))}
+          />
+        )}
         {canManageProgram && program.status === "review" && (
           <p className="text-sm text-ink-muted">
             Awaiting platform review before this program can go active. A platform administrator will approve or send it back to draft with feedback.
+          </p>
+        )}
+        {canManageProgram && program.status === "suspended" && (
+          <p role="status" className="text-sm font-medium text-danger">
+            Suspended by the platform. This program is hidden from researchers and not accepting new reports. Existing reports can still be triaged. Contact platform support to have it reinstated.
           </p>
         )}
 

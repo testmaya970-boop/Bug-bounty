@@ -14,7 +14,7 @@ import { canChangeRoles, canManageMembers, isLastActiveOwner } from "../../../..
 import { getActorMembership, getOrganizationAuditActivity, listOrganizationMembers } from "../../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../../services/organizations";
 import { getCurrentUser } from "../../../../../lib/auth/current-user";
-import { formatDateTime } from "../../../../../lib/format-date";
+import { LocalTime } from "../../../../../components/ui/local-time";
 
 export default async function OrganizationMemberDetailPage({ params }: { params: Promise<{ organizationId: string; memberId: string }> }) {
   const { organizationId, memberId } = await params;
@@ -92,7 +92,7 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
 
         {target.status === "removed" && (
           <Alert tone="info" title="This member was removed">
-            {target.removedAt ? `Removed ${formatDateTime(target.removedAt)}.` : "Removed."} Historical attribution is preserved. They can be invited again from the members page.
+            {target.removedAt ? <>Removed <LocalTime value={target.removedAt} />.</> : "Removed."} Historical attribution is preserved. They can be invited again from the members page.
           </Alert>
         )}
 
@@ -101,11 +101,19 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
             <Panel>
               <h3 className="text-base font-semibold">Organization role</h3>
               <p className="mt-2 text-sm text-ink-muted">
-                {lastRoleChange
-                  ? `Last changed by ${(lastRoleChange.actorId && actorNames[lastRoleChange.actorId]) || "a member"} on ${formatDateTime(lastRoleChange.createdAt)}.`
-                  : target.invitedBy
-                    ? `Assigned by ${actorNames[target.invitedBy] ?? "a member"} when invited, ${formatDateTime(target.joinedAt)}.`
-                    : `Set when this membership was created, ${formatDateTime(target.joinedAt)}.`}
+                {lastRoleChange ? (
+                  <>
+                    Last changed by {(lastRoleChange.actorId && actorNames[lastRoleChange.actorId]) || "a member"} on <LocalTime value={lastRoleChange.createdAt} />.
+                  </>
+                ) : target.invitedBy ? (
+                  <>
+                    Assigned by {actorNames[target.invitedBy] ?? "a member"} when invited, <LocalTime value={target.joinedAt} />.
+                  </>
+                ) : (
+                  <>
+                    Set when this membership was created, <LocalTime value={target.joinedAt} />.
+                  </>
+                )}
               </p>
               <div className="mt-4">
                 <AccessSummary role={target.role} />

@@ -36,11 +36,39 @@ navigation prefetch as part of the measured load and inflates results; see
 AGENTS.md's information-architecture rule on why prefetch is disabled on gated links in
 the first place), median of the 3. A >20% regression on any row blocks merge.
 
-| Route | Budget | Result | Pass/Fail |
-|---|---|---|---|
-| Org dashboard (Home) | ≤0.5s | 148ms | PASS |
-| Engagements | ≤0.6s | 102ms | PASS |
-| Findings | ≤0.6s | 103ms | PASS |
-| Program inbox | ≤0.6s | 179ms | PASS |
-| Researcher home | ≤0.8s | 136ms | PASS |
-| CTF | ≤1.0s | 197ms | PASS |
+Automated since 2026-09-25: `npx playwright test e2e/latency-budgets.spec.ts --workers=1`
+(fails on any budget miss). Each row is the median hit, split from the browser's
+Navigation Timing entry: **TTFB** (to first byte, ≈ server time on localhost), **transfer**
+(streamed HTML incl. Suspense content), **client** (parse/scripts to `load`), **total**
+(start → `load`, what the budget checks).
+
+| Route | Budget | TTFB | Transfer | Client | Total | Pass/Fail |
+|---|---|---|---|---|---|---|
+| Org dashboard (Home) | ≤0.5s | 97ms | 4ms | 34ms | 135ms | PASS |
+| Engagements | ≤0.6s | 63ms | 2ms | 38ms | 103ms | PASS |
+| Findings | ≤0.6s | 61ms | 3ms | 48ms | 112ms | PASS |
+| Program inbox | ≤0.6s | 77ms | 4ms | 48ms | 129ms | PASS |
+| Researcher home | ≤0.8s | 109ms | 5ms | 31ms | 145ms | PASS |
+| CTF | ≤1.0s | 66ms | 4ms | 65ms | 135ms | PASS |
+
+**Disclosed regression (Phase 2, same day, pending sign-off):** after the strict nonce CSP
+(proxy.ts) and the browser error listener (components/client-error-listener.tsx) landed,
+totals rose to Home 151 / Engagements 132 / Findings 140 / Inbox 155 / Researcher home 153
+/ CTF 131ms (median of 3 runs) -- all still ~3-7x under budget, but past the 20% rule on
+the org routes. Server time (TTFB) is unchanged; the increase is client-side. Cause, from
+an interleaved A/B against an otherwise identical build with only those two removed (6
+samples each): +13-34% on org routes (Inbox the largest), +4-6% on researcher routes. The
+security benefit was judged worth ~20-60ms; if not, measure the two separately next.
+
+Measured 2026-09-25 on Next.js 16.3.6 (Turbopack prod build), local `next build` + `next
+start` (port 3100), `seed:launch` data. The same day on Next.js 15.5 the totals were
+264 / 215 / 248 / 280 / 277 / 250ms: the upgrade roughly halved every route, mostly by
+collapsing streamed transfer time (45-68ms -> 2-5ms) and client time. The earlier single-number results
+(Home 148ms, Engagements 102ms, Findings 103ms, Inbox 179ms, Researcher home 136ms, CTF
+197ms) recorded no breakdown or exact end point; they sit close to today's TTFB column, so
+they most likely measured to first byte, not to `load`. Treat this table as the new
+baseline for the 20% regression rule rather than comparing its Total column to them.
+
+Throughput note (same day): one `next start` process renders pages CPU-bound on one
+thread -- 20 simultaneous dashboard loads took ~4s each vs ~0.3s alone, unchanged by a
+larger DB pool (5 → 20). Production needs several processes/instances, not a bigger pool.

@@ -34,12 +34,15 @@ cp .env.example .env.local
 
 # 3. Install dependencies and apply the schema
 npm install
-node scripts/run-native-migrations.mjs   # applies db/migrations/ in order
+npm run db:migrate   # applies pending db/migrations/ (needs MIGRATION_DATABASE_URL)
 
 # 4. Seed and run
 npm run seed:demo   # or seed:launch / seed:e2e — see below
 npm run dev
 ```
+
+For a fresh environment also run `npm run storage:init` (creates the evidence bucket).
+Releasing, rollback, backups/restore, and health checks: see [docs/operations.md](docs/operations.md).
 
 ### Seed scripts
 

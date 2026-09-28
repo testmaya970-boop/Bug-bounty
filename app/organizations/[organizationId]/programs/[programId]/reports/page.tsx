@@ -46,14 +46,17 @@ export default async function ProgramReportsInboxPage({
   }
 
   const [members, actorMembership] = await Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId)]);
-  const isProgramManager = members.some((member) => member.userId === user.id);
+  // program_members (202609250012): "manager" runs the program; any assignment, including
+  // "triager", works its reports.
+  const isProgramManager = members.some((member) => member.userId === user.id && member.role === "manager");
+  const isProgramTriager = members.some((member) => member.userId === user.id);
   const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
   const canManageProgram = isProgramManager || isOrgAdmin;
 
-  if (!canManageProgram) {
+  if (!(canManageProgram || isProgramTriager)) {
     return (
       <AppShell title="Triage inbox" user={user} organizationId={organizationId}>
-        <PermissionDenied>Only a program manager or organization admin can open the triage inbox. Your own reports are available at /reports.</PermissionDenied>
+        <PermissionDenied>Only this program&apos;s assigned team or an organization admin can open the triage inbox. Your own reports are available at /reports.</PermissionDenied>
       </AppShell>
     );
   }
@@ -80,7 +83,7 @@ export default async function ProgramReportsInboxPage({
             { label: "Triage inbox" },
           ]}
         />
-        <ProgramHeader organizationId={organizationId} programId={programId} programName={program.name} status={program.status} active="reports" canManage={canManageProgram} />
+        <ProgramHeader organizationId={organizationId} programId={programId} programName={program.name} status={program.status} active="reports" canManage={canManageProgram} canWorkReports />
 
         <p className="text-sm text-ink-muted">Every report submitted to this program. Filter, scan, and open a report to act on it.</p>
 

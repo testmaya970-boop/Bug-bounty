@@ -4,8 +4,10 @@ import type { Route } from "next";
 import { ExternalServicesSettings } from "../../../components/settings/external-services-settings";
 import { getMyExternalHandles } from "../../../services/researcher-profiles";
 import { getCurrentUser } from "../../../lib/auth/current-user";
+import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
 export default async function ExternalServicesSettingsPage() {
+  await requireResearcherSettings();
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirectTo=/settings/external-services" as Route);
 

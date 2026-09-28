@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// The release gate's own prod server: its own port and build folder (next.config.ts's
+// distDir), so it never reuses or overwrites a `next dev` running on :3000.
+const E2E_PORT = Number(process.env.E2E_PORT ?? 3100);
+const E2E_BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
+
 // Turn 8 (phase/9-ia successor): the release gate this codebase's own AGENTS.md now
 // requires ("E2E journey suite green against prod build with deterministic seed. No tag
 // without it.") -- so this MUST run against a real `next build` + `next start`, never
@@ -16,6 +21,10 @@ import { defineConfig, devices } from "@playwright/test";
 // the feature under test.
 export default defineConfig({
   testDir: "./e2e",
+  // Capped: every browser hits one prod server, one worker and one DB on the same machine
+  // (locally also the live next dev). At the default (7 here) sign-ins and page loads
+  // timed out under contention; the same specs passed alone. Measured 2026-09-26.
+  workers: process.env.CI ? 2 : 3,
   // org-journey.spec.ts's admin test drives a full real journey (program creation,
   // triage, bounty calculation/finalization) through many real server actions -- each a
   // genuine DB round trip, not a mock. 180s per test.
@@ -30,12 +39,14 @@ export default defineConfig({
   // background during these very runs), never an application defect. 45s gives real
   // margin against that specific, external constraint; a clean environment needs far less.
   expect: { timeout: 45_000 },
-  use: { baseURL: "http://127.0.0.1:3000", trace: "retain-on-failure" },
+  use: { baseURL: E2E_BASE_URL, trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     // Measured live: a standalone `npm run build` alone takes ~135s on this machine; 180s
-    // left no margin for `next start` to then boot within the same window. 300s.
-    { command: "npm run build && npm run start", url: "http://127.0.0.1:3000", reuseExistingServer: !process.env.CI, timeout: 300_000 },
+    // left no margin for `next start` to then boot within the same window. 300s -- then
+    // measured 202s for the build alone with a `next dev` running alongside, which blew
+    // past 300s once seeding and boot were added. 600s.
+    { command: `npm run build && npm run start -- -p ${E2E_PORT}`, url: E2E_BASE_URL, env: { NEXT_DIST_DIR: ".next-prod" }, reuseExistingServer: !process.env.CI, timeout: 600_000 },
     { command: "npm run worker:outbox", reuseExistingServer: !process.env.CI, timeout: 30_000 },
   ],
 });

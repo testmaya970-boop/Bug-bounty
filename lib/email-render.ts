@@ -32,7 +32,13 @@ const LABELS: Record<NotificationType, string> = {
   report_triage_started: "Your report has entered triage",
   report_accepted: "Your report was accepted",
   report_message_posted: "There's a new message on a report",
+  program_suspended: "A program was suspended by the platform",
+  program_reinstated: "A program was reinstated by the platform",
+  organization_suspended: "Your organization was suspended by the platform",
+  organization_reinstated: "Your organization was reinstated by the platform",
 };
+
+const PLATFORM_TYPES = new Set<NotificationType>(["program_suspended", "program_reinstated", "organization_suspended", "organization_reinstated"]);
 
 export type NotificationEmailInput = {
   notificationType: NotificationType;
@@ -41,6 +47,8 @@ export type NotificationEmailInput = {
   organizationName: string;
   recipientDisplayName: string;
   occurredAt: string;
+  /** Platform notices only: the platform admin's stated reason (audit_logs metadata). */
+  reason?: string | null;
 };
 
 export type RenderedEmail = { subject: string; text: string };
@@ -51,6 +59,18 @@ export function renderNotificationEmail(input: NotificationEmailInput): Rendered
   const program = sanitizeHeaderValue(input.programName);
   const organization = sanitizeHeaderValue(input.organizationName);
   const recipientName = sanitizeHeaderValue(input.recipientDisplayName);
+
+  if (PLATFORM_TYPES.has(input.notificationType)) {
+    // No report: name the program (program notices) or the organization instead. The reason
+    // is platform-admin-written text, kept out of the subject and plain in the body.
+    const subjectOf = program || organization;
+    const lines = [`Hello ${recipientName},`, "", `${label}.`, ""];
+    if (program) lines.push(`Program: ${program}`);
+    lines.push(`Organization: ${organization}`, `When: ${input.occurredAt}`);
+    if (input.reason) lines.push("", `Reason given: ${input.reason}`);
+    lines.push("", "Sign in to Unpatched for details. Contact platform support if you believe this is in error.");
+    return { subject: sanitizeHeaderValue(`Unpatched: ${label} — ${subjectOf}`), text: lines.join("\n") };
+  }
 
   const subject = sanitizeHeaderValue(`Unpatched: ${label} — ${title}`);
   const text = [`Hello ${recipientName},`, "", `${label}.`, "", `Report: ${title}`, `Program: ${program}`, `Organization: ${organization}`, `When: ${input.occurredAt}`, "", "Sign in to Unpatched to view the full details."].join("\n");

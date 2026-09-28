@@ -89,14 +89,17 @@ async function renderProgramInboxPage({
   }
 
   const [members, actorMembership] = await perfTimed("inbox: membership batch", () => Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId)]));
-  const isProgramManager = members.some((member) => member.userId === user.id);
+  // program_members (202609250012): "manager" runs the program; any assignment, including
+  // "triager", works its reports. The database enforces the same split.
+  const isProgramManager = members.some((member) => member.userId === user.id && member.role === "manager");
+  const isProgramTriager = members.some((member) => member.userId === user.id);
   const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
   const canManageProgram = isProgramManager || isOrgAdmin;
 
-  if (!canManageProgram) {
+  if (!(canManageProgram || isProgramTriager)) {
     return (
       <AppShell title="Inbox" user={user} organizationId={organizationId}>
-        <PermissionDenied>Only a program manager or organization admin can open the inbox. Your own reports are available at /reports.</PermissionDenied>
+        <PermissionDenied>Only this program&apos;s assigned team or an organization admin can open the inbox. Your own reports are available at /reports.</PermissionDenied>
       </AppShell>
     );
   }
@@ -131,7 +134,10 @@ async function renderProgramInboxPage({
 
   return (
     <AppShell title="Inbox" user={user} organizationId={organizationId}>
-      <div className="flex h-[calc(100vh-8.5rem)] max-w-[100rem] flex-col space-y-4">
+      {/* Fills the window on large screens: 100dvh minus the shell header (4rem), main padding
+          (2 x 2rem) and page title (~4rem). Below lg it flows and the page scrolls. Never shorter
+          than 44rem: on a short window the page scrolls instead of squashing the panes. */}
+      <div className="flex min-h-[44rem] max-w-[100rem] flex-col space-y-4 lg:h-[calc(100dvh-12rem)]">
         <div className="shrink-0 space-y-4">
           <Breadcrumbs
             items={[
@@ -148,11 +154,13 @@ async function renderProgramInboxPage({
             status={program.status}
             active="inbox"
             canManage={canManageProgram}
+            canWorkReports
             siblingPrograms={organizationPrograms.filter((p) => p.id !== programId).map((p) => ({ id: p.id, name: p.name, status: p.status }))}
           />
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-lg border border-border bg-surface lg:grid-cols-[18rem_minmax(0,1fr)]">
+        {/* min-h: on a short window the page scrolls instead of squashing the panes. */}
+        <div className="grid min-h-[32rem] flex-1 grid-cols-1 overflow-hidden rounded-lg border border-border bg-surface lg:grid-cols-[18rem_minmax(0,1fr)]">
           <div className="min-h-0 overflow-y-auto border-b border-border lg:border-b-0 lg:border-r">
             <InboxReportList
               reports={reports}
@@ -164,7 +172,7 @@ async function renderProgramInboxPage({
           <div className="min-h-0 overflow-y-auto">
             {validSelectedReportId ? (
               <Suspense key={validSelectedReportId} fallback={<ReportDetailSkeleton />}>
-                <InboxSelectedReport organizationId={organizationId} programId={programId} reportId={validSelectedReportId} actorNames={actorNames} canFinalize={isOrgAdmin} />
+                <InboxSelectedReport organizationId={organizationId} programId={programId} reportId={validSelectedReportId} actorNames={actorNames} canFinalize={isOrgAdmin || isProgramManager} />
               </Suspense>
             ) : reportIdNotFound ? (
               <InboxReportNotFound />

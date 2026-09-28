@@ -12,7 +12,7 @@ import {
   requirePlatformAdmin,
 } from "../../services/authorization";
 
-const user = { id: "user-a", platformRole: "researcher" as const, username: "user-a", displayName: "User A", email: "user-a@example.com" };
+const user = { id: "user-a", platformRole: "researcher" as const, accountType: "researcher" as const, username: "user-a", displayName: "User A", email: "user-a@example.com" };
 const owner = { organizationId: "org-a", userId: "user-a", role: "owner" as const, status: "active" as const };
 
 describe("authorization", () => {
@@ -47,20 +47,20 @@ describe("organization role capability model", () => {
   it("gives every role a non-empty label and a role-appropriate access summary", () => {
     const summary = describeOrganizationAccess("program_manager");
     expect(summary.organizationAccess).toBe("Limited");
-    expect(summary.can).toContain("Manage assigned programs");
+    expect(summary.can.join(" ")).toMatch(/programs they are assigned to/);
     expect(summary.cannot).toContain("Manage organization members or roles");
   });
 
-  it("marks billing_admin as intentionally inert in this slice", () => {
+  it("gives billing_admin payments -- and explicitly no report contents (202609250012)", () => {
     const summary = describeOrganizationAccess("billing_admin");
-    expect(summary.can).toHaveLength(0);
-    expect(summary.note).toMatch(/not implemented/i);
+    expect(summary.can.join(" ")).toMatch(/payment/i);
+    expect(summary.cannot.join(" ")).toMatch(/report contents/i);
   });
 
   it("describes a real capability delta when a role changes, not generic text", () => {
     const impact = describeRoleChangeImpact("triager", "security_admin");
     expect(impact).toContain("Gains:");
-    expect(impact).toContain("Suspend, reactivate, or remove members");
+    expect(impact).toMatch(/Invite, suspend, and remove members/);
   });
 
   it("reports no change when the role is unchanged", () => {

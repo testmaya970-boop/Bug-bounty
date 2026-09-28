@@ -5,8 +5,8 @@ import { DataTable, type DataColumn } from "../ui/data-display";
 import { Avatar } from "../ui/navigation";
 import { Badge, MemberStatusBadge, RoleBadge } from "../ui/badge";
 import { describeOrganizationAccess } from "../../services/authorization";
-import { formatDate } from "../../lib/format-date";
-import type { OrganizationMemberRecord } from "../../types/organization";
+import type { OrganizationMemberRecord } from "../../types/organization";
+import { LocalTime } from "../ui/local-time";
 
 type Row = OrganizationMemberRecord & { id: string };
 
@@ -38,9 +38,9 @@ export function MemberTable({ organizationId, members, lastActivityByUserId }: {
     {
       id: "activity",
       header: "Last activity",
-      cell: (row) => <span className="text-sm text-ink-muted">{lastActivityByUserId[row.userId] ? formatDate(lastActivityByUserId[row.userId]) : "No recorded activity"}</span>,
+      cell: (row) => <span className="text-sm text-ink-muted">{lastActivityByUserId[row.userId] ? <LocalTime value={lastActivityByUserId[row.userId]} dateOnly /> : "No recorded activity"}</span>,
     },
-    { id: "joined", header: "Joined", cell: (row) => <span className="text-sm text-ink-muted">{formatDate(row.joinedAt)}</span> },
+    { id: "joined", header: "Joined", cell: (row) => <span className="text-sm text-ink-muted"><LocalTime value={row.joinedAt} dateOnly /></span> },
     {
       id: "actions",
       header: "Actions",

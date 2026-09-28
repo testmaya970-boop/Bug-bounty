@@ -41,13 +41,13 @@ beforeEach(() => {
 });
 
 describe("outbox worker: processEvent dispatches to every registered handler, never guessing at an unknown type", () => {
-  it("an unknown event_type:schema_version is dead-lettered immediately -- no handler is ever invoked", async () => {
+  it("an unknown event_type:schema_version is retried with backoff, not dead-lettered at once -- a newer worker may know it", async () => {
     mockedGetHandlers.mockReturnValue([]);
     const { processEvent } = await import("../../workers/outbox/worker");
 
     await processEvent(EVENT, "worker-1");
 
-    expect(mockedComplete).toHaveBeenCalledWith("event-1", "worker-1", { success: false, permanent: true, error: expect.stringContaining("no handler registered for report.created:1") });
+    expect(mockedComplete).toHaveBeenCalledWith("event-1", "worker-1", { success: false, permanent: false, error: expect.stringContaining("no handler registered for report.created:1") });
   });
 
   it("a successful handler completes the event as success", async () => {

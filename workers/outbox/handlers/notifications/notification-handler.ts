@@ -67,63 +67,91 @@ export function createNotificationHandler(notificationType: NotificationType) {
       throw new RetryableHandlerError(message);
     }
 
-    let anyRetryable = false;
+    await deliverNotificationEmails(event, notifications ?? []);
+  };
+}
 
-    for (const notification of notifications ?? []) {
-      let delivery: EmailDeliveryRow | undefined;
-      try {
-        const rows = await withServiceRoleTransaction((client) => callRpc<EmailDeliveryRow>(client, "public.ensure_email_delivery", [notification.id]));
-        delivery = rows[0];
-      } catch (error) {
-        throw new RetryableHandlerError(error instanceof Error ? error.message : String(error));
-      }
-      if (!delivery || delivery.state === "delivered" || delivery.state === "permanent_failure") continue;
+/** Shared by the report and platform handlers: create/prepare/send/record one email per
+ * notification. Throws RetryableHandlerError if any delivery is still retryable, so the
+ * whole event is retried (every step below is idempotent -- see this file's header). */
+export async function deliverNotificationEmails(event: OutboxEvent, notifications: NotificationRow[], reason?: string | null): Promise<void> {
+  let anyRetryable = false;
 
-      let prepared: PreparedEmailRow | null;
-      try {
-        const rows = await withServiceRoleTransaction((client) => callRpc<PreparedEmailRow>(client, "public.prepare_notification_email", [delivery!.id]));
-        prepared = rows[0] ?? null;
-      } catch {
-        anyRetryable = true;
-        continue;
-      }
-      if (!prepared || !prepared.deliverable) continue; // Already terminal, or no longer authorized -- prepare_notification_email already recorded why.
+  for (const notification of notifications) {
+    let delivery: EmailDeliveryRow | undefined;
+    try {
+      const rows = await withServiceRoleTransaction((client) => callRpc<EmailDeliveryRow>(client, "public.ensure_email_delivery", [notification.id]));
+      delivery = rows[0];
+    } catch (error) {
+      throw new RetryableHandlerError(error instanceof Error ? error.message : String(error));
+    }
+    if (!delivery || delivery.state === "delivered" || delivery.state === "permanent_failure") continue;
 
-      const rendered = renderNotificationEmail({
-        notificationType: prepared.notification_type as NotificationType,
-        reportTitle: prepared.report_title ?? "",
-        programName: prepared.program_name ?? "",
-        organizationName: prepared.organization_name ?? "",
-        recipientDisplayName: prepared.recipient_display_name ?? "",
-        occurredAt: prepared.occurred_at ?? event.occurredAt,
-      });
+    let prepared: PreparedEmailRow | null;
+    try {
+      const rows = await withServiceRoleTransaction((client) => callRpc<PreparedEmailRow>(client, "public.prepare_notification_email", [delivery!.id]));
+      prepared = rows[0] ?? null;
+    } catch {
+      anyRetryable = true;
+      continue;
+    }
+    if (!prepared || !prepared.deliverable) continue; // Already terminal, or no longer authorized -- prepare_notification_email already recorded why.
 
-      const result = await activeEmailProvider.send({
-        to: prepared.recipient_email ?? "",
-        subject: rendered.subject,
-        text: rendered.text,
-        idempotencyKey: delivery.id,
-      });
+    const rendered = renderNotificationEmail({
+      notificationType: prepared.notification_type as NotificationType,
+      reportTitle: prepared.report_title ?? "",
+      programName: prepared.program_name ?? "",
+      organizationName: prepared.organization_name ?? "",
+      recipientDisplayName: prepared.recipient_display_name ?? "",
+      occurredAt: prepared.occurred_at ?? event.occurredAt,
+      reason,
+    });
 
-      try {
-        await withServiceRoleTransaction((client) =>
-          callRpc(client, "public.record_email_delivery_result", [
-            delivery!.id,
-            result.success,
-            result.success ? false : result.permanent,
-            result.success ? result.providerReference : null,
-            result.success ? null : result.error,
-          ]),
-        );
-      } catch (error) {
-        throw new RetryableHandlerError(error instanceof Error ? error.message : String(error));
-      }
+    const result = await activeEmailProvider.send({
+      to: prepared.recipient_email ?? "",
+      subject: rendered.subject,
+      text: rendered.text,
+      idempotencyKey: delivery.id,
+    });
 
-      if (!result.success && !result.permanent) anyRetryable = true;
+    try {
+      await withServiceRoleTransaction((client) =>
+        callRpc(client, "public.record_email_delivery_result", [
+          delivery!.id,
+          result.success,
+          result.success ? false : result.permanent,
+          result.success ? result.providerReference : null,
+          result.success ? null : result.error,
+        ]),
+      );
+    } catch (error) {
+      throw new RetryableHandlerError(error instanceof Error ? error.message : String(error));
     }
 
-    if (anyRetryable) {
-      throw new RetryableHandlerError(`one or more email deliveries for ${event.eventType} are still retryable`);
+    if (!result.success && !result.permanent) anyRetryable = true;
+  }
+
+  if (anyRetryable) {
+    throw new RetryableHandlerError(`one or more email deliveries for ${event.eventType} are still retryable`);
+  }
+}
+
+/** Platform decisions (202609250007): the audit_logs trigger enqueues program.suspended /
+ * program.reinstated / organization.suspended / organization.reinstated; this routes each
+ * to the org's active owners and security admins, then emails them with the reason. */
+export function createPlatformNotificationHandler(notificationType: NotificationType) {
+  return async function handlePlatformNotification(event: OutboxEvent): Promise<void> {
+    let notifications: NotificationRow[];
+    try {
+      notifications = await withServiceRoleTransaction((client) => callRpc<NotificationRow>(client, "public.route_platform_notifications", [event.id, notificationType]));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.startsWith("PROVENANCE_MISMATCH") || message.startsWith("EVENT_NOT_FOUND") || message.startsWith("INVALID_NOTIFICATION_TYPE")) {
+        throw new PermanentHandlerError(message);
+      }
+      throw new RetryableHandlerError(message);
     }
+    const reason = typeof event.payload.reason === "string" ? event.payload.reason : null;
+    await deliverNotificationEmails(event, notifications ?? [], reason);
   };
 }

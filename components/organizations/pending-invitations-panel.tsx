@@ -2,7 +2,7 @@ import React from "react";
 import { EmptyState, Panel } from "../ui/feedback";
 import { RoleBadge } from "../ui/badge";
 import { InvitationActions } from "./invitation-actions";
-import { formatDateTime } from "../../lib/format-date";
+import { LocalTime } from "../ui/local-time";
 import type { OrganizationInvitationRecord } from "../../types/organization";
 
 // A separate panel, not merged into the member table: "who hasn't accepted" is an
@@ -26,7 +26,7 @@ export function PendingInvitationsPanel({ organizationId, invitations, canManage
                   <p className="text-sm font-medium text-ink">{invitation.email}</p>
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                     <RoleBadge role={invitation.role} />
-                    <span>{expired ? "Expired" : `Expires ${formatDateTime(invitation.expiresAt)}`}</span>
+                    <span>{expired ? "Expired" : <>Expires <LocalTime value={invitation.expiresAt} /></>}</span>
                   </p>
                 </div>
                 {canManage && <InvitationActions organizationId={organizationId} invitation={invitation} />}

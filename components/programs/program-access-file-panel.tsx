@@ -9,8 +9,8 @@ import {
   removeProgramAccessFileAction,
   uploadProgramAccessFileAction,
 } from "../../actions/program-access-file";
-import { formatDateTime } from "../../lib/format-date";
 import type { ProgramAccessFile } from "../../services/program-access-file";
+import { LocalTime } from "../ui/local-time";
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -99,7 +99,7 @@ export function ProgramAccessFileEditor({ organizationId, programId, file }: { o
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-ink">{file.originalFilename}</p>
             <p className="mt-0.5 text-xs text-ink-muted">
-              {formatBytes(file.sizeBytes)} · Uploaded {formatDateTime(file.createdAt)}
+              {formatBytes(file.sizeBytes)} · Uploaded <LocalTime value={file.createdAt} />
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -120,7 +120,7 @@ export function ProgramAccessFileEditor({ organizationId, programId, file }: { o
           ref={inputRef}
           type="file"
           aria-label="Access file"
-          className="block flex-1 text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-muted"
+          className="block min-w-0 flex-1 text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-muted"
         />
         <Button type="submit" variant="secondary" pending={uploadPending}>
           {file ? "Replace file" : "Upload file"}

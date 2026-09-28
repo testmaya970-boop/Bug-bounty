@@ -43,6 +43,7 @@ export function ReferenceStrip({ activityWeeks }: { activityWeeks: number[][] })
                 type="button"
                 onClick={() => setVisibleWeeks(option.weeks)}
                 aria-pressed={visibleWeeks === option.weeks}
+                aria-label={`Last ${option.weeks} weeks`}
                 className={cn(
                   "min-h-6 rounded px-1.5 text-[10px] font-semibold transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                   visibleWeeks === option.weeks ? "bg-action/10 text-action" : "text-ink-muted hover:text-ink",
