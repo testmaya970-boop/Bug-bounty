@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getNativeEnv } from "./env";
 
@@ -125,3 +125,9 @@ export const s3EvidenceObjectStore: EvidenceObjectStore = {
 /** The active implementation. Swapping providers means writing a new EvidenceObjectStore
  * implementation and changing this one export -- nothing else in the codebase changes. */
 export const evidenceObjectStore: EvidenceObjectStore = s3EvidenceObjectStore;
+
+/** Health check only (app/api/health): can this process reach the evidence bucket with its
+ * configured credentials? Throws on any failure. */
+export async function checkEvidenceStorageReachable(): Promise<void> {
+  await storageClient().send(new HeadBucketCommand({ Bucket: bucketName() }));
+}

@@ -8,9 +8,9 @@ import { Input, Select, Textarea } from "../ui/form";
 import { AssetTypeBadge, ScopeStateBadge } from "../ui/badge";
 import { removeScopeEntryAction, updateScopeEntryAction } from "../../actions/scope";
 import { assetTypeLabel } from "../../lib/scope-labels";
-import { formatDate } from "../../lib/format-date";
 import { cn } from "../../lib/cn";
-import type { ProgramAssetType, ScopeEntry, ScopeState } from "../../types/scope";
+import type { ProgramAssetType, ScopeEntry, ScopeState } from "../../types/scope";
+import { LocalTime } from "../ui/local-time";
 
 const ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -277,7 +277,7 @@ export function ScopeEntryCard({ organizationId, programId, entry, canManage }: 
         </div>
       )}
       <p className="col-span-2 text-xs text-ink-muted sm:col-span-1 sm:col-start-2">
-        Added by {entry.createdByName} on {formatDate(entry.createdAt)}
+        Added by {entry.createdByName} on <LocalTime value={entry.createdAt} dateOnly />
       </p>
     </div>
   );

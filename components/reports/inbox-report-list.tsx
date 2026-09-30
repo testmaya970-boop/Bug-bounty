@@ -77,7 +77,10 @@ export function InboxReportList({
                     {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
                     <StatusBadge status={report.status} />
                   </div>
-                  <p className={cn("mt-1 truncate text-sm", isSelected ? "font-semibold text-ink" : "font-medium text-ink")}>{report.title}</p>
+                  {/* Two lines, not one: single-line truncation hid most of a typical report title. */}
+                  <p title={report.title} className={cn("mt-1 line-clamp-2 break-words text-sm", isSelected ? "font-semibold text-ink" : "font-medium text-ink")}>
+                    {report.title}
+                  </p>
                   <p className="mt-0.5 truncate text-xs text-ink-muted">{report.researcherName}</p>
                 </div>
               </div>

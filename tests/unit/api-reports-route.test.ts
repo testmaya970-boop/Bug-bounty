@@ -33,7 +33,7 @@ describe("GET /api/v1/reports: authentication, envelope, status codes, request i
   });
 
   it("returns 200 with data + meta (requestId, nextCursor) for an authenticated request, forwarding cursor/limit query params", async () => {
-    mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, username: "u", displayName: "U", email: null });
+    mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, accountType: "researcher", username: "u", displayName: "U", email: null });
     mockedListMyReports.mockResolvedValue({ items: [{ id: "r1" }] as never, nextCursor: "abc123" });
     const { GET } = await import("../../app/api/v1/reports/route");
 
@@ -47,7 +47,7 @@ describe("GET /api/v1/reports: authentication, envelope, status codes, request i
   });
 
   it("rejects an invalid (non-numeric) limit with 422 INVALID_INPUT rather than passing it through", async () => {
-    mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, username: "u", displayName: "U", email: null });
+    mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, accountType: "researcher", username: "u", displayName: "U", email: null });
     const { GET } = await import("../../app/api/v1/reports/route");
 
     const response = await GET(new NextRequest("http://localhost/api/v1/reports?limit=not-a-number"));
@@ -59,7 +59,7 @@ describe("GET /api/v1/reports: authentication, envelope, status codes, request i
   });
 
   it("maps a service error's own code to the correct HTTP status, never a raw message leak", async () => {
-    mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, username: "u", displayName: "U", email: null });
+    mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, accountType: "researcher", username: "u", displayName: "U", email: null });
     mockedListMyReports.mockRejectedValue(new OrganizationServiceError("too many requests", "RATE_LIMITED"));
     const { GET } = await import("../../app/api/v1/reports/route");
 
@@ -71,7 +71,7 @@ describe("GET /api/v1/reports: authentication, envelope, status codes, request i
   });
 
   it("never leaks a raw, unclassified error to the response body", async () => {
-    mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, username: "u", displayName: "U", email: null });
+    mockedGetCurrentUser.mockResolvedValue({ id: "actor-1", platformRole: null, accountType: "researcher", username: "u", displayName: "U", email: null });
     mockedListMyReports.mockRejectedValue(new Error('relation "reports" violates check constraint "reports_title_check"'));
     const { GET } = await import("../../app/api/v1/reports/route");
 

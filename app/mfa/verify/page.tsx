@@ -8,7 +8,7 @@ import { getMyMfaStatus, listMyMfaFactors, requestMfaVerificationCode } from "..
 import { isSafeRedirect } from "../../../lib/auth/safe-redirect";
 
 /**
- * The one route middleware.ts's MFA gate always allows through. If there's nothing to
+ * The one route proxy.ts's MFA gate always allows through. If there's nothing to
  * verify (no enrolled factor, or this session already cleared it), there is no reason to
  * be here -- redirect straight to the real destination rather than showing a pointless
  * form. See docs/decisions/0052.

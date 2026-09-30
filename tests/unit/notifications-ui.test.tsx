@@ -99,19 +99,41 @@ describe("NotificationPreferencesSection: mandatory categories cannot be toggled
   ];
 
   it("renders a toggle switch for the optional category", () => {
-    const html = renderToStaticMarkup(<NotificationPreferencesSection preferences={PREFERENCES} />);
+    const html = renderToStaticMarkup(<NotificationPreferencesSection preferences={PREFERENCES} accountType="researcher" />);
     expect(html).toContain("Report activity");
     expect(html).toContain('role="switch"');
   });
 
   it("renders 'Always on' with no switch for the mandatory category", () => {
-    const html = renderToStaticMarkup(<NotificationPreferencesSection preferences={PREFERENCES} />);
+    const html = renderToStaticMarkup(<NotificationPreferencesSection preferences={PREFERENCES} accountType="researcher" />);
     expect(html).toContain("Bounty finalized");
     expect(html).toContain("Always on");
   });
 
   it("exactly one switch exists -- only the optional category is interactive", () => {
-    const html = renderToStaticMarkup(<NotificationPreferencesSection preferences={PREFERENCES} />);
+    const html = renderToStaticMarkup(<NotificationPreferencesSection preferences={PREFERENCES} accountType="researcher" />);
     expect(html.match(/role="switch"/g)).toHaveLength(1);
+  });
+});
+
+describe("NotificationPreferencesSection: each account type sees only what reaches it", () => {
+  const ALL: NotificationPreference[] = [
+    { category: "report_activity", emailEnabled: true, isMandatory: false },
+    { category: "bounty_activity", emailEnabled: true, isMandatory: true },
+    { category: "platform_activity", emailEnabled: true, isMandatory: true },
+  ];
+
+  it("an organization account gets report activity for its programs and platform decisions, never bounty receipts", () => {
+    const html = renderToStaticMarkup(<NotificationPreferencesSection preferences={ALL} accountType="organization" />);
+    expect(html).toContain("New reports and researcher messages on the programs you work on.");
+    expect(html).toContain("Platform decisions");
+    expect(html).not.toContain("Bounty finalized");
+  });
+
+  it("a researcher gets report activity for their own reports and bounty receipts, never platform decisions", () => {
+    const html = renderToStaticMarkup(<NotificationPreferencesSection preferences={ALL} accountType="researcher" />);
+    expect(html).toContain("Status changes and new messages on reports you submitted.");
+    expect(html).toContain("Bounty finalized");
+    expect(html).not.toContain("Platform decisions");
   });
 });

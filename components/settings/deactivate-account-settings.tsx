@@ -5,12 +5,13 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/form";
 import { Alert } from "../ui/feedback";
 import { deactivateMyAccountAction } from "../../actions/account";
+import type { AccountType } from "../../types/auth";
 
 /** Real, immediate deactivation -- sets deactivated_at and deletes every real session row
  * (0055). Hard deletion is NOT offered: nearly every foreign key from a user's own real
  * activity is `on delete restrict`, so a genuine hard delete would fail loudly for any
  * account with real history. Disclosed here, not silently omitted. */
-export function DeactivateAccountSettings() {
+export function DeactivateAccountSettings({ accountType }: { accountType: AccountType }) {
   const [confirmText, setConfirmText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -19,7 +20,9 @@ export function DeactivateAccountSettings() {
     setError(null);
     startTransition(async () => {
       try {
-        await deactivateMyAccountAction();
+        // Success redirects away; a refusal (e.g. the only owner of an organization) says why.
+        const result = await deactivateMyAccountAction();
+        if (!result.ok) setError(result.message);
       } catch {
         setError("The request could not be completed. Try again in a moment.");
       }
@@ -31,6 +34,12 @@ export function DeactivateAccountSettings() {
       <Alert tone="warning" title="Account deletion is not available">
         Unpatched does not offer permanent account deletion: your account is referenced by real, immutable history (submitted reports, organizations you created) that cannot be safely removed. Deactivation is the real, available option below.
       </Alert>
+
+      {accountType === "organization" && (
+        <Alert tone="info" title="Your organization keeps an owner">
+          An organization always needs an active owner. If you are the only owner of one, make another member an owner from Members first; deactivation is refused until then. Your team keeps every program and report.
+        </Alert>
+      )}
 
       <div className="rounded-lg border border-danger/40 bg-danger/5 p-4">
         <h2 className="text-sm font-semibold text-ink">Deactivate account</h2>

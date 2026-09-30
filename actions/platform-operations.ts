@@ -10,9 +10,11 @@ import {
   isPlatformAdmin,
   rejectProgramLaunch,
   reinstateOrganization,
+  reinstateProgram,
   reinstateResearcherPlatformWide,
   replayDeadLetteredOutboxEvent,
   suspendOrganization,
+  suspendProgram,
   suspendResearcherPlatformWide,
 } from "@/services/platform-operations";
 import { resolveEscalatedMediation, resolveEscalatedRetest } from "@/services/reports";
@@ -272,6 +274,44 @@ export async function reinstateOrganizationAction(input: { organizationId: strin
   try {
     await withRequestLogging("platform.organization.reinstate", { actorId: user.id }, () => reinstateOrganization(parsed.data.organizationId, parsed.data.reason));
     revalidatePath("/platform/organizations");
+    return { ok: true as const };
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
+    throw error;
+  }
+}
+
+const programSuspensionSchema = z.object({
+  programId: z.string().uuid(),
+  reason: z.string().trim().min(1, "Explain the reason.").max(2000, "Use 2000 characters or fewer."),
+});
+
+/** Authorization is enforced by the database (suspend_program / reinstate_program's own
+ * private.is_platform_admin() check) -- the program id comes from the already-listed
+ * directory row, so no lookup step is needed (unlike suspend-by-slug above). */
+export async function suspendProgramAction(input: { programId: string; reason: string }) {
+  return runProgramSuspensionChange("platform.program.suspend", input, suspendProgram);
+}
+
+export async function reinstateProgramAction(input: { programId: string; reason: string }) {
+  return runProgramSuspensionChange("platform.program.reinstate", input, reinstateProgram);
+}
+
+async function runProgramSuspensionChange(
+  logName: string,
+  input: { programId: string; reason: string },
+  change: (programId: string, reason: string) => Promise<{ organizationId: string }>,
+) {
+  const parsed = programSuspensionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the request and try again." };
+
+  const user = await getCurrentUser();
+  if (!user) return { ok: false as const, code: "AUTH_REQUIRED", message: "Your session has expired. Sign in again to continue." };
+
+  try {
+    const { organizationId } = await withRequestLogging(logName, { actorId: user.id }, () => change(parsed.data.programId, parsed.data.reason));
+    revalidatePath("/platform/all-programs");
+    revalidatePath(`/organizations/${organizationId}/programs/${parsed.data.programId}`);
     return { ok: true as const };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };

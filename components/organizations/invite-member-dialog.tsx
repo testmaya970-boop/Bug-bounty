@@ -6,10 +6,11 @@ import { Dialog } from "../ui/navigation";
 import { Button } from "../ui/button";
 import { Input, Select, Textarea } from "../ui/form";
 import { RoleBadge } from "../ui/badge";
+import { AccessSummary } from "./access-summary";
 import { organizationRoleLabel } from "../../services/authorization";
 import { inviteOrganizationMember } from "../../actions/organization-members";
-import { formatDateTime } from "../../lib/format-date";
 import type { OrganizationRole } from "../../types/auth";
+import { LocalTime } from "../ui/local-time";
 
 // Matches the server default (expires_in_hours = 168) in the invite_organization_member
 // function. If that default ever changes, change it here too.
@@ -73,6 +74,10 @@ export function InviteMemberDialog({ organizationId, invitableRoles }: { organiz
                 </option>
               ))}
             </Select>
+            {/* What this role can and cannot do -- the same capability model the database enforces. */}
+            <div className="rounded-md border border-border bg-surface-muted p-3" aria-live="polite">
+              <AccessSummary role={role} />
+            </div>
             <Textarea label="Message" helperText="Optional. Included with the invitation." value={message} onChange={(event) => setMessage(event.target.value)} />
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={close}>
@@ -93,7 +98,7 @@ export function InviteMemberDialog({ organizationId, invitableRoles }: { organiz
               <p className="mt-3 text-ink-muted">Initial access</p>
               <p className="mt-1">No program access until assigned.</p>
               <p className="mt-3 text-ink-muted">Invitation expires</p>
-              <p className="mt-1">{formatDateTime(expires)}</p>
+              <p className="mt-1"><LocalTime value={expires} /></p>
             </div>
             {error && (
               <p role="alert" className="text-sm font-medium text-danger">

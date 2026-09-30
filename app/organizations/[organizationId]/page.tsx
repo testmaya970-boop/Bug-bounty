@@ -18,10 +18,10 @@ import { getOrganizationBountySpendSummary, getOrganizationResolutionPerformance
 import { formatMoney } from "../../../lib/money";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { reportNextActionLabel } from "../../../lib/report-status";
-import { formatDateTime } from "../../../lib/format-date";
 import { describeOrganizationActivity } from "../../../lib/organization-activity-labels";
 import { perfTimed } from "../../../lib/perf-trace";
-import type { Report } from "../../../types/report";
+import type { Report } from "../../../types/report";
+import { LocalTime } from "../../../components/ui/local-time";
 
 // Turn 6 (phase/9-ia): Home's contract is glance-only -- a KPI row, one de-duplicated
 // action queue, and a last-5 activity feed that links out. Every list that duplicated
@@ -51,7 +51,7 @@ function ActionQueueRow({ organizationId, report, programName }: { organizationI
           <span>·</span>
           <span>{programName}</span>
           <span>·</span>
-          <span>{formatDateTime(report.updatedAt)}</span>
+          <span><LocalTime value={report.updatedAt} /></span>
         </p>
         <p className="mt-1 flex items-center gap-2 text-sm">
           <StatusBadge status={report.status} />
@@ -118,7 +118,7 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
   const recentActivity = (activityPage?.items ?? []).slice(0, ACTIVITY_ROW_LIMIT).map((event) => {
     const actorName = (event.actorId && actorNames[event.actorId]) || "A member";
     const { title, detail } = describeOrganizationActivity(event, actorName);
-    return { id: event.id, title, detail, timestamp: formatDateTime(event.createdAt) };
+    return { id: event.id, title, detail, timestamp: <LocalTime value={event.createdAt} /> };
   });
 
   // The single action queue: every open report the organization's own turn (excludes

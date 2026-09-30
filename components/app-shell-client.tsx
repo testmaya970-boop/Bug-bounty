@@ -22,6 +22,9 @@ import {
   Wand2,
   Activity,
   Landmark,
+  LayoutList,
+  Wallet,
+  OctagonAlert,
   Building2,
   UserCog,
   IdCard,
@@ -46,6 +49,7 @@ import { MOCK_CTF_CHALLENGES } from "../lib/mock/ctf";
 import { TRAINING_ARTICLES } from "../lib/training/content";
 import { MOCK_TOTAL_RESEARCHERS } from "../lib/mock/researcher-dashboard";
 import type { OrganizationSummary } from "../services/organizations";
+import type { OrganizationRole } from "../types/auth";
 
 // Every <Link> in this file carries prefetch={false}: this shell renders on every
 // authenticated page, so its nav/switcher/menu links are on-screen (and thus
@@ -97,13 +101,16 @@ const RECORD_NAV: NavItem[] = [{ href: "/bounties" as Route, label: "Bounties", 
 // AppShell's sidebar like every other authenticated page -- flagged live as a real
 // inconsistency and reverted; this group is the one, real, shared nav for all seven now.
 const PLATFORM_NAV: NavItem[] = [
+  { href: "/platform/all-programs" as Route, label: "All programs", icon: LayoutList },
   { href: "/platform/programs" as Route, label: "Program launches", icon: Landmark },
   { href: "/platform/organizations" as Route, label: "Organizations", icon: Building2 },
   { href: "/platform/researchers" as Route, label: "Researchers", icon: UserCog },
+  { href: "/platform/ctf-events" as Route, label: "CTF events", icon: Swords },
   { href: "/platform/kyc" as Route, label: "KYC", icon: IdCard },
   { href: "/platform/mediations" as Route, label: "Mediations", icon: Scale },
   { href: "/platform/retests" as Route, label: "Retests", icon: RefreshCw },
   { href: "/platform/needs-recovery" as Route, label: "Needs recovery", icon: LifeBuoy },
+  { href: "/platform/errors" as Route, label: "Errors", icon: OctagonAlert },
 ];
 
 const SYSTEM_NAV: NavItem[] = [
@@ -148,7 +155,12 @@ const ACCOUNT_MENU_LINKS: { href: Route; label: string }[] = [
 // Hactivity (Turn 6, phase/9-ia) was missing from this list entirely -- built after this
 // grouping's own comment was written, and never backfilled. Added here now; it was never
 // missing from the org header's own nine, only from this second, now-deleted nav.
-type OrgNavItem = { href: (organizationId: string) => Route; label: string; icon: React.ComponentType<{ className?: string }>; matchesPath: (path: string, href: string) => boolean };
+// roles: who the section is for (docs: services/authorization.ts's ACCESS_SUMMARIES). A
+// convenience only -- every page and the database enforce access on their own.
+type OrgNavItem = { href: (organizationId: string) => Route; label: string; icon: React.ComponentType<{ className?: string }>; matchesPath: (path: string, href: string) => boolean; roles?: readonly OrganizationRole[] };
+
+const ORG_ADMINS: readonly OrganizationRole[] = ["owner", "security_admin"];
+const REPORT_WORKERS: readonly OrganizationRole[] = ["owner", "security_admin", "program_manager", "triager"];
 
 // Home matches ONLY the exact org root -- every other org route also starts with
 // `/organizations/{id}`, so a prefix match here would keep Home lit on every org page.
@@ -167,26 +179,28 @@ const ORG_SECURITY_NAV: OrgNavItem[] = [
   // Route unchanged (/organizations/{id}/programs) -- only the label changed to
   // "Engagements" to match the page's real HackerOne-style category-tab identity
   // (docs/decisions/0076). Same programs, same URLs, same permissions.
-  { href: (id) => `/organizations/${id}/programs` as Route, label: "Engagements", icon: FolderKanban, matchesPath: prefixMatch },
+  { href: (id) => `/organizations/${id}/programs` as Route, label: "Engagements", icon: FolderKanban, matchesPath: prefixMatch, roles: REPORT_WORKERS },
   // Findings: the flat, cross-program report list (services/reports.ts's
   // listReportsForOrganization) -- distinct from the per-program triage inbox at
   // .../programs/{id}/reports, which still owns triage actions/bulk operations.
-  { href: (id) => `/organizations/${id}/findings` as Route, label: "Findings", icon: Bug, matchesPath: prefixMatch },
+  { href: (id) => `/organizations/${id}/findings` as Route, label: "Findings", icon: Bug, matchesPath: prefixMatch, roles: REPORT_WORKERS },
   // Assets: the flat, cross-program scope/asset inventory (extends
   // public.program_scope_entries, docs/decisions/0006-scope-asset-model.md) -- creation/
   // editing still happens per-engagement (scope mutation is only legal while that
   // program is in draft), this is the read-only cross-program view.
-  { href: (id) => `/organizations/${id}/assets` as Route, label: "Assets", icon: Target, matchesPath: prefixMatch },
-  { href: (id) => `/organizations/${id}/researchers` as Route, label: "Researchers", icon: Trophy, matchesPath: prefixMatch },
+  { href: (id) => `/organizations/${id}/assets` as Route, label: "Assets", icon: Target, matchesPath: prefixMatch, roles: REPORT_WORKERS },
+  { href: (id) => `/organizations/${id}/researchers` as Route, label: "Researchers", icon: Trophy, matchesPath: prefixMatch, roles: ["owner", "security_admin", "program_manager"] },
   // Hactivity: the org's full, chronological audit event feed (services/organization-
   // members.ts's getOrganizationAuditActivity) -- owner/security_admin only, matching
   // audit_logs' own read policy.
-  { href: (id) => `/organizations/${id}/hactivity` as Route, label: "Hactivity", icon: Activity, matchesPath: prefixMatch },
+  { href: (id) => `/organizations/${id}/hactivity` as Route, label: "Hactivity", icon: Activity, matchesPath: prefixMatch, roles: ORG_ADMINS },
 ];
-const ORG_INSIGHTS_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}/analytics` as Route, label: "Analytics", icon: FileWarning, matchesPath: prefixMatch }];
+const ORG_INSIGHTS_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}/analytics` as Route, label: "Analytics", icon: FileWarning, matchesPath: prefixMatch, roles: ORG_ADMINS }];
 const ORG_ORGANIZATION_NAV: OrgNavItem[] = [
-  { href: (id) => `/organizations/${id}/members` as Route, label: "Members", icon: Award, matchesPath: prefixMatch },
-  { href: (id) => `/organizations/${id}/settings` as Route, label: "Settings", icon: ShieldCheck, matchesPath: prefixMatch },
+  // Payments (202609250012): the payment ledger with report titles only -- billing admins' page.
+  { href: (id) => `/organizations/${id}/payments` as Route, label: "Payments", icon: Wallet, matchesPath: prefixMatch, roles: ["owner", "security_admin", "billing_admin"] },
+  { href: (id) => `/organizations/${id}/members` as Route, label: "Members", icon: Award, matchesPath: prefixMatch, roles: ORG_ADMINS },
+  { href: (id) => `/organizations/${id}/settings` as Route, label: "Settings", icon: ShieldCheck, matchesPath: prefixMatch, roles: ORG_ADMINS },
 ];
 
 type ShellUser = { displayName: string; email: string | null };
@@ -194,6 +208,7 @@ type ShellUser = { displayName: string; email: string | null };
 function AccountMenu({ user }: { user: ShellUser }) {
   return (
     <DropdownMenu
+      menuLabel="Account"
       label={
         <>
           <Avatar name={user.displayName} />
@@ -342,7 +357,12 @@ function NavGroup({ label, items, path, onNavigate }: { label: string; items: Na
       <NavGroupLabel label={label} />
       <div className="mt-1.5 space-y-0.5">
         {items.map((item) => (
-          <NavLink key={`${item.href}-${item.label}`} item={item} active={path === item.href} onClick={onNavigate} />
+          // Exact match for "/" (every route starts with it -- a prefix match would keep
+          // Dashboard lit everywhere); prefix match for the rest so a sub-route keeps its
+          // parent lit (e.g. /platform/ctf-events/<id> keeps "CTF events" active), the same
+          // exactMatch/prefixMatch split OrgNavGroup already uses -- AGENTS.md's "you are
+          // here must never go dark on a sub-route" rule.
+          <NavLink key={`${item.href}-${item.label}`} item={item} active={item.href === "/" ? path === item.href : path === item.href || path.startsWith(`${item.href}/`)} onClick={onNavigate} />
         ))}
       </div>
     </div>
@@ -352,7 +372,9 @@ function NavGroup({ label, items, path, onNavigate }: { label: string; items: Na
 /** Renders one org-side nav zone (Overview/Security/Insights/Organization), resolving
  * each item's href against the real, currently-selected organizationId -- never a static
  * href, since every one of these routes is org-scoped by definition. */
-function OrgNavGroup({ label, items, organizationId, path, onNavigate }: { label: string; items: OrgNavItem[]; organizationId: string; path: string; onNavigate: () => void }) {
+function OrgNavGroup({ label, items: allItems, organizationId, role, path, onNavigate }: { label: string; items: OrgNavItem[]; organizationId: string; role?: OrganizationRole; path: string; onNavigate: () => void }) {
+  const items = allItems.filter((item) => !item.roles || (role !== undefined && item.roles.includes(role)));
+  if (items.length === 0) return null;
   return (
     <div>
       <NavGroupLabel label={label} />
@@ -462,7 +484,8 @@ function OrganizationSwitcher({ organizations, currentOrganizationId }: { organi
 function SidebarBrand() {
   return (
     <Link href="/" prefetch={false} className="flex items-center gap-2 px-1 focus-visible:outline-2 focus-visible:outline-focus">
-      <span aria-hidden="true" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-action text-on-action shadow-[0_0_14px_var(--glow-action)]">
+      {/* shadow-[...var(--glow-action)] removed -- --glow-action no longer exists, see app/globals.css */}
+      <span aria-hidden="true" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-action text-on-action">
         <ShieldCheck className="size-4" />
       </span>
       <span className="truncate font-[family-name:var(--font-display)] text-base font-semibold tracking-tight text-ink">Unpatched</span>
@@ -531,6 +554,7 @@ function SidebarNav({
   // researcher keeps its real researcher zones; admin status alone never erases a real
   // relationship this account actually has.
   const isPlatformAdminOnly = isPlatformAdmin && !hasResearcherParticipation;
+  const resolvedOrgRole = organizations.find((org) => org.id === resolvedOrgId)?.role;
   const showResearcherZones = !isOrganizationOnly && !isPlatformAdminOnly;
 
   return (
@@ -547,10 +571,10 @@ function SidebarNav({
           <OrganizationSwitcher organizations={organizations} currentOrganizationId={currentOrganizationId} />
           {resolvedOrgId && (
             <div className="space-y-5">
-              <OrgNavGroup label="Overview" items={ORG_OVERVIEW_NAV} organizationId={resolvedOrgId} path={path} onNavigate={onNavigate} />
-              <OrgNavGroup label="Security" items={ORG_SECURITY_NAV} organizationId={resolvedOrgId} path={path} onNavigate={onNavigate} />
-              <OrgNavGroup label="Insights" items={ORG_INSIGHTS_NAV} organizationId={resolvedOrgId} path={path} onNavigate={onNavigate} />
-              <OrgNavGroup label="Organization" items={ORG_ORGANIZATION_NAV} organizationId={resolvedOrgId} path={path} onNavigate={onNavigate} />
+              <OrgNavGroup label="Overview" items={ORG_OVERVIEW_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} onNavigate={onNavigate} />
+              <OrgNavGroup label="Security" items={ORG_SECURITY_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} onNavigate={onNavigate} />
+              <OrgNavGroup label="Insights" items={ORG_INSIGHTS_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} onNavigate={onNavigate} />
+              <OrgNavGroup label="Organization" items={ORG_ORGANIZATION_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} onNavigate={onNavigate} />
             </div>
           )}
         </div>
@@ -592,6 +616,15 @@ export function AppShellClient({
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  // The mobile drawer is modal: Escape closes it, like every Dialog in this app.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
   // Framer Motion's initial/animate/transition props run their own JS-driven animation
   // loop and are never touched by Tailwind's motion-reduce: variant (that only rewrites
   // CSS classes) -- so every motion.* block below reads this directly and drops its
@@ -647,7 +680,9 @@ export function AppShellClient({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <button aria-label="Close navigation" className="absolute inset-0 bg-black/60" onClick={close} />
+              {/* Mouse convenience only: hidden from assistive tech and the tab order so the drawer has one
+                  "Close navigation" control (the X below; Escape also closes it). */}
+              <button type="button" aria-hidden="true" tabIndex={-1} className="absolute inset-0 bg-black/60" onClick={close} />
               <motion.aside
                 initial={{ x: reducedMotion ? 0 : -24, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}

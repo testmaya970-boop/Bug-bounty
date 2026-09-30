@@ -8,7 +8,7 @@ import { ResolveRetestForm } from "../../../components/platform/resolve-retest-f
 import { isPlatformAdmin } from "../../../services/platform-operations";
 import { listEscalatedRetestsForAdmin } from "../../../services/reports";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { formatDateTime } from "../../../lib/format-date";
+import { LocalTime } from "../../../components/ui/local-time";
 
 /**
  * A non-admin gets a real 404, not a "Permission denied" page -- same convention
@@ -41,7 +41,7 @@ export default async function PlatformRetestsPage() {
           <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
             {retests.map((retest) => (
               <li key={retest.id} className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-danger">Escalated · {formatDateTime(retest.escalatedAt ?? retest.requestedAt)}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-danger">Escalated · <LocalTime value={retest.escalatedAt ?? retest.requestedAt} /></p>
                 <p className="mt-1 text-sm font-medium text-ink">{retest.reportTitle}</p>
                 <p className="mt-0.5 text-sm text-ink-muted">
                   {retest.organizationName} / {retest.programName} · Requested by {retest.requestedByName}

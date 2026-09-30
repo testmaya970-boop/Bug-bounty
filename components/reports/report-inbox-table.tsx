@@ -11,8 +11,8 @@ import { EmptyState, ErrorState, Skeleton } from "../ui/feedback";
 import { SeverityBadge, StatusBadge } from "../ui/badge";
 import { reportStatusLabel, reportNextActionLabel } from "../../lib/report-status";
 import { bulkMarkDuplicateAction, listReportsForProgramPageAction } from "../../actions/reports";
-import { formatDateTime } from "../../lib/format-date";
-import type { Report, ReportInboxWorkloadSummary, ReportSeverity, ReportStatus } from "../../types/report";
+import type { Report, ReportInboxWorkloadSummary, ReportSeverity, ReportStatus } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 const FILTERABLE_STATUSES: ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"];
 const FILTERABLE_SEVERITIES: ReportSeverity[] = ["none", "low", "medium", "high", "critical"];
@@ -321,7 +321,7 @@ export function ReportInboxTable({
                       <StatusBadge status={report.status} />
                     </td>
                     <td className="px-4 py-3 text-sm text-ink-muted">{report.researcherName}</td>
-                    <td className="px-4 py-3 text-sm text-ink-muted">{formatDateTime(report.updatedAt)}</td>
+                    <td className="px-4 py-3 text-sm text-ink-muted"><LocalTime value={report.updatedAt} /></td>
                     <td className="px-4 py-3 text-sm text-ink-muted">{reportNextActionLabel(report.status)}</td>
                   </tr>
                 ))}
@@ -360,7 +360,7 @@ export function ReportInboxTable({
                   <dt className="text-ink-muted">Researcher</dt>
                   <dd className="text-ink">{report.researcherName}</dd>
                   <dt className="text-ink-muted">Updated</dt>
-                  <dd className="text-ink">{formatDateTime(report.updatedAt)}</dd>
+                  <dd className="text-ink"><LocalTime value={report.updatedAt} /></dd>
                   <dt className="text-ink-muted">Next action</dt>
                   <dd className="text-ink">{reportNextActionLabel(report.status)}</dd>
                 </dl>

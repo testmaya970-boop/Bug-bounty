@@ -5,7 +5,7 @@ import { Dialog } from "../ui/navigation";
 import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/form";
 import { inviteResearcherToProgram } from "../../actions/program-researchers";
-import { formatDateTime } from "../../lib/format-date";
+import { LocalTime } from "../ui/local-time";
 
 // Matches the server default (expires_in_hours = 168) in invite_researcher_to_program.
 // If that default ever changes, change it here too.
@@ -76,7 +76,7 @@ export function InviteResearcherDialog({ organizationId, programId }: { organiza
               <p className="mt-3 text-ink-muted">Access</p>
               <p className="mt-1">This program only. No organization access, no access to other programs.</p>
               <p className="mt-3 text-ink-muted">Invitation expires</p>
-              <p className="mt-1">{formatDateTime(expires)}</p>
+              <p className="mt-1"><LocalTime value={expires} /></p>
             </div>
             {error && (
               <p role="alert" className="text-sm font-medium text-danger">

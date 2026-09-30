@@ -7,7 +7,7 @@ import { EmptyState } from "../../../components/ui/feedback";
 import { ReinstateResearcherForm, SuspendResearcherForm } from "../../../components/platform/researcher-suspension-form";
 import { isPlatformAdmin, listSuspendedResearchersForAdmin } from "../../../services/platform-operations";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { formatDateTime } from "../../../lib/format-date";
+import { LocalTime } from "../../../components/ui/local-time";
 
 /**
  * A non-admin gets a real 404, not a "Permission denied" page -- same convention every
@@ -44,7 +44,7 @@ export default async function PlatformResearchersPage() {
             <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
               {suspended.map((researcher) => (
                 <li key={researcher.id} className="p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-danger">Suspended · {formatDateTime(researcher.suspendedAt)}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-danger">Suspended · <LocalTime value={researcher.suspendedAt} /></p>
                   <p className="mt-1 text-sm font-medium text-ink">{researcher.displayName}</p>
                   <p className="mt-0.5 text-sm text-ink-muted">
                     @{researcher.username} · {researcher.email}

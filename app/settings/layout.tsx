@@ -12,7 +12,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   return (
     <AppShell title="Settings" user={user}>
       <div className="flex flex-col gap-8 sm:flex-row sm:gap-10">
-        <SettingsNav />
+        <SettingsNav accountType={user.accountType} />
         <div className="min-w-0 flex-1 max-w-2xl">{children}</div>
       </div>
     </AppShell>

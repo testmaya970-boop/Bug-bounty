@@ -7,7 +7,7 @@ import { EmptyState } from "../../../components/ui/feedback";
 import { ReplayButton } from "../../../components/platform/replay-button";
 import { isPlatformAdmin, listNeedsRecoveryNotificationDeliveries, listNeedsRecoveryOutboxEvents, listNeedsRecoveryPaymentAttempts } from "../../../services/platform-operations";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { formatDateTime } from "../../../lib/format-date";
+import { LocalTime } from "../../../components/ui/local-time";
 
 /**
  * A non-admin gets a real 404, not a "Permission denied" page -- an unauthorized visitor
@@ -50,7 +50,7 @@ export default async function NeedsRecoveryPage() {
                   {outboxEvents.map((event) => (
                     <li key={event.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">Dead lettered · {formatDateTime(event.processedAt ?? event.occurredAt)}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">Dead lettered · <LocalTime value={event.processedAt ?? event.occurredAt} /></p>
                         <p className="mt-1 text-sm font-medium text-ink">{event.eventType}</p>
                         <p className="mt-0.5 text-sm text-ink-muted">{event.organizationName}</p>
                         <p className="mt-1 text-xs text-ink-muted">
@@ -74,7 +74,7 @@ export default async function NeedsRecoveryPage() {
                   {notificationDeliveries.map((delivery) => (
                     <li key={delivery.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">Delivery failed permanently · {formatDateTime(delivery.updatedAt)}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">Delivery failed permanently · <LocalTime value={delivery.updatedAt} /></p>
                         <p className="mt-1 text-sm font-medium text-ink">{delivery.notificationType}</p>
                         <p className="mt-0.5 text-sm text-ink-muted">
                           {delivery.organizationName} / {delivery.programName}
@@ -97,7 +97,7 @@ export default async function NeedsRecoveryPage() {
                   {paymentAttempts.map((attempt) => (
                     <li key={attempt.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">Payment attempt failed · {formatDateTime(attempt.completedAt ?? attempt.startedAt)}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">Payment attempt failed · <LocalTime value={attempt.completedAt ?? attempt.startedAt} /></p>
                         <p className="mt-1 text-sm font-medium text-ink">{attempt.organizationName}</p>
                         <p className="mt-0.5 text-sm text-ink-muted">
                           {attempt.programName} · Report #{attempt.reportId.slice(0, 8)}

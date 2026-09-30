@@ -1,0 +1,11 @@
+﻿identifier,asset_type,instruction,eligible_for_bounty,eligible_for_submission,availability_requirement,confidentiality_requirement,integrity_requirement,max_severity,system_tags,created_at,updated_at
+*.acme.com,WILDCARD,"All subdomains.
+Excludes status pages.",true,true,high,high,high,critical,,2024-01-10T10:00:00Z,2024-05-01T10:00:00Z
+www.acme.com,URL,Main site,true,true,,,,critical,,2024-01-10T10:00:00Z,2024-01-10T10:00:00Z
+https://api.acme.com,URL,,true,true,,,,critical,,2024-01-10T10:00:00Z,2024-01-10T10:00:00Z
+203.0.113.0/24,CIDR,,true,true,,,,high,,2024-01-10T10:00:00Z,2024-01-10T10:00:00Z
+123456789,APPLE_STORE_APP_ID,iOS app,true,true,,,,high,,2024-01-10T10:00:00Z,2024-01-10T10:00:00Z
+com.acme.app,GOOGLE_PLAY_APP_ID,,true,true,,,,high,,2024-01-10T10:00:00Z,2024-01-10T10:00:00Z
+https://github.com/acme/sdk,SOURCE_CODE,,false,true,,,,medium,,2024-01-10T10:00:00Z,2024-01-10T10:00:00Z
+status.acme.com,URL,Third-party hosted,false,false,,,,none,,2024-01-10T10:00:00Z,2024-01-10T10:00:00Z
+Any Acme-owned asset not listed,OTHER,,false,true,,,,low,,2024-01-10T10:00:00Z,2024-01-10T10:00:00Z

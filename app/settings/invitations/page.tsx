@@ -5,8 +5,10 @@ import { EmptyState } from "../../../components/ui/feedback";
 import { PendingProgramInvitationCard } from "../../../components/programs/pending-program-invitation-card";
 import { listMyPendingProgramInvitations } from "../../../services/program-researchers";
 import { getCurrentUser } from "../../../lib/auth/current-user";
+import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
 export default async function InvitationsSettingsPage() {
+  await requireResearcherSettings();
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirectTo=/settings/invitations" as Route);
 

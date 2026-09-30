@@ -2,7 +2,7 @@ import { registerHandler } from "../registry";
 import { handleReportCreatedV1 } from "./report-created-v1";
 import { createReportOutcomeHandler } from "./reputation/report-outcome";
 import { handleBountyFinalizedV1 } from "./reputation/bounty-finalized-v1";
-import { createNotificationHandler } from "./notifications/notification-handler";
+import { createNotificationHandler, createPlatformNotificationHandler } from "./notifications/notification-handler";
 
 /** The complete handler registry for this slice. Importing this module (a side effect
  * import, `import "./handlers"`) is what makes each event_type:schema_version
@@ -48,3 +48,10 @@ registerHandler("bounty.finalized", 1, createNotificationHandler("bounty_finaliz
 registerHandler("report.triage_started", 1, createNotificationHandler("report_triage_started"));
 registerHandler("report.accepted", 1, createNotificationHandler("report_accepted"));
 registerHandler("report.message_posted", 1, createNotificationHandler("report_message_posted"));
+
+// Platform decisions (db/migrations/202609250007_platform_notifications.sql): enqueued by
+// an audit_logs trigger when a platform admin suspends/reinstates a program or an org.
+registerHandler("program.suspended", 1, createPlatformNotificationHandler("program_suspended"));
+registerHandler("program.reinstated", 1, createPlatformNotificationHandler("program_reinstated"));
+registerHandler("organization.suspended", 1, createPlatformNotificationHandler("organization_suspended"));
+registerHandler("organization.reinstated", 1, createPlatformNotificationHandler("organization_reinstated"));

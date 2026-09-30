@@ -146,7 +146,7 @@ export function KycStatusBadge({ status }: { status: KycStatus }) {
 
 // draft/paused share a style deliberately: both are "not currently visible/active" states
 // from an operator's point of view, distinguished by their text label, never by color alone.
-const programStatusTone: Record<ProgramStatus, Tone> = { draft: TONE.muted, review: TONE.warning, active: TONE.success, paused: TONE.muted, closed: TONE.muted };
+const programStatusTone: Record<ProgramStatus, Tone> = { draft: TONE.muted, review: TONE.warning, active: TONE.success, paused: TONE.muted, closed: TONE.muted, suspended: TONE.danger };
 export function ProgramStatusBadge({ status }: { status: ProgramStatus }) {
   return <ToneBadge tone={programStatusTone[status]}>{programStatusLabel(status)}</ToneBadge>;
 }

@@ -1,7 +1,9 @@
 import { test, expect, type Page, type Response } from "@playwright/test";
 
-const EMAIL = "demo.researcher@sentinel.demo";
-const PASSWORD = "SentinelDemo!2026";
+// seed:e2e researcher -- the earlier demo.researcher account is created by no seed script,
+// so this spec could only pass on the one machine where it was hand-made.
+const EMAIL = "e2e.veteran@unpatched.demo";
+const PASSWORD = "E2ESeed!2026";
 
 async function signIn(page: Page) {
   await page.goto("/sign-in");
@@ -57,7 +59,13 @@ test("measure button click latencies across app", async ({ page }) => {
     const isActionResponse = (url: string) => url.includes("/programs");
     const first = await measureClick(page, "Programs > Load more (1st, fresh nav)", () => loadMoreBtn.click(), isActionResponse);
     results.push(first);
-    // steady state: click again if still present
+    // steady state: click again if still present. Wait for the first load to settle first:
+    // while pending the button is disabled, and on the last page it is then removed -- a
+    // count() taken mid-load saw the disabled button and the click then waited forever.
+    await page.waitForFunction(() => {
+      const button = [...document.querySelectorAll("button")].find((b) => /Load more/i.test(b.textContent ?? ""));
+      return !button || !button.disabled;
+    });
     const loadMoreBtn2 = page.getByRole("button", { name: /Load more/i });
     if (await loadMoreBtn2.count()) {
       const second = await measureClick(page, "Programs > Load more (2nd, steady-state)", () => loadMoreBtn2.click(), isActionResponse);

@@ -15,19 +15,18 @@ import { test, expect } from "@playwright/test";
 // this codebase's usual convention) cannot exercise this at all -- effects never run and
 // no real focus exists -- so this is a real browser test, not a synthetic one.
 test("typing an organization name does not lose focus to the dialog's close button", async ({ page }) => {
-  const email = `e2e-org-focus-${Date.now()}@example.test`;
-  const password = "Original-Password-123";
+  // Needs an organization account (only those are offered the dialog, 202609280002):
+  // seed:e2e's org admin. A fresh sign-up can't be used: it stops at an emailed 6-digit
+  // verification code, and this test only exercises the dialog -- it never submits, so no
+  // state changes.
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill("e2e.admin@unpatched.demo");
+  await page.getByRole("textbox", { name: "Password" }).fill("E2ESeed!2026");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
+  await page.goto("/organizations");
 
-  // /sign-up is now the neutral researcher-vs-organization chooser (see
-  // docs/decisions/0030-public-entry-and-two-sided-authentication.md); this test needs a
-  // real organization owner, so it goes straight to the organization-intent signup route.
-  await page.goto("/organizations/sign-up");
-  await page.getByLabel("Email").fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await page.getByRole("button", { name: /Create account/ }).click();
-  await page.waitForURL(/\/organizations/);
-
-  await page.getByRole("button", { name: /Create organization/ }).click();
+  await page.getByRole("button", { name: /Create (another )?organization/ }).click();
   const nameInput = page.locator('input[required]').first();
   await nameInput.click();
 
@@ -45,4 +44,18 @@ test("typing an organization name does not lose focus to the dialog's close butt
   // trap or keyboard behavior.
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
+});
+
+test("a researcher account is not offered organization creation", async ({ page }) => {
+  // e2e.newcomer signed up as a researcher; the database also refuses the insert itself
+  // (organizations_require_organization_account), this proves the UI doesn't offer it.
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill("e2e.newcomer@unpatched.demo");
+  await page.getByRole("textbox", { name: "Password" }).fill("E2ESeed!2026");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
+  await page.goto("/organizations");
+
+  await expect(page.getByText("This is a researcher account, so it can't create an organization.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Create (another )?organization/ })).toHaveCount(0);
 });

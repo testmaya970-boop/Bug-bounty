@@ -118,6 +118,7 @@ export function ProgramHeader({
   programType,
   active,
   canManage,
+  canWorkReports = canManage,
   siblingPrograms,
 }: {
   organizationId: string;
@@ -127,6 +128,9 @@ export function ProgramHeader({
   programType?: ProgramType;
   active: ProgramSection;
   canManage: boolean;
+  /** Triagers work reports without managing the program: Inbox and Reports tabs, but no
+   * Researchers tab. Defaults to canManage. */
+  canWorkReports?: boolean;
   /** The org's other programs, for the switcher dropdown -- omitted entirely (no
    * switcher renders) rather than defaulted to [], so a caller that hasn't fetched this
    * yet doesn't silently render a switcher with nothing in it. */
@@ -137,8 +141,8 @@ export function ProgramHeader({
     { id: "overview", label: "Overview", href: base as Route },
     { id: "scope", label: "Scope", href: `${base}#scope` as Route },
     ...(canManage ? [{ id: "researchers" as const, label: "Researchers", href: `${base}#researchers` as Route }] : []),
-    ...(canManage ? [{ id: "inbox" as const, label: "Inbox", href: `${base}/inbox` as Route }] : []),
-    ...(canManage ? [{ id: "reports" as const, label: "Reports", href: `${base}/reports` as Route }] : []),
+    ...(canWorkReports ? [{ id: "inbox" as const, label: "Inbox", href: `${base}/inbox` as Route }] : []),
+    ...(canWorkReports ? [{ id: "reports" as const, label: "Reports", href: `${base}/reports` as Route }] : []),
   ];
 
   return (
@@ -164,8 +168,8 @@ export function ProgramHeader({
             prefetch={false}
             aria-current={active === item.id ? "page" : undefined}
             className={cn(
-              "shrink-0 border-b-2 pb-3 text-sm font-semibold transition-[color,border-color,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
-              active === item.id ? "border-action text-ink shadow-[0_1px_8px_var(--glow-action)]" : "border-transparent text-ink-muted hover:text-ink",
+              "shrink-0 border-b-2 pb-3 text-sm font-semibold transition-[color,border-color] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
+              active === item.id ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink",
             )}
           >
             {item.label}

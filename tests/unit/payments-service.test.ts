@@ -29,6 +29,7 @@ const OBLIGATION_ROW = {
   researcher_id: "researcher-1",
   bounty_decision_id: "decision-1",
   amount_minor_units: 60000,
+  platform_fee_minor_units: 12000,
   currency: "USD",
   status: "pending",
   created_at: "2026-08-29T00:00:00Z",
@@ -77,6 +78,7 @@ describe("payments service: getPaymentObligation", () => {
     expect(result).not.toBeNull();
     expect(result?.status).toBe("pending");
     expect(result?.amountMinorUnits).toBe(60000);
+    expect(result?.platformFeeMinorUnits).toBe(12000);
     expect(result).not.toHaveProperty("failureCode");
     expect(result).not.toHaveProperty("organizationId");
   });
@@ -139,6 +141,8 @@ describe("payments service: initiateManualPaymentAttempt calls the provider abst
 
     const result = await initiateManualPaymentAttempt("obligation-1");
 
+    // The full bounty (60000), not net of the 12000 fee: the fee is billed to the
+    // organization on top (202609250010) and never deducted from the researcher's payout.
     expect(mockedProvider.createPayment).toHaveBeenCalledWith({ idempotencyKey: "obligation-1", amountMinorUnits: 60000, currency: "USD" });
     expect(capturedRpcArgs).toEqual(["obligation-1"]);
     expect(result.state).toBe("requires_operator_action");

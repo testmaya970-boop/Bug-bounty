@@ -85,6 +85,8 @@ export function ProgramLifecycleControls({ organizationId, programId, status }: 
       },
     ],
     closed: [],
+    // Platform-imposed (suspend_program) -- only a platform admin can lift it.
+    suspended: [],
   };
 
   const actions = actionsByStatus[status];

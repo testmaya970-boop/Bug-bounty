@@ -492,3 +492,23 @@ export async function joinPublicProgram(programId: string): Promise<void> {
     mapError(error as { message: string });
   }
 }
+
+/** Owners and security admins put a Program Manager or Triager on a program; the program
+ * role follows the org role (assign_program_member, 202609250012). */
+export async function assignProgramMember(programId: string, userId: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.assign_program_member", [programId, userId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+export async function unassignProgramMember(programId: string, userId: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.unassign_program_member", [programId, userId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}

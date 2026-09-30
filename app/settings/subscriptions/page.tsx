@@ -1,9 +1,11 @@
 import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { NotApplicableSettings } from "../../../components/settings/not-applicable-settings";
+import { NotApplicableSettings } from "../../../components/settings/not-applicable-settings";
+import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
-export default function SubscriptionsSettingsPage() {
+export default async function SubscriptionsSettingsPage() {
+  await requireResearcherSettings();
   return (
     <div className="space-y-8">
       <div>

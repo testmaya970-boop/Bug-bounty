@@ -28,9 +28,13 @@ export type WorkerOptions = {
 export async function processEvent(event: OutboxEvent, workerId: string): Promise<OutboxEvent> {
   const handlers = getHandlers(event.eventType, event.schemaVersion);
   if (handlers.length === 0) {
+    // Retryable, not permanent: during a rolling deploy an old worker can claim an event type
+    // only the new code handles (seen live -- stale workers dead-lettered the new
+    // organization.suspended events). Backoff gives a new worker the chance to pick it up;
+    // a type nothing handles still dead-letters once max_attempts is reached.
     return completeOutboxEvent(event.id, workerId, {
       success: false,
-      permanent: true,
+      permanent: false,
       error: `no handler registered for ${event.eventType}:${event.schemaVersion}`,
     });
   }

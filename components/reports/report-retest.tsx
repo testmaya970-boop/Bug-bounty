@@ -6,8 +6,8 @@ import { Button } from "../ui/button";
 import { Select, Textarea } from "../ui/form";
 import { SectionLabel } from "../ui/security-primitives";
 import { decideReportRetestAction, escalateReportRetestAction, requestReportRetestAction } from "../../actions/reports";
-import { formatDateTime } from "../../lib/format-date";
 import type { ReportRetest, ReportRetestStatus } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -30,15 +30,15 @@ function RetestRow({ retest, canEscalate, organizationId, programId, reportId }:
     <li className="py-3 first:pt-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className={`text-sm font-semibold ${RETEST_STATUS_TONE[retest.status]}`}>{RETEST_STATUS_LABEL[retest.status]}</span>
-        <time className="text-xs text-ink-muted">Requested {formatDateTime(retest.requestedAt)}</time>
+        <time className="text-xs text-ink-muted">Requested <LocalTime value={retest.requestedAt} /></time>
       </div>
       {retest.requesterNotes && <p className="mt-1.5 whitespace-pre-wrap break-words text-sm text-ink-muted">{retest.requesterNotes}</p>}
       {retest.escalatedAt && (
-        <p className="mt-2 text-xs font-medium text-danger">Escalated for platform review {formatDateTime(retest.escalatedAt)}. A platform administrator will review this independently of the organization.</p>
+        <p className="mt-2 text-xs font-medium text-danger">Escalated for platform review <LocalTime value={retest.escalatedAt} />. A platform administrator will review this independently of the organization.</p>
       )}
       {retest.decidedAt && (
         <div className="mt-2 rounded-md bg-surface-muted p-2.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Organization response · {formatDateTime(retest.decidedAt)}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Organization response · <LocalTime value={retest.decidedAt} /></p>
           {retest.decisionNotes && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{retest.decisionNotes}</p>}
         </div>
       )}

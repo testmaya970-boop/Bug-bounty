@@ -7,8 +7,8 @@ import { Input } from "../ui/form";
 import { EmptyState } from "../ui/feedback";
 import { SectionLabel } from "../ui/security-primitives";
 import { addReportCollaboratorAction, removeReportCollaboratorAction } from "../../actions/reports";
-import { formatDate } from "../../lib/format-date";
 import type { ReportCollaborator } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -84,7 +84,7 @@ export function ReportCollaboratorsPanel({
             <div>
               <p className="font-medium text-ink">{collaborator.displayName}</p>
               <p className="text-xs text-ink-muted">
-                Added {formatDate(collaborator.addedAt)}
+                Added <LocalTime value={collaborator.addedAt} dateOnly />
                 {collaborator.publicUsername && ` · @${collaborator.publicUsername}`}
               </p>
             </div>

@@ -1,4 +1,4 @@
-import type { ProgramType, EngagementType, ProgramVisibility } from "@/types/program";
+import type { ProgramType, EngagementType, ProgramStatus, ProgramVisibility } from "@/types/program";
 
 /** Never a report title/description/evidence/message, never a bounty or payment amount,
  * never a recipient's identity -- exactly the failure metadata needed to locate and
@@ -88,4 +88,34 @@ export type SuspendedOrganization = {
   id: string;
   name: string;
   suspendedAt: string;
+};
+
+/** One row of the platform-wide program directory (list_programs_for_admin, see
+ * db/migrations/202609250003_platform_program_oversight.sql). */
+export type AdminProgramRow = {
+  id: string;
+  name: string;
+  status: ProgramStatus;
+  visibility: ProgramVisibility;
+  programType: ProgramType;
+  engagementType: EngagementType;
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  reportCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** One grouped error (list_app_error_groups_for_admin, 202609250008). */
+export type AppErrorGroup = {
+  fingerprint: string;
+  source: "server" | "client";
+  message: string;
+  stack: string | null;
+  route: string | null;
+  occurrences: number;
+  affectedUsers: number;
+  firstSeen: string;
+  lastSeen: string;
 };

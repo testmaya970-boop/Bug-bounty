@@ -4,8 +4,10 @@ import type { Route } from "next";
 import { ProfessionalDetailsSettings } from "../../../components/settings/professional-details-settings";
 import { getMyProfessionalDetails } from "../../../services/researcher-profiles";
 import { getCurrentUser } from "../../../lib/auth/current-user";
+import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
 export default async function SkillsSettingsPage() {
+  await requireResearcherSettings();
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirectTo=/settings/skills" as Route);
 

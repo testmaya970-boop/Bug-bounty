@@ -1,0 +1,82 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
+import { withServiceRoleTransaction } from "@/lib/db/pool";
+import { recordError } from "@/lib/error-tracking";
+import { VERIFIED_USER_ID_HEADER } from "@/lib/session/middleware";
+
+// Receives browser errors from lib/report-client-error.ts. Unauthenticated on purpose (a
+// signed-out page can crash too), so it is shaped to be hard to abuse: strict size limits,
+// a per-client limit plus a global cap on how many rows can be written, and the user id
+// taken only from the proxy's verified-session header (proxy.ts strips any client copy).
+
+const bodySchema = z.object({
+  message: z.string().min(1).max(1000),
+  stack: z.string().max(8000).nullable().optional(),
+  route: z.string().max(500).nullable().optional(),
+  digest: z.string().max(100).nullable().optional(),
+});
+
+// The schema's own limits (1000 + 8000 + 500 + 100 chars) fit comfortably in 16 KiB.
+const MAX_BODY_BYTES = 16 * 1024;
+
+/** Reads at most `limit` bytes, counting the actual stream -- a missing or false
+ * Content-Length can't get past it. Without this, request.json() buffered and parsed an
+ * unauthenticated 50 MB body in full before the schema rejected it (security review). */
+async function readBodyWithin(request: NextRequest, limit: number): Promise<string | null> {
+  if (Number(request.headers.get("content-length") ?? 0) > limit) return null;
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+export async function POST(request: NextRequest) {
+  const raw = await readBodyWithin(request, MAX_BODY_BYTES);
+  if (raw === null) return new NextResponse(null, { status: 413 });
+  let json: unknown = null;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return new NextResponse(null, { status: 400 });
+  }
+  const parsed = bodySchema.safeParse(json);
+  if (!parsed.success) return new NextResponse(null, { status: 400 });
+
+  // The first x-forwarded-for hop is client-influenced, which is fine for a spam limit
+  // (not a security gate); the global cap bounds the table no matter what.
+  const client = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  let allowed = false;
+  try {
+    // 30/min per client + 1000/hour globally -- see check_client_error_rate_limit (202609250009).
+    allowed = await withServiceRoleTransaction((db) =>
+      db.query<{ ok: boolean }>("select public.check_client_error_rate_limit($1) as ok", [client]).then((r) => r.rows[0]?.ok === true),
+    );
+  } catch (error) {
+    // Record our own failure: a silent 503 here once dropped every browser report unseen.
+    void recordError({ source: "server", message: `client-errors rate limit check failed: ${error instanceof Error ? error.message : String(error)}`, route: "POST /api/client-errors" });
+    return new NextResponse(null, { status: 503 });
+  }
+  if (!allowed) return new NextResponse(null, { status: 429 });
+
+  await recordError({
+    source: "client",
+    message: parsed.data.message,
+    stack: parsed.data.stack,
+    // Path only: query strings can carry tokens (invitation links, password resets).
+    route: parsed.data.route?.split("?")[0] ?? null,
+    digest: parsed.data.digest,
+    userId: request.headers.get(VERIFIED_USER_ID_HEADER),
+  });
+  return new NextResponse(null, { status: 204 });
+}

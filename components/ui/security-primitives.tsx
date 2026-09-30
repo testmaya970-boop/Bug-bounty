@@ -53,7 +53,7 @@ export function PrimaryActionPanel({ eyebrow, title, description, href, actionLa
         {description && <p className="mt-2 max-w-lg text-sm text-canvas/70">{description}</p>}
         <Link prefetch={false}
           href={href}
-          className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-md bg-canvas px-6 text-sm font-semibold text-ink transition-[transform,background-color,box-shadow] duration-200 ease-out hover:bg-canvas/90 hover:shadow-[0_0_20px_var(--glow-action)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas"
+          className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-md bg-canvas px-6 text-sm font-semibold text-ink transition-[transform,background-color] duration-200 ease-out hover:bg-canvas/90 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas"
         >
           {actionLabel} <span aria-hidden="true">→</span>
         </Link>

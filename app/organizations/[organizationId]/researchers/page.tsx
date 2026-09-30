@@ -14,9 +14,9 @@ import {
   dominantOrganizationResearcherRelationshipStatus,
   summarizeOrganizationResearcherRelationship,
 } from "../../../../lib/organization-researcher-relationship";
-import { formatDate } from "../../../../lib/format-date";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
-import { cn } from "../../../../lib/cn";
+import { cn } from "../../../../lib/cn";
+import { LocalTime } from "../../../../components/ui/local-time";
 
 /**
  * Organization Researcher Intelligence -- an organization research-staffing console, not
@@ -125,7 +125,7 @@ export default async function OrganizationResearchersPage({ params }: { params: 
                             </div>
                           )}
                         </td>
-                        <td className="py-3 pr-4 align-top font-mono text-xs text-ink-muted">{researcher.lastSubmittedAt ? formatDate(researcher.lastSubmittedAt) : "—"}</td>
+                        <td className="py-3 pr-4 align-top font-mono text-xs text-ink-muted">{researcher.lastSubmittedAt ? <LocalTime value={researcher.lastSubmittedAt} dateOnly /> : "—"}</td>
                       </tr>
                     );
                   })}

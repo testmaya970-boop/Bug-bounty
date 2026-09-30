@@ -4,9 +4,6 @@
   --color-canvas: var(--canvas); --color-surface: var(--surface); --color-surface-muted: var(--surface-muted); --color-surface-raised: var(--surface-raised); --color-surface-hover: var(--surface-hover); --color-ink: var(--ink); --color-ink-muted: var(--ink-muted); --color-border: var(--border); --color-border-strong: var(--border-strong); --color-action: var(--action); --color-action-hover: var(--action-hover); --color-on-action: var(--on-action); --color-focus: var(--focus); --color-info: var(--info); --color-success: var(--success); --color-warning: var(--warning); --color-danger: var(--danger); --color-on-danger: var(--on-danger); --color-severity-critical: var(--severity-critical); --color-severity-high: var(--severity-high); --color-severity-medium: var(--severity-medium); --color-severity-low: var(--severity-low); --color-severity-none: var(--severity-none);
   --color-accent-2: var(--accent-2); --color-on-accent-2: var(--on-accent-2); --color-glass-border: var(--glass-border); --color-glass-border-strong: var(--glass-border-strong);
   --color-hero-surface: var(--hero-surface); --color-hero-surface-raised: var(--hero-surface-raised); --color-hero-ink: var(--hero-ink); --color-hero-ink-muted: var(--hero-ink-muted); --color-hero-border: var(--hero-border); --color-hero-border-strong: var(--hero-border-strong); --color-action-on-dark: var(--action-on-dark);
-  --color-zone-blue-surface: var(--zone-blue-surface); --color-zone-blue-surface-raised: var(--zone-blue-surface-raised); --color-zone-blue-ink: var(--zone-blue-ink); --color-zone-blue-ink-muted: var(--zone-blue-ink-muted); --color-zone-blue-border: var(--zone-blue-border); --color-zone-blue-accent: var(--zone-blue-accent);
-  --color-zone-amber-surface: var(--zone-amber-surface); --color-zone-amber-surface-raised: var(--zone-amber-surface-raised); --color-zone-amber-ink: var(--zone-amber-ink); --color-zone-amber-ink-muted: var(--zone-amber-ink-muted); --color-zone-amber-border: var(--zone-amber-border); --color-zone-amber-accent: var(--zone-amber-accent);
-  --color-zone-green-surface: var(--zone-green-surface); --color-zone-green-surface-raised: var(--zone-green-surface-raised); --color-zone-green-ink: var(--zone-green-ink); --color-zone-green-ink-muted: var(--zone-green-ink-muted); --color-zone-green-border: var(--zone-green-border); --color-zone-green-accent: var(--zone-green-accent);
   --color-record-canvas: var(--record-canvas); --color-record-ink: var(--record-ink); --color-record-ink-muted: var(--record-ink-muted); --color-record-border: var(--record-border); --color-record-red: var(--record-red);
   --font-display: var(--font-display-face), "Arial Black", ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -57,7 +54,17 @@
    ink #EAEAEA 16.5:1; ink-muted #9A9A9A 7.0:1; action #FF2A2A 5.3:1 (text/links/focus);
    on-action #0A0A0A on #FF2A2A 5.3:1 (white on this red is only 3.7:1, so button text is
    dark); info #6FA8FF 8.2:1; success #6BCB77 9.8:1; warning #F2B233 10.6:1;
-   severity-medium #D9C75A 11.6:1; severity-none #8A8A8A 5.7:1 -- all clear AA 4.5:1. */
+   severity-medium #D9C75A 11.6:1; severity-none #8A8A8A 5.7:1 -- all clear AA 4.5:1.
+
+   --glow-action/--glow-accent-2 (the "real color tints" the vermilion-era comment above
+   describes) are REMOVED here, not just set to transparent: the brutalist skill's global
+   `box-shadow: none !important` rule (below, "Tactical Telemetry: global geometry +
+   surface rules") already strips every hover/depth glow effect that referenced them, so
+   the tokens were dead weight kept alive only by the transparent placeholder -- 8 call
+   sites (command-row.tsx, app-shell-client.tsx, security-primitives.tsx,
+   learning-section.tsx, program-header.tsx) referenced var(--glow-action)/
+   var(--glow-accent-2) for a shadow effect the global rule was already nullifying;
+   removing the token is the same no-op made explicit, not a behavior change. */
 :root {
   color-scheme: dark;
   --canvas: #0a0a0a; --surface: #0a0a0a; --surface-muted: #121212; --surface-raised: #161616; --surface-hover: #1e1e1e;
@@ -68,7 +75,6 @@
   --info: #6fa8ff; --success: #6bcb77; --warning: #f2b233; --danger: #ff2a2a; --on-danger: #0a0a0a;
   --severity-critical: #ff2a2a; --severity-high: #f2b233; --severity-medium: #d9c75a; --severity-low: #6fa8ff; --severity-none: #8a8a8a;
   --glass-border: #2e2e2e; --glass-border-strong: #4a4a4a;
-  --glow-action: transparent; --glow-accent-2: transparent;
 }
 
 /* Superseded by the single Tactical Telemetry substrate above: .dark no longer defines
@@ -121,19 +127,11 @@
      these tokens touch 0073's authenticated-app chrome. */
   /* Tactical Telemetry: the per-chapter blue/amber/green grounds collapse onto the one
      substrate -- multiple colored section grounds is exactly the mixed-palette pattern
-     the brutalist skill rejects. Every zone accent becomes the single hazard red. Chapters
-     are now separated by rules and ground steps (#0A0A0A / #121212), not by hue. */
-  --zone-blue-surface: #0a0a0a; --zone-blue-surface-raised: #161616;
-  --zone-blue-ink: #eaeaea; --zone-blue-ink-muted: #9a9a9a; --zone-blue-border: #2e2e2e;
-  --zone-blue-accent: #ff2a2a;
-
-  --zone-amber-surface: #121212; --zone-amber-surface-raised: #1a1a1a;
-  --zone-amber-ink: #eaeaea; --zone-amber-ink-muted: #9a9a9a; --zone-amber-border: #2e2e2e;
-  --zone-amber-accent: #ff2a2a;
-
-  --zone-green-surface: #0a0a0a; --zone-green-surface-raised: #161616;
-  --zone-green-ink: #eaeaea; --zone-green-ink-muted: #9a9a9a; --zone-green-border: #2e2e2e;
-  --zone-green-accent: #ff2a2a;
+     the brutalist skill rejects. Chapters are now separated by rules and ground steps
+     (#0A0A0A / #121212), not by hue. The --zone-* tokens themselves are REMOVED (not
+     just recolored) as of this cleanup: zero .tsx consumers remained -- the homepage's
+     chapter markup moved to the shared --canvas/--surface-muted tokens directly instead
+     of a parallel zone-scoped system that no longer had any reason to exist separately. */
 
   /* "Security Record" visual-identity prototype tokens (docs/decisions/0077/0078/
      0080) -- scoped to components/marketing/security-record-prototype.tsx and its

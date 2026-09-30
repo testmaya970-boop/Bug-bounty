@@ -16,6 +16,9 @@ export default async function OrganizationsPage() {
   if (!user) redirect("/sign-in?redirectTo=/organizations" as Route);
 
   const [organizations, invitations] = await Promise.all([listCurrentUserOrganizations(user.id), listMyPendingInvitations()]);
+  // Only organization accounts (organization sign-up, work email) may create one; the
+  // database refuses anyone else (202609280002), so a researcher is not offered it.
+  const canCreateOrganization = user.accountType === "organization";
 
   return (
     <AppShell title="Organizations" user={user}>
@@ -34,17 +37,21 @@ export default async function OrganizationsPage() {
         {organizations.length === 0 ? (
           <div className="space-y-4">
             <EmptyState title="You don't belong to an organization yet">
-              An organization is Unpatched&apos;s security and authorization boundary. Invite your team, run programs, and triage reports once you create or join one.
+              {canCreateOrganization
+                ? "An organization is Unpatched's security and authorization boundary. Invite your team, run programs, and triage reports once you create or join one."
+                : "This is a researcher account, so it can't create an organization. An organization can invite you to its team, or your company can sign up for an organization account with a work email."}
             </EmptyState>
-            <div className="flex justify-center">
-              <CreateOrganizationDialog />
-            </div>
+            {canCreateOrganization && (
+              <div className="flex justify-center">
+                <CreateOrganizationDialog />
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-ink">Your organizations</h2>
-              <CreateOrganizationDialog triggerLabel="Create another organization" />
+              {canCreateOrganization && <CreateOrganizationDialog triggerLabel="Create another organization" />}
             </div>
             <RegistryList>
               {organizations.map((organization) => (

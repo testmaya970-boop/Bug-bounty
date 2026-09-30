@@ -7,8 +7,8 @@ import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/form";
 import { adjustBountyAction, calculateBountyRecommendationAction, finalizeBountyAction } from "../../actions/bounty";
 import { minorUnitsToDecimalString, parseDecimalToMinorUnits } from "../../lib/money";
-import { formatDateTime } from "../../lib/format-date";
-import type { ReportBountyDecision } from "../../types/bounty";
+import type { ReportBountyDecision } from "../../types/bounty";
+import { LocalTime } from "../ui/local-time";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -253,16 +253,20 @@ export function AdjustBountyDialog({ organizationId, programId, reportId, curren
 export function BountyDecisionSection({
   decision,
   canCalculate,
+  reportIsFinal,
   canFinalize,
   organizationId,
   programId,
   reportId,
-}: { decision: ReportBountyDecision | null; canCalculate: boolean; canFinalize: boolean } & ReportRef) {
+}: { decision: ReportBountyDecision | null; canCalculate: boolean; reportIsFinal: boolean; canFinalize: boolean } & ReportRef) {
   if (!decision) {
     return (
       <div className="space-y-3">
         <p className="text-sm text-ink-muted">Bounty eligibility has not been evaluated yet.</p>
-        {canCalculate && <CalculateBountyButton organizationId={organizationId} programId={programId} reportId={reportId} relabelAsRecalculate={false} />}
+        {/* calculate_bounty_recommendation rejects any report that can still change status
+            (REPORT_NOT_FINALIZED) -- say so up front instead of offering a button that can only fail. */}
+        {canCalculate && reportIsFinal && <CalculateBountyButton organizationId={organizationId} programId={programId} reportId={reportId} relabelAsRecalculate={false} />}
+        {canCalculate && !reportIsFinal && <p className="text-sm text-ink-muted">The bounty can be calculated once this report reaches a final decision, such as Resolved.</p>}
       </div>
     );
   }
@@ -298,7 +302,7 @@ export function BountyDecisionSection({
           {decision.currency} {decision.finalAmountMinorUnits !== null ? minorUnitsToDecimalString(decision.finalAmountMinorUnits) : ""}
         </span>
       </p>
-      {decision.finalizedAt && <p className="text-xs text-ink-muted">Finalized {formatDateTime(decision.finalizedAt)}.</p>}
+      {decision.finalizedAt && <p className="text-xs text-ink-muted">Finalized <LocalTime value={decision.finalizedAt} />.</p>}
       {decision.finalizationNote && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink-muted">{decision.finalizationNote}</p>}
       {/* v0.1.0: this block renders for the researcher too (canFinalize only gates the
           Adjust dialog below, not this whole section) -- the researcher is the one most

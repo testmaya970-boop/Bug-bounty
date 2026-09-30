@@ -25,7 +25,16 @@ export type PaymentObligation = {
   id: string;
   reportId: string;
   bountyDecisionId: string;
+  /** The finalized bounty -- the researcher receives all of it. The organization pays this
+   * plus platformFeeMinorUnits (db/migrations/202609250010). This
+   * is what the org confirmed and what docs/decisions/0077's org spend analytics reads;
+   * it is never reduced by the fee. */
   amountMinorUnits: number;
+  /** Billed to the organization ON TOP of the bounty, never deducted from the researcher.
+   * Frozen at obligation-creation time (see db/migrations/202609250001_platform_fee_on_
+   * payouts.sql) -- a later change to the platform's fee rate never retroactively alters
+   * an obligation that already exists. */
+  platformFeeMinorUnits: number;
   currency: string;
   status: PaymentObligationStatus;
   createdAt: string;

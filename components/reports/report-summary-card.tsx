@@ -3,8 +3,8 @@ import Link from "next/link";
 import type { Route } from "next";
 import { Card } from "../ui/feedback";
 import { SeverityBadge, StatusBadge } from "../ui/badge";
-import { formatDate } from "../../lib/format-date";
-import type { ReportSummary } from "../../types/report";
+import type { ReportSummary } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 export function ReportSummaryCard({ report }: { report: ReportSummary }) {
   return (
@@ -23,7 +23,7 @@ export function ReportSummaryCard({ report }: { report: ReportSummary }) {
         {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
         <StatusBadge status={report.status} />
       </div>
-      <p className="mt-3 text-xs text-ink-muted">Submitted {formatDate(report.submittedAt)}</p>
+      <p className="mt-3 text-xs text-ink-muted">Submitted <LocalTime value={report.submittedAt} dateOnly /></p>
     </Card>
   );
 }

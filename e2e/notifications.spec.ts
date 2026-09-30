@@ -66,14 +66,19 @@ test("org posts a message on a report -> researcher is notified (bell, /notifica
   await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
 
   await page.getByRole("navigation", { name: "Program sections" }).getByRole("link", { name: "Inbox" }).click();
+  // The Inbox is a two-pane view: a row opens the report in the side pane (?reportId=);
+  // messaging lives on the full report page.
   await page.getByRole("link", { name: NOTIF_REPORT_TITLE }).click();
+  await page.getByRole("link", { name: /View full report/ }).click();
   await page.waitForURL(/\/reports\/[0-9a-f-]{36}$/);
 
   await expect(page.getByText("New", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Start triage" }).click();
   await expect(page.getByText("Triaging", { exact: true }).first()).toBeVisible();
 
+  // On the full report page (unlike the Inbox's one-click panel) Accept confirms first.
   await page.getByRole("button", { name: "Accept" }).click();
+  await page.getByRole("button", { name: "Accept report" }).click();
   await expect(page.getByText("Accepted", { exact: true }).first()).toBeVisible();
 
   // OrganizationMessageComposer defaults to "researcher_visible" -- no need to touch the
@@ -97,17 +102,21 @@ test("org posts a message on a report -> researcher is notified (bell, /notifica
   // --- Veteran researcher: bell increments, a row on /notifications, no self-notification
   await signIn(page, VETERAN_EMAIL);
   await page.goto("/notifications");
-  await expect(page.getByText("A report entered triage")).toBeVisible();
-  await expect(page.getByText("A report was accepted")).toBeVisible();
-  await expect(page.getByText("A new message was posted on a report")).toBeVisible();
+  // .first(): this seeded researcher accumulates one of each per suite run.
+  await expect(page.getByText("A report entered triage").first()).toBeVisible();
+  await expect(page.getByText("A report was accepted").first()).toBeVisible();
+  await expect(page.getByText("A new message was posted on a report").first()).toBeVisible();
 
   await expect(bellButton(page)).toHaveAttribute("aria-label", /Notifications, \d+ unread/);
   await bellButton(page).click();
-  await expect(page.getByRole("menu", { name: "Recent notifications" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Recent notifications" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   // --- Veteran posts their own message -> admin is notified, veteran is not -------------
   const veteranUnreadBefore = await unreadCount(page);
+  // /notifications rows are deliberately content-free ("Open report ->", no title), so go
+  // through the researcher's own reports list, as org-journey.spec.ts does.
+  await page.goto("/reports");
   await page.getByRole("link", { name: NOTIF_REPORT_TITLE }).click();
   await page.waitForURL(/\/reports\/[0-9a-f-]{36}$/);
   const researcherMessageBody = `E2E notifications walk: researcher message ${Date.now()}`;
@@ -123,7 +132,7 @@ test("org posts a message on a report -> researcher is notified (bell, /notifica
   // --- Admin: now notified of the researcher's message -----------------------------------
   await signIn(page, ADMIN_EMAIL);
   await page.goto("/notifications");
-  await expect(page.getByText("A new message was posted on a report")).toBeVisible();
+  await expect(page.getByText("A new message was posted on a report").first()).toBeVisible();
   await expect(bellButton(page)).toHaveAttribute("aria-label", /Notifications, \d+ unread/);
 
   await signOut(page);

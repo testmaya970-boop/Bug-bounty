@@ -8,8 +8,8 @@ import { MarkdownTextarea } from "../ui/markdown-textarea";
 import { SectionLabel } from "../ui/security-primitives";
 import { Markdown } from "../ui/markdown";
 import { postOrganizationMessageAction, postResearcherMessageAction } from "../../actions/reports";
-import { formatDateTime } from "../../lib/format-date";
 import type { ReportMessage, ReportVisibility } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -20,7 +20,7 @@ function MessageItem({ message }: { message: ReportMessage }) {
   return (
     <li className="py-3 first:pt-0">
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-        {message.authorName} · {message.authorContext === "researcher" ? "Researcher" : "Organization"} · <time>{formatDateTime(message.createdAt)}</time>
+        {message.authorName} · {message.authorContext === "researcher" ? "Researcher" : "Organization"} · <time><LocalTime value={message.createdAt} /></time>
       </p>
       <Markdown content={message.body} className="mt-1.5" />
     </li>

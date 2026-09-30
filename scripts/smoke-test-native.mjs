@@ -12,6 +12,9 @@ async function run() {
     ["smoke-test@example.com", "argon2-hash-placeholder", "Smoke Test", null],
   );
   console.log("created user:", user.id, user.username, user.email);
+  // Only organization accounts may create an organization (202609280002).
+  await client.query("set local role service_role");
+  await client.query("update public.users set account_type = 'organization' where id = $1", [user.id]);
 
   // Now act as that user via the auth.uid() shim.
   await client.query("select set_config('app.current_claims', $1, true)", [

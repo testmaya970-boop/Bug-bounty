@@ -1,8 +1,10 @@
 import React from "react";
 import { ReportTemplatesSettings } from "../../../components/settings/report-templates-settings";
 import { listMyReportTemplates } from "../../../services/report-templates";
+import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
 export default async function ReportTemplatesSettingsPage() {
+  await requireResearcherSettings();
   const templates = await listMyReportTemplates();
 
   return (

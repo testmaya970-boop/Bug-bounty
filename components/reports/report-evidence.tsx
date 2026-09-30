@@ -7,8 +7,8 @@ import { Select, Textarea } from "../ui/form";
 import { SectionLabel } from "../ui/security-primitives";
 import { addOrganizationEvidenceAction, addResearcherEvidenceAction } from "../../actions/reports";
 import { getEvidenceDownloadUrlAction, uploadOrganizationFileEvidenceAction, uploadResearcherFileEvidenceAction } from "../../actions/report-file-evidence";
-import { formatDateTime } from "../../lib/format-date";
 import type { ReportEvidence, ReportEvidenceType, ReportVisibility } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -62,7 +62,7 @@ function EvidenceItem({ evidence, organizationId, programId, reportId }: { evide
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           {EVIDENCE_TYPE_LABELS[evidence.evidenceType]} · {evidence.authorName} · {evidence.authorContext === "researcher" ? "Researcher" : "Organization"}
         </p>
-        <time className="text-xs text-ink-muted">{formatDateTime(evidence.createdAt)}</time>
+        <time className="text-xs text-ink-muted"><LocalTime value={evidence.createdAt} /></time>
       </div>
       {isFile ? (
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded bg-surface-muted p-2">
@@ -248,7 +248,7 @@ export function FileField({
           type="file"
           required
           onChange={(event) => onFileChange?.(event.target.files?.[0]?.name ?? null)}
-          className="block flex-1 text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-muted"
+          className="block min-w-0 flex-1 text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-muted"
         />
         {selectedName && onClear && (
           <Button type="button" variant="quiet" onClick={onClear}>

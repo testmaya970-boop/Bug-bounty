@@ -109,7 +109,7 @@ export function ImportScopeDialog({ organizationId, programId }: { organizationI
           {!outcomes && (
             <>
               <p className="text-sm text-ink-muted">
-                Upload a CSV, JSON, or YAML file listing targets to add to this engagement&apos;s scope. Each row needs a target and asset type; scope state defaults to in scope if omitted.
+                Upload a CSV, JSON, or YAML file listing targets to add to this engagement&apos;s scope. Each row needs a target and asset type; scope state defaults to in scope if omitted. A HackerOne scope CSV export works as-is.
               </p>
 
               <Select label="File format" value={format} onChange={(event) => setFormat(event.target.value as ScopeImportFormat)} helperText="Detected automatically from the file extension when possible.">
@@ -164,7 +164,10 @@ export function ImportScopeDialog({ organizationId, programId }: { organizationI
                               <td className="px-3 py-2 font-mono">{result.row.target}</td>
                               <td className="px-3 py-2">{assetTypeLabel(result.row.assetType)}</td>
                               <td className="px-3 py-2">{scopeStateLabel(result.row.scopeState)}</td>
-                              <td className="px-3 py-2 text-ink-muted">Will submit</td>
+                              <td className="px-3 py-2 text-ink-muted">
+                                Will submit
+                                {result.note && <span className="block text-xs text-warning">{result.note}</span>}
+                              </td>
                             </tr>
                           ) : (
                             <tr key={result.line}>

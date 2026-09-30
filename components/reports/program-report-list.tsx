@@ -7,9 +7,9 @@ import { Card } from "../ui/feedback";
 import { Button } from "../ui/button";
 import { ErrorState } from "../ui/feedback";
 import { StatusBadge, SeverityBadge } from "../ui/badge";
-import { formatDateTime } from "../../lib/format-date";
 import { listReportsForProgramPageAction } from "../../actions/reports";
-import type { Report } from "../../types/report";
+import type { Report } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 /** A researcher's own reports for one program -- keyset-paginated (see
  * docs/decisions/0018's Page<T> contract), the same "first page server-rendered, load
@@ -50,7 +50,7 @@ export function ProgramReportList({ organizationId, programId, initialReports, i
                 <StatusBadge status={report.status} />
                 {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
               </div>
-              <p className="mt-3 text-xs text-ink-muted">Updated {formatDateTime(report.updatedAt)}</p>
+              <p className="mt-3 text-xs text-ink-muted">Updated <LocalTime value={report.updatedAt} /></p>
             </Card>
           </li>
         ))}

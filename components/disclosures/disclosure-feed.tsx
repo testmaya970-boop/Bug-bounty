@@ -4,8 +4,8 @@ import React, { useMemo, useState } from "react";
 import { SeverityBadge } from "../ui/badge";
 import { EmptyState } from "../ui/feedback";
 import { cn } from "../../lib/cn";
-import { formatDate } from "../../lib/format-date";
 import type { PublicDisclosure, ReportSeverity } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 type SortKey = "newest" | "oldest";
 const SEVERITY_ORDER: ReportSeverity[] = ["critical", "high", "medium", "low", "none"];
@@ -111,7 +111,7 @@ export function DisclosureFeed({ disclosures }: { disclosures: PublicDisclosure[
                     <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{disclosure.organizationName}</p>
                     <p className="mt-0.5 font-semibold text-ink">{disclosure.publishedTitle ?? "Untitled report"}</p>
                     <p className="mt-0.5 text-xs text-ink-muted">
-                      {disclosure.programName} · {disclosure.publishedAt ? formatDate(disclosure.publishedAt) : "Unknown date"}
+                      {disclosure.programName} · {disclosure.publishedAt ? <LocalTime value={disclosure.publishedAt} dateOnly /> : "Unknown date"}
                     </p>
                   </div>
                   {disclosure.confirmedSeverity && <SeverityBadge severity={disclosure.confirmedSeverity} />}

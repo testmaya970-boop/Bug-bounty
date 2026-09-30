@@ -6,8 +6,8 @@ import { Button } from "../ui/button";
 import { Select, Textarea } from "../ui/form";
 import { SectionLabel } from "../ui/security-primitives";
 import { escalateReportMediationAction, openReportMediationAction, resolveReportMediationAction } from "../../actions/reports";
-import { formatDateTime } from "../../lib/format-date";
 import type { ReportMediation, ReportMediationReason, ReportMediationStatus } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -29,15 +29,15 @@ function MediationRow({ mediation, canEscalate, organizationId, programId, repor
         <span className={`text-sm font-semibold ${MEDIATION_STATUS_TONE[mediation.status]}`}>
           {MEDIATION_STATUS_LABEL[mediation.status]} · {MEDIATION_REASON_LABEL[mediation.reason]}
         </span>
-        <time className="text-xs text-ink-muted">Opened {formatDateTime(mediation.openedAt)}</time>
+        <time className="text-xs text-ink-muted">Opened <LocalTime value={mediation.openedAt} /></time>
       </div>
       <p className="mt-1.5 whitespace-pre-wrap break-words text-sm text-ink-muted">{mediation.description}</p>
       {mediation.escalatedAt && (
-        <p className="mt-2 text-xs font-medium text-danger">Escalated for platform review {formatDateTime(mediation.escalatedAt)}. A platform administrator will review this independently of the organization.</p>
+        <p className="mt-2 text-xs font-medium text-danger">Escalated for platform review <LocalTime value={mediation.escalatedAt} />. A platform administrator will review this independently of the organization.</p>
       )}
       {mediation.resolvedAt && (
         <div className="mt-2 rounded-md bg-surface-muted p-2.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Response · {formatDateTime(mediation.resolvedAt)}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Response · <LocalTime value={mediation.resolvedAt} /></p>
           {mediation.resolutionNotes && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{mediation.resolutionNotes}</p>}
         </div>
       )}

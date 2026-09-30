@@ -9,10 +9,13 @@ test("new dark security-ops shell: theme, nav, routing, typography, drawer", asy
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/sign-in");
-  await page.getByLabel(/email/i).fill("demo.researcher@sentinel.demo");
-  await page.getByRole("textbox", { name: /password/i }).fill("SentinelDemo!2026");
+  // seed:e2e researcher (demo.researcher is not created by any seed script).
+  await page.getByLabel(/email/i).fill("e2e.veteran@unpatched.demo");
+  await page.getByRole("textbox", { name: /password/i }).fill("E2ESeed!2026");
   await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/\/(programs|)$/, { timeout: 15000 }).catch(() => {});
+  // Wait for sign-in to actually finish. A capped wait whose timeout was swallowed let a
+  // slow sign-in under full-suite load continue signed out and fail far downstream.
+  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
   await page.goto("/");
   await page.waitForSelector("nav[aria-label='Primary navigation']");
 

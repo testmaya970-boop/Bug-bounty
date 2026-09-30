@@ -15,6 +15,7 @@ type ObligationRow = {
   researcher_id: string;
   bounty_decision_id: string;
   amount_minor_units: number;
+  platform_fee_minor_units: number;
   currency: string;
   status: string;
   created_at: string;
@@ -42,6 +43,7 @@ function mapObligationRow(row: ObligationRow): PaymentObligation {
     reportId: row.report_id,
     bountyDecisionId: row.bounty_decision_id,
     amountMinorUnits: row.amount_minor_units,
+    platformFeeMinorUnits: row.platform_fee_minor_units,
     currency: row.currency,
     status: row.status as PaymentObligation["status"],
     createdAt: row.created_at,
@@ -83,7 +85,9 @@ export async function getPaymentObligation(reportId: string): Promise<PaymentObl
   return rows[0] ? mapObligationRow(rows[0]) : null;
 }
 
-export type MyPaymentObligation = PaymentObligation & { programName: string; organizationName: string; reportTitle: string };
+/** The researcher's view: no platform fee -- that is the organization's charge (on top of
+ * the bounty, 202609250010), so it is left out of the type rather than just not rendered. */
+export type MyPaymentObligation = Omit<PaymentObligation, "platformFeeMinorUnits"> & { programName: string; organizationName: string; reportTitle: string };
 
 /** "Rewards & Payments" (docs/decisions/0055) -- every row is a real payment_obligation
  * the researcher's own report earned; RLS already scopes this table to `researcher_id =
@@ -122,12 +126,16 @@ export async function listMyPaymentObligations(userId: string): Promise<MyPaymen
     mapError(error as { message: string });
   }
 
-  return obligations.map((row) => ({
-    ...mapObligationRow(row),
-    programName: programName.get(row.program_id) ?? "Unknown program",
+  return obligations.map((row) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- dropped on purpose, see MyPaymentObligation
+    const { platformFeeMinorUnits, ...obligation } = mapObligationRow(row);
+    return {
+      ...obligation,
+      programName: programName.get(row.program_id) ?? "Unknown program",
     organizationName: orgName.get(row.organization_id) ?? "Unknown organization",
-    reportTitle: reportTitle.get(row.report_id) ?? "Untitled report",
-  }));
+      reportTitle: reportTitle.get(row.report_id) ?? "Untitled report",
+    };
+  });
 }
 
 /** Manager-facing only -- RLS grants no researcher a row of this table at all. */
@@ -178,6 +186,9 @@ export async function initiateManualPaymentAttempt(obligationId: string): Promis
   // out, or return a different outcome here, all before the database is ever touched.
   // The manual provider's response is not itself trusted as the database's state --
   // initiate_manual_payment_attempt independently hardcodes the same fixed outcome.
+  //
+  // The full bounty: the platform fee is billed to the organization on top of it and is
+  // never deducted from the researcher (db/migrations/202609250010).
   await activePaymentProvider.createPayment({ idempotencyKey: obligationId, amountMinorUnits: obligation.amountMinorUnits, currency: obligation.currency });
 
   let rows;
@@ -221,4 +232,61 @@ export async function cancelPaymentObligation(obligationId: string, reason: stri
     mapError(error as { message: string });
   }
   return mapObligationRow(rows[0]);
+}
+
+/** The organization's payment ledger for the Payments page -- owners, security admins, and
+ * billing admins (list_payment_obligations_for_billing, 202609250012). Carries each
+ * report's TITLE only: a billing admin never reads report contents. */
+export type BillingLedgerRow = {
+  obligationId: string;
+  reportId: string;
+  programId: string;
+  programName: string;
+  reportTitle: string;
+  researcherName: string | null;
+  amountMinorUnits: number;
+  platformFeeMinorUnits: number;
+  currency: string;
+  status: PaymentObligation["status"];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type BillingLedgerDbRow = {
+  obligation_id: string;
+  report_id: string;
+  program_id: string;
+  program_name: string;
+  report_title: string;
+  researcher_name: string | null;
+  amount_minor_units: string;
+  platform_fee_minor_units: string;
+  currency: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listPaymentLedgerForBilling(organizationId: string): Promise<BillingLedgerRow[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<BillingLedgerDbRow>(client, "public.list_payment_obligations_for_billing", [organizationId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({
+    obligationId: row.obligation_id,
+    reportId: row.report_id,
+    programId: row.program_id,
+    programName: row.program_name,
+    reportTitle: row.report_title,
+    researcherName: row.researcher_name,
+    amountMinorUnits: Number(row.amount_minor_units),
+    platformFeeMinorUnits: Number(row.platform_fee_minor_units),
+    currency: row.currency,
+    status: row.status as PaymentObligation["status"],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
 }

@@ -22,7 +22,7 @@ export async function listCurrentUserOrganizations(userId: string): Promise<Orga
       ).then((r) => r.rows),
     );
     return rows.map((row) => ({ id: row.id, slug: row.slug, name: row.name, role: row.role, status: row.status }));
-  } catch (error) {
+  } catch {
     throw new Error("Organizations could not be loaded.");
   }
 }
@@ -42,7 +42,7 @@ export async function hasAnyOrganizationMembership(userId: string): Promise<bool
       client.query("select organization_id from public.organization_members where user_id = $1 and status = 'active' limit 1", [userId]).then((r) => r.rows),
     );
     return rows.length > 0;
-  } catch (error) {
+  } catch {
     throw new Error("Organization membership could not be checked.");
   }
 }

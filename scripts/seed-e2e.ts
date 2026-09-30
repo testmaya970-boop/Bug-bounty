@@ -44,6 +44,25 @@ export const E2E_ADMIN_EMAIL = "e2e.admin@unpatched.demo";
 export const E2E_INVITED_EMAIL = "e2e.invited@unpatched.demo";
 export const E2E_VETERAN_EMAIL = "e2e.veteran@unpatched.demo";
 export const E2E_NEWCOMER_EMAIL = "e2e.newcomer@unpatched.demo";
+// e2e/functional-cases.spec.ts changes this account's password and profile; every seed
+// run puts them back (resetSettingsAccount).
+export const E2E_SETTINGS_EMAIL = "e2e.settings@unpatched.demo";
+// The password case alone: it spends several sign-in-limited attempts (10 per 15 min).
+export const E2E_PASSWORD_CASE_EMAIL = "e2e.password@unpatched.demo";
+// e2e/program-launch-journey.spec.ts: a standing platform admin (approves the launch review
+// through /platform/programs, the real UI path) and a researcher used only by that spec.
+export const E2E_PLATFORM_ADMIN_EMAIL = "e2e.platform-admin@unpatched.demo";
+export const E2E_HUNTER_EMAIL = "e2e.hunter@unpatched.demo";
+// Those specs (and scope-import-hackerone.spec.ts) create a program -- and a report -- on
+// every run. Their own org keeps that data out of E2E Journey Org, whose Home action queue
+// (8 slots) org-journey.spec.ts asserts on: 8 accumulated launch-journey reports had
+// pushed its seeded report out of the queue.
+export const E2E_LAUNCH_ADMIN_EMAIL = "e2e.launch-admin@unpatched.demo";
+export const E2E_LAUNCH_ORG_NAME = "E2E Launch Org";
+// e2e/org-roles.spec.ts -- the three limited organization roles.
+export const E2E_PROGRAM_MANAGER_EMAIL = "e2e.program-manager@unpatched.demo";
+export const E2E_TRIAGER_EMAIL = "e2e.triager@unpatched.demo";
+export const E2E_BILLING_ADMIN_EMAIL = "e2e.billing-admin@unpatched.demo";
 export const E2E_ORG_NAME = "E2E Journey Org";
 export const E2E_PUBLIC_PROGRAM_NAME = "E2E Public Program";
 export const E2E_PRIVATE_PROGRAM_NAME = "E2E Private Program";
@@ -63,6 +82,14 @@ export const E2E_NOTIF_PROGRAM_NAME = "E2E Notifications Program";
 export const E2E_UNRELATED_ADMIN_EMAIL = "e2e.unrelated-admin@unpatched.demo";
 export const E2E_UNRELATED_ORG_NAME = "E2E Unrelated Org";
 export const E2E_UNRELATED_PROGRAM_NAME = "E2E Unrelated Program";
+
+// CTF events (db/migrations/202609290001_ctf_events.sql). Three states so the events
+// surface has real data to render and the leaderboard has a seeded solve to assert against:
+// an ENDED event with completed solves (its leaderboard is final and non-empty), a currently
+// ACTIVE event, and an UPCOMING one. e2e/ctf.spec.ts asserts on these slugs.
+export const E2E_CTF_EVENT_ENDED_SLUG = "e2e-past-clash";
+export const E2E_CTF_EVENT_ACTIVE_SLUG = "e2e-live-fire";
+export const E2E_CTF_EVENT_UPCOMING_SLUG = "e2e-winter-open";
 
 const pool = new Pool({ connectionString: DATABASE_URL, max: 5 });
 
@@ -137,9 +164,20 @@ async function ensureUser(email: string, displayName: string, username: string):
   return created;
 }
 
+async function resetSettingsAccount(user: UserRow) {
+  const passwordHash = await argon2.hash(E2E_PASSWORD, { type: argon2.argon2id });
+  await withServiceRole((client) => client.query("update public.users set password_hash = $2, display_name = 'E2E Settings Researcher' where id = $1", [user.id, passwordHash]));
+}
+
 type OrgRow = { id: string; name: string };
 
+/** Organization-side test accounts: only these may create an organization (202609280002). */
+async function markOrganizationAccount(userId: string) {
+  await withServiceRole((client) => client.query("update public.users set account_type = 'organization' where id = $1", [userId]));
+}
+
 async function ensureOrganization(ownerId: string, name: string): Promise<OrgRow> {
+  await markOrganizationAccount(ownerId);
   const existing = await withServiceRole(async (client) => {
     const { rows } = await client.query<OrgRow>("select id, name from public.organizations where name = $1 and created_by = $2", [name, ownerId]);
     return rows[0] ?? null;
@@ -216,7 +254,9 @@ function hashInvitationToken(token: string): string {
 
 async function ensurePendingInvitation(ownerId: string, programId: string, orgId: string, email: string): Promise<void> {
   const existing = await withServiceRole(async (client) => {
-    const { rows } = await client.query("select id from public.program_invitations where program_id = $1 and email = $2 and accepted_at is null and revoked_at is null", [programId, email]);
+    // expires_at: an expired invitation is not pending -- reusing one silently broke the
+    // invited-researcher journey once the Sep 9 seed invitation lapsed.
+    const { rows } = await client.query("select id from public.program_invitations where program_id = $1 and email = $2 and accepted_at is null and revoked_at is null and expires_at > now()", [programId, email]);
     return rows[0] ?? null;
   });
   if (existing) {
@@ -415,13 +455,168 @@ async function ensureUnrelatedOrg(): Promise<void> {
   await ensureScopeAndActivate(unrelatedAdmin.id, unrelatedProgram, "api.e2e-unrelated.example", "public");
 }
 
+/** Seed three CTF events (ended / active / upcoming) plus real solves so the events surface
+ * and per-event leaderboards have data to render and assert against. Events are created via
+ * the real create_ctf_event / set_ctf_event_challenges RPCs (with a brief platform_admin
+ * grant, the same seed-time convenience activateProgram uses). The ACTIVE event's solve is
+ * driven through the real submit_ctf_flag (it attributes live, proving that path); the ENDED
+ * event's solves are backfilled directly into ctf_event_solves, because submit_ctf_flag only
+ * attributes to an OPEN window and this event's window is in the past -- a fixture backfill,
+ * clearly seed-only, not a new code path. Idempotent: skips creation when the event exists. */
+async function seedCtfEvents(adminId: string, veteranId: string, newcomerId: string): Promise<void> {
+  // The 28 challenges must already be seeded by the CTF migration.
+  const challengeCount = await withServiceRole(async (client) => {
+    const { rows } = await client.query<{ n: string }>("select count(*)::text as n from public.ctf_challenges");
+    return Number(rows[0].n);
+  });
+  if (challengeCount === 0) {
+    console.log("  (skipped) CTF events: no ctf_challenges seeded -- run migrations first.");
+    return;
+  }
+
+  // Grant admin for the duration of event creation, then revoke.
+  await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [adminId]));
+
+  async function ensureEvent(slug: string, name: string, description: string, startsAt: string, endsAt: string, status: string, challengeIds: string[]): Promise<string | null> {
+    const existing = await withServiceRole(async (client) => {
+      const { rows } = await client.query<{ id: string }>("select id from public.ctf_events where slug = $1", [slug]);
+      return rows[0] ?? null;
+    });
+    if (existing) {
+      console.log(`CTF event "${slug}" already exists.`);
+      return existing.id;
+    }
+    const created = await tryStep(
+      withActor(adminId, (client) => callRpc<{ id: string }>(client, "public.create_ctf_event", [slug, name, description, startsAt, endsAt, status])),
+      `create_ctf_event (${slug})`,
+    );
+    if (!created) return null;
+    await tryStep(withActor(adminId, (client) => client.query("select public.set_ctf_event_challenges($1, $2)", [created.id, challengeIds])), `set_ctf_event_challenges (${slug})`);
+    console.log(`Created CTF event "${slug}" (${status}) with ${challengeIds.length} challenges.`);
+    return created.id;
+  }
+
+  const now = Date.now();
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const day = 24 * 60 * 60 * 1000;
+
+  const endedId = await ensureEvent(
+    E2E_CTF_EVENT_ENDED_SLUG,
+    "E2E Past Clash",
+    "A finished event -- its leaderboard is final.",
+    iso(now - 10 * day),
+    iso(now - 9 * day),
+    "ended",
+    ["c-web-1", "c-web-3", "c-crypto-1", "c-network-1"],
+  );
+
+  const activeId = await ensureEvent(
+    E2E_CTF_EVENT_ACTIVE_SLUG,
+    "E2E Live Fire",
+    "A currently-running event -- solve its challenges before the window closes.",
+    iso(now - day),
+    iso(now + 2 * day),
+    "active",
+    ["c-web-1", "c-web-2", "c-crypto-1", "c-forensics-1", "c-network-1"],
+  );
+
+  await ensureEvent(
+    E2E_CTF_EVENT_UPCOMING_SLUG,
+    "E2E Winter Open",
+    "An upcoming event -- its challenges open when the window begins.",
+    iso(now + 3 * day),
+    iso(now + 5 * day),
+    "scheduled", // published, but the future window makes its effective status "upcoming"
+    ["c-crypto-4", "c-re-1", "c-pwn-1"],
+  );
+
+  await withServiceRole((client) => client.query("delete from public.platform_admins where user_id = $1", [adminId]));
+
+  // ENDED event leaderboard: backfill solves within its past window (submit_ctf_flag won't
+  // attribute to a closed event, by design). Veteran solves 3, newcomer solves 1 -- a real
+  // ranking to assert on. Backfill both ctf_event_solves (the event board) and ctf_solves
+  // (the durable practice-solve fact), matching what a live solve during the window produced.
+  if (endedId) {
+    const endedWindowSolves: Array<{ userId: string; challengeId: string; points: number }> = [
+      { userId: veteranId, challengeId: "c-web-1", points: 100 },
+      { userId: veteranId, challengeId: "c-web-3", points: 250 },
+      { userId: veteranId, challengeId: "c-crypto-1", points: 100 },
+      { userId: newcomerId, challengeId: "c-web-1", points: 100 },
+    ];
+    for (const s of endedWindowSolves) {
+      await withServiceRole((client) =>
+        client.query(
+          "insert into public.ctf_solves (researcher_id, challenge_id, points_awarded, solved_at) values ($1,$2,$3,$4) on conflict (researcher_id, challenge_id) do nothing",
+          [s.userId, s.challengeId, s.points, iso(now - 9.5 * day)],
+        ),
+      );
+      await withServiceRole((client) =>
+        client.query(
+          "insert into public.ctf_event_solves (event_id, researcher_id, challenge_id, points_awarded, solved_at) values ($1,$2,$3,$4,$5) on conflict (event_id, researcher_id, challenge_id) do nothing",
+          [endedId, s.userId, s.challengeId, s.points, iso(now - 9.5 * day)],
+        ),
+      );
+    }
+    console.log("Backfilled ENDED event leaderboard (veteran: 3 solves / 450 pts, newcomer: 1 solve / 100 pts).");
+  }
+
+  // ACTIVE event: drive one real solve through submit_ctf_flag as the veteran -- it attributes
+  // live (the window is open now), proving the real solve->event-leaderboard path end to end.
+  if (activeId) {
+    await tryStep(
+      withActor(veteranId, (client) => client.query("select * from public.submit_ctf_flag($1, $2)", ["c-web-2", "unpatched{r3fl3ct3d_xss_101}"])),
+      "submit_ctf_flag (veteran, active event, c-web-2)",
+    );
+    console.log("Veteran solved one challenge in the ACTIVE event via the real submit_ctf_flag path.");
+  }
+}
+
+// Security: this creates accounts whose passwords are in the source code, including a
+// platform admin. Never against a real deployment -- only when asked for explicitly.
+if (process.env.ALLOW_TEST_ACCOUNTS !== "1") {
+  console.error("Refusing to seed: this creates accounts with passwords published in the repo. Set ALLOW_TEST_ACCOUNTS=1 for a local or CI test database only.");
+  process.exit(1);
+}
+
 async function main() {
   console.log("Seeding the E2E journey dataset...\n");
+
+  // One suite run signs e2e.admin in ~9 times; check_sign_in_rate_limit allows 10 per email
+  // per 15 minutes, so a second run inside that window was locked out and failed with
+  // misleading sign-in timeouts. Reset only these seeded test accounts' counters -- the
+  // limit itself is untouched. private.* is owner-only (the app role correctly can't write
+  // it), so this one statement uses the schema-owner connection instead of widening grants.
+  if (process.env.MIGRATION_DATABASE_URL) {
+    const owner = new Pool({ connectionString: process.env.MIGRATION_DATABASE_URL, max: 1 });
+    const cleared = await owner.query("delete from private.rate_limit_counters where bucket_key like 'auth_sign_in:e2e.%@unpatched.demo'");
+    // Leftovers from before those specs moved to E2E Launch Org (see E2E_LAUNCH_ORG_NAME).
+    // Programs only -- every dependent row (reports, scope, members...) cascades.
+    const removed = await owner.query(
+      `delete from public.programs p using public.organizations o
+        where o.id = p.organization_id and o.name = $1 and (p.name like 'Acme Payments Bug Bounty %' or p.name like 'H1 Import %')`,
+      [E2E_ORG_NAME],
+    );
+    // notifications.spec.ts proves cross-org isolation by asserting this account has NO
+    // notifications at all -- anything it legitimately received (e.g. a manual
+    // suspend/reinstate check of its own org) would break that proof, so start it clean.
+    await owner.query("delete from public.notifications where recipient_id = (select id from public.users where email = $1)", [E2E_UNRELATED_ADMIN_EMAIL]);
+    await owner.end();
+    console.log(`Cleared ${cleared.rowCount} sign-in rate-limit counter(s) for E2E accounts; removed ${removed.rowCount} stray test program(s) from ${E2E_ORG_NAME}.\n`);
+  } else {
+    console.log("MIGRATION_DATABASE_URL not set -- sign-in rate-limit counters NOT cleared; back-to-back suite runs may be locked out.\n");
+  }
 
   const admin = await ensureUser(E2E_ADMIN_EMAIL, "E2E Admin", "e2e_admin");
   await ensureUser(E2E_INVITED_EMAIL, "E2E Invited Researcher", "e2e_invited");
   const veteran = await ensureUser(E2E_VETERAN_EMAIL, "E2E Veteran Researcher", "e2e_veteran");
-  await ensureUser(E2E_NEWCOMER_EMAIL, "E2E Newcomer Researcher", "e2e_newcomer");
+  const newcomer = await ensureUser(E2E_NEWCOMER_EMAIL, "E2E Newcomer Researcher", "e2e_newcomer");
+  await resetSettingsAccount(await ensureUser(E2E_SETTINGS_EMAIL, "E2E Settings Researcher", "e2e_settings"));
+  await resetSettingsAccount(await ensureUser(E2E_PASSWORD_CASE_EMAIL, "E2E Settings Researcher", "e2e_password"));
+  await ensureUser(E2E_HUNTER_EMAIL, "E2E Hunter Researcher", "e2e_hunter");
+  const platformAdmin = await ensureUser(E2E_PLATFORM_ADMIN_EMAIL, "E2E Platform Admin", "e2e_platform_admin");
+  await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [platformAdmin.id]));
+  const launchAdmin = await ensureUser(E2E_LAUNCH_ADMIN_EMAIL, "E2E Launch Admin", "e2e_launch_admin");
+  await ensureOrganization(launchAdmin.id, E2E_LAUNCH_ORG_NAME);
   console.log("");
 
   const org = await ensureOrganization(admin.id, E2E_ORG_NAME);
@@ -435,10 +630,53 @@ async function main() {
   privateProgram = await ensureScopeAndActivate(admin.id, privateProgram, "api.e2e-private.example", "private");
   console.log("");
 
+  // e2e/org-roles.spec.ts: one member per limited role. The manager and triager are
+  // assigned to the PUBLIC program only, so the private program proves the scoping.
+  for (const [email, name, username, role] of [
+    [E2E_PROGRAM_MANAGER_EMAIL, "E2E Program Manager", "e2e_program_manager", "program_manager"],
+    [E2E_TRIAGER_EMAIL, "E2E Triager", "e2e_triager", "triager"],
+    [E2E_BILLING_ADMIN_EMAIL, "E2E Billing Admin", "e2e_billing_admin", "billing_admin"],
+  ] as const) {
+    const member = await ensureUser(email, name, username);
+    await markOrganizationAccount(member.id);
+    await withServiceRole((client) =>
+      client.query(
+        `insert into public.organization_members (organization_id, user_id, role, status, invited_by, joined_at)
+         values ($1, $2, $3, 'active', $4, now())
+         on conflict (organization_id, user_id) do update set role = excluded.role, status = 'active', suspended_at = null, removed_at = null`,
+        [org.id, member.id, role, admin.id],
+      ),
+    );
+    if (role !== "billing_admin") {
+      await withActor(admin.id, (client) => client.query("select public.assign_program_member($1, $2)", [publicProgram.id, member.id]));
+      await withServiceRole((client) => client.query("delete from public.program_members where program_id = $1 and user_id = $2", [privateProgram.id, member.id]));
+    }
+    console.log(`${email} is a ${role} of ${E2E_ORG_NAME}${role !== "billing_admin" ? `, assigned to ${E2E_PUBLIC_PROGRAM_NAME} only` : ""}.`);
+  }
+  // Staff may not be researchers on their own organization's programs (202609280001 now
+  // refuses it); drop any such row an earlier run created before that rule existed.
+  const staffAsResearcher = await withServiceRole((client) =>
+    client.query("delete from public.program_researchers pr using public.organization_members m where m.organization_id = pr.organization_id and m.user_id = pr.user_id and pr.organization_id = $1", [org.id]),
+  );
+  if (staffAsResearcher.rowCount) console.log(`Removed ${staffAsResearcher.rowCount} researcher row(s) held by ${E2E_ORG_NAME}'s own staff.`);
+  console.log("");
+
   await ensurePendingInvitation(admin.id, privateProgram.id, org.id, E2E_INVITED_EMAIL);
   console.log("");
 
   await ensureReputationHistory(admin.id, org.id, veteran.id, publicProgram, "api.e2e-public.example");
+  // e2e/org-roles.spec.ts: one real payment obligation (the $1,500 finalized bounty above)
+  // for the billing admin's Payments page. Recreated every run (its attempts cascade), so
+  // e2e/functional-cases.spec.ts's payout case always starts from a pending obligation.
+  const resolvedTitle = "E2E seed: resolved report with finalized bounty";
+  await withServiceRole((client) =>
+    client.query("delete from public.payment_obligations o using public.reports r where r.id = o.report_id and r.program_id = $1 and r.title = $2", [publicProgram.id, resolvedTitle]),
+  );
+  await tryStep(
+    withActor(admin.id, (client) => client.query("select public.create_payment_obligation((select id from public.reports where program_id = $1 and title = $2))", [publicProgram.id, resolvedTitle])),
+    "create_payment_obligation (veteran report)",
+  );
+  console.log("Created a fresh payment obligation for the veteran's finalized bounty.");
   console.log("");
 
   await ensureFreshReportForTriageWalk(veteran.id, publicProgram, "api.e2e-public.example");
@@ -451,6 +689,9 @@ async function main() {
   console.log("");
 
   await ensureUnrelatedOrg();
+
+  await seedCtfEvents(admin.id, veteran.id, newcomer.id);
+  console.log("");
 
   // Turn 8: the visibility-with-teeth E2E assertion needs a real id to attempt a direct
   // URL against as the uninvited researcher -- a UI-only search can only prove "not

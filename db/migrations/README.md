@@ -59,16 +59,25 @@ to anon, authenticated, service_role` (in `000000000001_native_auth_shim.sql` an
 `202608250001_initial_identity_rbac.sql` for the `extensions` schema). Confirmed missing
 by testing against a fresh vanilla Postgres instance, not assumed.
 
-## Running against a fresh database
+## Applying migrations
 
 ```
-DATABASE_URL=postgres://user:pass@host:port/db node scripts/run-native-migrations.mjs
+npm run db:migrate                 # uses MIGRATION_DATABASE_URL from .env.local
+npm run db:migrate -- --baseline   # once, for a database built before tracking existed
 ```
 
-Applies every `*.sql` file in filename order, each in its own transaction, matching the
-original `supabase/migrations/` convention of no db-side migration-tracking table and
-"apply in order." Intended for a fresh database (Phase 1 verification, CI, local dev
-reset) — it is not an incremental migrator.
+Applies pending `*.sql` files in filename order, each in its own transaction, and records
+each one (filename + sha256 checksum) in `app_migrations.applied` in that same
+transaction. A re-run applies only files it hasn't recorded, so the same command works
+for a fresh database, local dev, and a live deploy. It connects as the schema owner
+(`MIGRATION_DATABASE_URL`), never the app's restricted runtime role, and holds an
+advisory lock so two concurrent deploys cannot both migrate.
+
+**Never edit a migration after it has been applied anywhere.** The runner refuses to run
+if an applied file's checksum changed, and CI builds the schema from an empty database on
+every push. Both exist because an in-place edit to `202609050013` (it began referencing
+`engagement_type`, created only in `202609070002`) silently broke fresh builds; that
+change now lives in `202609250005`. Put every change in a new file.
 
 ## Verifying against the original Supabase schema
 

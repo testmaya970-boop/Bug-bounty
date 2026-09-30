@@ -4,7 +4,7 @@ import "server-only";
 // actually spent for one request (middleware -> auth -> DB -> render), gated behind an
 // env var so it never runs unless explicitly enabled. Remove once the audit is done.
 //
-// Turn 8c: every line now carries the request id middleware.ts mints and sets on
+// Turn 8c: every line now carries the request id proxy.ts mints and sets on
 // x-request-id (both the outbound request header, readable here via next/headers(), and
 // the response header) -- so a forensics pass can join client-side navigation timing to
 // the exact server-side stage breakdown for that same request, not just eyeball

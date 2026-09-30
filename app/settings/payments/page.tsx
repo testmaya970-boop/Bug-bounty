@@ -8,7 +8,8 @@ import { KycSettings } from "../../../components/settings/kyc-settings";
 import { Alert } from "../../../components/ui/feedback";
 import { listMyPaymentObligations } from "../../../services/payments";
 import { getMyKycStatus, getMyPayoutDetails } from "../../../services/researcher-profiles";
-import { getCurrentUser } from "../../../lib/auth/current-user";
+import { getCurrentUser } from "../../../lib/auth/current-user";
+import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
 /** Real payment_obligations rows the researcher's own reports earned (RLS-scoped,
  * services/payments.ts). No fabricated total, no estimate. Same data and the same
@@ -24,6 +25,7 @@ import { getCurrentUser } from "../../../lib/auth/current-user";
  * (activePaymentProvider doesn't read this table yet) -- made visible to the researcher
  * here instead of staying a comment only a developer would ever see. */
 export default async function PaymentsSettingsPage() {
+  await requireResearcherSettings();
   // This page's own parent layout (app/settings/layout.tsx) already redirects an
   // unauthenticated visitor away -- Next.js layouts cannot pass their own getCurrentUser()
   // result down as a prop, so this second call is the only way this page gets the id

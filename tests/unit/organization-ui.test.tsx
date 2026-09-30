@@ -63,13 +63,13 @@ describe("AccessSummary", () => {
   it("shows full org access and no restrictions for an owner", () => {
     const html = renderToStaticMarkup(<AccessSummary role="owner" />);
     expect(html).toContain("Full");
-    expect(html).toContain("Change organization roles");
+    expect(html).toContain("change anyone&#x27;s role");
   });
 
   it("shows limited access and explicit denials for a triager", () => {
     const html = renderToStaticMarkup(<AccessSummary role="triager" />);
     expect(html).toContain("Limited");
-    expect(html).toContain("Manage organization or program membership");
+    expect(html).toContain("See programs they are not assigned to");
   });
 
   it("always states program access honestly instead of fabricating a per-member program list or count", () => {
@@ -77,9 +77,10 @@ describe("AccessSummary", () => {
     expect(html).toContain("Program-level access is assigned separately, within each program.");
   });
 
-  it("surfaces the billing_admin scope note", () => {
+  it("states billing_admin's real scope: payments, never report contents", () => {
     const html = renderToStaticMarkup(<AccessSummary role="billing_admin" />);
-    expect(html).toContain("not implemented");
+    expect(html).toContain("Payments page");
+    expect(html).toContain("only each payment&#x27;s report title");
   });
 });
 

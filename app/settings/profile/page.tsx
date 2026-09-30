@@ -12,16 +12,24 @@ export default async function PublicProfileSettingsPage() {
   const user = await getCurrentUser();
   if (!user) return null; // layout already redirects; this satisfies the type only.
 
-  const [biography, publicUsername, organizations] = await Promise.all([getMyBiography(user.id), getMyPublicUsername(user.id), listCurrentUserOrganizations(user.id)]);
+  // An organization account has no biography or public researcher profile: nothing to load.
+  const isOrganization = user.accountType === "organization";
+  const [biography, publicUsername, organizations] = await Promise.all([
+    isOrganization ? null : getMyBiography(user.id),
+    isOrganization ? null : getMyPublicUsername(user.id),
+    listCurrentUserOrganizations(user.id),
+  ]);
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Public Profile</h1>
-        <p className="mt-1 text-sm text-ink-muted">Shown on your reports and to organizations you research for.</p>
+        <h1 className="text-xl font-semibold tracking-tight">{isOrganization ? "Profile" : "Public Profile"}</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          {isOrganization ? "How you appear to your team and to the researchers you work with." : "Shown on your reports and to organizations you research for."}
+        </p>
       </div>
 
-      <ProfileSettings initialDisplayName={user.displayName} initialBiography={biography ?? ""} initialPublicUsername={publicUsername} />
+      <ProfileSettings initialDisplayName={user.displayName} initialBiography={biography ?? ""} initialPublicUsername={publicUsername} researcherFields={!isOrganization} />
 
       {organizations.length > 0 && (
         <div className="border-t border-border pt-6">

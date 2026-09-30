@@ -10,7 +10,7 @@ import { TrainingArticleBody } from "../../../components/learn/training-article-
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { getTrainingArticleBySlug } from "../../../lib/training/content";
 import { MOCK_CTF_CATEGORY_META } from "../../../lib/mock/ctf";
-import { formatDate } from "../../../lib/format-date";
+import { LocalTime } from "../../../components/ui/local-time";
 
 /**
  * One training article's reading view (docs/decisions/0066) -- two-column layout
@@ -60,7 +60,7 @@ export default async function TrainingArticlePage({ params }: { params: Promise<
                 </div>
               </div>
               <MetadataPair label="Estimated time" value={`${article.estimatedMinutes} min`} />
-              <MetadataPair label="Published" value={formatDate(article.publishedAt)} />
+              <MetadataPair label="Published" value=<LocalTime value={article.publishedAt} dateOnly /> />
             </Card>
           </div>
         </div>

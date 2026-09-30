@@ -5,8 +5,8 @@ import { Input } from "../ui/form";
 import { Button } from "../ui/button";
 import { Alert } from "../ui/feedback";
 import { createMyApiTokenAction, revokeMyApiTokenAction } from "../../actions/api-tokens";
-import { formatDateTime } from "../../lib/format-date";
 import type { ApiToken } from "../../services/api-tokens";
+import { LocalTime } from "../ui/local-time";
 
 /** Real personal access tokens (public.personal_access_tokens) -- generated server-side,
  * shown in plaintext exactly once. No endpoint currently accepts one for authentication
@@ -86,7 +86,7 @@ export function ApiTokensSettings({ tokens: initialTokens }: { tokens: ApiToken[
           <li key={token.id} className="flex items-center justify-between gap-3 p-4">
             <div className="min-w-0">
               <p className="text-sm font-medium text-ink">{token.name}</p>
-              <p className="mt-0.5 text-xs text-ink-muted">Created {formatDateTime(token.createdAt)}{token.lastUsedAt ? ` · Last used ${formatDateTime(token.lastUsedAt)}` : " · Never used"}</p>
+              <p className="mt-0.5 text-xs text-ink-muted">Created <LocalTime value={token.createdAt} />{token.lastUsedAt ? <> · Last used <LocalTime value={token.lastUsedAt} /></> : " · Never used"}</p>
             </div>
             <Button variant="secondary" pending={pending && revokingId === token.id} onClick={() => handleRevoke(token.id)}>
               Revoke

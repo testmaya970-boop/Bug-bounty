@@ -7,7 +7,7 @@ import { EmptyState } from "../../../components/ui/feedback";
 import { ReinstateOrganizationForm, SuspendOrganizationForm } from "../../../components/platform/organization-suspension-form";
 import { isPlatformAdmin, listSuspendedOrganizationsForAdmin } from "../../../services/platform-operations";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { formatDateTime } from "../../../lib/format-date";
+import { LocalTime } from "../../../components/ui/local-time";
 
 /**
  * A non-admin gets a real 404, not a "Permission denied" page -- same convention every
@@ -45,7 +45,7 @@ export default async function PlatformOrganizationsPage() {
             <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
               {suspended.map((organization) => (
                 <li key={organization.id} className="p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-danger">Suspended · {formatDateTime(organization.suspendedAt)}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-danger">Suspended · <LocalTime value={organization.suspendedAt} /></p>
                   <p className="mt-1 text-sm font-medium text-ink">{organization.name}</p>
                   <ReinstateOrganizationForm organizationId={organization.id} />
                 </li>

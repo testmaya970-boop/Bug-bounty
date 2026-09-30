@@ -1,7 +1,9 @@
 import React from "react";
 import { NotApplicableSettings } from "../../../components/settings/not-applicable-settings";
+import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
-export default function SwagSettingsPage() {
+export default async function SwagSettingsPage() {
+  await requireResearcherSettings();
   return (
     <div className="space-y-8">
       <div>

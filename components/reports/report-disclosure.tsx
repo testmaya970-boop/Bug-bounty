@@ -5,8 +5,8 @@ import { Button } from "../ui/button";
 import { Textarea } from "../ui/form";
 import { SectionLabel } from "../ui/security-primitives";
 import { approveReportDisclosureAction, declineReportDisclosureAction, requestReportDisclosureAction } from "../../actions/report-disclosures";
-import { formatDateTime } from "../../lib/format-date";
 import type { ReportDisclosure } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 const STATUS_LABEL: Record<ReportDisclosure["status"], string> = { requested: "Pending review", approved: "Published", declined: "Declined" };
 const STATUS_TONE: Record<ReportDisclosure["status"], string> = { requested: "text-warning", approved: "text-success", declined: "text-danger" };
@@ -48,10 +48,10 @@ export function ResearcherDisclosurePanel({ reportId, initialDisclosure }: { rep
       ) : (
         <>
           <p className={`mt-2 text-sm font-semibold ${STATUS_TONE[disclosure.status]}`}>{STATUS_LABEL[disclosure.status]}</p>
-          {disclosure.status === "requested" && <p className="mt-1 text-sm text-ink-muted">Requested {formatDateTime(disclosure.requestedAt)}.</p>}
+          {disclosure.status === "requested" && <p className="mt-1 text-sm text-ink-muted">Requested <LocalTime value={disclosure.requestedAt} />.</p>}
           {disclosure.status === "approved" && disclosure.publishedAt && (
             <p className="mt-1 text-sm text-ink-muted">
-              Published {formatDateTime(disclosure.publishedAt)}.{" "}
+              Published <LocalTime value={disclosure.publishedAt} />.{" "}
               <a href="/disclosures" className="font-medium text-action hover:underline">
                 view public page
               </a>

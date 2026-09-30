@@ -16,7 +16,7 @@ import type { PublicProgramSummary } from "../../types/program";
  * image would be the actual dishonest choice, not the monogram. */
 export function PublicProgramGrid({ programs }: { programs: PublicProgramSummary[] }) {
   return (
-    <ul className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <ul className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {programs.map((program) => (
         <li key={program.id} className="motion-safe:animate-enter-rise">
           <Link

@@ -37,7 +37,7 @@ describe("replayDeadLetteredOutboxEventAction: authentication gates it here; aut
   });
 
   it("calls the service and returns ok:true on success -- the database, not this action, is what actually enforced platform-admin authority", async () => {
-    mockedGetCurrentUser.mockResolvedValue({ id: "user-1", platformRole: null, username: "u", displayName: "U", email: "u@example.test" });
+    mockedGetCurrentUser.mockResolvedValue({ id: "user-1", platformRole: null, accountType: "researcher", username: "u", displayName: "U", email: "u@example.test" });
     mockedReplay.mockResolvedValue(undefined);
     const { replayDeadLetteredOutboxEventAction } = await import("../../actions/platform-operations");
 
@@ -48,7 +48,7 @@ describe("replayDeadLetteredOutboxEventAction: authentication gates it here; aut
   });
 
   it("maps a FORBIDDEN rejection (a non-admin's session somehow reached this far) to a clean, typed failure", async () => {
-    mockedGetCurrentUser.mockResolvedValue({ id: "user-1", platformRole: null, username: "u", displayName: "U", email: "u@example.test" });
+    mockedGetCurrentUser.mockResolvedValue({ id: "user-1", platformRole: null, accountType: "researcher", username: "u", displayName: "U", email: "u@example.test" });
     mockedReplay.mockRejectedValue(new OrganizationServiceError("platform admin authority required", "FORBIDDEN"));
     const { replayDeadLetteredOutboxEventAction } = await import("../../actions/platform-operations");
 

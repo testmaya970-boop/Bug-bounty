@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Archivo_Black, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { ClientErrorListener } from "../components/client-error-listener";
+import { TimeZoneProvider } from "../components/ui/local-time";
+import { TIME_ZONE_COOKIE, isValidTimeZone } from "../lib/format-date";
 
 // Tactical Telemetry type system (taste-skill:industrial-brutalist-ui): Archivo Black is
 // the heavy neo-grotesque for structural headers (one weight -- it is black by design),
@@ -45,10 +49,29 @@ export const dynamic = "force-dynamic";
 // writing an inline `color-scheme: light` for anyone with a saved "light" preference
 // (light native scrollbars and <select> popups on a black page). The `dark` class stays
 // static on <html> so any remaining `dark:` utility still resolves the same way everywhere.
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+// The viewer's time zone for every timestamp (components/ui/local-time.tsx): reported by
+// the browser in a cookie, validated here -- it is client-controlled -- before any render
+// hands it to Intl. A request cookie read, not a data fetch.
+async function viewerTimeZone(): Promise<string | null> {
+  const raw = (await cookies()).get(TIME_ZONE_COOKIE)?.value;
+  if (!raw) return null;
+  let zone = raw;
+  try {
+    zone = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+  return isValidTimeZone(zone) ? zone : null;
+}
+
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const timeZone = await viewerTimeZone();
   return (
     <html lang="en" className={`dark ${archivoBlack.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <TimeZoneProvider initialZone={timeZone}>{children}</TimeZoneProvider>
+        <ClientErrorListener />
+      </body>
     </html>
   );
 }

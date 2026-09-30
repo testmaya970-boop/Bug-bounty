@@ -14,9 +14,9 @@ import { EVIDENCE_TYPE_LABELS, EVIDENCE_TYPES, FileField, MAX_FILE_SIZE_BYTES, t
 import { assetTypeLabel } from "../../lib/scope-labels";
 import { WEAKNESS_TYPE_ORDER, weaknessTypeLabel } from "../../lib/report-weakness-labels";
 import { getReportTemplate } from "../../lib/report-templates";
-import { formatDateTime } from "../../lib/format-date";
 import type { ProgramAssetType } from "../../types/scope";
-import type { ReportSeverity, ReportWeaknessType } from "../../types/report";
+import type { ReportSeverity, ReportWeaknessType } from "../../types/report";
+import { LocalTime } from "../ui/local-time";
 
 const ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -414,7 +414,7 @@ export function CreateReportForm({
         {draftRestoredAt && !draftDismissed && (
           <Alert tone="info" title="Restored your draft.">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span>Last saved {formatDateTime(draftRestoredAt)}. Attached files were not saved and need to be re-added.</span>
+              <span>Last saved <LocalTime value={draftRestoredAt} />. Attached files were not saved and need to be re-added.</span>
               <Button
                 type="button"
                 variant="quiet"
