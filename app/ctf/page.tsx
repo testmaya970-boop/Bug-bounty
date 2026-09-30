@@ -7,8 +7,10 @@ import { CtfHero } from "../../components/ctf/ctf-hero";
 import { CtfTracksStrip } from "../../components/ctf/ctf-tracks-strip";
 import { ChallengeGrid } from "../../components/ctf/challenge-grid";
 import { CtfLeaderboardTable } from "../../components/ctf/ctf-leaderboard-table";
+import { CtfEventsList } from "../../components/ctf/ctf-events-list";
 import { getCurrentUser } from "../../lib/auth/current-user";
 import { listMyCtfSolves } from "../../services/ctf";
+import { listCtfEvents } from "../../services/ctf-events";
 import { perfTimed } from "../../lib/perf-trace";
 import {
   MOCK_CTF_CHALLENGES,
@@ -38,10 +40,12 @@ async function renderCtfPage({ searchParams }: { searchParams: Promise<{ categor
 
   const { category: categoryParam, tab } = await searchParams;
   const initialCategory = categoryParam && VALID_CATEGORIES.has(categoryParam) ? (categoryParam as CtfCategoryId) : undefined;
-  const showLeaderboard = tab === "leaderboard";
+  const activeTab = tab === "leaderboard" ? "leaderboard" : tab === "events" ? "events" : "challenges";
   const solves = await perfTimed("CTF: listMyCtfSolves", () => listMyCtfSolves());
   const solvedChallengeIds = new Set(solves.map((solve) => solve.challengeId));
   const totalPointsEarned = solves.reduce((sum, solve) => sum + solve.pointsAwarded, 0);
+  // Only the Events tab needs the event list -- each tab fetches only what it renders.
+  const events = activeTab === "events" ? await perfTimed("CTF: listCtfEvents", () => listCtfEvents()) : [];
 
   return (
     <AppShell title="CTF" user={user}>
@@ -62,22 +66,31 @@ async function renderCtfPage({ searchParams }: { searchParams: Promise<{ categor
         <div className="flex gap-1 border-b border-border">
           <a
             href={"/ctf" as Route}
-            aria-current={!showLeaderboard ? "page" : undefined}
-            className={`min-h-11 border-b-2 px-3 pt-2 text-sm font-medium ${!showLeaderboard ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
+            aria-current={activeTab === "challenges" ? "page" : undefined}
+            className={`min-h-11 border-b-2 px-3 pt-2 text-sm font-medium ${activeTab === "challenges" ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
           >
             Challenges
           </a>
           <a
-            href={"/ctf?tab=leaderboard" as Route}
-            aria-current={showLeaderboard ? "page" : undefined}
-            className={`min-h-11 border-b-2 px-3 pt-2 text-sm font-medium ${showLeaderboard ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
+            href={"/ctf?tab=events" as Route}
+            aria-current={activeTab === "events" ? "page" : undefined}
+            className={`min-h-11 border-b-2 px-3 pt-2 text-sm font-medium ${activeTab === "events" ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
           >
-            Leaderboard
+            Events
+          </a>
+          <a
+            href={"/ctf?tab=leaderboard" as Route}
+            aria-current={activeTab === "leaderboard" ? "page" : undefined}
+            className={`min-h-11 border-b-2 px-3 pt-2 text-sm font-medium ${activeTab === "leaderboard" ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
+          >
+            Practice ranking
           </a>
         </div>
 
-        {showLeaderboard ? (
+        {activeTab === "leaderboard" ? (
           <CtfLeaderboardTable rows={MOCK_CTF_LEADERBOARD} myUsername={MOCK_MY_CTF_POSITION.username} />
+        ) : activeTab === "events" ? (
+          <CtfEventsList events={events} />
         ) : (
           <ChallengeGrid challenges={MOCK_CTF_CHALLENGES} initialCategory={initialCategory} solvedChallengeIds={solvedChallengeIds} />
         )}

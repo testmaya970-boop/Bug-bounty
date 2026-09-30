@@ -31,5 +31,15 @@ export async function proxy(request: NextRequest) {
 // client-controlled header bypass a security gate.
 export const config = {
   // api/health (exact path) is excluded so it can report a database outage -- see that route.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  //
+  // `ctf-artifacts` is excluded for the same reason `_next/static` and the image extensions
+  // are: these are non-secret static files served from public/ (CTF challenge downloads --
+  // pcaps, images, disk/memory dumps). They are MEANT to be downloaded and analyzed; the
+  // flag is verified server-side by submit_ctf_flag against a hash, so holding an artifact
+  // reveals nothing without doing the work. This is a static-PATH exclusion, not a
+  // header-based exception -- it never branches on a client-controlled signal (Sec-Fetch-Mode
+  // etc.) to skip the gate for "probably safe" traffic, which AGENTS.md forbids; it simply
+  // declines to run session validation on public asset paths, exactly as the existing
+  // exclusions already do.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|ctf-artifacts|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

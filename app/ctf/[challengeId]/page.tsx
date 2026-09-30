@@ -11,6 +11,14 @@ import { getCurrentUser } from "../../../lib/auth/current-user";
 import { listMyCtfSolves } from "../../../services/ctf";
 import { findCtfChallengeBySlug, findCtfTrackById, MOCK_CTF_CATEGORY_META } from "../../../lib/mock/ctf";
 
+// Same small formatter the evidence/access-file panels use (kept local -- a 3-line pure
+// helper isn't worth a shared export threaded through unrelated files).
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /**
  * A single challenge's briefing, metadata, and flag submission -- two-column layout
  * matching the report detail page's own pattern exactly (main reading column + a sticky
@@ -59,6 +67,38 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
               <SectionLabel>Briefing</SectionLabel>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink">{challenge.prompt}</p>
             </Card>
+
+            {(challenge.embeddedData || (challenge.artifacts && challenge.artifacts.length > 0)) && (
+              <Card className="p-5 sm:p-6">
+                <SectionLabel>Challenge material</SectionLabel>
+                <p className="mt-2 text-sm text-ink-muted">Everything you need to derive the flag is here. Apply the technique from the briefing to this material.</p>
+
+                {challenge.artifacts && challenge.artifacts.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {challenge.artifacts.map((artifact) => (
+                      <a
+                        key={artifact.path}
+                        href={artifact.path}
+                        download={artifact.name}
+                        className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-muted p-3 transition-colors duration-150 hover:border-action hover:bg-action/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-mono text-sm font-semibold text-ink">{artifact.name}</span>
+                          <span className="block font-mono text-[11px] uppercase tracking-wide text-ink-muted">{formatBytes(artifact.size)}</span>
+                        </span>
+                        <span className="shrink-0 rounded-full border border-border-strong px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-action">Download</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {challenge.embeddedData && (
+                  <pre className="mt-4 max-h-[28rem] overflow-auto rounded-md border border-border bg-surface-muted p-3 font-mono text-xs leading-relaxed text-ink">
+                    {challenge.embeddedData}
+                  </pre>
+                )}
+              </Card>
+            )}
 
             {challenge.hints.length > 0 && (
               <Card className="p-5 sm:p-6">

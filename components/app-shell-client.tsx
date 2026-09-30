@@ -105,6 +105,7 @@ const PLATFORM_NAV: NavItem[] = [
   { href: "/platform/programs" as Route, label: "Program launches", icon: Landmark },
   { href: "/platform/organizations" as Route, label: "Organizations", icon: Building2 },
   { href: "/platform/researchers" as Route, label: "Researchers", icon: UserCog },
+  { href: "/platform/ctf-events" as Route, label: "CTF events", icon: Swords },
   { href: "/platform/kyc" as Route, label: "KYC", icon: IdCard },
   { href: "/platform/mediations" as Route, label: "Mediations", icon: Scale },
   { href: "/platform/retests" as Route, label: "Retests", icon: RefreshCw },
@@ -356,7 +357,12 @@ function NavGroup({ label, items, path, onNavigate }: { label: string; items: Na
       <NavGroupLabel label={label} />
       <div className="mt-1.5 space-y-0.5">
         {items.map((item) => (
-          <NavLink key={`${item.href}-${item.label}`} item={item} active={path === item.href} onClick={onNavigate} />
+          // Exact match for "/" (every route starts with it -- a prefix match would keep
+          // Dashboard lit everywhere); prefix match for the rest so a sub-route keeps its
+          // parent lit (e.g. /platform/ctf-events/<id> keeps "CTF events" active), the same
+          // exactMatch/prefixMatch split OrgNavGroup already uses -- AGENTS.md's "you are
+          // here must never go dark on a sub-route" rule.
+          <NavLink key={`${item.href}-${item.label}`} item={item} active={item.href === "/" ? path === item.href : path === item.href || path.startsWith(`${item.href}/`)} onClick={onNavigate} />
         ))}
       </div>
     </div>

@@ -83,6 +83,14 @@ export const E2E_UNRELATED_ADMIN_EMAIL = "e2e.unrelated-admin@unpatched.demo";
 export const E2E_UNRELATED_ORG_NAME = "E2E Unrelated Org";
 export const E2E_UNRELATED_PROGRAM_NAME = "E2E Unrelated Program";
 
+// CTF events (db/migrations/202609290001_ctf_events.sql). Three states so the events
+// surface has real data to render and the leaderboard has a seeded solve to assert against:
+// an ENDED event with completed solves (its leaderboard is final and non-empty), a currently
+// ACTIVE event, and an UPCOMING one. e2e/ctf.spec.ts asserts on these slugs.
+export const E2E_CTF_EVENT_ENDED_SLUG = "e2e-past-clash";
+export const E2E_CTF_EVENT_ACTIVE_SLUG = "e2e-live-fire";
+export const E2E_CTF_EVENT_UPCOMING_SLUG = "e2e-winter-open";
+
 const pool = new Pool({ connectionString: DATABASE_URL, max: 5 });
 
 async function withServiceRole<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -447,6 +455,122 @@ async function ensureUnrelatedOrg(): Promise<void> {
   await ensureScopeAndActivate(unrelatedAdmin.id, unrelatedProgram, "api.e2e-unrelated.example", "public");
 }
 
+/** Seed three CTF events (ended / active / upcoming) plus real solves so the events surface
+ * and per-event leaderboards have data to render and assert against. Events are created via
+ * the real create_ctf_event / set_ctf_event_challenges RPCs (with a brief platform_admin
+ * grant, the same seed-time convenience activateProgram uses). The ACTIVE event's solve is
+ * driven through the real submit_ctf_flag (it attributes live, proving that path); the ENDED
+ * event's solves are backfilled directly into ctf_event_solves, because submit_ctf_flag only
+ * attributes to an OPEN window and this event's window is in the past -- a fixture backfill,
+ * clearly seed-only, not a new code path. Idempotent: skips creation when the event exists. */
+async function seedCtfEvents(adminId: string, veteranId: string, newcomerId: string): Promise<void> {
+  // The 28 challenges must already be seeded by the CTF migration.
+  const challengeCount = await withServiceRole(async (client) => {
+    const { rows } = await client.query<{ n: string }>("select count(*)::text as n from public.ctf_challenges");
+    return Number(rows[0].n);
+  });
+  if (challengeCount === 0) {
+    console.log("  (skipped) CTF events: no ctf_challenges seeded -- run migrations first.");
+    return;
+  }
+
+  // Grant admin for the duration of event creation, then revoke.
+  await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [adminId]));
+
+  async function ensureEvent(slug: string, name: string, description: string, startsAt: string, endsAt: string, status: string, challengeIds: string[]): Promise<string | null> {
+    const existing = await withServiceRole(async (client) => {
+      const { rows } = await client.query<{ id: string }>("select id from public.ctf_events where slug = $1", [slug]);
+      return rows[0] ?? null;
+    });
+    if (existing) {
+      console.log(`CTF event "${slug}" already exists.`);
+      return existing.id;
+    }
+    const created = await tryStep(
+      withActor(adminId, (client) => callRpc<{ id: string }>(client, "public.create_ctf_event", [slug, name, description, startsAt, endsAt, status])),
+      `create_ctf_event (${slug})`,
+    );
+    if (!created) return null;
+    await tryStep(withActor(adminId, (client) => client.query("select public.set_ctf_event_challenges($1, $2)", [created.id, challengeIds])), `set_ctf_event_challenges (${slug})`);
+    console.log(`Created CTF event "${slug}" (${status}) with ${challengeIds.length} challenges.`);
+    return created.id;
+  }
+
+  const now = Date.now();
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const day = 24 * 60 * 60 * 1000;
+
+  const endedId = await ensureEvent(
+    E2E_CTF_EVENT_ENDED_SLUG,
+    "E2E Past Clash",
+    "A finished event -- its leaderboard is final.",
+    iso(now - 10 * day),
+    iso(now - 9 * day),
+    "ended",
+    ["c-web-1", "c-web-3", "c-crypto-1", "c-network-1"],
+  );
+
+  const activeId = await ensureEvent(
+    E2E_CTF_EVENT_ACTIVE_SLUG,
+    "E2E Live Fire",
+    "A currently-running event -- solve its challenges before the window closes.",
+    iso(now - day),
+    iso(now + 2 * day),
+    "active",
+    ["c-web-1", "c-web-2", "c-crypto-1", "c-forensics-1", "c-network-1"],
+  );
+
+  await ensureEvent(
+    E2E_CTF_EVENT_UPCOMING_SLUG,
+    "E2E Winter Open",
+    "An upcoming event -- its challenges open when the window begins.",
+    iso(now + 3 * day),
+    iso(now + 5 * day),
+    "scheduled", // published, but the future window makes its effective status "upcoming"
+    ["c-crypto-4", "c-re-1", "c-pwn-1"],
+  );
+
+  await withServiceRole((client) => client.query("delete from public.platform_admins where user_id = $1", [adminId]));
+
+  // ENDED event leaderboard: backfill solves within its past window (submit_ctf_flag won't
+  // attribute to a closed event, by design). Veteran solves 3, newcomer solves 1 -- a real
+  // ranking to assert on. Backfill both ctf_event_solves (the event board) and ctf_solves
+  // (the durable practice-solve fact), matching what a live solve during the window produced.
+  if (endedId) {
+    const endedWindowSolves: Array<{ userId: string; challengeId: string; points: number }> = [
+      { userId: veteranId, challengeId: "c-web-1", points: 100 },
+      { userId: veteranId, challengeId: "c-web-3", points: 250 },
+      { userId: veteranId, challengeId: "c-crypto-1", points: 100 },
+      { userId: newcomerId, challengeId: "c-web-1", points: 100 },
+    ];
+    for (const s of endedWindowSolves) {
+      await withServiceRole((client) =>
+        client.query(
+          "insert into public.ctf_solves (researcher_id, challenge_id, points_awarded, solved_at) values ($1,$2,$3,$4) on conflict (researcher_id, challenge_id) do nothing",
+          [s.userId, s.challengeId, s.points, iso(now - 9.5 * day)],
+        ),
+      );
+      await withServiceRole((client) =>
+        client.query(
+          "insert into public.ctf_event_solves (event_id, researcher_id, challenge_id, points_awarded, solved_at) values ($1,$2,$3,$4,$5) on conflict (event_id, researcher_id, challenge_id) do nothing",
+          [endedId, s.userId, s.challengeId, s.points, iso(now - 9.5 * day)],
+        ),
+      );
+    }
+    console.log("Backfilled ENDED event leaderboard (veteran: 3 solves / 450 pts, newcomer: 1 solve / 100 pts).");
+  }
+
+  // ACTIVE event: drive one real solve through submit_ctf_flag as the veteran -- it attributes
+  // live (the window is open now), proving the real solve->event-leaderboard path end to end.
+  if (activeId) {
+    await tryStep(
+      withActor(veteranId, (client) => client.query("select * from public.submit_ctf_flag($1, $2)", ["c-web-2", "unpatched{r3fl3ct3d_xss_101}"])),
+      "submit_ctf_flag (veteran, active event, c-web-2)",
+    );
+    console.log("Veteran solved one challenge in the ACTIVE event via the real submit_ctf_flag path.");
+  }
+}
+
 // Security: this creates accounts whose passwords are in the source code, including a
 // platform admin. Never against a real deployment -- only when asked for explicitly.
 if (process.env.ALLOW_TEST_ACCOUNTS !== "1") {
@@ -485,7 +609,7 @@ async function main() {
   const admin = await ensureUser(E2E_ADMIN_EMAIL, "E2E Admin", "e2e_admin");
   await ensureUser(E2E_INVITED_EMAIL, "E2E Invited Researcher", "e2e_invited");
   const veteran = await ensureUser(E2E_VETERAN_EMAIL, "E2E Veteran Researcher", "e2e_veteran");
-  await ensureUser(E2E_NEWCOMER_EMAIL, "E2E Newcomer Researcher", "e2e_newcomer");
+  const newcomer = await ensureUser(E2E_NEWCOMER_EMAIL, "E2E Newcomer Researcher", "e2e_newcomer");
   await resetSettingsAccount(await ensureUser(E2E_SETTINGS_EMAIL, "E2E Settings Researcher", "e2e_settings"));
   await resetSettingsAccount(await ensureUser(E2E_PASSWORD_CASE_EMAIL, "E2E Settings Researcher", "e2e_password"));
   await ensureUser(E2E_HUNTER_EMAIL, "E2E Hunter Researcher", "e2e_hunter");
@@ -565,6 +689,9 @@ async function main() {
   console.log("");
 
   await ensureUnrelatedOrg();
+
+  await seedCtfEvents(admin.id, veteran.id, newcomer.id);
+  console.log("");
 
   // Turn 8: the visibility-with-teeth E2E assertion needs a real id to attempt a direct
   // URL against as the uninvited researcher -- a UI-only search can only prove "not
