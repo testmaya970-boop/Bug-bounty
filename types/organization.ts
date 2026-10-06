@@ -99,8 +99,13 @@ export type OrganizationResolutionPerformance = {
  * totalPaidMinorUnits across rows -- each is a different currency. */
 export type OrganizationBountySpendSummary = {
   currency: string;
+  /** Finalized bounty awards. */
+  totalAwardedMinorUnits: number;
+  /** Money actually sent: succeeded payment obligations (202610060008). */
   totalPaidMinorUnits: number;
-  payoutCount: number;
+  /** Owed but not yet sent: pending, processing or failed obligations. */
+  totalOutstandingMinorUnits: number;
+  awardCount: number;
   paidCriticalCount: number;
   paidHighCount: number;
   paidMediumCount: number;

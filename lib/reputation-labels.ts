@@ -13,6 +13,7 @@ const REPUTATION_FACT_TYPE_EVENT_LABELS: Record<ReputationFactType, string> = {
   report_not_applicable: "Report marked not applicable",
   report_rejected: "Report rejected",
   bounty_finalized: "Bounty finalized",
+  ctf_challenge_solved: "CTF challenge solved",
 };
 
 export function reputationFactTypeEventLabel(factType: ReputationFactType): string {

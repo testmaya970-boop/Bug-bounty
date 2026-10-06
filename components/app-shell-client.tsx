@@ -48,7 +48,6 @@ import { usePrefersReducedMotion } from "../lib/motion";
 import { signOutAction } from "../actions/auth";
 import { MOCK_CTF_CHALLENGES } from "../lib/mock/ctf";
 import { TRAINING_ARTICLES } from "../lib/training/content";
-import { MOCK_TOTAL_RESEARCHERS } from "../lib/mock/researcher-dashboard";
 import type { OrganizationSummary } from "../services/organizations";
 import type { OrganizationRole } from "../types/auth";
 
@@ -82,7 +81,7 @@ const RESEARCH_NAV: NavItem[] = [
   { href: "/" as Route, label: "Dashboard", icon: LayoutDashboard },
   { href: "/programs" as Route, label: "Programs", icon: FolderKanban },
   { href: "/reports" as Route, label: "Reports", icon: FileWarning },
-  { href: "/researchers" as Route, label: "Researchers", icon: Trophy, badge: MOCK_TOTAL_RESEARCHERS.toLocaleString("en-US") },
+  { href: "/researchers" as Route, label: "Researchers", icon: Trophy },
 ];
 
 const PRACTICE_NAV: NavItem[] = [

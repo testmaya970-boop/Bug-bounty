@@ -10,6 +10,7 @@ import { CreateReportForm } from "../../../../../../../components/reports/create
 import { getProgram } from "../../../../../../../services/programs";
 import { getMyParticipation } from "../../../../../../../services/program-researchers";
 import { listActiveScopeEntries } from "../../../../../../../services/scope";
+import { getProgramPolicy } from "../../../../../../../services/program-policy";
 import { getCurrentUser } from "../../../../../../../lib/auth/current-user";
 
 export default async function NewReportPage({ params }: { params: Promise<{ organizationId: string; programId: string }> }) {
@@ -47,7 +48,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
   // scope decision, per this page's own existing copy above the Target field) so a
   // researcher can pick a published target instead of retyping it from memory and risking
   // a typo. The same pattern HackerOne/Bugcrowd's own report forms use.
-  const scopeEntries = await listActiveScopeEntries(programId);
+  const [scopeEntries, policy] = await Promise.all([listActiveScopeEntries(programId), getProgramPolicy(programId)]);
   const inScopeTargets = scopeEntries.filter((entry) => entry.scopeState === "in_scope");
 
   return (
@@ -70,7 +71,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
             It does not pay bounties. Your report is still reviewed and helps the organization fix the issue.
           </Alert>
         )}
-        <CreateReportForm organizationId={organizationId} programId={programId} programName={program.name} inScopeTargets={inScopeTargets} />
+        <CreateReportForm organizationId={organizationId} programId={programId} programName={program.name} inScopeTargets={inScopeTargets} policy={policy} />
       </div>
     </AppShell>
   );

@@ -41,6 +41,7 @@ function mapObligationRow(row: ObligationRow): PaymentObligation {
   return {
     id: row.id,
     reportId: row.report_id,
+    researcherId: row.researcher_id,
     bountyDecisionId: row.bounty_decision_id,
     amountMinorUnits: row.amount_minor_units,
     platformFeeMinorUnits: row.platform_fee_minor_units,
@@ -69,20 +70,40 @@ function mapAttemptRow(row: AttemptRow): PaymentAttempt {
   };
 }
 
-/** A single report's payment obligation -- RLS decides visibility (the submitting
- * researcher's own aggregate status, org oversight, or a program manager). Null covers
- * "does not exist" and "exists but you have no access" identically. */
-export async function getPaymentObligation(reportId: string): Promise<PaymentObligation | null> {
+/** A report's payment obligations, one per recipient (submitter and any collaborator with
+ * a split; 202610060008), newest first -- cancelled ones included as history. RLS decides
+ * visibility: a researcher sees only their own, org oversight and program managers all. */
+export async function listReportPaymentObligations(reportId: string): Promise<PaymentObligation[]> {
   const actor = await getCurrentUser();
   let rows;
   try {
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
-      client.query<ObligationRow>("select * from public.payment_obligations where report_id = $1", [reportId]).then((r) => r.rows),
+      client.query<ObligationRow>("select * from public.payment_obligations where report_id = $1 order by created_at desc, researcher_id", [reportId]).then((r) => r.rows),
     );
   } catch (error) {
     mapError(error as { message: string });
   }
-  return rows[0] ? mapObligationRow(rows[0]) : null;
+  return rows.map(mapObligationRow);
+}
+
+/** What still blocks paying each recipient on a report: missing payout method, unverified
+ * tax form, unverified KYC where the program requires it. Never the payout destination.
+ * Finance roles see every recipient; a recipient sees only themself. */
+export type { PayoutBlocker } from "@/lib/payout-blockers";
+import type { PayoutBlocker } from "@/lib/payout-blockers";
+export type PayoutReadiness = { researcherId: string; displayName: string; blockers: PayoutBlocker[] };
+
+export async function getReportPayoutReadiness(reportId: string): Promise<PayoutReadiness[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ researcher_id: string; display_name: string; blockers: PayoutBlocker[] }>(client, "public.get_report_payout_readiness", [reportId]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({ researcherId: row.researcher_id, displayName: row.display_name, blockers: row.blockers ?? [] }));
 }
 
 /** The researcher's view: no platform fee -- that is the organization's charge (on top of
@@ -152,7 +173,8 @@ export async function listPaymentAttempts(obligationId: string): Promise<Payment
   return rows.map(mapAttemptRow);
 }
 
-export async function createPaymentObligation(reportId: string): Promise<PaymentObligation> {
+/** One obligation per recipient: collaborators by their split, the remainder to the submitter. */
+export async function createPaymentObligations(reportId: string): Promise<PaymentObligation[]> {
   const actor = await getCurrentUser();
   let rows;
   try {
@@ -160,44 +182,28 @@ export async function createPaymentObligation(reportId: string): Promise<Payment
   } catch (error) {
     mapError(error as { message: string });
   }
-  return mapObligationRow(rows[0]);
+  return rows.map(mapObligationRow);
 }
 
 /**
- * Calls the provider abstraction first (proving the domain never talks to a concrete SDK
- * directly), then records the attempt in the database -- the RPC is the only thing that
- * can ever mark an obligation 'processing', and it re-authorizes/re-locks independently
- * of this read, exactly like every other RPC in this codebase.
+ * Records the attempt first -- the RPC re-authorizes, enforces the payout gate (payout
+ * method, tax form, KYC, no open bounty dispute) and is the only thing that can mark an
+ * obligation 'processing' -- then hands it to the provider keyed by the attempt id, so a
+ * retried call can never pay twice. The manual provider only acknowledges; an operator
+ * records the real outcome with recordManualPaymentResult. The full bounty is sent: the
+ * platform fee is billed to the organization on top (db/migrations/202609250010).
  */
 export async function initiateManualPaymentAttempt(obligationId: string): Promise<PaymentAttempt> {
   const actor = await getCurrentUser();
-  let obligationRows;
-  try {
-    obligationRows = await withActorTransaction(actor?.id ?? null, (client) =>
-      client.query<ObligationRow>("select * from public.payment_obligations where id = $1", [obligationId]).then((r) => r.rows),
-    );
-  } catch (error) {
-    mapError(error as { message: string });
-  }
-  if (!obligationRows[0]) throw new OrganizationServiceError("Payment obligation not found", "OBLIGATION_NOT_FOUND");
-  const obligation = mapObligationRow(obligationRows[0]);
-
-  // Proves the abstraction is real: a future provider's createPayment could fail, time
-  // out, or return a different outcome here, all before the database is ever touched.
-  // The manual provider's response is not itself trusted as the database's state --
-  // initiate_manual_payment_attempt independently hardcodes the same fixed outcome.
-  //
-  // The full bounty: the platform fee is billed to the organization on top of it and is
-  // never deducted from the researcher (db/migrations/202609250010).
-  await activePaymentProvider.createPayment({ idempotencyKey: obligationId, amountMinorUnits: obligation.amountMinorUnits, currency: obligation.currency });
-
   let rows;
   try {
     rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<AttemptRow>(client, "public.initiate_manual_payment_attempt", [obligationId]));
   } catch (error) {
     mapError(error as { message: string });
   }
-  return mapAttemptRow(rows[0]);
+  const attempt = mapAttemptRow(rows[0]);
+  await activePaymentProvider.createPayment({ idempotencyKey: attempt.id, amountMinorUnits: attempt.requestedAmountMinorUnits, currency: attempt.currency });
+  return attempt;
 }
 
 export async function recordManualPaymentResult(

@@ -11,6 +11,7 @@ function obligation(overrides: Partial<MyPaymentObligation>): MyPaymentObligatio
   return {
     id: "po-1",
     reportId: "report-1",
+    researcherId: "researcher-1",
     bountyDecisionId: "decision-1",
     amountMinorUnits: 100000,
     currency: "USD",

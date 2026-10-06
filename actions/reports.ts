@@ -32,6 +32,7 @@ import {
   setReportSeverity,
   startTriage,
   submitReport,
+  assignReport,
 } from "@/services/reports";
 import { getReportTimeline, type ReportTimelinePage } from "@/services/timeline";
 import { getActorMembership } from "@/services/organization-members";
@@ -79,6 +80,9 @@ const submitSchema = z.object({
   weaknessType: weaknessTypeSchema,
   impact: z.string().trim().min(1, "Describe the impact.").max(20000, "Use 20000 characters or fewer."),
   researcherSeverity: severitySchema.optional(),
+  // The policy version the researcher accepted; the database refuses the report unless it
+  // is exactly the version in effect (202610060009).
+  acknowledgedPolicyVersion: z.number().int().positive().nullable().optional(),
 });
 
 export async function submitReportAction(input: z.infer<typeof submitSchema>) {
@@ -97,6 +101,7 @@ export async function submitReportAction(input: z.infer<typeof submitSchema>) {
         parsed.data.weaknessType,
         parsed.data.impact,
         parsed.data.researcherSeverity,
+        parsed.data.acknowledgedPolicyVersion ?? null,
       ),
     );
     revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}`);
@@ -331,12 +336,15 @@ const listProgramReportsSchema = z.object({
   cursor: z.string().optional(),
   status: z.enum(["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"]).optional(),
   severity: severitySchema.optional(),
+  assignee: z.union([z.literal("me"), z.literal("unassigned"), uuidSchema]).optional(),
 });
 
-export async function listReportsForProgramPageAction(input: { programId: string; cursor?: string; status?: ReportStatus; severity?: ReportSeverity }): Promise<ActionResult<Page<Report>>> {
+export async function listReportsForProgramPageAction(input: { programId: string; cursor?: string; status?: ReportStatus; severity?: ReportSeverity; assignee?: string }): Promise<ActionResult<Page<Report>>> {
   const parsed = listProgramReportsSchema.safeParse(input);
   if (!parsed.success) return invalidInput();
-  return toResult(listReportsForProgram(parsed.data.programId, parsed.data.cursor, undefined, { status: parsed.data.status, severity: parsed.data.severity }));
+  return toResult(
+    listReportsForProgram(parsed.data.programId, parsed.data.cursor, undefined, { status: parsed.data.status, severity: parsed.data.severity, assignee: parsed.data.assignee }),
+  );
 }
 
 const listOrganizationReportsSchema = z.object({
@@ -345,6 +353,7 @@ const listOrganizationReportsSchema = z.object({
   programId: uuidSchema.optional(),
   status: z.enum(["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"]).optional(),
   severity: severitySchema.optional(),
+  assignee: z.union([z.literal("me"), z.literal("unassigned"), uuidSchema]).optional(),
 });
 
 /** Findings' own "load more" -- see listReportsForProgramPageAction's own comment above,
@@ -355,6 +364,7 @@ export async function listReportsForOrganizationPageAction(input: {
   programId?: string;
   status?: ReportStatus;
   severity?: ReportSeverity;
+  assignee?: string;
 }): Promise<ActionResult<Page<Report>>> {
   const parsed = listOrganizationReportsSchema.safeParse(input);
   if (!parsed.success) return invalidInput();
@@ -363,6 +373,7 @@ export async function listReportsForOrganizationPageAction(input: {
       programId: parsed.data.programId,
       status: parsed.data.status,
       severity: parsed.data.severity,
+      assignee: parsed.data.assignee,
     }),
   );
 }
@@ -519,4 +530,15 @@ export async function loadEarlierReportTimelineAction(input: z.infer<typeof load
   }
 
   return toResult(getReportTimeline(parsed.data.reportId, true, parsed.data.beforeCreatedAt));
+}
+
+const assignSchema = reportActionBase.extend({ assigneeId: uuidSchema.nullable() });
+
+/** assign_report re-checks the caller may triage this report and the assignee is eligible. */
+export async function assignReportAction(input: z.infer<typeof assignSchema>): Promise<ActionResult<void>> {
+  const parsed = assignSchema.safeParse(input);
+  if (!parsed.success) return invalidInput();
+  const result = await toResult(assignReport(parsed.data.reportId, parsed.data.assigneeId));
+  if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
+  return result;
 }

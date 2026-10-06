@@ -4,9 +4,9 @@ import type { Route } from "next";
 import { AppShell } from "../../../components/app-shell";
 import { SectionLabel } from "../../../components/ui/security-primitives";
 import { EmptyState } from "../../../components/ui/feedback";
-import { KycReviewRow } from "../../../components/platform/kyc-review-row";
+import { KycReviewRow, TaxFormReviewRow } from "../../../components/platform/kyc-review-row";
 import { isPlatformAdmin } from "../../../services/platform-operations";
-import { listKycSubmissions } from "../../../services/researcher-profiles";
+import { listKycSubmissions, listPendingTaxForms } from "../../../services/researcher-profiles";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 
 /**
@@ -24,7 +24,7 @@ export default async function KycReviewPage() {
   const admin = await isPlatformAdmin();
   if (!admin) notFound();
 
-  const submissions = await listKycSubmissions();
+  const [submissions, taxForms] = await Promise.all([listKycSubmissions(), listPendingTaxForms()]);
 
   return (
     <AppShell title="KYC review" user={user}>
@@ -44,6 +44,18 @@ export default async function KycReviewPage() {
                 email={submission.email}
                 statuses={{ phone: submission.phoneStatus, aadhaar: submission.aadhaarStatus, pan: submission.panStatus, passport: submission.passportStatus }}
               />
+            ))}
+          </ul>
+        )}
+
+        <SectionLabel>Tax forms</SectionLabel>
+        <p className="text-sm text-ink-muted">A researcher cannot be paid until their tax form is verified here.</p>
+        {taxForms.length === 0 ? (
+          <EmptyState title="No pending tax forms">Nothing is waiting on review right now.</EmptyState>
+        ) : (
+          <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
+            {taxForms.map((form) => (
+              <TaxFormReviewRow key={form.userId} userId={form.userId} displayName={form.displayName} email={form.email} taxFormType={form.taxFormType} taxIdLast4={form.taxIdLast4} />
             ))}
           </ul>
         )}

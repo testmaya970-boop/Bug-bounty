@@ -139,6 +139,8 @@ export function ReportInboxTable({
   status,
   severity,
   workloadSummary,
+  assignee = "all",
+  assignableStaff = [],
 }: {
   organizationId: string;
   programId: string;
@@ -147,6 +149,9 @@ export function ReportInboxTable({
   status: ReportStatus | "all";
   severity: ReportSeverity | "all";
   workloadSummary: ReportInboxWorkloadSummary;
+  /** "all", "me", "unassigned", or a staff member's id (202610060011). */
+  assignee?: string;
+  assignableStaff?: { userId: string; displayName: string }[];
 }) {
   const router = useRouter();
   const [reports, setReports] = useState(initialReports);
@@ -181,12 +186,14 @@ export function ReportInboxTable({
     router.refresh();
   }
 
-  function navigateWithFilters(next: { status?: ReportStatus | "all"; severity?: ReportSeverity | "all" }) {
+  function navigateWithFilters(next: { status?: ReportStatus | "all"; severity?: ReportSeverity | "all"; assignee?: string }) {
     const params = new URLSearchParams();
     const nextStatus = next.status ?? status;
     const nextSeverity = next.severity ?? severity;
+    const nextAssignee = next.assignee ?? assignee;
     if (nextStatus !== "all") params.set("status", nextStatus);
     if (nextSeverity !== "all") params.set("severity", nextSeverity);
+    if (nextAssignee !== "all") params.set("assignee", nextAssignee);
     const query = params.toString();
     // Wrapped in a transition so `pending` (surfaced on the two Selects below) flips
     // immediately on change, instead of the dropdown looking inert until the new
@@ -205,6 +212,7 @@ export function ReportInboxTable({
         cursor: nextCursor,
         status: status === "all" ? undefined : status,
         severity: severity === "all" ? undefined : severity,
+        assignee: assignee === "all" ? undefined : assignee,
       });
       if (!result.ok) {
         setLoadError(result.message);
@@ -255,11 +263,21 @@ export function ReportInboxTable({
             </option>
           ))}
         </Select>
+        <Select label="Assigned to" className="max-w-xs" disabled={filterPending} value={assignee} onChange={(event) => navigateWithFilters({ assignee: event.target.value })}>
+          <option value="all">Anyone</option>
+          <option value="me">Me</option>
+          <option value="unassigned">Unassigned</option>
+          {assignableStaff.map((person) => (
+            <option key={person.userId} value={person.userId}>
+              {person.displayName}
+            </option>
+          ))}
+        </Select>
         {filterPending && <span aria-hidden="true" className="mb-2.5 size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent text-ink-muted motion-reduce:animate-none" />}
       </div>
 
       {reports.length === 0 ? (
-        status === "all" && severity === "all" ? (
+        status === "all" && severity === "all" && assignee === "all" ? (
           <EmptyState title="No reports yet">This program hasn't received any reports yet. They'll appear here as researchers submit findings.</EmptyState>
         ) : (
           <EmptyState title="No matching reports">No report in this program matches the current filters.</EmptyState>
@@ -281,7 +299,7 @@ export function ReportInboxTable({
                       className="size-4 accent-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                     />
                   </th>
-                  {["Severity", "Report", "Target", "Status", "Researcher", "Updated", "Next action"].map((header) => (
+                  {["Severity", "Report", "Target", "Status", "Assignee", "Researcher", "Updated", "Next action"].map((header) => (
                     <th key={header} scope="col" className="px-4 py-3 font-semibold">
                       {header}
                     </th>
@@ -320,6 +338,7 @@ export function ReportInboxTable({
                     <td className="px-4 py-3">
                       <StatusBadge status={report.status} />
                     </td>
+                    <td className="px-4 py-3 text-sm text-ink-muted">{report.assigneeName ?? <span className="italic">Unassigned</span>}</td>
                     <td className="px-4 py-3 text-sm text-ink-muted">{report.researcherName}</td>
                     <td className="px-4 py-3 text-sm text-ink-muted"><LocalTime value={report.updatedAt} /></td>
                     <td className="px-4 py-3 text-sm text-ink-muted">{reportNextActionLabel(report.status)}</td>

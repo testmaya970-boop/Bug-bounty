@@ -93,8 +93,10 @@ export async function getOrganizationResolutionPerformance(organizationId: strin
 
 type BountySpendSummaryRow = {
   currency: string;
+  total_awarded_minor_units: number;
   total_paid_minor_units: number;
-  payout_count: number;
+  total_outstanding_minor_units: number;
+  award_count: number;
   paid_critical_count: number;
   paid_high_count: number;
   paid_medium_count: number;
@@ -102,8 +104,8 @@ type BountySpendSummaryRow = {
   paid_none_count: number;
 };
 
-/** Real, finalized bounty spend by currency -- see db/migrations/
- * 202609090002_organization_bounty_spend_analytics.sql. Never sum totalPaidMinorUnits
+/** Real bounty spend by currency: awarded (finalized decisions) vs paid (succeeded
+ * obligations) vs outstanding -- 202610060008. Never sum amounts
  * across the returned rows -- each row is a different currency. */
 export async function getOrganizationBountySpendSummary(organizationId: string): Promise<OrganizationBountySpendSummary[]> {
   const actor = await getCurrentUser();
@@ -117,8 +119,10 @@ export async function getOrganizationBountySpendSummary(organizationId: string):
   }
   return rows.map((row) => ({
     currency: row.currency,
+    totalAwardedMinorUnits: Number(row.total_awarded_minor_units),
     totalPaidMinorUnits: Number(row.total_paid_minor_units),
-    payoutCount: Number(row.payout_count),
+    totalOutstandingMinorUnits: Number(row.total_outstanding_minor_units),
+    awardCount: Number(row.award_count),
     paidCriticalCount: Number(row.paid_critical_count),
     paidHighCount: Number(row.paid_high_count),
     paidMediumCount: Number(row.paid_medium_count),

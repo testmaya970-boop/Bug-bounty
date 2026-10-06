@@ -176,7 +176,7 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
             <KpiTile
               label="Total paid"
               value={bountySpendSummary.length > 0 ? bountySpendSummary.map((summary) => formatMoney(summary.totalPaidMinorUnits, summary.currency)).join(", ") : "—"}
-              hint={bountySpendSummary.length === 0 ? "No finalized payouts yet" : undefined}
+              hint={bountySpendSummary.length === 0 ? "No bounties awarded yet" : undefined}
             />
           )}
         </div>

@@ -178,3 +178,37 @@ export async function adjustBounty(reportId: string, newAmountMinorUnits: number
   }
   return mapDecisionRow(rows[0]);
 }
+
+/** The submitter's confirmation of the CURRENT award amount (202610060008) -- an adjusted
+ * amount needs confirming again, so a stale acceptance reads as null here. */
+export type BountyAcceptance = { amountMinorUnits: number; currency: string; acceptedAt: string };
+
+export async function getBountyAcceptance(reportId: string): Promise<BountyAcceptance | null> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      client
+        .query<{ amount_minor_units: string; currency: string; accepted_at: string }>(
+          `select a.amount_minor_units, a.currency, a.accepted_at from public.bounty_acceptances a
+             join public.report_bounty_decisions d on d.id = a.bounty_decision_id and d.final_amount_minor_units = a.amount_minor_units
+            where a.report_id = $1`,
+          [reportId],
+        )
+        .then((r) => r.rows),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  const row = rows[0];
+  return row ? { amountMinorUnits: Number(row.amount_minor_units), currency: row.currency, acceptedAt: row.accepted_at } : null;
+}
+
+export async function acceptBounty(reportId: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.accept_bounty", [reportId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}

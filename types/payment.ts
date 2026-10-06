@@ -24,6 +24,8 @@ export type PaymentAttemptState = "requires_operator_action" | "succeeded" | "fa
 export type PaymentObligation = {
   id: string;
   reportId: string;
+  /** Who this obligation is owed to: the submitter or a collaborator (split, 202610060008). */
+  researcherId: string;
   bountyDecisionId: string;
   /** The finalized bounty -- the researcher receives all of it. The organization pays this
    * plus platformFeeMinorUnits (db/migrations/202609250010). This

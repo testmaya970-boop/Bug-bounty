@@ -140,13 +140,24 @@ export async function deliverNotificationEmails(event: OutboxEvent, notification
  * program.reinstated / organization.suspended / organization.reinstated; this routes each
  * to the org's active owners and security admins, then emails them with the reason. */
 export function createPlatformNotificationHandler(notificationType: NotificationType) {
-  return async function handlePlatformNotification(event: OutboxEvent): Promise<void> {
+  return createEventRoutedHandler("public.route_platform_notifications", notificationType);
+}
+
+/** Payment/bounty-change and mediation notices (202610060008): routed from the event's own
+ * audit row to the obligation's recipient, or the organization for a mediation request. */
+export function createPaymentNotificationHandler(notificationType: NotificationType) {
+  return createEventRoutedHandler("public.route_payment_notifications", notificationType);
+}
+
+/** Routers that take (event id, notification type) and re-verify provenance themselves. */
+function createEventRoutedHandler(routerRpc: string, notificationType: NotificationType) {
+  return async function handleEventRoutedNotification(event: OutboxEvent): Promise<void> {
     let notifications: NotificationRow[];
     try {
-      notifications = await withServiceRoleTransaction((client) => callRpc<NotificationRow>(client, "public.route_platform_notifications", [event.id, notificationType]));
+      notifications = await withServiceRoleTransaction((client) => callRpc<NotificationRow>(client, routerRpc, [event.id, notificationType]));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (message.startsWith("PROVENANCE_MISMATCH") || message.startsWith("EVENT_NOT_FOUND") || message.startsWith("INVALID_NOTIFICATION_TYPE")) {
+      if (["PROVENANCE_MISMATCH", "EVENT_NOT_FOUND", "REPORT_NOT_FOUND", "INVALID_NOTIFICATION_TYPE"].some((code) => message.startsWith(code))) {
         throw new PermanentHandlerError(message);
       }
       throw new RetryableHandlerError(message);

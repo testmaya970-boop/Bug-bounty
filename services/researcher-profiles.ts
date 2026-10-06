@@ -311,10 +311,35 @@ export async function reviewKycField(targetUserId: string, field: KycField, deci
   }
 }
 
+export type PendingTaxForm = { userId: string; displayName: string; email: string | null; taxFormType: TaxFormType; taxIdLast4: string | null; submittedAt: string | null };
+
+/** Platform-admin-only queue (202610060008): a verified tax form is one of the payout gates. */
+export async function listPendingTaxForms(): Promise<PendingTaxForm[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ user_id: string; display_name: string; email: string | null; tax_form_type: TaxFormType; tax_id_last4: string | null; submitted_at: string | null }>(client, "public.list_pending_tax_forms"),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({ userId: row.user_id, displayName: row.display_name, email: row.email, taxFormType: row.tax_form_type, taxIdLast4: row.tax_id_last4, submittedAt: row.submitted_at }));
+}
+
+export async function reviewTaxForm(targetUserId: string, decision: "verified" | "rejected", note?: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.review_tax_form", [targetUserId, decision, note ?? null]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Payout details -- public.researcher_payout_details, self + platform-admin only. Disclosed
-// gap: Sentinel's real payout path (services/payments.ts's activePaymentProvider) does not
-// read this table yet -- see docs/decisions/0051.
+// Payout details -- public.researcher_payout_details, self + platform-admin only. The payout
+// gate (private.payout_blockers, 202610060008) requires a method and a verified tax form
+// before any payout attempt; the destination itself is never shown to the paying org.
 // ---------------------------------------------------------------------------
 
 type PayoutDetailsRow = {

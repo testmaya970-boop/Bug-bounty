@@ -16,9 +16,13 @@ type DisclosureRow = {
   decided_by: string | null;
   decided_at: string | null;
   decline_reason: string | null;
+  draft_title: string | null;
+  draft_summary: string | null;
   published_title: string | null;
   published_summary: string | null;
   published_at: string | null;
+  unpublished_at: string | null;
+  unpublish_reason: string | null;
 };
 
 function mapDisclosureRow(row: DisclosureRow): ReportDisclosure {
@@ -32,17 +36,22 @@ function mapDisclosureRow(row: DisclosureRow): ReportDisclosure {
     decidedBy: row.decided_by,
     decidedAt: row.decided_at,
     declineReason: row.decline_reason,
+    draftTitle: row.draft_title,
+    draftSummary: row.draft_summary,
     publishedTitle: row.published_title,
     publishedSummary: row.published_summary,
     publishedAt: row.published_at,
+    unpublishedAt: row.unpublished_at,
+    unpublishReason: row.unpublish_reason,
   };
 }
 
-export async function requestReportDisclosure(reportId: string): Promise<ReportDisclosure> {
+/** The researcher asks to publish, proposing the public write-up (redactable by the org). */
+export async function requestReportDisclosure(reportId: string, title?: string, summary?: string): Promise<ReportDisclosure> {
   const actor = await getCurrentUser();
   let rows;
   try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<DisclosureRow>(client, "public.request_report_disclosure", [reportId]));
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<DisclosureRow>(client, "public.request_report_disclosure", [reportId, title ?? null, summary ?? null]));
   } catch (error) {
     mapError(error as { message: string });
   }
@@ -71,6 +80,29 @@ export async function declineReportDisclosure(reportId: string, reason?: string)
   return mapDisclosureRow(rows[0]);
 }
 
+/** Edit (redact) the pending public write-up: the triage team, or the researcher while requested. */
+export async function updateReportDisclosureDraft(reportId: string, title: string, summary: string): Promise<ReportDisclosure> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<DisclosureRow>(client, "public.update_report_disclosure_draft", [reportId, title, summary]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return mapDisclosureRow(rows[0]);
+}
+
+export async function unpublishReportDisclosure(reportId: string, reason: string): Promise<ReportDisclosure> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<DisclosureRow>(client, "public.unpublish_report_disclosure", [reportId, reason]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return mapDisclosureRow(rows[0]);
+}
+
 /** Null when the report has never had a disclosure requested -- a real, meaningful
  * absence, not an error. */
 export async function getMyReportDisclosure(reportId: string): Promise<ReportDisclosure | null> {
@@ -85,19 +117,14 @@ export async function getMyReportDisclosure(reportId: string): Promise<ReportDis
   return row?.id ? mapDisclosureRow(row) : null;
 }
 
-/** A plain, RLS-scoped read for the report detail page's organization-side rail -- the
- * table's own SELECT policy (report_disclosures read by participants or public if
- * approved, 202609030001) already covers "an org owner/security_admin or program member
- * can read any status for a report in their org," so no RPC wrapper is needed here, only
- * a policy-scoped query, the same pattern services/payments.ts uses for its own
- * RLS-covered reads. Returns null when no disclosure has ever been requested. Granted to
- * anon in addition to authenticated (an approved disclosure is public), so this uses
- * withPublicTransaction to preserve signed-out access to an approved disclosure's status. */
+/** The report detail page's read, scoped by the reports table's RLS (the researcher and
+ * the report's staff). Signed-out visitors never read this table directly any more
+ * (202610060012) -- the public uses list/getPublicDisclosure, which carry no user ids. */
 export async function getReportDisclosure(reportId: string): Promise<ReportDisclosure | null> {
   const actor = await getCurrentUser();
   let rows;
   try {
-    rows = await withPublicTransaction(actor?.id ?? null, (client) =>
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
       client.query<DisclosureRow>("select * from public.report_disclosures where report_id = $1", [reportId]).then((r) => r.rows),
     );
   } catch (error) {
@@ -130,31 +157,51 @@ export async function listPendingReportDisclosures(organizationId: string): Prom
 type PublicDisclosureRow = {
   report_id: string;
   published_title: string;
-  published_summary: string;
-  confirmed_severity: PublicDisclosure["confirmedSeverity"];
+  published_summary: string | null;
+  severity: PublicDisclosure["confirmedSeverity"];
+  program_id: string;
   program_name: string;
+  organization_id: string;
   organization_name: string;
+  researcher_username: string | null;
   published_at: string;
 };
 
-/** Anonymous-readable -- the public disclosure feed. Uses withPublicTransaction: `anon`
- * for a signed-out visitor, `authenticated` for a signed-in one -- the RPC itself is
- * grant-scoped to anon+authenticated either way. */
-export async function listPublicDisclosures(): Promise<PublicDisclosure[]> {
-  const actor = await getCurrentUser();
-  let rows;
-  try {
-    rows = await withPublicTransaction(actor?.id ?? null, (client) => callRpc<PublicDisclosureRow>(client, "public.list_public_disclosures"));
-  } catch (error) {
-    mapError(error as { message: string });
-  }
-  return rows.map((row) => ({
+function mapPublicRow(row: PublicDisclosureRow): PublicDisclosure {
+  return {
     reportId: row.report_id,
     publishedTitle: row.published_title,
     publishedSummary: row.published_summary,
-    confirmedSeverity: row.confirmed_severity,
+    confirmedSeverity: row.severity,
+    programId: row.program_id,
     programName: row.program_name,
+    organizationId: row.organization_id,
     organizationName: row.organization_name,
+    researcherUsername: row.researcher_username,
     publishedAt: row.published_at,
-  }));
+  };
+}
+
+/** The public feed (anon or signed in): newest first, keyset-paged by publishedAt. */
+export async function listPublicDisclosures(before?: string, limit = 50): Promise<PublicDisclosure[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withPublicTransaction(actor?.id ?? null, (client) => callRpc<PublicDisclosureRow>(client, "public.list_public_disclosures", [limit, before ?? null]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map(mapPublicRow);
+}
+
+/** One published disclosure, or null if it isn't (or isn't yet) public. */
+export async function getPublicDisclosure(reportId: string): Promise<PublicDisclosure | null> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withPublicTransaction(actor?.id ?? null, (client) => callRpc<PublicDisclosureRow>(client, "public.get_public_disclosure", [reportId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows[0] ? mapPublicRow(rows[0]) : null;
 }

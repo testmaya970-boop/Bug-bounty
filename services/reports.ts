@@ -30,7 +30,7 @@ import type { Page } from "@/types/pagination";
 export { OrganizationServiceError };
 
 const REPORT_SELECT_COLUMNS =
-  "r.id, r.program_id, r.organization_id, r.researcher_id, r.title, r.description, r.asset_type, r.target, r.display_target, r.matched_scope_entry_id, r.matched_scope_state, r.matched_target, r.status, r.confirmed_severity, r.duplicate_of_report_id, r.resolution_summary, r.weakness_type, r.impact, r.researcher_severity, r.cvss_attack_vector, r.cvss_attack_complexity, r.cvss_privileges_required, r.cvss_user_interaction, r.cvss_scope, r.cvss_confidentiality_impact, r.cvss_integrity_impact, r.cvss_availability_impact, r.cvss_base_score, r.submitted_at, r.created_at, r.updated_at, u.display_name as researcher_display_name";
+  "r.id, r.program_id, r.organization_id, r.researcher_id, r.title, r.description, r.asset_type, r.target, r.display_target, r.matched_scope_entry_id, r.matched_scope_state, r.matched_target, r.status, r.confirmed_severity, r.duplicate_of_report_id, r.resolution_summary, r.weakness_type, r.impact, r.researcher_severity, r.cvss_attack_vector, r.cvss_attack_complexity, r.cvss_privileges_required, r.cvss_user_interaction, r.cvss_scope, r.cvss_confidentiality_impact, r.cvss_integrity_impact, r.cvss_availability_impact, r.cvss_base_score, r.submitted_at, r.created_at, r.updated_at, u.display_name as researcher_display_name, r.assignee_id, a.display_name as assignee_display_name";
 
 type ReportRow = {
   id: string;
@@ -65,6 +65,8 @@ type ReportRow = {
   created_at: string;
   updated_at: string;
   researcher_display_name: string | null;
+  assignee_id: string | null;
+  assignee_display_name: string | null;
 };
 
 /** All eight CVSS columns are stored all-or-nothing (see the schema's own check
@@ -113,15 +115,17 @@ function mapReportRow(row: ReportRow): Report {
     researcherSeverity: row.researcher_severity,
     cvssMetrics: mapCvssMetrics(row),
     cvssBaseScore: row.cvss_base_score,
+    assigneeId: row.assignee_id ?? null,
+    assigneeName: row.assignee_display_name ?? null,
     submittedAt: row.submitted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-type ReportRpcRow = Omit<ReportRow, "researcher_display_name">;
+type ReportRpcRow = Omit<ReportRow, "researcher_display_name" | "assignee_display_name">;
 function mapReportRpcResult(row: ReportRpcRow): Report {
-  return mapReportRow({ ...row, researcher_display_name: null });
+  return mapReportRow({ ...row, researcher_display_name: null, assignee_display_name: null });
 }
 
 /**
@@ -139,13 +143,16 @@ export async function submitReport(
   weaknessType: ReportWeaknessType,
   impact: string,
   researcherSeverity?: ReportSeverity,
+  acknowledgedPolicyVersion: number | null = null,
 ): Promise<Report> {
   const actor = await getCurrentUser();
   let rows;
   try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) =>
-      callRpc<ReportRpcRow>(client, "public.submit_report", [programId, assetType, targetInput, title, description, weaknessType, impact, researcherSeverity ?? null]),
-    );
+    rows = await withActorTransaction(actor?.id ?? null, async (client) => {
+      // Read by the reports insert trigger in this same transaction (202610060009).
+      await client.query("select set_config('app.acknowledged_policy_version', $1, true)", [acknowledgedPolicyVersion?.toString() ?? ""]);
+      return callRpc<ReportRpcRow>(client, "public.submit_report", [programId, assetType, targetInput, title, description, weaknessType, impact, researcherSeverity ?? null]);
+    });
   } catch (error) {
     mapError(error as { message: string });
   }
@@ -161,7 +168,7 @@ export async function getReport(reportId: string): Promise<Report | null> {
   let rows;
   try {
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
-      client.query<ReportRow>(`select ${REPORT_SELECT_COLUMNS} from public.reports r left join public.users u on u.id = r.researcher_id where r.id = $1`, [reportId]).then((r) => r.rows),
+      client.query<ReportRow>(`select ${REPORT_SELECT_COLUMNS} from public.reports r left join public.users u on u.id = r.researcher_id left join public.users a on a.id = r.assignee_id where r.id = $1`, [reportId]).then((r) => r.rows),
     );
   } catch (error) {
     mapError(error as { message: string });
@@ -169,7 +176,18 @@ export async function getReport(reportId: string): Promise<Report | null> {
   return rows[0] ? mapReportRow(rows[0]) : null;
 }
 
-export type ReportInboxFilters = { status?: ReportStatus; severity?: ReportSeverity };
+/** assignee: "me", "unassigned", or a staff member's user id (202610060011). */
+export type ReportInboxFilters = { status?: ReportStatus; severity?: ReportSeverity; assignee?: string };
+
+function pushAssigneeCondition(filters: ReportInboxFilters | undefined, actorId: string | null, conditions: string[], params: unknown[]) {
+  if (!filters?.assignee) return;
+  if (filters.assignee === "unassigned") {
+    conditions.push("r.assignee_id is null");
+    return;
+  }
+  params.push(filters.assignee === "me" ? actorId : filters.assignee);
+  conditions.push(`r.assignee_id = $${params.length}`);
+}
 
 /** Manager-facing report inbox for one program -- RLS already scopes this to managers/
  * org admins; a plain researcher querying this never reaches a page that calls it.
@@ -197,6 +215,7 @@ export async function listReportsForProgram(programId: string, cursor?: string, 
     params.push(filters.severity);
     conditions.push(`r.confirmed_severity = $${params.length}`);
   }
+  pushAssigneeCondition(filters, actor?.id ?? null, conditions, params);
   if (decoded) {
     params.push(decoded.sortValue);
     conditions.push(`r.submitted_at < $${params.length}`);
@@ -208,7 +227,7 @@ export async function listReportsForProgram(programId: string, cursor?: string, 
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
       client
         .query<ReportRow>(
-          `select ${REPORT_SELECT_COLUMNS} from public.reports r left join public.users u on u.id = r.researcher_id
+          `select ${REPORT_SELECT_COLUMNS} from public.reports r left join public.users u on u.id = r.researcher_id left join public.users a on a.id = r.assignee_id
            where ${conditions.join(" and ")} order by r.submitted_at desc limit $${params.length}`,
           params,
         )
@@ -253,6 +272,7 @@ export async function listReportsForOrganization(organizationId: string, cursor?
     params.push(filters.severity);
     conditions.push(`r.confirmed_severity = $${params.length}`);
   }
+  pushAssigneeCondition(filters, actor?.id ?? null, conditions, params);
   if (decoded) {
     params.push(decoded.sortValue);
     conditions.push(`r.submitted_at < $${params.length}`);
@@ -264,7 +284,7 @@ export async function listReportsForOrganization(organizationId: string, cursor?
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
       client
         .query<ReportRow>(
-          `select ${REPORT_SELECT_COLUMNS} from public.reports r left join public.users u on u.id = r.researcher_id
+          `select ${REPORT_SELECT_COLUMNS} from public.reports r left join public.users u on u.id = r.researcher_id left join public.users a on a.id = r.assignee_id
            where ${conditions.join(" and ")} order by r.submitted_at desc limit $${params.length}`,
           params,
         )
@@ -298,7 +318,7 @@ export async function listOpenReportsForOrganization(organizationId: string): Pr
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
       client
         .query<ReportRow>(
-          `select ${REPORT_SELECT_COLUMNS} from public.reports r left join public.users u on u.id = r.researcher_id
+          `select ${REPORT_SELECT_COLUMNS} from public.reports r left join public.users u on u.id = r.researcher_id left join public.users a on a.id = r.assignee_id
            where r.organization_id = $1 and r.status = any($2) order by r.updated_at desc limit $3`,
           [organizationId, OPEN_REPORT_STATUSES, OPEN_REPORTS_OVERVIEW_LIMIT],
         )
@@ -1248,4 +1268,31 @@ export async function listReportMessagesForActor(actorId: string, reportId: stri
     mapError(error as { message: string });
   }
   return rows.map((row) => ({ id: row.id, body: row.body, authorContext: row.author_context, createdAt: row.created_at }));
+}
+
+/** Sets or clears who is working a report (assign_report re-checks the caller may triage it
+ * and that the assignee could triage it themselves). */
+export async function assignReport(reportId: string, assigneeId: string | null): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.assign_report", [reportId, assigneeId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+export type AssignableStaff = { userId: string; displayName: string };
+
+/** Who may be assigned reports in a program (or anywhere in the organization). */
+export async function listAssignableStaff(organizationId: string, programId?: string): Promise<AssignableStaff[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ user_id: string; display_name: string }>(client, "public.list_assignable_staff", [organizationId, programId ?? null]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({ userId: row.user_id, displayName: row.display_name }));
 }

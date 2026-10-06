@@ -39,12 +39,21 @@ function SpendSummaryTile({ summary }: { summary: OrganizationBountySpendSummary
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-xs text-ink-muted">Total paid ({summary.currency})</p>
+        <p className="text-xs text-ink-muted">Awarded ({summary.currency})</p>
         <span className="font-mono text-xs tabular-nums text-ink-muted">
-          {summary.payoutCount} payout{summary.payoutCount === 1 ? "" : "s"}
+          {summary.awardCount} award{summary.awardCount === 1 ? "" : "s"}
         </span>
       </div>
-      <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{formatMoney(summary.totalPaidMinorUnits, summary.currency)}</p>
+      <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{formatMoney(summary.totalAwardedMinorUnits, summary.currency)}</p>
+      <p className="mt-1 text-xs text-ink-muted">
+        Paid <span className="font-mono font-semibold text-ink">{formatMoney(summary.totalPaidMinorUnits, summary.currency)}</span>
+        {summary.totalOutstandingMinorUnits > 0 && (
+          <>
+            {" "}
+            · outstanding <span className="font-mono font-semibold text-ink">{formatMoney(summary.totalOutstandingMinorUnits, summary.currency)}</span>
+          </>
+        )}
+      </p>
       {breakdownWithCounts.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t border-border pt-3 text-xs">
           {breakdownWithCounts.map((entry) => (

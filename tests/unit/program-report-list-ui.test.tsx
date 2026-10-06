@@ -27,6 +27,8 @@ const report: Report = {
   researcherSeverity: null,
   cvssMetrics: null,
   cvssBaseScore: null,
+  assigneeId: null,
+  assigneeName: null,
   submittedAt: "2026-08-27T00:00:00Z",
   createdAt: "2026-08-27T00:00:00Z",
   updatedAt: "2026-08-27T00:00:00Z",

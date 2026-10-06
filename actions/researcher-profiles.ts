@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   OrganizationServiceError,
   reviewKycField,
+  reviewTaxForm,
   submitMyKyc,
   submitMyTaxForm,
   updateMyDisplayName,
@@ -231,6 +232,27 @@ export async function reviewKycFieldAction(input: z.infer<typeof reviewKycSchema
 
   try {
     await reviewKycField(parsed.data.targetUserId, parsed.data.field, parsed.data.decision, parsed.data.note);
+    revalidatePath("/platform/kyc");
+    return { ok: true, data: undefined };
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
+    throw error;
+  }
+}
+
+const reviewTaxFormSchema = z.object({
+  targetUserId: z.string().uuid(),
+  decision: z.enum(["verified", "rejected"]),
+  note: z.string().trim().max(1000).optional(),
+});
+
+/** Platform-admin-only -- review_tax_form re-checks private.is_platform_admin(). */
+export async function reviewTaxFormAction(input: z.infer<typeof reviewTaxFormSchema>): Promise<ActionResult<void>> {
+  const parsed = reviewTaxFormSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+
+  try {
+    await reviewTaxForm(parsed.data.targetUserId, parsed.data.decision, parsed.data.note);
     revalidatePath("/platform/kyc");
     return { ok: true, data: undefined };
   } catch (error) {

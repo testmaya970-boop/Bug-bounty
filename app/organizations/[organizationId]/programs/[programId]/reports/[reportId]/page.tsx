@@ -1,5 +1,4 @@
 import React from "react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { AppShell } from "../../../../../../../components/app-shell";
@@ -7,6 +6,7 @@ import { Breadcrumbs } from "../../../../../../../components/ui/navigation";
 import { Alert, Card, PermissionDenied } from "../../../../../../../components/ui/feedback";
 import { AssetTypeBadge, SeverityBadge, StatusBadge } from "../../../../../../../components/ui/badge";
 import { SeverityControl, TriageActionPanel } from "../../../../../../../components/reports/triage-actions";
+import { ReportAssigneeControl } from "../../../../../../../components/reports/report-assignee";
 import { LiveSeverityBadge, LiveStatusBadge, LiveStatusMeaning, TriageStatusRailProvider } from "../../../../../../../components/reports/triage-status-rail";
 import { ReportActivity } from "../../../../../../../components/reports/report-activity";
 import { OrganizationMessageComposer, ReportCommunication, ResearcherMessageComposer } from "../../../../../../../components/reports/report-communication";
@@ -26,11 +26,12 @@ import { ReportRetestPanel } from "../../../../../../../components/reports/repor
 import { ReportMediationPanel } from "../../../../../../../components/reports/report-mediation";
 import { SectionLabel, MetadataPair } from "../../../../../../../components/ui/security-primitives";
 import { Markdown } from "../../../../../../../components/ui/markdown";
-import { getReport, getReportAuditActivity, listReportCollaborators, listReportEvidence, listReportMediations, listReportMessages, listReportRetests } from "../../../../../../../services/reports";
-import { getReportBountyDecision } from "../../../../../../../services/bounty";
+import { getReport, listAssignableStaff, getReportAuditActivity, listReportCollaborators, listReportEvidence, listReportMediations, listReportMessages, listReportRetests } from "../../../../../../../services/reports";
+import { getBountyAcceptance, getReportBountyDecision } from "../../../../../../../services/bounty";
+import { getReportSla } from "../../../../../../../services/program-policy";
+import { ReportSlaPanel } from "../../../../../../../components/programs/program-policy";
 import { getReportDisclosure } from "../../../../../../../services/report-disclosures";
-import { getPaymentObligation, listPaymentAttempts } from "../../../../../../../services/payments";
-import { getMyKycStatus } from "../../../../../../../services/researcher-profiles";
+import { getReportPayoutReadiness, listPaymentAttempts, listReportPaymentObligations } from "../../../../../../../services/payments";
 import { canCreateProgram } from "../../../../../../../services/authorization";
 import { getActorMembership } from "../../../../../../../services/organization-members";
 import { getProgram, listProgramMembers } from "../../../../../../../services/programs";
@@ -93,34 +94,32 @@ export default async function ReportDetailPage({
   // (they can't open report contents). Never program managers or triagers.
   const canManagePaymentsHere = isOrgAdmin;
 
-  const [auditEvents, messages, evidence, bountyDecision, paymentObligation, researcherBiography, disclosure, collaborators, retests, mediations] = await Promise.all([
+  const [auditEvents, messages, evidence, bountyDecision, paymentObligations, researcherBiography, disclosure, collaborators, retests, mediations, sla, assignableStaff] = await Promise.all([
     canTriage ? getReportAuditActivity(reportId) : Promise.resolve([]),
     listReportMessages(reportId),
     listReportEvidence(reportId),
     getReportBountyDecision(reportId),
-    getPaymentObligation(reportId),
+    listReportPaymentObligations(reportId),
     getResearcherBiography(report.researcherId),
     getReportDisclosure(reportId),
     listReportCollaborators(reportId),
     listReportRetests(reportId),
     listReportMediations(reportId),
+    isOwnReport || canTriage ? getReportSla(reportId) : Promise.resolve(null),
+    canTriage ? listAssignableStaff(organizationId, programId) : Promise.resolve([]),
   ]);
   // Attempt-level detail (failure code/message, provider reference) is manager-only and
-  // is only ever needed while a payout is actually in flight -- fetched sequentially,
-  // after the obligation id is known, rather than speculatively for every report.
-  const latestPaymentAttempt =
-    isOrgAdmin && paymentObligation?.status === "processing" ? (await listPaymentAttempts(paymentObligation.id))[0] ?? null : null;
-  // Only fetched for the researcher's own finalized bounty -- the one real point in this
-  // page where "you may need to complete KYC before you can be paid" is actually true and
-  // actionable, matching bounty-decision.tsx's own "finalized" state check. Never fetched
-  // for an org actor (KYC is the researcher's own private data) or for a not-yet-finalized
-  // report (nothing to nudge about yet). "Not started at all" (every field not_submitted)
-  // is the one unambiguous threshold this schema actually supports -- there is no single
-  // canonical "KYC complete" flag (each of phone/gov-id/passport has its own independent
-  // status), so this nudges only when literally nothing has been submitted yet, never a
-  // judgment call about which combination of fields counts as "enough."
-  const kycStatus = isOwnReport && bountyDecision?.state === "finalized" ? await getMyKycStatus() : null;
-  const kycNotStarted = kycStatus ? [kycStatus.phoneStatus, kycStatus.aadhaarStatus, kycStatus.panStatus, kycStatus.passportStatus].every((s) => s === "not_submitted") : false;
+  // only needed while a payout is actually in flight -- fetched after the obligations are
+  // known, rather than speculatively for every report.
+  const inFlight = isOrgAdmin ? paymentObligations.filter((o) => o.status === "processing") : [];
+  const latestPaymentAttempts: Record<string, Awaited<ReturnType<typeof listPaymentAttempts>>[number]> = Object.fromEntries(
+    (await Promise.all(inFlight.map(async (o) => [o.id, (await listPaymentAttempts(o.id))[0]] as const))).filter(([, attempt]) => attempt !== undefined),
+  );
+  // Only for a finalized bounty, and only for who may see it: finance roles get every
+  // recipient's blockers, a researcher only their own (get_report_payout_readiness).
+  const bountyFinalized = bountyDecision?.state === "finalized";
+  const [payoutReadiness, bountyAcceptance] =
+    bountyFinalized && (isOwnReport || canTriage) ? await Promise.all([getReportPayoutReadiness(reportId), getBountyAcceptance(reportId)]) : [[], null];
   const actorNames: Record<string, string> = { [report.researcherId]: report.researcherName, [user.id]: user.displayName };
   members.forEach((member) => {
     actorNames[member.userId] = member.displayName;
@@ -378,6 +377,7 @@ export default async function ReportDetailPage({
 
               {canTriage && (
                 <div className="mt-5 space-y-4 border-t border-border pt-5">
+                  <ReportAssigneeControl organizationId={organizationId} programId={programId} reportId={reportId} assigneeId={report.assigneeId} staff={assignableStaff} currentUserId={user.id} />
                   <SeverityControl organizationId={organizationId} programId={programId} reportId={reportId} currentSeverity={report.confirmedSeverity} currentCvssBaseScore={report.cvssBaseScore} locked={isFinal} />
                   <TriageActionPanel organizationId={organizationId} programId={programId} reportId={reportId} status={report.status} allowedNext={allowedNext} />
                 </div>
@@ -405,6 +405,15 @@ export default async function ReportDetailPage({
             {/* Bounty is a separate decision layered on top of the final report decision --
                 never a property of the report row itself. See
                 docs/decisions/0013-bounty-decision-engine.md. */}
+            {sla && (
+              <Card className="p-5 sm:p-6">
+                <SectionLabel>Response targets</SectionLabel>
+                <div className="mt-3">
+                  <ReportSlaPanel sla={sla} />
+                </div>
+              </Card>
+            )}
+
             {(isOwnReport || canTriage) && (
               <Card className="p-5 sm:p-6">
                 <SectionLabel>Bounty</SectionLabel>
@@ -420,20 +429,13 @@ export default async function ReportDetailPage({
             {(isOwnReport || canTriage) && bountyDecision?.state === "finalized" && bountyDecision.currency && bountyDecision.finalAmountMinorUnits !== null && (
               <Card className="p-5 sm:p-6">
                 <SectionLabel>Payment</SectionLabel>
-                {isOwnReport && kycNotStarted && (
-                  <Alert tone="warning" title="Complete your payout details to get paid." className="mt-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <span>Your bounty was finalized, but you haven&apos;t submitted KYC or payout details yet.</span>
-                      <Link prefetch={false} href={"/settings/payments" as Route} className="shrink-0 font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-                        Complete now →
-                      </Link>
-                    </div>
-                  </Alert>
-                )}
                 <div className="mt-3">
                   <PaymentStatusSection
-                    obligation={paymentObligation}
-                    latestAttempt={latestPaymentAttempt}
+                    obligations={paymentObligations}
+                    latestAttempts={latestPaymentAttempts}
+                    readiness={payoutReadiness}
+                    acceptance={bountyAcceptance}
+                    isOwnReport={isOwnReport}
                     canManage={canManagePaymentsHere}
                     bountyCurrency={bountyDecision.currency}
                     bountyAmountMinorUnits={bountyDecision.finalAmountMinorUnits}
@@ -451,14 +453,14 @@ export default async function ReportDetailPage({
                 sees the request/status panel; an org manager sees the decision panel only
                 once a request actually exists. See
                 supabase/migrations/202609030001_report_disclosure_workflow.sql. */}
-            {isFinal && isOwnReport && (
+            {isOwnReport && (report.status === "resolved" || disclosure) && (
               <Card className="p-5 sm:p-6">
-                <ResearcherDisclosurePanel reportId={reportId} initialDisclosure={disclosure} />
+                <ResearcherDisclosurePanel reportId={reportId} reportTitle={report.title} initialDisclosure={disclosure} />
               </Card>
             )}
-            {isFinal && canTriage && disclosure && (
+            {canTriage && disclosure && (
               <Card className="p-5 sm:p-6">
-                <OrganizationDisclosureDecisionPanel reportId={reportId} disclosure={disclosure} />
+                <OrganizationDisclosureDecisionPanel reportId={reportId} disclosure={disclosure} canDecide={canFinalizeBounty} />
               </Card>
             )}
 

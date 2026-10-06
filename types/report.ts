@@ -88,6 +88,9 @@ export type Report = {
   researcherSeverity: ReportSeverity | null;
   cvssMetrics: CvssMetrics | null;
   cvssBaseScore: number | null;
+  /** The staff member working this report (202610060011); null when unassigned. */
+  assigneeId: string | null;
+  assigneeName: string | null;
   submittedAt: string;
   createdAt: string;
   updatedAt: string;
@@ -232,10 +235,11 @@ export type ReportSummary = {
   submittedAt: string;
 };
 
-/** requested -> approved | declined; declined -> requested (re-request allowed). approved
- * has no further transition -- once public, staying public, matching how report_status
- * itself has no reopen. See supabase/migrations/202609030001_report_disclosure_workflow.sql. */
-export type ReportDisclosureStatus = "requested" | "approved" | "declined";
+/** requested -> approved | declined; approved -> unpublished; declined/unpublished ->
+ * requested (asked again). An approved disclosure is public once publishedAt has passed --
+ * coordinated programs schedule it after resolution. See
+ * db/migrations/202610060012_disclosure_lifecycle.sql. */
+export type ReportDisclosureStatus = "requested" | "approved" | "declined" | "unpublished";
 
 export type ReportDisclosure = {
   id: string;
@@ -247,9 +251,15 @@ export type ReportDisclosure = {
   decidedBy: string | null;
   decidedAt: string | null;
   declineReason: string | null;
+  /** The proposed public write-up -- redacted by the organization before approval. */
+  draftTitle: string | null;
+  draftSummary: string | null;
   publishedTitle: string | null;
   publishedSummary: string | null;
+  /** May be in the future: approved and scheduled, not yet public. */
   publishedAt: string | null;
+  unpublishedAt: string | null;
+  unpublishReason: string | null;
 };
 
 /** An organization's queue of disclosure requests awaiting a decision. */
@@ -269,8 +279,13 @@ export type PublicDisclosure = {
   reportId: string;
   publishedTitle: string | null;
   publishedSummary: string | null;
+  /** Severity as approved, frozen at publication -- not the live report. */
   confirmedSeverity: ReportSeverity | null;
+  programId: string;
   programName: string;
+  organizationId: string;
   organizationName: string;
+  /** Only when the researcher opted into a public profile. */
+  researcherUsername: string | null;
   publishedAt: string | null;
 };

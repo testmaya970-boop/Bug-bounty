@@ -1,4 +1,6 @@
 import React from "react";
+import { OrganizationSla } from "../../../../components/organizations/organization-sla";
+import { getOrganizationSlaSummary } from "../../../../services/program-policy";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
@@ -103,7 +105,7 @@ export default async function OrganizationAnalyticsPage({
     );
   }
 
-  const [organizations, programs, severityStatusBreakdown, weeklyVolume, resolutionPerformance, bountySpendSummary, weeklyBountySpend, programBountySpend] = await Promise.all([
+  const [organizations, programs, severityStatusBreakdown, weeklyVolume, resolutionPerformance, bountySpendSummary, weeklyBountySpend, programBountySpend, slaSummary] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listProgramsForOrganization(organizationId),
     getOrganizationSeverityStatusBreakdown(organizationId),
@@ -112,6 +114,7 @@ export default async function OrganizationAnalyticsPage({
     getOrganizationBountySpendSummary(organizationId),
     getOrganizationWeeklyBountySpend(organizationId),
     getOrganizationProgramBountySpend(organizationId),
+    getOrganizationSlaSummary(organizationId),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
@@ -236,6 +239,7 @@ export default async function OrganizationAnalyticsPage({
                   <SectionLabel>Organization-wide</SectionLabel>
                   <OrganizationReportAnalytics severityStatusBreakdown={severityStatusBreakdown} weeklyVolume={weeklyVolume} resolutionPerformance={resolutionPerformance} />
                 </div>
+                <OrganizationSla rows={slaSummary} programNames={new Map(programs.map((program) => [program.id, program.name]))} />
                 <OrganizationBountySpend summary={bountySpendSummary} weeklySpend={weeklyBountySpend} />
               </div>
             )}

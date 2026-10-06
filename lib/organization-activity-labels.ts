@@ -29,6 +29,8 @@ const ACTION_LABELS: Record<string, string> = {
 
   "program.created": "created a program",
   "program.description_updated": "updated a program's description",
+  "program.access_instructions_updated": "updated a program's access instructions",
+  "program.policy_published": "published a program policy version",
   "program.visibility_changed": "changed a program's visibility",
   "program.focus_areas_updated": "updated a program's focus areas",
   "program.kyc_requirement_set": "changed a program's identity verification requirement",
@@ -78,10 +80,15 @@ const ACTION_LABELS: Record<string, string> = {
   "report.retest_requested": "requested a retest",
   "report.retest_decided": "decided a retest",
   "report.retest_escalated": "escalated a retest",
+  "report.assigned": "assigned a report",
+  "report.unassigned": "unassigned a report",
+  "report.reopened": "reopened a report after a failed retest",
   "report.mediation_opened": "opened mediation",
   "report.mediation_resolved": "resolved mediation",
   "report.mediation_escalated": "escalated mediation",
 
+  "report_disclosure.draft_updated": "edited a disclosure write-up",
+  "report_disclosure.unpublished": "unpublished a disclosed report",
   "report_disclosure.requested": "requested public disclosure",
   "report_disclosure.approved": "approved public disclosure",
   "report_disclosure.declined": "declined public disclosure",
@@ -91,6 +98,8 @@ const ACTION_LABELS: Record<string, string> = {
   "bounty.finalized": "finalized a bounty",
   "bounty.policy_version_created": "updated the bounty policy",
 
+  "bounty.accepted": "confirmed a bounty award",
+  "payout.tax_form_reviewed": "reviewed a tax form",
   "payment.obligation_created": "created a payment obligation",
   "payment.initiated": "initiated a payment",
   "payment.succeeded": "completed a payment",

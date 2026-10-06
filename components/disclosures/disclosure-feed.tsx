@@ -109,14 +109,17 @@ export function DisclosureFeed({ disclosures }: { disclosures: PublicDisclosure[
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{disclosure.organizationName}</p>
-                    <p className="mt-0.5 font-semibold text-ink">{disclosure.publishedTitle ?? "Untitled report"}</p>
+                    <a href={`/disclosures/${disclosure.reportId}`} className="mt-0.5 block font-semibold text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-focus">
+                      {disclosure.publishedTitle ?? "Untitled report"}
+                    </a>
                     <p className="mt-0.5 text-xs text-ink-muted">
                       {disclosure.programName} · {disclosure.publishedAt ? <LocalTime value={disclosure.publishedAt} dateOnly /> : "Unknown date"}
+                      {disclosure.researcherUsername && <> · by @{disclosure.researcherUsername}</>}
                     </p>
                   </div>
                   {disclosure.confirmedSeverity && <SeverityBadge severity={disclosure.confirmedSeverity} />}
                 </div>
-                {disclosure.publishedSummary && <p className="mt-3 whitespace-pre-wrap text-sm text-ink-muted">{disclosure.publishedSummary}</p>}
+                {disclosure.publishedSummary && <p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm text-ink-muted">{disclosure.publishedSummary}</p>}
               </li>
             ))}
           </ul>

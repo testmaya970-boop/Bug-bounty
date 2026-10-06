@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { Card, Alert } from "../ui/feedback";
 import { Button } from "../ui/button";
-import { Input, Select, Textarea } from "../ui/form";
+import { Checkbox, Input, Select, Textarea } from "../ui/form";
+import { ProgramPolicySummary } from "../programs/program-policy";
+import type { ProgramPolicy } from "../../types/program-policy";
 import { MarkdownTextarea } from "../ui/markdown-textarea";
 import { SectionLabel } from "../ui/security-primitives";
 import { submitReportAction, addResearcherEvidenceAction } from "../../actions/reports";
@@ -15,7 +17,7 @@ import { assetTypeLabel } from "../../lib/scope-labels";
 import { WEAKNESS_TYPE_ORDER, weaknessTypeLabel } from "../../lib/report-weakness-labels";
 import { getReportTemplate } from "../../lib/report-templates";
 import type { ProgramAssetType } from "../../types/scope";
-import type { ReportSeverity, ReportWeaknessType } from "../../types/report";
+import type { ReportSeverity, ReportWeaknessType } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
 
 const ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
@@ -198,13 +200,17 @@ export function CreateReportForm({
   programId,
   programName,
   inScopeTargets = [],
+  policy = null,
 }: {
   organizationId: string;
   programId: string;
   programName: string;
   inScopeTargets?: { assetType: ProgramAssetType; displayTarget: string }[];
+  /** The program's effective policy; when set, the researcher must accept this exact version. */
+  policy?: ProgramPolicy | null;
 }) {
   const router = useRouter();
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [assetType, setAssetType] = useState<ProgramAssetType>("domain");
   const [target, setTarget] = useState("");
   const [title, setTitle] = useState("");
@@ -374,6 +380,7 @@ export function CreateReportForm({
         weaknessType: weaknessType as ReportWeaknessType,
         impact,
         researcherSeverity: researcherSeverity || undefined,
+        acknowledgedPolicyVersion: policy && policyAccepted ? policy.versionNumber : null,
       });
       if (!result.ok) {
         // Entered content is deliberately never cleared on failure -- the researcher
@@ -651,6 +658,19 @@ export function CreateReportForm({
             </div>
           </dl>
         </div>
+
+        {policy && (
+          <div className="space-y-3 rounded-md border border-border p-4">
+            <SectionLabel>Program policy</SectionLabel>
+            <ProgramPolicySummary policy={policy} />
+            <Checkbox
+              label={`I have read and will follow ${programName}'s policy (v${policy.versionNumber})`}
+              required
+              checked={policyAccepted}
+              onChange={(event) => setPolicyAccepted(event.target.checked)}
+            />
+          </div>
+        )}
 
         {failure?.banner && <Alert tone="danger" title={failure.banner} />}
 

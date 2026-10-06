@@ -267,6 +267,40 @@ describe("reports service: listReportsForProgram -- server-side filters, never f
     expect(capturedParams).toEqual(["prog-1", 20]);
   });
 
+  it.each([
+    ["me", "r.assignee_id = $2", "actor"],
+    ["11111111-1111-4111-8111-111111111111", "r.assignee_id = $2", "11111111-1111-4111-8111-111111111111"],
+  ])("binds an assignee filter (%s) as a real numbered parameter", async (assignee, predicate, bound) => {
+    let capturedSql = "";
+    let capturedParams: unknown[] = [];
+    fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
+      capturedSql = sql;
+      capturedParams = params;
+      return queryReturning([]);
+    });
+    const { listReportsForProgram } = await import("../../services/reports");
+    const { getCurrentUser } = await import("@/lib/auth/current-user");
+    const actorId = (await getCurrentUser())?.id;
+
+    await listReportsForProgram("prog-1", undefined, undefined, { assignee });
+
+    expect(capturedSql).toContain(predicate);
+    expect(capturedParams).toEqual(["prog-1", bound === "actor" ? actorId : bound, 20]);
+  });
+
+  it("filters unassigned reports without a parameter", async () => {
+    let capturedSql = "";
+    fakeClient.query.mockImplementation(async (sql: string) => {
+      capturedSql = sql;
+      return queryReturning([]);
+    });
+    const { listReportsForProgram } = await import("../../services/reports");
+
+    await listReportsForProgram("prog-1", undefined, undefined, { assignee: "unassigned" });
+
+    expect(capturedSql).toContain("r.assignee_id is null");
+  });
+
   it("applies a real status predicate when a status filter is given", async () => {
     let capturedSql = "";
     let capturedParams: unknown[] = [];

@@ -185,6 +185,17 @@ async function resetReportToNew(reportId: string) {
   }
 }
 
+/** submit_report, accepting the program's current policy version first -- the reports insert
+ * trigger refuses a report on a program with a policy unless the submitter acknowledged
+ * exactly that version (202610060009). Same transaction, like services/reports.ts. */
+async function submitReportAcknowledgingPolicy(client: PoolClient, args: unknown[]): Promise<{ id: string }> {
+  await client.query(
+    "select set_config('app.acknowledged_policy_version', coalesce((select version_number::text from public.program_policy_versions where program_id = $1 and superseded_at is null), ''), true)",
+    [args[0]],
+  );
+  return callRpc<{ id: string }>(client, "public.submit_report", args);
+}
+
 async function ensureUser(email: string, displayName: string, username: string): Promise<UserRow> {
   const existing = await findUserByEmail(email);
   if (existing) {
@@ -326,7 +337,7 @@ async function ensureReputationHistory(ownerId: string, orgId: string, researche
   } else {
     const created = await tryStep(
       withActor(researcherId, (client) =>
-        callRpc<{ id: string }>(client, "public.submit_report", [
+        submitReportAcknowledgingPolicy(client, [
           program.id,
           "domain",
           target,
@@ -419,7 +430,7 @@ async function ensureFreshReportForTriageWalk(researcherId: string, program: Pro
   }
   const created = await tryStep(
     withActor(researcherId, (client) =>
-      callRpc<{ id: string }>(client, "public.submit_report", [
+      submitReportAcknowledgingPolicy(client, [
         program.id,
         "domain",
         target,
@@ -458,7 +469,7 @@ async function ensureFreshReportForNotificationsWalk(researcherId: string, progr
   }
   const created = await tryStep(
     withActor(researcherId, (client) =>
-      callRpc<{ id: string }>(client, "public.submit_report", [
+      submitReportAcknowledgingPolicy(client, [
         program.id,
         "domain",
         target,
@@ -642,6 +653,10 @@ async function main() {
     console.log("MIGRATION_DATABASE_URL not set -- sign-in rate-limit counters NOT cleared; back-to-back suite runs may be locked out.\n");
   }
 
+  // e2e/program-policy.spec.ts submits a report every run; left in place they push the
+  // fixture reports out of the program page's 5-report preview that journeys click through.
+  const policyReports = await withServiceRole((client) => client.query("delete from public.reports where title like 'E2E policy-bound report %'"));
+  if (policyReports.rowCount) console.log(`Removed ${policyReports.rowCount} report(s) left by the program-policy spec.`);
   const admin = await ensureUser(E2E_ADMIN_EMAIL, "E2E Admin", "e2e_admin");
   await ensureUser(E2E_INVITED_EMAIL, "E2E Invited Researcher", "e2e_invited");
   const veteran = await ensureUser(E2E_VETERAN_EMAIL, "E2E Veteran Researcher", "e2e_veteran");
@@ -660,6 +675,21 @@ async function main() {
 
   let publicProgram = await ensureProgram(admin.id, org.id, E2E_PUBLIC_PROGRAM_NAME);
   publicProgram = await ensureScopeAndActivate(admin.id, publicProgram, "api.e2e-public.example", "public");
+  // e2e/program-policy.spec.ts: a published policy (safe harbor, coordinated disclosure, SLA
+  // targets) researchers must accept before submitting. Published once; later runs keep it.
+  const publicPolicy = await withServiceRole((client) => client.query("select 1 from public.program_policy_versions where program_id = $1", [publicProgram.id]));
+  if (publicPolicy.rowCount === 0) {
+    await tryStep(
+      withActor(admin.id, (client) =>
+        client.query("select public.publish_program_policy($1, $2, true, 'coordinated', 90, 72, 168, 90, 'Initial policy')", [
+          publicProgram.id,
+          "Test only the in-scope API. No denial of service, social engineering, or access to other users' data -- use your own test accounts. Stop and report as soon as you confirm an issue.",
+        ]),
+      ),
+      "publish_program_policy (public program)",
+    );
+    console.log("Published program policy v1 for the public program.");
+  }
   console.log("");
 
   let privateProgram = await ensureProgram(admin.id, org.id, E2E_PRIVATE_PROGRAM_NAME);
@@ -705,8 +735,28 @@ async function main() {
   // for the billing admin's Payments page. Recreated every run (its attempts cascade), so
   // e2e/functional-cases.spec.ts's payout case always starts from a pending obligation.
   const resolvedTitle = "E2E seed: resolved report with finalized bounty";
+  // The payout gate (202610060008) needs a payout method and a verified tax form before a
+  // payout can start: the veteran gets both through the real RPCs, reviewed by the platform
+  // admin. Idempotent -- a tax form already verified is left alone.
+  await tryStep(withActor(veteran.id, (client) => client.query("select public.upsert_my_payout_details('paypal', null, null, null, $1)", ["e2e.veteran.payouts@example.test"])), "upsert_my_payout_details (veteran)");
+  const veteranTax = await withServiceRole((client) => client.query<{ tax_form_status: string | null }>("select tax_form_status from public.researcher_payout_details where user_id = $1", [veteran.id]));
+  if (veteranTax.rows[0]?.tax_form_status !== "verified") {
+    await tryStep(withActor(veteran.id, (client) => client.query("select public.upsert_my_tax_form('w9', $1)", ["000-00-4821"])), "upsert_my_tax_form (veteran)");
+    await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [platformAdmin.id]));
+    await tryStep(withActor(platformAdmin.id, (client) => client.query("select public.review_tax_form($1, 'verified', 'E2E seed')", [veteran.id])), "review_tax_form (veteran)");
+  }
   await withServiceRole((client) =>
     client.query("delete from public.payment_obligations o using public.reports r where r.id = o.report_id and r.program_id = $1 and r.title = $2", [publicProgram.id, resolvedTitle]),
+  );
+  // e2e/triage.spec.ts assigns reports every run; start every run unassigned.
+  await withServiceRole((client) => client.query("update public.reports set assignee_id = null where organization_id = $1 and assignee_id is not null", [org.id]));
+  // e2e/disclosure.spec.ts requests, approves and unpublishes this report's disclosure every run.
+  await withServiceRole((client) =>
+    client.query("delete from public.report_disclosures d using public.reports r where r.id = d.report_id and r.program_id = $1 and r.title = $2", [publicProgram.id, resolvedTitle]),
+  );
+  // e2e/payouts.spec.ts confirms the award every run.
+  await withServiceRole((client) =>
+    client.query("delete from public.bounty_acceptances a using public.reports r where r.id = a.report_id and r.program_id = $1 and r.title = $2", [publicProgram.id, resolvedTitle]),
   );
   await tryStep(
     withActor(admin.id, (client) => client.query("select public.create_payment_obligation((select id from public.reports where program_id = $1 and title = $2))", [publicProgram.id, resolvedTitle])),

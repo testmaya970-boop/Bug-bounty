@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
-import { cancelPaymentObligation, createPaymentObligation, initiateManualPaymentAttempt, recordManualPaymentResult } from "@/services/payments";
+import { cancelPaymentObligation, createPaymentObligations, initiateManualPaymentAttempt, recordManualPaymentResult } from "@/services/payments";
 import type { PaymentAttempt, PaymentObligation } from "@/types/payment";
+import { describePayoutNotReady } from "@/lib/payout-blockers";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
@@ -32,10 +33,10 @@ function revalidateReportPaths(organizationId: string, programId: string, report
 
 const reportActionBase = z.object({ organizationId: uuidSchema, programId: uuidSchema, reportId: uuidSchema });
 
-export async function createPaymentObligationAction(input: z.infer<typeof reportActionBase>): Promise<ActionResult<PaymentObligation>> {
+export async function createPaymentObligationAction(input: z.infer<typeof reportActionBase>): Promise<ActionResult<PaymentObligation[]>> {
   const parsed = reportActionBase.safeParse(input);
   if (!parsed.success) return invalidInput();
-  const result = await toResult(createPaymentObligation(parsed.data.reportId));
+  const result = await toResult(createPaymentObligations(parsed.data.reportId));
   if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
   return result;
 }
@@ -47,6 +48,7 @@ export async function initiateManualPaymentAttemptAction(input: z.infer<typeof o
   if (!parsed.success) return invalidInput();
   const result = await toResult(initiateManualPaymentAttempt(parsed.data.obligationId));
   if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
+  if (!result.ok && result.code === "PAYOUT_NOT_READY") return { ...result, message: describePayoutNotReady(result.message) };
   return result;
 }
 

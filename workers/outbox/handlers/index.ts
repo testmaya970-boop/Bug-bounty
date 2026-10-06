@@ -2,7 +2,7 @@ import { registerHandler } from "../registry";
 import { handleReportCreatedV1 } from "./report-created-v1";
 import { createReportOutcomeHandler } from "./reputation/report-outcome";
 import { handleBountyFinalizedV1 } from "./reputation/bounty-finalized-v1";
-import { createNotificationHandler, createPlatformNotificationHandler } from "./notifications/notification-handler";
+import { createNotificationHandler, createPaymentNotificationHandler, createPlatformNotificationHandler } from "./notifications/notification-handler";
 
 /** The complete handler registry for this slice. Importing this module (a side effect
  * import, `import "./handlers"`) is what makes each event_type:schema_version
@@ -55,3 +55,26 @@ registerHandler("program.suspended", 1, createPlatformNotificationHandler("progr
 registerHandler("program.reinstated", 1, createPlatformNotificationHandler("program_reinstated"));
 registerHandler("organization.suspended", 1, createPlatformNotificationHandler("organization_suspended"));
 registerHandler("organization.reinstated", 1, createPlatformNotificationHandler("organization_reinstated"));
+
+// Payments and bounty changes (db/migrations/202610060008_payout_lifecycle.sql): enqueued by
+// an audit_logs trigger; routed to the obligation's own recipient (submitter or collaborator),
+// or for a mediation request to the organization.
+registerHandler("payment.obligation_created", 1, createPaymentNotificationHandler("payment_scheduled"));
+registerHandler("payment.succeeded", 1, createPaymentNotificationHandler("payment_succeeded"));
+registerHandler("payment.failed", 1, createPaymentNotificationHandler("payment_failed"));
+registerHandler("payment.cancelled", 1, createPaymentNotificationHandler("payment_cancelled"));
+registerHandler("bounty.adjusted", 1, createPaymentNotificationHandler("bounty_adjusted"));
+registerHandler("report.mediation_opened", 1, createPaymentNotificationHandler("report_mediation_opened"));
+
+// Triage (db/migrations/202610060011_report_assignment_and_triage.sql), same audit-row router.
+registerHandler("report.assigned", 1, createPaymentNotificationHandler("report_assigned"));
+registerHandler("report.retest_requested", 1, createPaymentNotificationHandler("report_retest_requested"));
+registerHandler("report.retest_decided", 1, createPaymentNotificationHandler("report_retest_decided"));
+registerHandler("report.mediation_resolved", 1, createPaymentNotificationHandler("report_mediation_resolved"));
+registerHandler("report.reopened", 1, createPaymentNotificationHandler("report_reopened"));
+
+// Disclosure lifecycle (db/migrations/202610060012_disclosure_lifecycle.sql), same router.
+registerHandler("report_disclosure.requested", 1, createPaymentNotificationHandler("report_disclosure_requested"));
+registerHandler("report_disclosure.approved", 1, createPaymentNotificationHandler("report_disclosure_approved"));
+registerHandler("report_disclosure.declined", 1, createPaymentNotificationHandler("report_disclosure_declined"));
+registerHandler("report_disclosure.unpublished", 1, createPaymentNotificationHandler("report_disclosure_unpublished"));

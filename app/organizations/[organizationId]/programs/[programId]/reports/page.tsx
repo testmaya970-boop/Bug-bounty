@@ -9,7 +9,7 @@ import { ProgramHeader } from "../../../../../../components/programs/program-hea
 import { canCreateProgram } from "../../../../../../services/authorization";
 import { getActorMembership } from "../../../../../../services/organization-members";
 import { getProgram, listProgramMembers } from "../../../../../../services/programs";
-import { getReportInboxWorkloadSummary, listReportsForProgram } from "../../../../../../services/reports";
+import { getReportInboxWorkloadSummary, listReportsForProgram, listAssignableStaff } from "../../../../../../services/reports";
 import { getCurrentUser } from "../../../../../../lib/auth/current-user";
 import type { ReportSeverity, ReportStatus } from "../../../../../../types/report";
 
@@ -29,10 +29,10 @@ export default async function ProgramReportsInboxPage({
   searchParams,
 }: {
   params: Promise<{ organizationId: string; programId: string }>;
-  searchParams: Promise<{ status?: string; severity?: string }>;
+  searchParams: Promise<{ status?: string; severity?: string; assignee?: string }>;
 }) {
   const { organizationId, programId } = await params;
-  const { status: statusParam, severity: severityParam } = await searchParams;
+  const { status: statusParam, severity: severityParam, assignee: assigneeParam } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/programs/${programId}/reports` as Route);
 
@@ -64,12 +64,16 @@ export default async function ProgramReportsInboxPage({
   const status: ReportStatus | "all" = statusParam && VALID_STATUSES.includes(statusParam as ReportStatus) ? (statusParam as ReportStatus) : "all";
   const severity: ReportSeverity | "all" = severityParam && VALID_SEVERITIES.includes(severityParam as ReportSeverity) ? (severityParam as ReportSeverity) : "all";
 
-  const [{ items: reports, nextCursor }, workloadSummary] = await Promise.all([
+  const assignee = assigneeParam === "me" || assigneeParam === "unassigned" || /^[0-9a-f-]{36}$/.test(assigneeParam ?? "") ? assigneeParam! : "all";
+
+  const [{ items: reports, nextCursor }, workloadSummary, assignableStaff] = await Promise.all([
     listReportsForProgram(programId, undefined, undefined, {
       status: status === "all" ? undefined : status,
       severity: severity === "all" ? undefined : severity,
+      assignee: assignee === "all" ? undefined : assignee,
     }),
     getReportInboxWorkloadSummary(programId),
+    listAssignableStaff(organizationId, programId),
   ]);
 
   return (
@@ -88,7 +92,7 @@ export default async function ProgramReportsInboxPage({
         <p className="text-sm text-ink-muted">Every report submitted to this program. Filter, scan, and open a report to act on it.</p>
 
         <div className="rounded-lg border border-border bg-surface">
-          <ReportInboxTable organizationId={organizationId} programId={programId} initialReports={reports} initialNextCursor={nextCursor} status={status} severity={severity} workloadSummary={workloadSummary} />
+          <ReportInboxTable organizationId={organizationId} programId={programId} initialReports={reports} initialNextCursor={nextCursor} status={status} severity={severity} workloadSummary={workloadSummary} assignee={assignee} assignableStaff={assignableStaff} />
         </div>
       </div>
     </AppShell>

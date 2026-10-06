@@ -16,6 +16,9 @@ import { ResearcherTable } from "../../../../../components/programs/researcher-t
 import { PendingProgramInvitationsPanel } from "../../../../../components/programs/pending-program-invitations-panel";
 import { BountyPolicySection, CreateBountyPolicyDialog } from "../../../../../components/programs/bounty-policy";
 import { ProgramVisibilityPanel } from "../../../../../components/programs/program-visibility-panel";
+import { ProgramPolicySummary } from "../../../../../components/programs/program-policy";
+import { PublishProgramPolicyDialog } from "../../../../../components/programs/program-policy-editor";
+import { getProgramPolicy } from "../../../../../services/program-policy";
 import { ProgramAccessInstructionsEditor, ProgramAccessInstructionsNotice } from "../../../../../components/programs/program-access-instructions-panel";
 import { ProgramAccessFileEditor, ProgramAccessFileNotice } from "../../../../../components/programs/program-access-file-panel";
 import { getProgramAccessFile } from "../../../../../services/program-access-file";
@@ -79,7 +82,7 @@ async function renderProgramControlCenterPage({
     if (!publicProgram || publicProgram.organizationId !== organizationId) {
       redirect(`/sign-in?redirectTo=/organizations/${organizationId}/programs/${programId}` as Route);
     }
-    const publicScope = await listPublicProgramScope(programId);
+    const [publicScope, policy] = await Promise.all([listPublicProgramScope(programId), getProgramPolicy(programId)]);
     const inScope = publicScope.filter((entry) => entry.scopeState === "in_scope");
     const outOfScope = publicScope.filter((entry) => entry.scopeState === "out_of_scope");
 
@@ -104,6 +107,12 @@ async function renderProgramControlCenterPage({
               <ProgramTypeBadge programType={publicProgram.programType} />
             </div>
             {publicProgram.description && <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-ink-muted">{publicProgram.description}</p>}
+              <div className="mt-5 border-t border-border pt-4">
+                <h2 className="text-sm font-semibold text-ink">Program policy</h2>
+                <div className="mt-2">
+                  <ProgramPolicySummary policy={policy} />
+                </div>
+              </div>
           </div>
 
           {/* CAN I RESEARCH THIS — the primary action, placed immediately after identity,
@@ -242,7 +251,7 @@ async function renderProgramControlCenterPage({
     if (publicProgram && publicProgram.organizationId === organizationId) {
       // Staff of the owning organization land here too (billing admins, triagers of other
       // programs) -- they are not offered "Start researching": 202609280001 refuses it.
-      const [publicScope, staffMembership] = await Promise.all([listPublicProgramScope(programId), getActorMembership(user.id, organizationId)]);
+      const [publicScope, staffMembership, policy] = await Promise.all([listPublicProgramScope(programId), getActorMembership(user.id, organizationId), getProgramPolicy(programId)]);
       const isOwnStaff = Boolean(staffMembership && staffMembership.status !== "removed");
       const inScope = publicScope.filter((entry) => entry.scopeState === "in_scope");
       const outOfScope = publicScope.filter((entry) => entry.scopeState === "out_of_scope");
@@ -260,6 +269,12 @@ async function renderProgramControlCenterPage({
                 <ProgramTypeBadge programType={publicProgram.programType} />
               </div>
               {publicProgram.description && <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-ink-muted">{publicProgram.description}</p>}
+              <div className="mt-5 border-t border-border pt-4">
+                <h2 className="text-sm font-semibold text-ink">Program policy</h2>
+                <div className="mt-2">
+                  <ProgramPolicySummary policy={policy} />
+                </div>
+              </div>
             </div>
 
             {/* CAN I RESEARCH THIS — placed immediately after identity, never buried
@@ -351,6 +366,7 @@ async function renderProgramControlCenterPage({
   // each other -- every one of them depends only on canManageProgram/isActiveResearcher,
   // both already known above. Collapsed into one Promise.all so the whole page pays for
   // exactly the slowest single query in this batch, not the sum of all of them.
+  const policyPromise = getProgramPolicy(programId);
   const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms, organizationMembers] =
     await perfTimed("program home: stage 2 (parallel batch)", () =>
       Promise.all([
@@ -395,6 +411,7 @@ async function renderProgramControlCenterPage({
         isOrgAdmin ? listOrganizationMembers(organizationId) : Promise.resolve([]),
       ]),
     );
+  const policy = await policyPromise;
   // Scope editing is no longer locked to draft (202609230001_scope_editable_after_launch):
   // an org can still fix a scope mistake, add a target, or retire one after review/launch.
   // Reaching this page as a manager already proves the identical authorization predicate
@@ -650,6 +667,24 @@ async function renderProgramControlCenterPage({
                 <ResearcherTable organizationId={organizationId} programId={programId} researchers={researchers} />
               </div>
             )}
+          </div>
+        )}
+
+        {(canManageProgram || isActiveResearcher) && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-ink">Program policy</h2>
+                <p className="text-sm text-ink-muted">
+                  {canManageProgram ? "What researchers agree to before submitting. Each publish is a new version; reports keep the version they were submitted under." : "The rules you agreed to research under."}
+                </p>
+              </div>
+              {canManageProgram && <PublishProgramPolicyDialog organizationId={organizationId} programId={programId} current={policy} />}
+            </div>
+            <Card className="space-y-3 p-5">
+              {!canManageProgram && program.description && <p className="whitespace-pre-wrap text-sm text-ink">{program.description}</p>}
+              <ProgramPolicySummary policy={policy} />
+            </Card>
           </div>
         )}
 

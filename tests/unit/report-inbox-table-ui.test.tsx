@@ -32,6 +32,8 @@ function makeReport(overrides: Partial<Report>): Report {
     researcherSeverity: null,
     cvssMetrics: null,
     cvssBaseScore: null,
+    assigneeId: null,
+    assigneeName: null,
     submittedAt: "2026-08-28T00:00:00Z",
     createdAt: "2026-08-28T00:00:00Z",
     updatedAt: "2026-08-28T00:00:00Z",

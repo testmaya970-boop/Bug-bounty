@@ -9,8 +9,9 @@ test("new dark security-ops shell: theme, nav, routing, typography, drawer", asy
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/sign-in");
-  // seed:e2e researcher (demo.researcher is not created by any seed script).
-  await page.getByLabel(/email/i).fill("e2e.veteran@unpatched.demo");
+  // seed:e2e researcher (demo.researcher is not created by any seed script). Not e2e.veteran:
+  // payouts/disclosure specs need that account, and the sign-in limit is 10 per 15 minutes.
+  await page.getByLabel(/email/i).fill("e2e.newcomer@unpatched.demo");
   await page.getByRole("textbox", { name: /password/i }).fill("E2ESeed!2026");
   await page.getByRole("button", { name: /sign in/i }).click();
   // Wait for sign-in to actually finish. A capped wait whose timeout was swallowed let a

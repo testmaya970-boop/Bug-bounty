@@ -11,8 +11,13 @@ import {
   initiateManualPaymentAttemptAction,
   recordManualPaymentResultAction,
 } from "../../actions/payments";
+import { acceptBountyAction } from "../../actions/bounty";
+import { LocalTime } from "../ui/local-time";
 import { minorUnitsToDecimalString } from "../../lib/money";
 import type { PaymentAttempt, PaymentObligation } from "../../types/payment";
+import type { PayoutReadiness } from "../../services/payments";
+import { PAYOUT_BLOCKER_LABELS as BLOCKER_LABELS } from "../../lib/payout-blockers";
+import type { BountyAcceptance } from "../../services/bounty";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -101,9 +106,9 @@ export function CreatePaymentObligationButton({ organizationId, programId, repor
       title="Create a payment obligation?"
       description={
         <p>
-          This records that <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span> is owed to the
-          researcher for this report's finalized bounty -- paid to them in full. A 20% platform fee is billed to your organization on top of it. This does not itself
-          move any money; a payout must be initiated separately.
+          This records that <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span> is owed for this
+          report's finalized bounty -- split between the researcher and any collaborators by their agreed shares, each paid in full. A 20% platform fee is billed to
+          your organization on top. This does not itself move any money; each payout is initiated separately.
         </p>
       }
       confirmLabel="Create obligation"
@@ -121,7 +126,15 @@ export function InitiateManualPayoutButton({
   amountMinorUnits,
   platformFeeMinorUnits,
   isRetry,
-}: ReportRef & { obligationId: string; currency: string; amountMinorUnits: number; platformFeeMinorUnits: number; isRetry: boolean }) {
+  blocked,
+}: ReportRef & { obligationId: string; currency: string; amountMinorUnits: number; platformFeeMinorUnits: number; isRetry: boolean; blocked?: boolean }) {
+  if (blocked) {
+    return (
+      <Button variant="primary" disabled title="This researcher cannot be paid until the requirements above are met.">
+        {isRetry ? "Retry payout" : "Initiate manual payout"}
+      </Button>
+    );
+  }
   return (
     <ConfirmDialog
       triggerLabel={isRetry ? "Retry payout" : "Initiate manual payout"}
@@ -314,7 +327,7 @@ export function CancelPaymentObligationDialog({ organizationId, programId, repor
       <Dialog open={open} title="Cancel this payment obligation" onClose={close}>
         {step === "edit" ? (
           <div className="space-y-4">
-            <p className="text-sm text-ink-muted">This is a terminal state. Once cancelled, this obligation cannot be reactivated.</p>
+            <p className="text-sm text-ink-muted">This obligation is closed for good. Once every obligation on this bounty is cancelled, the bounty can be adjusted and re-issued.</p>
             <Textarea label="Reason" required autoFocus value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} />
             {error && (
               <p role="alert" className="text-sm font-medium text-danger">
@@ -353,67 +366,139 @@ export function CancelPaymentObligationDialog({ organizationId, programId, repor
   );
 }
 
-/** Report detail's Payment section. Renders only once a bounty decision is finalized --
- * before that, there is nothing to say about payment. Separates "no obligation yet" from
- * every real PaymentObligationStatus, and never shows attempt-level detail (failure code/
- * message, provider reference) to anyone -- that stays in the manager-only audit trail,
- * consistent with 0013's finalizedBy precedent. See
+/** The submitter confirms the current award. Disputing goes through mediation below
+ * (reason: bounty amount), which also pauses payment until it is settled. */
+function ConfirmAwardButton({ organizationId, programId, reportId }: ReportRef) {
+  return (
+    <ConfirmDialog
+      triggerLabel="Confirm award"
+      triggerVariant="secondary"
+      title="Confirm this bounty award?"
+      description={<p>This tells the organization you accept the awarded amount. If you disagree with it, open a mediation request instead.</p>}
+      confirmLabel="Confirm award"
+      onConfirm={async () => {
+        const result = await acceptBountyAction({ organizationId, programId, reportId });
+        return result.ok ? { ok: true } : { ok: false, message: result.message };
+      }}
+    />
+  );
+}
+
+/** Report detail's Payment section. Renders only once a bounty decision is finalized.
+ * One row per recipient (submitter and split collaborators, 202610060008); a researcher sees
+ * only their own (RLS). Attempt-level detail stays manager-only. Payout blockers name the
+ * missing requirement, never the payout destination. See
  * docs/decisions/0014-payment-ledger-and-payout-orchestration.md. */
 export function PaymentStatusSection({
-  obligation,
-  latestAttempt,
+  obligations,
+  latestAttempts,
+  readiness,
+  acceptance,
   canManage,
+  isOwnReport,
   bountyCurrency,
   bountyAmountMinorUnits,
   organizationId,
   programId,
   reportId,
 }: {
-  obligation: PaymentObligation | null;
-  latestAttempt: PaymentAttempt | null;
+  obligations: PaymentObligation[];
+  latestAttempts: Record<string, PaymentAttempt>;
+  readiness: PayoutReadiness[];
+  acceptance: BountyAcceptance | null;
   canManage: boolean;
+  isOwnReport: boolean;
   bountyCurrency: string;
   bountyAmountMinorUnits: number;
 } & ReportRef) {
-  if (!obligation) {
-    return (
-      <div className="space-y-3">
-        <p className="text-sm text-ink-muted">No payment obligation has been created yet.</p>
-        {canManage && <CreatePaymentObligationButton organizationId={organizationId} programId={programId} reportId={reportId} currency={bountyCurrency} amountMinorUnits={bountyAmountMinorUnits} />}
-      </div>
-    );
-  }
+  const ref = { organizationId, programId, reportId };
+  const live = obligations.filter((o) => o.status !== "cancelled");
+  const cancelled = obligations.filter((o) => o.status === "cancelled");
+  const names = new Map(readiness.map((r) => [r.researcherId, r.displayName]));
+  const blockersOf = (researcherId: string) => readiness.find((r) => r.researcherId === researcherId)?.blockers ?? [];
+  const ownBlockers = isOwnReport ? readiness.flatMap((r) => r.blockers) : [];
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-ink">
-        {STATUS_LABELS[obligation.status]}: <span className="font-mono font-semibold">{obligation.currency} {minorUnitsToDecimalString(obligation.amountMinorUnits)}</span>
+    <div className="space-y-4">
+      <p className="text-sm text-ink-muted">
+        {acceptance ? (
+          <>
+            {isOwnReport ? "You" : "The researcher"} confirmed this award on <LocalTime value={acceptance.acceptedAt} dateOnly />.
+          </>
+        ) : isOwnReport ? (
+          "You haven't confirmed this award yet."
+        ) : (
+          "The researcher hasn't confirmed this award yet."
+        )}
       </p>
-      {/* The fee is the organization's charge (202609250010): shown to managers only, never
-          to the researcher, who is paid the full amount above. */}
-      {canManage && obligation.platformFeeMinorUnits > 0 && (
-        <p className="text-xs text-ink-muted">
-          Paid to the researcher in full. Platform fee billed to your organization: {obligation.currency} {minorUnitsToDecimalString(obligation.platformFeeMinorUnits)} --
-          total due {obligation.currency} {minorUnitsToDecimalString(obligation.amountMinorUnits + obligation.platformFeeMinorUnits)}.
-        </p>
-      )}
-      {canManage && (obligation.status === "pending" || obligation.status === "failed") && (
-        <div className="flex flex-wrap gap-2">
-          <InitiateManualPayoutButton
-            organizationId={organizationId}
-            programId={programId}
-            reportId={reportId}
-            obligationId={obligation.id}
-            currency={obligation.currency}
-            amountMinorUnits={obligation.amountMinorUnits}
-            platformFeeMinorUnits={obligation.platformFeeMinorUnits}
-            isRetry={obligation.status === "failed"}
-          />
-          <CancelPaymentObligationDialog organizationId={organizationId} programId={programId} reportId={reportId} obligationId={obligation.id} />
+      {isOwnReport && !acceptance && <ConfirmAwardButton {...ref} />}
+
+      {!canManage && ownBlockers.length > 0 && (
+        <div className="rounded-md border border-warning bg-surface-muted p-3 text-sm">
+          <p className="font-medium text-ink">Before you can be paid:</p>
+          <ul className="mt-1 list-disc pl-5 text-ink-muted">
+            {ownBlockers.map((b) => (
+              <li key={b}>{BLOCKER_LABELS[b]}</li>
+            ))}
+          </ul>
+          <a href="/settings/payments" className="mt-2 inline-block font-semibold text-action hover:text-action-hover">
+            Update payout settings →
+          </a>
         </div>
       )}
-      {canManage && obligation.status === "processing" && latestAttempt && (
-        <RecordPaymentResultDialog organizationId={organizationId} programId={programId} reportId={reportId} attempt={latestAttempt} />
+
+      {live.length === 0 ? (
+        <div className="space-y-3">
+          <p className="text-sm text-ink-muted">{cancelled.length > 0 ? "Every payment obligation for this bounty was cancelled." : "No payment obligation has been created yet."}</p>
+          {canManage && <CreatePaymentObligationButton {...ref} currency={bountyCurrency} amountMinorUnits={bountyAmountMinorUnits} />}
+        </div>
+      ) : (
+        <ul className="divide-y divide-border rounded-md border border-border">
+          {live.map((obligation) => {
+            const blockers = blockersOf(obligation.researcherId);
+            const attempt = latestAttempts[obligation.id];
+            return (
+              <li key={obligation.id} className="space-y-2 p-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-sm font-medium text-ink">{names.get(obligation.researcherId) ?? "Researcher"}</p>
+                  <p className="text-sm text-ink">
+                    {STATUS_LABELS[obligation.status]}: <span className="font-mono font-semibold">{obligation.currency} {minorUnitsToDecimalString(obligation.amountMinorUnits)}</span>
+                  </p>
+                </div>
+                {/* The fee is the organization's charge (202609250010): managers only. */}
+                {canManage && obligation.platformFeeMinorUnits > 0 && (
+                  <p className="text-xs text-ink-muted">
+                    Paid to the researcher in full. Platform fee billed to your organization: {obligation.currency} {minorUnitsToDecimalString(obligation.platformFeeMinorUnits)} -- total due{" "}
+                    {obligation.currency} {minorUnitsToDecimalString(obligation.amountMinorUnits + obligation.platformFeeMinorUnits)}.
+                  </p>
+                )}
+                {canManage && blockers.length > 0 && obligation.status !== "succeeded" && (
+                  <p className="text-xs font-medium text-warning">Can&apos;t be paid yet: {blockers.map((b) => BLOCKER_LABELS[b]).join("; ")}.</p>
+                )}
+                {canManage && (obligation.status === "pending" || obligation.status === "failed") && (
+                  <div className="flex flex-wrap gap-2">
+                    <InitiateManualPayoutButton
+                      {...ref}
+                      obligationId={obligation.id}
+                      currency={obligation.currency}
+                      amountMinorUnits={obligation.amountMinorUnits}
+                      platformFeeMinorUnits={obligation.platformFeeMinorUnits}
+                      isRetry={obligation.status === "failed"}
+                      blocked={blockers.length > 0}
+                    />
+                    <CancelPaymentObligationDialog {...ref} obligationId={obligation.id} />
+                  </div>
+                )}
+                {canManage && obligation.status === "processing" && attempt && <RecordPaymentResultDialog {...ref} attempt={attempt} />}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {cancelled.length > 0 && live.length > 0 && (
+        <p className="text-xs text-ink-muted">
+          {cancelled.length} earlier obligation{cancelled.length === 1 ? " was" : "s were"} cancelled.
+        </p>
       )}
     </div>
   );

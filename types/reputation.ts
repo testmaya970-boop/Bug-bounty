@@ -23,7 +23,7 @@ import type { ResearcherFocusArea, ResearcherSecurityFocus } from "./researcher-
  * admin action with no required justification captured anywhere today -- too weak and
  * too easily biased a signal to treat as reputation provenance yet).
  */
-export type ReputationFactType = "report_resolved" | "report_duplicate" | "report_informative" | "report_not_applicable" | "report_rejected" | "bounty_finalized";
+export type ReputationFactType = "report_resolved" | "report_duplicate" | "report_informative" | "report_not_applicable" | "report_rejected" | "bounty_finalized" | "ctf_challenge_solved";
 
 /** The one safe, derived read exposed to a researcher about their own history -- a
  * plain count per objective category, never a score. See
@@ -57,10 +57,10 @@ export type ReputationLedgerEntry = {
 /**
  * A real, public, computed reputation score -- docs/decisions/0065 formally supersedes
  * 0016's "no score, ranking, badge, or leaderboard exists" clause. Computed read-side
- * from `reputation_ledger` (never a stored/mutable column): resolved x 25, bounty_finalized
- * x 10, rejected x -5; duplicate/informative/not_applicable weighted zero, the same neutral
- * treatment 0016 always gave them. See `get_researcher_reputation_score` in
- * services/reputation.ts.
+ * from `reputation_ledger` (never a stored/mutable column), one rule for every read
+ * (private.reputation_fact_points, 202610060013): resolved by frozen severity (critical 50,
+ * high 35, medium 25, low 15, none 5), a non-zero bounty +10, rejected -5, not applicable -2,
+ * duplicate/informative 0, CTF solve +2. Each report earns each outcome once.
  */
 export type ReputationScore = number;
 
@@ -112,7 +112,7 @@ export type PublicResearcherProfile = {
  * mirroring Bugcrowd's own volume-based "Submission Shogun" badge -- it never feeds the
  * score formula or the leaderboard, both of which stay outcome-only.
  */
-export type BadgeKey = "prolific_researcher" | "resolver" | "critical_finder" | "bounty_earner" | "program_breadth";
+export type BadgeKey = "prolific_researcher" | "resolver" | "critical_finder" | "bounty_earner" | "program_breadth" | "high_signal";
 export type BadgeTier = "bronze" | "silver" | "gold" | "platinum";
 
 export type ResearcherBadge = {

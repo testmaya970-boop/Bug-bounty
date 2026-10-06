@@ -32,6 +32,21 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   program_reinstated: "A program was reinstated by the platform",
   organization_suspended: "Your organization was suspended by the platform",
   organization_reinstated: "Your organization was reinstated by the platform",
+  bounty_adjusted: "The bounty for your report was adjusted",
+  payment_scheduled: "A bounty payment to you was scheduled",
+  payment_succeeded: "A bounty payment to you was sent",
+  payment_failed: "A bounty payment to you could not be completed",
+  payment_cancelled: "A bounty payment to you was cancelled",
+  report_mediation_opened: "A researcher requested mediation on a report",
+  report_assigned: "A report was assigned to you",
+  report_retest_requested: "A researcher asked for a retest",
+  report_retest_decided: "Your retest request was decided",
+  report_mediation_resolved: "Your mediation request was answered",
+  report_reopened: "Your resolved report was reopened",
+  report_disclosure_requested: "A researcher asked to publish a report",
+  report_disclosure_approved: "Your report was approved for public disclosure",
+  report_disclosure_declined: "Your disclosure request was declined",
+  report_disclosure_unpublished: "Your disclosed report was unpublished",
 };
 
 const PREVIEW_COUNT = 6;

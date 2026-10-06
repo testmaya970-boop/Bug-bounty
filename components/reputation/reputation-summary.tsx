@@ -13,6 +13,7 @@ export const FACT_TYPE_LABELS: Record<ReputationFactType, string> = {
   report_informative: "Informative reports",
   report_not_applicable: "Not-applicable reports",
   report_rejected: "Rejected reports",
+  ctf_challenge_solved: "CTF challenges solved",
 };
 
 /**

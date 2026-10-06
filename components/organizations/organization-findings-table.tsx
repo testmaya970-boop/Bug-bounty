@@ -36,6 +36,7 @@ export function OrganizationFindingsTable({
   status,
   severity,
   programOptions,
+  assignee = "all",
 }: {
   organizationId: string;
   initialReports: Report[];
@@ -44,6 +45,8 @@ export function OrganizationFindingsTable({
   status: ReportStatus | "all";
   severity: ReportSeverity | "all";
   programOptions: { id: string; name: string }[];
+  /** "all", "me" or "unassigned" (202610060011). */
+  assignee?: "all" | "me" | "unassigned";
 }) {
   const router = useRouter();
   const [reports, setReports] = useState(initialReports);
@@ -54,7 +57,7 @@ export function OrganizationFindingsTable({
 
   const programNameById = new Map(programOptions.map((program) => [program.id, program.name]));
 
-  function navigateWithFilters(next: { programId?: string | "all"; status?: ReportStatus | "all"; severity?: ReportSeverity | "all" }) {
+  function navigateWithFilters(next: { programId?: string | "all"; status?: ReportStatus | "all"; severity?: ReportSeverity | "all"; assignee?: string }) {
     const params = new URLSearchParams();
     const nextProgramId = next.programId ?? programId;
     const nextStatus = next.status ?? status;
@@ -62,6 +65,8 @@ export function OrganizationFindingsTable({
     if (nextProgramId !== "all") params.set("program", nextProgramId);
     if (nextStatus !== "all") params.set("status", nextStatus);
     if (nextSeverity !== "all") params.set("severity", nextSeverity);
+    const nextAssignee = next.assignee ?? assignee;
+    if (nextAssignee !== "all") params.set("assignee", nextAssignee);
     const query = params.toString();
     startFilterTransition(() => {
       router.push((`/organizations/${organizationId}/findings` + (query ? `?${query}` : "")) as Route);
@@ -78,6 +83,7 @@ export function OrganizationFindingsTable({
         programId: programId === "all" ? undefined : programId,
         status: status === "all" ? undefined : status,
         severity: severity === "all" ? undefined : severity,
+        assignee: assignee === "all" ? undefined : assignee,
       });
       if (!result.ok) {
         setLoadError(result.message);
@@ -88,7 +94,7 @@ export function OrganizationFindingsTable({
     });
   }
 
-  const hasActiveFilter = programId !== "all" || status !== "all" || severity !== "all";
+  const hasActiveFilter = programId !== "all" || status !== "all" || severity !== "all" || assignee !== "all";
 
   return (
     <div className="rounded-lg border border-border bg-surface">
@@ -117,6 +123,11 @@ export function OrganizationFindingsTable({
             </option>
           ))}
         </Select>
+        <Select label="Assigned to" className="max-w-xs" disabled={filterPending} value={assignee} onChange={(event) => navigateWithFilters({ assignee: event.target.value })}>
+          <option value="all">Anyone</option>
+          <option value="me">Me</option>
+          <option value="unassigned">Unassigned</option>
+        </Select>
         {filterPending && <span aria-hidden="true" className="mb-2.5 size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent text-ink-muted motion-reduce:animate-none" />}
       </div>
 
@@ -133,7 +144,7 @@ export function OrganizationFindingsTable({
             <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
               <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-ink-muted">
                 <tr>
-                  {["Severity", "Report", "Engagement", "Target", "Status", "Researcher", "Updated", "Next action"].map((header) => (
+                  {["Severity", "Report", "Engagement", "Target", "Status", "Assignee", "Researcher", "Updated", "Next action"].map((header) => (
                     <th key={header} scope="col" className="px-4 py-3 font-semibold">
                       {header}
                     </th>
@@ -165,6 +176,7 @@ export function OrganizationFindingsTable({
                     <td className="px-4 py-3">
                       <StatusBadge status={report.status} />
                     </td>
+                    <td className="px-4 py-3 text-sm text-ink-muted">{report.assigneeName ?? <span className="italic">Unassigned</span>}</td>
                     <td className="px-4 py-3 text-sm text-ink-muted">{report.researcherName}</td>
                     <td className="px-4 py-3 text-sm text-ink-muted"><LocalTime value={report.updatedAt} /></td>
                     <td className="px-4 py-3 text-sm text-ink-muted">{reportNextActionLabel(report.status)}</td>

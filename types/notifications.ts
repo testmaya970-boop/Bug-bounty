@@ -33,7 +33,28 @@ export type NotificationType =
   | "program_suspended"
   | "program_reinstated"
   | "organization_suspended"
-  | "organization_reinstated";
+  | "organization_reinstated"
+  // bounty_activity (202610060008): money owed to the recipient (submitter or collaborator)
+  // changed -- never opt-out, like bounty_finalized.
+  | "bounty_adjusted"
+  | "payment_scheduled"
+  | "payment_succeeded"
+  | "payment_failed"
+  | "payment_cancelled"
+  // report_activity, to the organization: the researcher opened a mediation request.
+  | "report_mediation_opened"
+  // report_activity, triage (202610060011): to the assignee, the organization (retest
+  // requested), or the researcher (retest decided, mediation answered, report reopened).
+  | "report_assigned"
+  | "report_retest_requested"
+  | "report_retest_decided"
+  | "report_mediation_resolved"
+  | "report_reopened"
+  // report_activity, disclosure (202610060012): request -> triage team; outcomes -> researcher.
+  | "report_disclosure_requested"
+  | "report_disclosure_approved"
+  | "report_disclosure_declined"
+  | "report_disclosure_unpublished";
 
 /**
  * The durable in-app record. Deliberately content-free beyond identifiers and the fact
