@@ -1,5 +1,5 @@
 import "server-only";
-import { withActorTransaction, callRpc } from "@/lib/db/pool";
+import { withActorTransaction, withServiceRoleTransaction, callRpc } from "@/lib/db/pool";
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
 import { getCurrentUser, getCurrentSessionId } from "@/lib/auth/current-user";
 import { elevateSessionToAal2 } from "@/lib/auth/session";
@@ -97,17 +97,17 @@ async function verifyChallengeCode(code: string): Promise<void> {
   const sessionId = await getCurrentSessionId();
   const codeHash = hashOtpCode(code);
 
+  // verify_mfa_challenge looks up the actor's own latest unconsumed challenge internally
+  // (auth.uid()-scoped, SECURITY DEFINER) -- it never took a client-supplied challenge id
+  // that could be trusted anyway, and create_mfa_challenge already guarantees at most one
+  // live challenge per actor. See db/migrations/202610010002_fix_mfa_verify_challenge_lookup.sql:
+  // an earlier version pre-fetched the challenge id with a raw SELECT against
+  // public.mfa_challenges under the authenticated role, which was never granted access to
+  // that table (only service_role was) -- every MFA verification attempt failed with
+  // "permission denied for table mfa_challenges" until this was fixed.
   let purpose: string;
   try {
-    const rows = await withActorTransaction(user.id, async (client) => {
-      const challengeRows = await client.query<{ id: string }>(
-        `select id from public.mfa_challenges where user_id = $1 and consumed_at is null order by created_at desc limit 1`,
-        [user.id],
-      );
-      const challengeId = challengeRows.rows[0]?.id;
-      if (!challengeId) throw new Error("INVALID_CODE: that code is invalid or has expired");
-      return callRpc<{ verify_mfa_challenge: string }>(client, "public.verify_mfa_challenge", [challengeId, codeHash]);
-    });
+    const rows = await withActorTransaction(user.id, (client) => callRpc<{ verify_mfa_challenge: string }>(client, "public.verify_mfa_challenge", [codeHash]));
     purpose = rows[0]?.verify_mfa_challenge;
   } catch (error) {
     mapError(error as { message: string });
@@ -120,8 +120,26 @@ async function verifyChallengeCode(code: string): Promise<void> {
   // caller above this already expects.
   if (purpose === "invalid") throw new OrganizationServiceError("That code didn't match or has expired. Request a new one and try again.", "INVALID_CODE");
 
-  if (purpose === "verify" && sessionId) {
-    await withActorTransaction(user.id, (client) => elevateSessionToAal2(client, sessionId));
+  // Both outcomes are a real, server-checked proof of a second factor -- 'enroll' no less
+  // than 'verify' -- so both elevate the session. An earlier version elevated only for
+  // 'verify', on the theory that enrollment happens from an already-strong session; in
+  // reality MfaSettings immediately calls generate_my_mfa_backup_codes right after a
+  // successful enroll confirmation, which itself requires aal2 (202609020001) -- so every
+  // enrollment's own backup-code step failed with STRONG_AUTH_REQUIRED, which the
+  // session-middleware's MFA gate then turned into a redirect a server action can't
+  // parse, crashing the page. Confirmed live via Playwright + direct DB verification.
+  //
+  // withServiceRoleTransaction, not withActorTransaction: public.sessions is granted only
+  // to service_role (202609020001), same as every other direct write to this table
+  // (createSession/revokeSession/revokeAllSessionsForUser in lib/auth/session.ts, all
+  // called under service_role at their own call sites) -- this was the one write against
+  // that table still running under `authenticated`, which has no grant on it at all, and
+  // failed with "permission denied for table sessions" the moment this code path actually
+  // ran (confirmed live). sessionId itself comes from getCurrentSessionId() above, which
+  // already resolves it from this request's own validated cookie -- never a client-
+  // supplied id -- so there is no new trust boundary crossed by using service_role here.
+  if (sessionId) {
+    await withServiceRoleTransaction((client) => elevateSessionToAal2(client, sessionId));
   }
 }
 

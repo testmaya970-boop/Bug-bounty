@@ -9,6 +9,7 @@ import type {
   NeedsRecoveryPaymentAttempt,
   AdminProgramRow,
   AppErrorGroup,
+  AuditLogEntry,
   ProgramPendingReview,
   SuspendedOrganization,
   SuspendedResearcher,
@@ -292,6 +293,19 @@ export async function reinstateResearcherPlatformWide(userId: string, reason: st
   }
 }
 
+/** Irreversible: scrubs the account's PII and blocks sign-in forever (reuses
+ * users.deactivated_at, the same column a self-service deactivation sets -- see
+ * db/migrations/202610010001_delete_researcher_and_audit_log_viewer.sql for why a real row
+ * delete is impossible once a researcher has any report/payout/reputation history). */
+export async function deleteResearcherPlatformWide(userId: string, reason: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.delete_researcher_platform_wide", [userId, reason]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
 /**
  * Resolves a username to a user id -- the lookup a platform admin needs before suspending a
  * researcher who is not otherwise in a list. No RPC in this schema exposes a general
@@ -488,5 +502,44 @@ export async function listAppErrorGroupsForAdmin(sinceDays: number): Promise<App
     affectedUsers: Number(row.affected_users),
     firstSeen: row.first_seen,
     lastSeen: row.last_seen,
+  }));
+}
+
+// --- Platform audit log (db/migrations/202610010001_delete_researcher_and_audit_log_viewer.sql) ---
+
+type AuditLogRow = {
+  id: string;
+  actor_id: string | null;
+  actor_display_name: string | null;
+  organization_id: string | null;
+  organization_name: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export async function listAuditLogsForAdmin(options?: { limit?: number; before?: string }): Promise<AuditLogEntry[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<AuditLogRow>(client, "public.list_audit_logs_for_admin", [options?.limit ?? 100, options?.before ?? null]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({
+    id: row.id,
+    actorId: row.actor_id,
+    actorDisplayName: row.actor_display_name,
+    organizationId: row.organization_id,
+    organizationName: row.organization_name,
+    action: row.action,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    metadata: row.metadata,
+    createdAt: row.created_at,
   }));
 }

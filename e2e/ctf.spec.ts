@@ -12,6 +12,9 @@ import { test, expect, type Page } from "@playwright/test";
 
 const PASSWORD = "E2ESeed!2026";
 const RESEARCHER_EMAIL = "e2e.veteran@unpatched.demo"; // a seeded researcher
+// Tests that don't need the veteran's own data sign in as hunter instead: the sign-in rate
+// limit is 10 per email per 15 minutes, and the veteran is shared by several specs.
+const BROWSER_EMAIL = "e2e.hunter@unpatched.demo";
 const FRESH_EMAIL = "e2e.newcomer@unpatched.demo"; // used for first-time solves (no prior CTF solves seeded except the ended-event backfill)
 const ADMIN_EMAIL = "e2e.platform-admin@unpatched.demo"; // a seeded platform admin
 
@@ -56,7 +59,7 @@ test.describe("CTF challenges are solvable", () => {
   });
 
   test("a downloadable artifact challenge exposes a real Download link", async ({ page }) => {
-    await signIn(page, RESEARCHER_EMAIL);
+    await signIn(page, BROWSER_EMAIL);
     await page.goto("/ctf/the-unencrypted-login"); // network pcap challenge
     await expect(page.getByText("Challenge material")).toBeVisible();
     const link = page.getByRole("link", { name: /capture\.pcap/i });
@@ -65,7 +68,7 @@ test.describe("CTF challenges are solvable", () => {
   });
 
   test("a wrong flag is still refused (regression guard on the existing behaviour)", async ({ page }) => {
-    await signIn(page, RESEARCHER_EMAIL);
+    await signIn(page, BROWSER_EMAIL);
     await page.goto("/ctf/type-juggler");
     await page.getByLabel("Flag").fill("unpatched{not_the_flag}");
     await page.getByRole("button", { name: "Submit flag" }).click();
@@ -75,7 +78,7 @@ test.describe("CTF challenges are solvable", () => {
 
 test.describe("CTF events", () => {
   test("the events tab lists seeded events by state", async ({ page }) => {
-    await signIn(page, RESEARCHER_EMAIL);
+    await signIn(page, BROWSER_EMAIL);
     await page.goto("/ctf?tab=events");
     await expect(page.getByRole("link", { name: /E2E Live Fire/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /E2E Winter Open/ })).toBeVisible();

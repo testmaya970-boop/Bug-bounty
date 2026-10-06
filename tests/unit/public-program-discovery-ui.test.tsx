@@ -2,6 +2,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { PublicProgramList } from "../../components/programs/public-program-list";
+import { PublicProgramGrid } from "../../components/programs/public-program-grid";
+import { PublicProgramTable } from "../../components/programs/public-program-table";
 import { TopBountyProgramsList } from "../../components/programs/top-bounty-programs-list";
 import { JoinPublicProgramButton } from "../../components/programs/join-public-program-button";
 import type { PublicProgramSummary, TopBountyProgram } from "../../types/program";
@@ -18,6 +20,7 @@ const SAMPLE_PROGRAM: PublicProgramSummary = {
   name: "CloudVault Security",
   organizationName: "CloudVault",
   status: "active",
+  programType: "bounty",
   description: "Web and API research program.",
   focusAreas: ["web_applications", "apis"],
   assetTypes: ["domain", "url"],
@@ -101,6 +104,39 @@ describe("TopBountyProgramsList: the curated 'highest-paying' section, only ever
     expect(html).toContain("Vault Platform");
     expect(html).toContain("$100,000 - $500,000");
     expect(html).toContain(`href="/organizations/${TOP.organizationId}/programs/${TOP.id}"`);
+  });
+});
+
+// 202609300001: get_public_program/list_public_programs now disclose program_type,
+// specifically so a vulnerability-disclosure-only program is never indistinguishable from
+// a paid-bounty program that simply hasn't configured a bounty policy yet -- both used to
+// render the identical "No bounty" text. These tests catch a regression on either surface
+// a researcher actually browses (the grid is the default view, the table the alternative).
+const VDP_PROGRAM: PublicProgramSummary = { ...SAMPLE_PROGRAM, id: "vdp-1", name: "Vault Disclosure Program", programType: "vdp", bountyMinMinorUnits: null, bountyMaxMinorUnits: null, bountyCurrency: null };
+
+describe("VDP disclosure: a program that can never pay a bounty says so, distinctly from one that just hasn't set a policy yet", () => {
+  it("grid: a vdp program shows 'Disclosure only', never the bare 'No bounty' text a mid-setup bounty program would show", () => {
+    const html = renderToStaticMarkup(<PublicProgramGrid programs={[VDP_PROGRAM]} />);
+    expect(html).toContain("Disclosure only");
+    expect(html).not.toContain(">No bounty<");
+  });
+
+  it("grid: a real bounty program with no policy configured yet still says so plainly, not 'Disclosure only'", () => {
+    const unconfigured: PublicProgramSummary = { ...SAMPLE_PROGRAM, bountyMinMinorUnits: null, bountyMaxMinorUnits: null, bountyCurrency: null };
+    const html = renderToStaticMarkup(<PublicProgramGrid programs={[unconfigured]} />);
+    expect(html).toContain("No bounty set yet");
+    expect(html).not.toContain("Disclosure only");
+  });
+
+  it("table: a vdp program's bounty column reads 'Disclosure only', and its status cell carries the badge", () => {
+    const html = renderToStaticMarkup(<PublicProgramTable programs={[VDP_PROGRAM]} />);
+    expect(html).toContain("Disclosure only");
+  });
+
+  it("a real bounty range still renders normally on a vdp-typed row is impossible by construction -- programType and a configured range never coexist, so this only asserts the badge is additive, never replacing a real bounty figure", () => {
+    const html = renderToStaticMarkup(<PublicProgramGrid programs={[SAMPLE_PROGRAM]} />);
+    expect(html).not.toContain("Disclosure only");
+    expect(html).toContain("$5,000 - $25,000");
   });
 });
 

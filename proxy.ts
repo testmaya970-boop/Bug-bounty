@@ -32,14 +32,25 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // api/health (exact path) is excluded so it can report a database outage -- see that route.
   //
-  // `ctf-artifacts` is excluded for the same reason `_next/static` and the image extensions
-  // are: these are non-secret static files served from public/ (CTF challenge downloads --
-  // pcaps, images, disk/memory dumps). They are MEANT to be downloaded and analyzed; the
-  // flag is verified server-side by submit_ctf_flag against a hash, so holding an artifact
-  // reveals nothing without doing the work. This is a static-PATH exclusion, not a
-  // header-based exception -- it never branches on a client-controlled signal (Sec-Fetch-Mode
-  // etc.) to skip the gate for "probably safe" traffic, which AGENTS.md forbids; it simply
-  // declines to run session validation on public asset paths, exactly as the existing
-  // exclusions already do.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|ctf-artifacts|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // `ctf-artifacts` is excluded for the same reason `_next/static` is: these are non-secret
+  // static files served from public/ (CTF challenge downloads -- pcaps, images, disk/memory
+  // dumps). They are MEANT to be downloaded and analyzed; the flag is verified server-side
+  // by submit_ctf_flag against a hash, so holding an artifact reveals nothing without doing
+  // the work. This is a static-PATH-PREFIX exclusion, not a header-based exception -- it
+  // never branches on a client-controlled signal (Sec-Fetch-Mode etc.) to skip the gate for
+  // "probably safe" traffic, which AGENTS.md forbids.
+  //
+  // A bare "URL ends in .png/.svg/..." clause used to sit here too, on the same "these are
+  // just static assets" theory -- but that matches on URL SHAPE, not on whether a real
+  // static file exists at that path or under a known static prefix. Next's own dynamic
+  // routes (e.g. /ctf/[challengeId], /learn/[slug]) happily render for a segment value a
+  // client chooses, including one a client crafts to end in ".png" -- and public/ holds no
+  // image assets at all (only ctf-artifacts, already excluded by name above). That clause
+  // therefore let an attacker reach any dynamic route with zero session validation: proxy
+  // never ran, so lib/session/middleware.ts's own header-strip step (the one thing standing
+  // between a client-supplied x-sentinel-verified-user-id header and getCurrentUser()
+  // trusting it) never ran either -- a full, unauthenticated account-impersonation path.
+  // Removed entirely rather than narrowed to a path prefix, since there is currently no
+  // static image asset under public/ for it to protect.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|ctf-artifacts).*)"],
 };

@@ -11,3 +11,9 @@
 -- app's own queries.
 create role sentinel_app_runtime with login password 'sentinel_dev_password';
 grant connect on database sentinel to sentinel_app_runtime;
+
+-- Local dev only: the KYC/payout field encryption key (202610050002 fails closed without
+-- one). This is the same public dev string earlier migrations used as a silent fallback,
+-- so existing dev rows stay decryptable. Production sets its own secret and boot refuses
+-- this value (lib/startup-check.ts).
+alter database sentinel set app.settings.kyc_encryption_key = 'sentinel-local-dev-only-insecure-key-do-not-use-in-production';

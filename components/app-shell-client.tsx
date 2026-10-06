@@ -31,6 +31,7 @@ import {
   Scale,
   RefreshCw,
   LifeBuoy,
+  ScrollText,
   Search,
   Menu,
   X,
@@ -111,6 +112,7 @@ const PLATFORM_NAV: NavItem[] = [
   { href: "/platform/retests" as Route, label: "Retests", icon: RefreshCw },
   { href: "/platform/needs-recovery" as Route, label: "Needs recovery", icon: LifeBuoy },
   { href: "/platform/errors" as Route, label: "Errors", icon: OctagonAlert },
+  { href: "/platform/audit-log" as Route, label: "Audit log", icon: ScrollText },
 ];
 
 const SYSTEM_NAV: NavItem[] = [

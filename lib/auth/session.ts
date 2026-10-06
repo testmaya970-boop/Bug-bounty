@@ -35,14 +35,63 @@ function signSecret(secret: string): string {
   return createHmac("sha256", env.SESSION_COOKIE_SECRET).update(secret).digest("hex");
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function parseCookieValue(value: string | undefined): { sessionId: string; secret: string } | null {
   if (!value) return null;
   const separatorIndex = value.indexOf(".");
   if (separatorIndex < 0) return null;
   const sessionId = value.slice(0, separatorIndex);
   const secret = value.slice(separatorIndex + 1);
-  if (!sessionId || !secret) return null;
+  // A non-uuid id would otherwise reach Postgres and raise "invalid input syntax for type uuid".
+  if (!UUID_PATTERN.test(sessionId) || !secret) return null;
   return { sessionId, secret };
+}
+
+function secretMatches(storedTokenHash: string, secret: string): boolean {
+  const expectedHash = Buffer.from(storedTokenHash, "hex");
+  const actualHash = Buffer.from(signSecret(secret), "hex");
+  return expectedHash.length === actualHash.length && timingSafeEqual(expectedHash, actualHash);
+}
+
+const TOUCH_AFTER_MS = 5 * 60 * 1000;
+
+export type SessionGate = SessionRow & { deactivated: boolean; mfaEnrolled: boolean; mfaSessionVerified: boolean };
+
+/**
+ * The proxy's one-round-trip version of validateSessionCookie: the session row plus the
+ * deactivation and MFA facts the gate needs, from public.get_session_gate (202610050004).
+ * Runs on the bare runtime-role client -- that role inherits service_role's execute grant,
+ * so no transaction or SET ROLE is needed. "Last active" is only written after the secret
+ * is verified, and only when it is more than 5 minutes stale.
+ */
+export async function validateSessionGate(client: PoolClient, cookieValue: string | undefined): Promise<SessionGate | null> {
+  const parsed = parseCookieValue(cookieValue);
+  if (!parsed) return null;
+
+  const { rows } = await client.query<{
+    user_id: string;
+    aal: "aal1" | "aal2";
+    token_hash: string;
+    updated_at: string;
+    deactivated: boolean;
+    mfa_enrolled: boolean;
+    mfa_session_verified: boolean;
+  }>("select * from public.get_session_gate($1)", [parsed.sessionId]);
+  const row = rows[0];
+  if (!row || !secretMatches(row.token_hash, parsed.secret)) return null;
+
+  if (Date.now() - new Date(row.updated_at).getTime() > TOUCH_AFTER_MS) {
+    await client.query("select public.touch_session($1)", [parsed.sessionId]);
+  }
+  return {
+    id: parsed.sessionId,
+    userId: row.user_id,
+    aal: row.aal,
+    deactivated: row.deactivated,
+    mfaEnrolled: row.mfa_enrolled,
+    mfaSessionVerified: row.mfa_session_verified,
+  };
 }
 
 export type CreateSessionInput = {
@@ -71,31 +120,12 @@ export async function createSession(client: PoolClient, input: CreateSessionInpu
   };
 }
 
-/**
- * Validates a cookie value against the session table. Constant-time compares the
- * submitted secret's HMAC against the stored hash (via a hash-value lookup, which is
- * already a keyed-index equality check, not a loop over rows) -- the actual
- * timing-sensitive step is comparing two fixed-length hex strings, done with
- * timingSafeEqual below rather than `===`, so a mismatch's failure timing cannot leak how
- * many leading hex characters matched.
- */
+/** Same validation as validateSessionGate (one source of truth, including the 30-day
+ * lifetime), returning only the session itself. The secret's HMAC is compared with
+ * timingSafeEqual, so a mismatch's timing cannot leak how many leading characters matched. */
 export async function validateSessionCookie(client: PoolClient, cookieValue: string | undefined): Promise<SessionRow | null> {
-  const parsed = parseCookieValue(cookieValue);
-  if (!parsed) return null;
-
-  const { rows } = await client.query<{ id: string; user_id: string; aal: "aal1" | "aal2"; token_hash: string }>(
-    `select id, user_id, aal, token_hash from public.sessions where id = $1`,
-    [parsed.sessionId],
-  );
-  const row = rows[0];
-  if (!row) return null;
-
-  const expectedHash = Buffer.from(row.token_hash, "hex");
-  const actualHash = Buffer.from(signSecret(parsed.secret), "hex");
-  if (expectedHash.length !== actualHash.length || !timingSafeEqual(expectedHash, actualHash)) return null;
-
-  await client.query(`update public.sessions set updated_at = now() where id = $1`, [row.id]);
-  return { id: row.id, userId: row.user_id, aal: row.aal };
+  const gate = await validateSessionGate(client, cookieValue);
+  return gate ? { id: gate.id, userId: gate.userId, aal: gate.aal } : null;
 }
 
 /** Elevates a session to aal2 -- called only after a real, server-verified OTP check

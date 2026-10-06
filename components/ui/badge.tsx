@@ -5,7 +5,7 @@ import { programStatusLabel } from "../../lib/program-status";
 import { assetTypeLabel, scopeStateLabel } from "../../lib/scope-labels";
 import type { OrganizationMemberStatus, OrganizationRole } from "../../types/auth";
 import type { OrganizationStatus } from "../../types/organization";
-import type { ProgramStatus } from "../../types/program";
+import type { ProgramStatus, ProgramType } from "../../types/program";
 import type { ProgramAssetType, ScopeState } from "../../types/scope";
 import type { ProgramResearcherStatus } from "../../types/researcher";
 import type { ReportSeverity, ReportStatus } from "../../types/report";
@@ -149,6 +149,14 @@ export function KycStatusBadge({ status }: { status: KycStatus }) {
 const programStatusTone: Record<ProgramStatus, Tone> = { draft: TONE.muted, review: TONE.warning, active: TONE.success, paused: TONE.muted, closed: TONE.muted, suspended: TONE.danger };
 export function ProgramStatusBadge({ status }: { status: ProgramStatus }) {
   return <ToneBadge tone={programStatusTone[status]}>{programStatusLabel(status)}</ToneBadge>;
+}
+
+// vdp is a real, permanent fact about the program (it can never pay a bounty, enforced at
+// the database level, not just a UI label) -- info-toned, since it's neither good nor bad
+// news on its own, just a thing a researcher needs to know before deciding to participate.
+export function ProgramTypeBadge({ programType }: { programType: ProgramType }) {
+  if (programType !== "vdp") return null;
+  return <ToneBadge tone={TONE.info}>Disclosure only</ToneBadge>;
 }
 
 // Scope state is the authorization decision itself -- always paired with explicit text,

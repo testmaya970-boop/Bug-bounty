@@ -53,6 +53,11 @@ every run with its exit code to `backups/backup.log`. Docker must be running. Ch
 task: `Get-ScheduledTaskInfo -TaskPath "\Unpatched\" -TaskName "Nightly DB backup"`.
 Remove both: `Unregister-ScheduledTask -TaskPath "\Unpatched\" -TaskName "*" -Confirm:$false`.
 
+A failed or empty `pg_dump` is now deleted and exits 1 (it used to leave a 0-byte file that
+retention counted as a backup). `npm run db:backup:check` exits 1 when the newest valid dump
+is older than 48h (`BACKUP_MAX_AGE_HOURS`) -- run it from whatever alerts you (it does not
+send anything itself).
+
 `backups/` is on the same disk as the database -- copy it somewhere else (another drive or
 cloud storage) for real disaster protection.
 

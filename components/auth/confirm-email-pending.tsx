@@ -13,13 +13,15 @@ const RESEND_COOLDOWN_SECONDS = 30;
  * to a typed 6-digit code rather than a clickable link (per explicit product direction).
  * Two things a bare "Check your email" alert didn't do:
  *
- * 1. Honesty about where the email actually goes. `process.env.NODE_ENV` is inlined by
- *    Next.js's own build into every client bundle (no NEXT_PUBLIC_ prefix needed for this
- *    one variable specifically), so this is a real, environment-derived fact, never a
- *    guess. Outside production, lib/email-provider.ts's activeEmailProvider defaults to
- *    devEmailProvider, which never sends anything anywhere -- it only logs the message to
- *    the server console (confirmed by reading that file, not assumed) -- so this banner
- *    only ever claims what's actually true for the deployment it's rendered in.
+ * 1. Honesty about where the email actually goes. `emailIsSimulated` is passed down from
+ *    a real Server Component (app/researchers/sign-up/page.tsx /
+ *    app/organizations/sign-up/page.tsx), which reads lib/email-provider.ts's own
+ *    `activeEmailProvider.name === "dev"` directly -- never inferred from
+ *    `process.env.NODE_ENV`. That guess (this component's own earlier version) went
+ *    stale the moment `gmail-smtp` became a real, genuinely-sending provider usable
+ *    outside production: NODE_ENV !== "production" is true in that config too, so the old
+ *    check claimed "not delivered anywhere" while a real email was actually sent. The
+ *    provider's own name is the only fact that can never be wrong about what it does.
  * 2. A real code-entry step and a real resend path. `verifySignupCodeAction` wraps
  *    services/auth.ts's own native, enumeration-safe verifySignupCode (checks the emailed
  *    6-digit code against the account's live challenge, single-use/attempt-limited/
@@ -27,13 +29,12 @@ const RESEND_COOLDOWN_SECONDS = 30;
  *    `resendConfirmationEmailAction` wraps resendConfirmationEmail, which issues a fresh
  *    code -- never a second, custom system.
  */
-export function ConfirmEmailPending({ email }: { email: string }) {
+export function ConfirmEmailPending({ email, emailIsSimulated }: { email: string; emailIsSimulated: boolean }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
-  const isLocal = process.env.NODE_ENV !== "production";
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -72,9 +73,9 @@ export function ConfirmEmailPending({ email }: { email: string }) {
         We sent a 6-digit code to {email}. Enter it below to finish creating your account.
       </Alert>
 
-      {isLocal && (
-        <Alert tone="warning" title="Local development">
-          This is a local/development environment. Unless a real email provider is configured, verification codes are only logged to the server console, not delivered anywhere.
+      {emailIsSimulated && (
+        <Alert tone="warning" title="No real email provider configured">
+          Verification codes are only logged to the server console right now, not delivered anywhere. Set EMAIL_PROVIDER to a real provider (see lib/email-provider.ts) to send real email.
         </Alert>
       )}
 

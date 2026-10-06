@@ -16,7 +16,7 @@ import { isBusinessEmail } from "../../lib/auth/business-email";
  * code is confirmed, see verifySignupCodeAction) and requires a work email; for
  * "researcher" it collects a name and username, carried through as the verification
  * challenge's metadata (see services/auth.ts's signUpWithPassword) -- docs/decisions/0050. */
-export function SignUpForm({ intent }: { intent?: "researcher" | "organization" }) {
+export function SignUpForm({ intent, emailIsSimulated }: { intent?: "researcher" | "organization"; emailIsSimulated: boolean }) {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -55,7 +55,7 @@ export function SignUpForm({ intent }: { intent?: "researcher" | "organization" 
   }
 
   if (confirmEmail) {
-    return <ConfirmEmailPending email={confirmEmail} />;
+    return <ConfirmEmailPending email={confirmEmail} emailIsSimulated={emailIsSimulated} />;
   }
 
   const strength = passwordStrengthLabel(password);

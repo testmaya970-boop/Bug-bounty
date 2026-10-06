@@ -60,6 +60,30 @@ an interleaved A/B against an otherwise identical build with only those two remo
 samples each): +13-34% on org routes (Inbox the largest), +4-6% on researcher routes. The
 security benefit was judged worth ~20-60ms; if not, measure the two separately next.
 
+**2026-10-05 -- single-call session gate (audit PERF-2).** The proxy's session validation and
+deactivation/MFA gate went from two transactions (~12 round trips) to one statement
+(`get_session_gate`, migration 202610050004), and "last active" is written at most every 5
+minutes instead of on every request. TTFB / total ms, prod build on :3100, `next dev`
+running alongside on :3000:
+
+| Route | Baseline (before) | After, quiet run 1 | After, quiet run 2 |
+|---|---|---|---|
+| Org dashboard (Home) | 134 / 223 | 85 / 163 | 102 / 185 |
+| Engagements | 107 / 193 | 62 / 138 | 64 / 150 |
+| Findings | 108 / 208 | 102 / 208 | 58 / 181 |
+| Program inbox | 87 / 171 | 66 / 152 | 67 / 139 |
+| Researcher home | 113 / 257 | 83 / 211 | 109 / 170 |
+| CTF | 84 / 199 | 55 / 223 | 73 / 153 |
+
+No route regressed past 20%. A first "after" run measured Home at +21% total, but a probe
+was hitting the dev server during it; both quiet re-runs were faster than baseline. Baseline
+is one run, so treat small differences as noise.
+
+**Open, not caused by this change:** the client column (responseEnd -> load) is ~70-130ms on
+every route in both baseline and after, versus 31-65ms in the 2026-09-25 table below, which
+puts totals past the 20% rule against that table. Not yet isolated. Candidates: the Netras
+rebrand's added Open Sans font, and the concurrent `next dev` on this machine.
+
 Measured 2026-09-25 on Next.js 16.3.6 (Turbopack prod build), local `next build` + `next
 start` (port 3100), `seed:launch` data. The same day on Next.js 15.5 the totals were
 264 / 215 / 248 / 280 / 277 / 250ms: the upgrade roughly halved every route, mostly by

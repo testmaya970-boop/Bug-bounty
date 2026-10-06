@@ -213,7 +213,11 @@ test("program manager edits scope on the live program: add, edit, flip state, re
   await expect(card.getByRole("button", { name: "Mark in scope" })).toBeVisible();
 
   await card.getByRole("button", { name: "Remove" }).click();
-  await page.getByRole("dialog", { name: "Remove scope entry?" }).getByRole("button", { name: "Remove scope entry" }).click();
+  const remove = page.getByRole("dialog", { name: "Remove scope entry?" });
+  await remove.getByRole("button", { name: "Remove scope entry" }).click();
+  // Wait for the action to finish before reloading (as the edit step does); reloading
+  // straight away raced the server action and showed the entry that was then removed.
+  await expect(remove).not.toBeVisible();
   await page.reload();
   await expect(page.getByText(target, { exact: true })).toHaveCount(0);
 });

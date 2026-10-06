@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { AppShell } from "../../../components/app-shell";
 import { SectionLabel } from "../../../components/ui/security-primitives";
 import { EmptyState } from "../../../components/ui/feedback";
-import { ReinstateResearcherForm, SuspendResearcherForm } from "../../../components/platform/researcher-suspension-form";
+import { DeleteResearcherForm, ReinstateResearcherForm, SuspendResearcherForm } from "../../../components/platform/researcher-suspension-form";
 import { isPlatformAdmin, listSuspendedResearchersForAdmin } from "../../../services/platform-operations";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { LocalTime } from "../../../components/ui/local-time";
@@ -35,6 +35,7 @@ export default async function PlatformResearchersPage() {
         <p className="text-sm text-ink-muted">Suspend or reinstate a researcher's account platform-wide, across every organization and program.</p>
 
         <SuspendResearcherForm />
+        <DeleteResearcherForm />
 
         <div className="space-y-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Currently suspended</h2>

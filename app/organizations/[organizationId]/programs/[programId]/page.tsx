@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { AppShell } from "../../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../../components/ui/navigation";
 import { Card, EmptyState, PermissionDenied } from "../../../../../components/ui/feedback";
-import { AssetTypeBadge, ProgramStatusBadge, ResearcherStatusBadge } from "../../../../../components/ui/badge";
+import { AssetTypeBadge, ProgramStatusBadge, ProgramTypeBadge, ResearcherStatusBadge } from "../../../../../components/ui/badge";
 import { AddScopeEntryDialog } from "../../../../../components/programs/add-scope-entry-dialog";
 import { ImportScopeDialog } from "../../../../../components/programs/import-scope-dialog";
 import { ExportScopeButton } from "../../../../../components/programs/export-scope-button";
@@ -101,6 +101,7 @@ async function renderProgramControlCenterPage({
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{publicProgram.name}</h1>
               <ProgramStatusBadge status={publicProgram.status} />
+              <ProgramTypeBadge programType={publicProgram.programType} />
             </div>
             {publicProgram.description && <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-ink-muted">{publicProgram.description}</p>}
           </div>
@@ -109,6 +110,9 @@ async function renderProgramControlCenterPage({
               never buried below the scope listing (see docs/decisions/0043). */}
           <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
+            {publicProgram.programType === "vdp" && (
+              <p className="mt-2 text-sm text-canvas/70">This is a vulnerability-disclosure program: it does not pay bounties. Reports are still welcome and reviewed.</p>
+            )}
             {publicProgram.status === "active" ? (
               <>
                 <p className="mt-2 text-sm text-canvas/70">This program is open to the community. Sign in, or create a researcher account, to submit a report against the scope below.</p>
@@ -253,6 +257,7 @@ async function renderProgramControlCenterPage({
               <div className="flex flex-wrap items-center gap-3">
                 <SectionLabel>{publicProgram.organizationName}</SectionLabel>
                 <ProgramStatusBadge status={publicProgram.status} />
+                <ProgramTypeBadge programType={publicProgram.programType} />
               </div>
               {publicProgram.description && <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-ink-muted">{publicProgram.description}</p>}
             </div>
@@ -262,6 +267,9 @@ async function renderProgramControlCenterPage({
             <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
               <p className="mt-2 text-sm text-canvas/70">This program is open to the community.</p>
+              {publicProgram.programType === "vdp" && (
+                <p className="mt-2 text-sm text-canvas/70">This is a vulnerability-disclosure program: it does not pay bounties. Reports are still welcome and reviewed.</p>
+              )}
               {isOwnStaff ? (
                 <p className="mt-2 text-sm text-canvas/70">You are on this organization&apos;s team, so you can&apos;t research its programs.</p>
               ) : publicProgram.status === "active" ? (

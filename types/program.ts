@@ -56,6 +56,10 @@ export type PublicProgramSummary = {
   name: string;
   organizationName: string;
   status: ProgramStatus;
+  /** vdp: never pays a bounty, enforced at the database level -- see ProgramType's own
+   * comment. A researcher deciding whether to spend time on a program needs this before
+   * submitting, not just after. See 202609300001_public_program_type_disclosure.sql. */
+  programType: ProgramType;
   description: string | null;
   focusAreas: ResearcherFocusArea[];
   assetTypes: ProgramAssetType[];

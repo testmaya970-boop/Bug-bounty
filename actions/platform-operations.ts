@@ -5,6 +5,7 @@ import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
 import {
   approveProgramLaunch,
+  deleteResearcherPlatformWide,
   findOrganizationIdBySlug,
   findUserIdByUsername,
   isPlatformAdmin,
@@ -154,13 +155,21 @@ export async function rejectProgramLaunchAction(input: { programId: string; reas
 
 // --- Cross-program researcher suspension (see db/migrations/202609050014_researcher_platform_suspension.sql) ---
 
+// Matches create_user's own username charset exactly (db/migrations/
+// 202608260001_organization_membership_lifecycle.sql: requested path `^[a-z0-9_]{3,32}$`,
+// and its auto-derived fallback format also inserts underscores) -- the previous
+// hyphens-only regex rejected every username this system can actually produce, so no real
+// account could ever be suspended or deleted through these forms. Found live via Playwright
+// verification of the delete form below.
+const USERNAME_REGEX = /^[a-z0-9_]{1,32}$/;
+
 const suspendResearcherSchema = z.object({
   username: z
     .string()
     .trim()
     .min(1, "Enter a username.")
-    .max(30, "Use 30 characters or fewer.")
-    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and hyphens only."),
+    .max(32, "Use 32 characters or fewer.")
+    .regex(USERNAME_REGEX, "Use lowercase letters, numbers, and underscores only."),
   reason: z.string().trim().min(1, "Explain why this account is being suspended.").max(2000, "Use 2000 characters or fewer."),
 });
 
@@ -216,6 +225,40 @@ export async function reinstateResearcherAction(input: { userId: string; reason:
     await withRequestLogging("platform.researcher.reinstate", { actorId: user.id }, () => reinstateResearcherPlatformWide(parsed.data.userId, parsed.data.reason));
     revalidatePath("/platform/researchers");
     return { ok: true as const };
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
+    throw error;
+  }
+}
+
+const deleteResearcherSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(1, "Enter a username.")
+    .max(32, "Use 32 characters or fewer.")
+    .regex(USERNAME_REGEX, "Use lowercase letters, numbers, and underscores only."),
+  reason: z.string().trim().min(1, "Explain why this account is being deleted.").max(2000, "Use 2000 characters or fewer."),
+});
+
+/** Same shape as suspendResearcherAction above: findUserIdByUsername uses the service-role
+ * client, so this action independently confirms isPlatformAdmin() before ever calling it. */
+export async function deleteResearcherAction(input: { username: string; reason: string }) {
+  const parsed = deleteResearcherSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the request and try again." };
+
+  const [user, admin] = await Promise.all([getCurrentUser(), isPlatformAdmin()]);
+  if (!user) return { ok: false as const, code: "AUTH_REQUIRED", message: "Your session has expired. Sign in again to continue." };
+  if (!admin) return { ok: false as const, code: "FORBIDDEN", message: "Platform admin authority required." };
+
+  try {
+    return await withRequestLogging("platform.researcher.delete", { actorId: user.id }, async () => {
+      const target = await findUserIdByUsername(parsed.data.username);
+      if (!target) return { ok: false as const, code: "USER_NOT_FOUND", message: "No account with that username was found." };
+      await deleteResearcherPlatformWide(target.id, parsed.data.reason);
+      revalidatePath("/platform/researchers");
+      return { ok: true as const };
+    });
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
     throw error;

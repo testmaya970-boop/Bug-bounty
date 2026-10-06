@@ -22,6 +22,16 @@ dev values come from `docker-compose.native.yml`'s own services.
 | `S3_ACCESS_KEY_ID` | `lib/evidence-store.ts` | |
 | `S3_SECRET_ACCESS_KEY` | `lib/evidence-store.ts` | |
 
+### Database setting (not an env var)
+
+`app.settings.kyc_encryption_key` encrypts KYC and bank-account fields
+(`private.sensitive_field_encryption_key()`). It is set on the database, not in the app:
+`alter database <db> set app.settings.kyc_encryption_key = '<secret>';` — take the value
+from a secret manager. Encrypt/decrypt raises `ENCRYPTION_KEY_MISSING` when it is unset,
+and production boot (`lib/startup-check.ts`) refuses to start when it is unset or still the
+local-dev value that `db/init/01-app-role.sql` sets. Changing it on a database that already
+holds encrypted rows makes those rows unreadable — re-encrypt first.
+
 ## Optional (Next.js app)
 
 Boot succeeds without these; each has a real, documented fallback behavior — never a
@@ -30,7 +40,7 @@ silently-broken feature.
 | Var | Used by | Default when unset | Notes |
 |---|---|---|---|
 | `S3_FORCE_PATH_STYLE` | `lib/evidence-store.ts` | `false` | Set to `true` for MinIO and most non-AWS S3-compatible endpoints. |
-| `EMAIL_PROVIDER` | `lib/email-provider.ts` | `dev` (a simulated provider that logs instead of sending — never sends real email) | Set to `resend` only when `RESEND_API_KEY` and `EMAIL_FROM` below are both also set. See `docs/decisions/0022-real-email-provider-integration.md`. |
+| `EMAIL_PROVIDER` | `lib/email-provider.ts` | `dev` (a simulated provider that logs instead of sending — never sends real email) | Set to `resend` only when `RESEND_API_KEY` and `EMAIL_FROM` below are both also set. See `docs/decisions/0022-real-email-provider-integration.md`. **Production refuses to boot on `dev`/unset** (`lib/startup-check.ts`); the local prod-build test sets `LOCAL_PROD_TEST=1` (playwright.config.ts) to allow it there. |
 | `RESEND_API_KEY` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
 | `EMAIL_FROM` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
 | `NEXT_PUBLIC_APP_URL` | `actions/program-researchers.ts` | `http://localhost:3000` | Base URL used to build the accept-invitation link sent in a program-researcher-invitation email. **Must be set to the real production URL before launch** — the fallback is a real, silent bug in production (every invitation email would link to `localhost`). |

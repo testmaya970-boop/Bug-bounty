@@ -3,8 +3,9 @@ import type { Instrumentation } from "next";
 /** Once per server start: refuse to start with missing, invalid, or placeholder settings. */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  const { exitOnConfigurationProblems } = await import("./lib/startup-check");
+  const { exitOnConfigurationProblems, exitOnDatabaseConfigurationProblems } = await import("./lib/startup-check");
   exitOnConfigurationProblems();
+  await exitOnDatabaseConfigurationProblems();
 }
 
 /** Server-side capture for in-house error tracking: every error Next.js catches while

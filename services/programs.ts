@@ -344,7 +344,7 @@ export async function getProgramFocusAreas(programId: string): Promise<Researche
 // none of them touch `programs`/`program_scope_entries` via a direct table select, since
 // `anon` has no grant on either table at all (see 202608260002/202608310002).
 
-type PublicProgramRow = { id: string; organization_id: string; name: string; organization_name: string; status: ProgramSummary["status"]; description: string | null; updated_at: string };
+type PublicProgramRow = { id: string; organization_id: string; name: string; organization_name: string; status: ProgramSummary["status"]; program_type: ProgramType; description: string | null; updated_at: string };
 
 /** get_public_program (the program detail page's own fetch) does not compute the real
  * signals below -- 0/empty/null here means "not computed by this call," never a fabricated
@@ -357,6 +357,7 @@ function mapPublicProgramRow(row: PublicProgramRow): PublicProgramSummary {
     name: row.name,
     organizationName: row.organization_name,
     status: row.status,
+    programType: row.program_type,
     description: row.description,
     focusAreas: [],
     assetTypes: [],
@@ -386,6 +387,7 @@ function mapPublicProgramListRow(row: PublicProgramListRow): PublicProgramSummar
     name: row.name,
     organizationName: row.organization_name,
     status: row.status,
+    programType: row.program_type,
     description: row.description,
     focusAreas: row.focus_areas ?? [],
     assetTypes: row.asset_types ?? [],

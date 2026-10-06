@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/form";
-import { reinstateResearcherAction, suspendResearcherAction } from "../../actions/platform-operations";
+import { deleteResearcherAction, reinstateResearcherAction, suspendResearcherAction } from "../../actions/platform-operations";
 
 /** The "suspend by username" form -- a researcher who is not yet suspended has no other
  * list this page could show them in, so this takes a username directly (same input pattern
@@ -34,11 +34,58 @@ export function SuspendResearcherForm() {
 
   return (
     <form className="space-y-3 rounded-lg border border-border bg-surface p-4" onSubmit={handleSubmit} noValidate>
-      <Input label="Researcher's username" placeholder="jane-researcher" required value={username} onChange={(event) => setUsername(event.target.value)} />
+      <Input label="Researcher's username" placeholder="jane_researcher" required value={username} onChange={(event) => setUsername(event.target.value)} />
       <Textarea label="Explain why this account is being suspended" required value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} />
       <div className="flex justify-end">
         <Button type="submit" variant="destructive" pending={pending}>
           Suspend
+        </Button>
+      </div>
+      {error && (
+        <p role="alert" className="text-xs font-medium text-danger">
+          {error}
+        </p>
+      )}
+    </form>
+  );
+}
+
+/** The "delete by username" form -- same shape as SuspendResearcherForm above (no list to
+ * pick from, so username in). Irreversible: scrubs PII and blocks sign-in for good, see
+ * deleteResearcherAction's own comment for why this can't be a real row delete. */
+export function DeleteResearcherForm() {
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (pending) return;
+    if (!window.confirm(`Delete @${username}? This permanently scrubs their profile and blocks sign-in. This cannot be undone.`)) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteResearcherAction({ username, reason });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setUsername("");
+      setReason("");
+      router.refresh();
+    });
+  }
+
+  return (
+    <form className="space-y-3 rounded-lg border border-danger/40 bg-surface p-4" onSubmit={handleSubmit} noValidate>
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-danger">Delete a researcher account</h2>
+      <p className="text-xs text-ink-muted">Permanently scrubs their profile and blocks sign-in. Their reports and payout history are kept for integrity -- this cannot be undone.</p>
+      <Input label="Researcher's username" placeholder="jane_researcher" required value={username} onChange={(event) => setUsername(event.target.value)} />
+      <Textarea label="Explain why this account is being deleted" required value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} />
+      <div className="flex justify-end">
+        <Button type="submit" variant="destructive" pending={pending}>
+          Delete account
         </Button>
       </div>
       {error && (

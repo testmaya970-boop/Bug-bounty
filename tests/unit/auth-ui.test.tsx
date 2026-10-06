@@ -1,6 +1,6 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PasswordInput, passwordStrengthLabel, passwordStrengthLevel } from "../../components/auth/password-input";
 import { SignUpForm } from "../../components/auth/sign-up-form";
 import { ConfirmEmailPending } from "../../components/auth/confirm-email-pending";
@@ -91,7 +91,7 @@ describe("PasswordInput: strengthLevel renders a real, literal-class segmented b
 
 describe("SignUpForm: intent-specific fields, wrapped in a real card (see docs/decisions/0050)", () => {
   it("shows Your name and Username for a researcher, never Organization name", () => {
-    const html = renderToStaticMarkup(<SignUpForm intent="researcher" />);
+    const html = renderToStaticMarkup(<SignUpForm intent="researcher" emailIsSimulated={false} />);
     expect(html).toContain("Your name");
     expect(html).toContain("Username");
     expect(html).not.toContain("Organization name");
@@ -101,7 +101,7 @@ describe("SignUpForm: intent-specific fields, wrapped in a real card (see docs/d
   });
 
   it("shows Organization name and a work-email helper for an organization signup, never Username", () => {
-    const html = renderToStaticMarkup(<SignUpForm intent="organization" />);
+    const html = renderToStaticMarkup(<SignUpForm intent="organization" emailIsSimulated={false} />);
     expect(html).toContain("Organization name");
     expect(html).not.toContain("Your name");
     expect(html).not.toContain(">Username<");
@@ -110,24 +110,24 @@ describe("SignUpForm: intent-specific fields, wrapped in a real card (see docs/d
 });
 
 describe("ConfirmEmailPending: honest about local-vs-real delivery, a real resend path (see docs/decisions/0052.1)", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
+  // emailIsSimulated is the caller's own server-derived fact (activeEmailProvider.name ===
+  // "dev", read in app/researchers/sign-up/page.tsx / app/organizations/sign-up/page.tsx) --
+  // this component trusts it outright rather than re-deriving anything from
+  // process.env.NODE_ENV, which went stale the moment a real-sending provider
+  // (gmail-smtp) became usable outside production: NODE_ENV !== "production" no longer
+  // implies "nothing is actually sent."
+  it("shows the no-real-provider notice when the caller says email is simulated", () => {
+    const html = renderToStaticMarkup(<ConfirmEmailPending email="researcher@example.test" emailIsSimulated={true} />);
+    expect(html).toContain("No real email provider configured");
   });
 
-  it("shows the local/development notice outside production -- process.env.NODE_ENV is inlined by Next.js's own build, not a Supabase-specific check", () => {
-    vi.stubEnv("NODE_ENV", "test");
-    const html = renderToStaticMarkup(<ConfirmEmailPending email="researcher@example.test" />);
-    expect(html).toContain("Local development");
-  });
-
-  it("never shows the local-development notice in production", () => {
-    vi.stubEnv("NODE_ENV", "production");
-    const html = renderToStaticMarkup(<ConfirmEmailPending email="researcher@example.test" />);
-    expect(html).not.toContain("Local development");
+  it("never shows the notice when the caller says a real provider is active, regardless of NODE_ENV", () => {
+    const html = renderToStaticMarkup(<ConfirmEmailPending email="researcher@example.test" emailIsSimulated={false} />);
+    expect(html).not.toContain("No real email provider configured");
   });
 
   it("shows the real email address, a code-entry field, and a resend affordance", () => {
-    const html = renderToStaticMarkup(<ConfirmEmailPending email="researcher@example.test" />);
+    const html = renderToStaticMarkup(<ConfirmEmailPending email="researcher@example.test" emailIsSimulated={false} />);
     expect(html).toContain("researcher@example.test");
     expect(html).toContain("Verification code");
     expect(html).toContain("Resend code");

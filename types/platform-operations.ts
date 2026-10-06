@@ -119,3 +119,19 @@ export type AppErrorGroup = {
   firstSeen: string;
   lastSeen: string;
 };
+
+/** One row of the platform audit log (list_audit_logs_for_admin, see
+ * db/migrations/202610010001_delete_researcher_and_audit_log_viewer.sql). audit_logs
+ * itself has existed since 202608250001 -- this is just the first read path over it. */
+export type AuditLogEntry = {
+  id: string;
+  actorId: string | null;
+  actorDisplayName: string | null;
+  organizationId: string | null;
+  organizationName: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};

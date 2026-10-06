@@ -11,7 +11,13 @@ const fakeClient = { query: vi.fn() };
 
 vi.mock("../../lib/db/pool", async () => {
   const actual = await vi.importActual<typeof import("../../lib/db/pool")>("../../lib/db/pool");
-  return { ...actual, withActorTransaction: vi.fn((_actorId: string, fn: (client: unknown) => unknown) => fn(fakeClient)) };
+  return {
+    ...actual,
+    withActorTransaction: vi.fn((_actorId: string, fn: (client: unknown) => unknown) => fn(fakeClient)),
+    // elevateSessionToAal2 runs under service_role (public.sessions has no grant for
+    // authenticated) -- see services/mfa.ts's own comment for why.
+    withServiceRoleTransaction: vi.fn((fn: (client: unknown) => unknown) => fn(fakeClient)),
+  };
 });
 vi.mock("../../lib/auth/current-user", () => ({ getCurrentUser: vi.fn(), getCurrentSessionId: vi.fn() }));
 vi.mock("../../lib/auth/session", async (importOriginal) => {
@@ -110,10 +116,16 @@ describe("beginMfaEnrollment: generates a real 6-digit code, persists only its h
 });
 
 describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge check, never a client-side code check", () => {
-  it("looks up the latest unconsumed challenge and verifies its hash", async () => {
+  // verify_mfa_challenge(code_hash) looks up the actor's own latest unconsumed challenge
+  // internally (auth.uid()-scoped, SECURITY DEFINER) -- services/mfa.ts no longer
+  // pre-queries public.mfa_challenges itself at all. An earlier version did exactly that
+  // under the authenticated role, which was never granted table access (only service_role
+  // was), so every verification attempt failed with "permission denied for table
+  // mfa_challenges" until db/migrations/202610010002_fix_mfa_verify_challenge_lookup.sql
+  // removed that call site. These tests exercise the fixed, single-RPC-call shape.
+  it("calls verify_mfa_challenge with only the code's hash", async () => {
     let verifyArgs: unknown[] | undefined;
     fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
-      if (sql.includes("from public.mfa_challenges")) return queryReturning([{ id: "challenge-9" }]);
       if (sql.includes("verify_mfa_challenge")) {
         verifyArgs = params;
         return queryReturning([{ verify_mfa_challenge: "enroll" }]);
@@ -124,14 +136,14 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
 
     await confirmMfaEnrollment("user-1", "123456");
 
-    expect(verifyArgs?.[0]).toBe("challenge-9");
-    expect(typeof verifyArgs?.[1]).toBe("string");
+    expect(verifyArgs).toHaveLength(1);
+    expect(typeof verifyArgs?.[0]).toBe("string");
   });
 
-  it("maps the RPC's own INVALID_CODE error (a genuinely missing/foreign challenge row) to a real, user-facing error -- never a raw provider string", async () => {
+  it("maps the RPC's own INVALID_CODE error (no owned/unconsumed challenge exists at all) to a real, user-facing error -- never a raw provider string", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("from public.mfa_challenges")) return queryReturning([{ id: "challenge-9" }]);
-      throw new Error("INVALID_CODE: that code is invalid or has expired");
+      if (sql.includes("verify_mfa_challenge")) throw new Error("INVALID_CODE: that code is invalid or has expired");
+      throw new Error(`unexpected query: ${sql}`);
     });
     const { confirmMfaEnrollment, OrganizationServiceError } = await import("../../services/mfa");
 
@@ -143,7 +155,6 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
 
   it("maps the RPC's own returned 'invalid' outcome (a wrong/expired/exhausted code, which verify_mfa_challenge never raises for -- see its own migration comment on why) to the identical INVALID_CODE error", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("from public.mfa_challenges")) return queryReturning([{ id: "challenge-9" }]);
       if (sql.includes("verify_mfa_challenge")) return queryReturning([{ verify_mfa_challenge: "invalid" }]);
       throw new Error(`unexpected query: ${sql}`);
     });
@@ -155,22 +166,8 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
     expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("INVALID_CODE");
   });
 
-  it("rejects with INVALID_CODE when there is no live challenge to check against", async () => {
-    fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("from public.mfa_challenges")) return queryReturning([]);
-      throw new Error(`unexpected query: ${sql}`);
-    });
-    const { confirmMfaEnrollment, OrganizationServiceError } = await import("../../services/mfa");
-
-    const error: unknown = await confirmMfaEnrollment("user-1", "123456").catch((thrown) => thrown);
-
-    expect(error).toBeInstanceOf(OrganizationServiceError);
-    expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("INVALID_CODE");
-  });
-
   it("elevates the current session to aal2 on a successful sign-in-time ('verify' purpose) check", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("from public.mfa_challenges")) return queryReturning([{ id: "challenge-9" }]);
       if (sql.includes("verify_mfa_challenge")) return queryReturning([{ verify_mfa_challenge: "verify" }]);
       throw new Error(`unexpected query: ${sql}`);
     });
@@ -181,9 +178,8 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
     expect(await mockedElevate()).toHaveBeenCalledWith(fakeClient, "session-1");
   });
 
-  it("does NOT elevate the session for an 'enroll' purpose success (enrollment happens from an already-aal1-or-aal2 settings session, not the sign-in gate)", async () => {
+  it("also elevates the session for an 'enroll' purpose success -- MfaSettings immediately calls generate_my_mfa_backup_codes right after, which itself requires a real aal2 session (202609020001); an earlier version skipped elevation here, which made every enrollment's own backup-code step fail with STRONG_AUTH_REQUIRED (confirmed live)", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("from public.mfa_challenges")) return queryReturning([{ id: "challenge-9" }]);
       if (sql.includes("verify_mfa_challenge")) return queryReturning([{ verify_mfa_challenge: "enroll" }]);
       throw new Error(`unexpected query: ${sql}`);
     });
@@ -191,7 +187,7 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
 
     await confirmMfaEnrollment("user-1", "123456");
 
-    expect(await mockedElevate()).not.toHaveBeenCalled();
+    expect(await mockedElevate()).toHaveBeenCalledWith(fakeClient, "session-1");
   });
 });
 

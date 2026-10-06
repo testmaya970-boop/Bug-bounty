@@ -151,9 +151,21 @@ async function findUserByEmail(email: string): Promise<UserRow | null> {
   });
 }
 
+/** No spec expects a seeded account to have two-factor auth. A leftover enrollment (one
+ * happened during manual MFA testing on 2026-10-01) sends every page to /mfa/verify and
+ * fails most of the suite, so seeded accounts always start without it. */
+async function resetMfa(userId: string) {
+  await withServiceRole(async (client) => {
+    for (const table of ["mfa_verified_sessions", "mfa_backup_codes", "mfa_challenges", "mfa_factors"]) {
+      await client.query(`delete from public.${table} where user_id = $1`, [userId]);
+    }
+  });
+}
+
 async function ensureUser(email: string, displayName: string, username: string): Promise<UserRow> {
   const existing = await findUserByEmail(email);
   if (existing) {
+    await resetMfa(existing.id);
     console.log(`User ${email} already exists.`);
     return existing;
   }
@@ -692,6 +704,14 @@ async function main() {
 
   await seedCtfEvents(admin.id, veteran.id, newcomer.id);
   console.log("");
+
+  // Engagements lists 20 programs per page, newest first, and every full E2E run adds two
+  // "E2E Live ..." programs (program-launch-journey.spec.ts) to this same org. Without this,
+  // the seeded fixtures drift off page one (seen 2026-10-05: E2E Public Program at #21) and
+  // every spec that clicks them from the list fails.
+  await withServiceRole((client) =>
+    client.query("update public.programs set updated_at = now() where id = any($1)", [[publicProgram.id, privateProgram.id, notifProgram.id]]),
+  );
 
   // Turn 8: the visibility-with-teeth E2E assertion needs a real id to attempt a direct
   // URL against as the uninvited researcher -- a UI-only search can only prove "not

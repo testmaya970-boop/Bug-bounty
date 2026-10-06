@@ -5,6 +5,7 @@
 //   npm run db:restore -- <file> <new-db>     restore into a NEW database (never over an existing one)
 //   npm run db:backup:verify                  backup -> restore into a scratch DB -> compare every
 //                                             table's row count with the source -> drop the scratch DB
+//   npm run db:backup:check                   exit 1 if the newest valid dump is > 48h old (alert on this)
 //
 // Recovery is "restore alongside, check, then point DATABASE_URL at it" -- this script never
 // overwrites a live database. Connects as MIGRATION_DATABASE_URL (the schema owner).
@@ -12,7 +13,7 @@
 // set (local dev: sentinel_native_postgres), streaming over stdin/stdout either way.
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { createReadStream, createWriteStream, mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
+import { closeSync, createReadStream, createWriteStream, mkdirSync, openSync, readSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import pg from "pg";
 
@@ -58,25 +59,74 @@ async function withDb(db, fn) {
   }
 }
 
+/** A real pg_dump custom-format archive starts with the magic bytes "PGDMP". A failed or
+ * interrupted dump leaves an empty or truncated file -- previously kept, logged, and
+ * counted toward retention as if it were a backup (seen live: three 0-byte dumps). */
+function isValidDump(file) {
+  if (statSync(file).size === 0) return false;
+  const fd = openSync(file, "r");
+  try {
+    const magic = Buffer.alloc(5);
+    readSync(fd, magic, 0, 5, 0);
+    return magic.toString("latin1") === "PGDMP";
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function listDumps() {
+  return readdirSync(backupDir).filter((f) => f.startsWith(`${sourceDb}-`) && f.endsWith(".dump")).sort();
+}
+
 async function backup() {
   mkdirSync(backupDir, { recursive: true });
   const file = join(backupDir, `${sourceDb}-${new Date().toISOString().replace(/[:.]/g, "-")}.dump`);
   const out = createWriteStream(file);
   // Custom format: compressed, and restorable table-by-table with pg_restore.
-  await run("pg_dump", sourceDb, ["--format=custom", "--no-owner", "--no-privileges"], { stdout: out });
-  await new Promise((r) => out.close(r));
+  let failure = null;
+  try {
+    await run("pg_dump", sourceDb, ["--format=custom", "--no-owner", "--no-privileges"], { stdout: out });
+  } catch (error) {
+    failure = error;
+  } finally {
+    await new Promise((r) => out.close(r));
+  }
+  if (failure || !isValidDump(file)) {
+    const size = statSync(file).size;
+    unlinkSync(file);
+    throw failure ?? new Error(`pg_dump produced no valid archive (${size} bytes)`);
+  }
   const sha256 = await new Promise((resolve) => {
     const hash = createHash("sha256");
     createReadStream(file).on("data", (d) => hash.update(d)).on("end", () => resolve(hash.digest("hex")));
   });
   console.log(`backup ${file} (${(statSync(file).size / 1024).toFixed(0)} KiB, sha256 ${sha256})`);
 
-  const ours = readdirSync(backupDir).filter((f) => f.startsWith(`${sourceDb}-`) && f.endsWith(".dump")).sort();
-  for (const old of ours.slice(0, Math.max(0, ours.length - keep))) {
+  // Retention counts only real archives, so a run of failures can never prune the last good backups.
+  const valid = [];
+  for (const name of listDumps()) {
+    if (isValidDump(join(backupDir, name))) valid.push(name);
+    else {
+      unlinkSync(join(backupDir, name));
+      console.log(`removed invalid ${name}`);
+    }
+  }
+  for (const old of valid.slice(0, Math.max(0, valid.length - keep))) {
     unlinkSync(join(backupDir, old));
     console.log(`pruned ${old}`);
   }
   return file;
+}
+
+/** Exit non-zero when the newest valid dump is older than BACKUP_MAX_AGE_HOURS (48) -- for a
+ * scheduler or monitor to alert on, since a backup that silently stopped is the real risk. */
+function check() {
+  const maxAgeHours = Number(process.env.BACKUP_MAX_AGE_HOURS ?? 48);
+  const newest = listDumps().filter((name) => isValidDump(join(backupDir, name))).at(-1);
+  if (!newest) throw new Error(`no valid backup in ${backupDir}`);
+  const ageHours = (Date.now() - statSync(join(backupDir, newest)).mtimeMs) / 3_600_000;
+  if (ageHours > maxAgeHours) throw new Error(`newest valid backup ${newest} is ${ageHours.toFixed(1)}h old (limit ${maxAgeHours}h)`);
+  console.log(`ok: newest valid backup ${newest} is ${ageHours.toFixed(1)}h old`);
 }
 
 async function restore(file, targetDb) {
@@ -127,7 +177,8 @@ try {
     if (args.length !== 2) throw new Error("usage: db:restore -- <file> <new-database-name>");
     await restore(args[0], args[1]);
   } else if (command === "verify") await verify();
-  else throw new Error("usage: db-backup.mjs backup | restore <file> <db> | verify");
+  else if (command === "check") check();
+  else throw new Error("usage: db-backup.mjs backup | restore <file> <db> | verify | check");
 } catch (error) {
   console.error(error.message);
   process.exit(1);

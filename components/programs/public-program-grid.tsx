@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { Avatar } from "../ui/navigation";
-import { ProgramStatusBadge } from "../ui/badge";
+import { ProgramStatusBadge, ProgramTypeBadge } from "../ui/badge";
 import { assetTypeLabel } from "../../lib/scope-labels";
 import { focusAreaLabel } from "../../lib/researcher-identity-labels";
 import { formatBountyRange } from "../../lib/money";
@@ -32,7 +32,10 @@ export function PublicProgramGrid({ programs }: { programs: PublicProgramSummary
                   <p className="truncate text-xs text-ink-muted">{program.organizationName}</p>
                 </div>
               </div>
-              <ProgramStatusBadge status={program.status} />
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <ProgramStatusBadge status={program.status} />
+                <ProgramTypeBadge programType={program.programType} />
+              </div>
             </div>
 
             {program.description && <p className="line-clamp-1 text-xs text-ink-muted">{program.description}</p>}
@@ -56,7 +59,9 @@ export function PublicProgramGrid({ programs }: { programs: PublicProgramSummary
               <p className={program.bountyMinMinorUnits !== null && program.bountyMaxMinorUnits !== null && program.bountyCurrency ? "text-base font-bold text-ink" : "text-xs font-medium text-ink-muted"}>
                 {program.bountyMinMinorUnits !== null && program.bountyMaxMinorUnits !== null && program.bountyCurrency
                   ? formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)
-                  : "No bounty"}
+                  : program.programType === "vdp"
+                    ? "Disclosure only"
+                    : "No bounty set yet"}
               </p>
               <p className="shrink-0 text-[11px] text-ink-muted">
                 {program.activeResearcherCount} {program.activeResearcherCount === 1 ? "researcher" : "researchers"} · {program.resolvedReportCount} resolved

@@ -112,23 +112,29 @@ async function main() {
   // 3. Wrong code returns 'invalid' without raising (see the migration's own IMPORTANT
   // comment: a RAISE from inside verify_mfa_challenge would discard its own attempts
   // increment) -- attempts increments, but the challenge stays live under the limit.
-  const wrongCodeRows = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [challengeId, hashCode("000000")]));
+  // verify_mfa_challenge now takes only a code hash (202610010002): it looks up the
+  // caller's own latest unconsumed challenge internally via auth.uid(), rather than
+  // trusting a client-supplied challenge id -- see that migration's own comment for why
+  // (the app's prior raw SELECT to find this id was never granted table access at all).
+  const wrongCodeRows = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [hashCode("000000")]));
   assert(wrongCodeRows[0]?.verify_mfa_challenge === "invalid", "verify: a wrong code returns 'invalid'");
 
   const attemptsAfterWrong = await withServiceRole((client) => client.query("select attempts, consumed_at from public.mfa_challenges where id = $1", [challengeId]).then((r) => r.rows[0]));
   assert(attemptsAfterWrong.attempts === 1, "verify: a wrong code still increments attempts");
   assert(attemptsAfterWrong.consumed_at === null, "verify: a wrong code (under the attempt limit) does not consume the challenge");
 
-  // 4. Ownership: a different user cannot verify this challenge, even with the exact right code hash.
+  // 4. Ownership: a different user has no challenge of their own to verify, even with the
+  // exact right code hash for someone else's -- there is no challenge id parameter left to
+  // pass, so cross-owner access is now structurally impossible rather than merely rejected.
   const otherUserId = await withServiceRole(async (client) => {
     const { rows } = await client.query("select * from public.create_user($1, $2, $3, $4)", [`live-otp-other-${Date.now()}@example.test`, passwordHash, "Other User", null]);
     return rows[0].id;
   });
-  const crossOwnerResult = await withActor(otherUserId, (client) => callRpc(client, "public.verify_mfa_challenge", [challengeId, hashCode(enrollCode)]).catch((e) => e));
-  assert(crossOwnerResult instanceof Error && crossOwnerResult.message.startsWith("INVALID_CODE"), "ownership: a different user cannot verify someone else's challenge (no owned row to increment, so this still raises)");
+  const crossOwnerResult = await withActor(otherUserId, (client) => callRpc(client, "public.verify_mfa_challenge", [hashCode(enrollCode)]).catch((e) => e));
+  assert(crossOwnerResult instanceof Error && crossOwnerResult.message.startsWith("INVALID_CODE"), "ownership: a different user has no live challenge of their own, so this still raises (no owned/unconsumed row exists for them)");
 
   // 5. Correct code succeeds, marks the factor verified, returns purpose 'enroll'.
-  const enrollVerifyRows = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [challengeId, hashCode(enrollCode)]));
+  const enrollVerifyRows = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [hashCode(enrollCode)]));
   assert(enrollVerifyRows[0]?.verify_mfa_challenge === "enroll", "enrollment confirm: verify_mfa_challenge returns purpose 'enroll'");
 
   const factorAfterVerify = await withServiceRole((client) => client.query("select status, verified_at from public.mfa_factors where user_id = $1", [userId]).then((r) => r.rows[0]));
@@ -138,7 +144,7 @@ async function main() {
   // 6. Single-use: the same challenge cannot be verified again, even with the correct code
   // (it's already consumed_at is not null, so the UPDATE ... WHERE consumed_at is null
   // matches zero rows -- the "no owned/unconsumed row" raising path).
-  const replayResult = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [challengeId, hashCode(enrollCode)]).catch((e) => e));
+  const replayResult = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [hashCode(enrollCode)]).catch((e) => e));
   assert(replayResult instanceof Error && replayResult.message.startsWith("INVALID_CODE"), "single-use: a consumed challenge cannot be replayed");
 
   // 7. Re-enrolling an already-verified account is rejected.
@@ -148,11 +154,8 @@ async function main() {
   // 8. Sign-in-time gate: 'verify' purpose challenge, correct code returns purpose 'verify'
   // (services/mfa.ts uses this to decide whether to elevate the session to aal2).
   const verifyCode = "654321";
-  const verifyChallengeId = await withActor(userId, async (client) => {
-    const rows = await callRpc(client, "public.create_mfa_challenge", ["verify", hashCode(verifyCode), 600]);
-    return rows[0].create_mfa_challenge;
-  });
-  const verifyPurposeRows = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [verifyChallengeId, hashCode(verifyCode)]));
+  await withActor(userId, (client) => callRpc(client, "public.create_mfa_challenge", ["verify", hashCode(verifyCode), 600]));
+  const verifyPurposeRows = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [hashCode(verifyCode)]));
   assert(verifyPurposeRows[0]?.verify_mfa_challenge === "verify", "sign-in gate: a correct 'verify' challenge returns purpose 'verify' (triggers aal2 elevation)");
 
   // 9. Attempt limit: 5 wrong attempts exhausts a challenge even before its expiry.
@@ -162,14 +165,14 @@ async function main() {
   });
   let lastAttemptOutcome;
   for (let i = 0; i < 5; i++) {
-    const rows = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [limitChallengeId, hashCode("000000")]));
+    const rows = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [hashCode("000000")]));
     lastAttemptOutcome = rows[0]?.verify_mfa_challenge;
   }
   assert(lastAttemptOutcome === "invalid", "attempt limit: the 5th wrong attempt is still rejected");
   const exhaustedRow = await withServiceRole((client) => client.query("select attempts, consumed_at from public.mfa_challenges where id = $1", [limitChallengeId]).then((r) => r.rows[0]));
   assert(exhaustedRow.attempts === 5, "attempt limit: attempts reaches exactly 5 after 5 wrong guesses");
   assert(!!exhaustedRow.consumed_at, "attempt limit: the challenge is consumed (exhausted) after 5 wrong attempts");
-  const correctAfterExhaustedResult = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [limitChallengeId, hashCode("999999")]).catch((e) => e));
+  const correctAfterExhaustedResult = await withActor(userId, (client) => callRpc(client, "public.verify_mfa_challenge", [hashCode("999999")]).catch((e) => e));
   assert(correctAfterExhaustedResult instanceof Error && correctAfterExhaustedResult.message.startsWith("INVALID_CODE"), "attempt limit: even the correct code fails once a challenge is exhausted (already consumed, so no owned/unconsumed row remains)");
 
   // 10. Rate limit: the 6th challenge request within 15 minutes for the same purpose is rejected.

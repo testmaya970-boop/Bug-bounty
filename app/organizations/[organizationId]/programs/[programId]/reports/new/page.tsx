@@ -4,6 +4,7 @@ import type { Route } from "next";
 import { AppShell } from "../../../../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../../../../components/ui/navigation";
 import { EmptyState, PermissionDenied } from "../../../../../../../components/ui/feedback";
+import { Alert } from "../../../../../../../components/ui/feedback";
 import { SectionLabel } from "../../../../../../../components/ui/security-primitives";
 import { CreateReportForm } from "../../../../../../../components/reports/create-report-form";
 import { getProgram } from "../../../../../../../services/programs";
@@ -64,6 +65,11 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
           <SectionLabel>Document a security finding</SectionLabel>
           <p className="mt-1 text-sm text-ink-muted">Every field below becomes part of the report record. Nothing here is discarded on submission.</p>
         </div>
+        {program.programType === "vdp" && (
+          <Alert tone="info" title="This is a vulnerability-disclosure program">
+            It does not pay bounties. Your report is still reviewed and helps the organization fix the issue.
+          </Alert>
+        )}
         <CreateReportForm organizationId={organizationId} programId={programId} programName={program.name} inScopeTargets={inScopeTargets} />
       </div>
     </AppShell>

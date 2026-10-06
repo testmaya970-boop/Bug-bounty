@@ -5,9 +5,9 @@ import Link from "next/link";
 import type { Route } from "next";
 import { ArrowUpDown } from "lucide-react";
 import { Avatar } from "../ui/navigation";
-import { ProgramStatusBadge } from "../ui/badge";
+import { ProgramStatusBadge, ProgramTypeBadge } from "../ui/badge";
 import { formatBountyRange } from "../../lib/money";
-import type { PublicProgramSummary } from "../../types/program";
+import type { PublicProgramSummary } from "../../types/program";
 import { LocalTime } from "../ui/local-time";
 
 type SortKey = "name" | "bounty" | "researchers" | "resolved" | "updated";
@@ -106,13 +106,18 @@ export function PublicProgramTable({ programs }: { programs: PublicProgramSummar
               <td className="whitespace-nowrap px-3 py-3 font-semibold text-ink">
                 {program.bountyMinMinorUnits !== null && program.bountyMaxMinorUnits !== null && program.bountyCurrency
                   ? formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)
-                  : "—"}
+                  : program.programType === "vdp"
+                    ? <span className="font-normal text-ink-muted">Disclosure only</span>
+                    : "—"}
               </td>
               <td className="whitespace-nowrap px-3 py-3 text-ink-muted">{program.activeResearcherCount}</td>
               <td className="whitespace-nowrap px-3 py-3 text-ink-muted">{program.resolvedReportCount}</td>
               <td className="whitespace-nowrap px-3 py-3 text-ink-muted"><LocalTime value={program.updatedAt} dateOnly /></td>
               <td className="whitespace-nowrap px-4 py-3 pr-5">
-                <ProgramStatusBadge status={program.status} />
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <ProgramStatusBadge status={program.status} />
+                  <ProgramTypeBadge programType={program.programType} />
+                </div>
               </td>
             </tr>
           ))}

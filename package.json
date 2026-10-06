@@ -21,6 +21,7 @@
     "db:backup": "node --env-file-if-exists=.env.local scripts/db-backup.mjs backup",
     "db:restore": "node --env-file-if-exists=.env.local scripts/db-backup.mjs restore",
     "db:backup:verify": "node --env-file-if-exists=.env.local scripts/db-backup.mjs verify",
+    "db:backup:check": "node --env-file-if-exists=.env.local scripts/db-backup.mjs check",
     "storage:init": "node --env-file-if-exists=.env.local scripts/storage-init.mjs",
     "release": "node --env-file-if-exists=.env.local scripts/release.mjs release",
     "start:prod": "node --env-file-if-exists=.env.local scripts/release.mjs start",
