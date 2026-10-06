@@ -18,6 +18,7 @@ function validate(input: UploadInput) {
   if (trimmedFilename.length > 255) throw new OrganizationServiceError("File name must be 255 characters or fewer.", "INVALID_EVIDENCE");
   if (input.bytes.byteLength === 0) throw new OrganizationServiceError("The selected file is empty.", "INVALID_EVIDENCE");
   if (input.bytes.byteLength > MAX_SIZE_BYTES) throw new OrganizationServiceError("File must be 10 MB or smaller.", "INVALID_EVIDENCE");
+  if (input.contentType.length > 255) throw new OrganizationServiceError("The file type is not valid.", "INVALID_EVIDENCE");
 }
 
 type FileEvidenceRow = {
@@ -78,12 +79,21 @@ async function uploadAndFinalize(
 ): Promise<ReportEvidence> {
   validate(input);
 
+  // Before any storage write: the caller must at least be able to see the report (RLS on
+  // public.reports). The finalize RPC below still makes the real add-evidence decision;
+  // this only stops any signed-in user from writing bytes against an arbitrary report id.
   let allowedRows;
+  let canSeeReport = false;
   try {
-    allowedRows = await withActorTransaction(actorId, (client) => callRpc<{ check_evidence_upload_rate_limit: boolean }>(client, "public.check_evidence_upload_rate_limit"));
+    allowedRows = await withActorTransaction(actorId, async (client) => {
+      const visible = await client.query("select 1 from public.reports where id = $1", [reportId]);
+      canSeeReport = (visible.rowCount ?? 0) > 0;
+      return callRpc<{ check_evidence_upload_rate_limit: boolean }>(client, "public.check_evidence_upload_rate_limit");
+    });
   } catch (error) {
     mapError(error as { message: string });
   }
+  if (!canSeeReport) throw new OrganizationServiceError("Report not found.", "REPORT_NOT_FOUND");
   if (allowedRows[0]?.check_evidence_upload_rate_limit === false) throw new OrganizationServiceError("Too many uploads recently. Try again later.", "RATE_LIMITED");
 
   const sha256 = createHash("sha256").update(input.bytes).digest("hex");

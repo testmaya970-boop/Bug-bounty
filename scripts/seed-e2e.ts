@@ -162,6 +162,28 @@ async function resetMfa(userId: string) {
   });
 }
 
+/** Puts a fixture report back to "new" for a clean re-run. Not a real transition, so
+ * reports_enforce_rules (202610060005) refuses it; this test-only reset runs on the
+ * schema-owner connection with triggers off for its one transaction -- something only a
+ * superuser can do, so it is not a bypass the app could use. */
+async function resetReportToNew(reportId: string) {
+  if (!process.env.MIGRATION_DATABASE_URL) throw new Error("MIGRATION_DATABASE_URL is required to reset fixture reports");
+  const owner = new Pool({ connectionString: process.env.MIGRATION_DATABASE_URL, max: 1 });
+  const client = await owner.connect();
+  try {
+    await client.query("begin");
+    await client.query("set local session_replication_role = replica");
+    await client.query("update public.reports set status = 'new', duplicate_of_report_id = null, confirmed_severity = null, resolution_summary = null, updated_at = now() where id = $1", [reportId]);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+    await owner.end();
+  }
+}
+
 async function ensureUser(email: string, displayName: string, username: string): Promise<UserRow> {
   const existing = await findUserByEmail(email);
   if (existing) {
@@ -387,9 +409,7 @@ async function ensureFreshReportForTriageWalk(researcherId: string, program: Pro
       // report below.
       await withServiceRole((client) => client.query("delete from public.report_bounty_decisions where report_id = $1", [existing.id]));
       await withServiceRole((client) => client.query("delete from public.report_messages where report_id = $1", [existing.id]));
-      await withServiceRole((client) =>
-        client.query("update public.reports set status = 'new', confirmed_severity = null, resolution_summary = null, updated_at = now() where id = $1", [existing.id]),
-      );
+      await resetReportToNew(existing.id);
       console.log(`Triage-walk seed report existed at "${existing.status}" -- reset to "new" for a clean re-run.`);
     } else {
       console.log("Triage-walk seed report already exists (status: new).");
@@ -428,9 +448,7 @@ async function ensureFreshReportForNotificationsWalk(researcherId: string, progr
     if (existing.status !== "new") {
       await withServiceRole((client) => client.query("delete from public.report_bounty_decisions where report_id = $1", [existing.id]));
       await withServiceRole((client) => client.query("delete from public.report_messages where report_id = $1", [existing.id]));
-      await withServiceRole((client) =>
-        client.query("update public.reports set status = 'new', confirmed_severity = null, resolution_summary = null, updated_at = now() where id = $1", [existing.id]),
-      );
+      await resetReportToNew(existing.id);
       console.log(`Notifications-walk seed report existed at "${existing.status}" -- reset to "new" for a clean re-run.`);
     } else {
       console.log("Notifications-walk seed report already exists (status: new).");

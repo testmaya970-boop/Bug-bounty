@@ -103,7 +103,10 @@ export const s3EvidenceObjectStore: EvidenceObjectStore = {
       const command = new GetObjectCommand({
         Bucket: bucket,
         Key: objectKey,
-        ResponseContentDisposition: `attachment; filename="${downloadFilename.replace(/"/g, "'")}"`,
+        ResponseContentDisposition: `attachment; filename="${downloadFilename.replace(/[\\"]/g, "'")}"`,
+        // The stored Content-Type is whatever the uploader claimed (e.g. text/html). Always
+        // serve evidence as opaque bytes so it can never render, wherever storage is hosted.
+        ResponseContentType: "application/octet-stream",
       });
       return await getSignedUrl(client, command, { expiresIn: SIGNED_URL_TTL_SECONDS });
     } catch (error) {

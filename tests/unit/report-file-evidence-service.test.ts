@@ -97,6 +97,7 @@ describe("report-file-evidence service: hash is computed server-side from the ac
     const expectedHash = createHash("sha256").update(bytes).digest("hex");
     let captured: unknown[] | undefined;
     fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
+      if (sql.includes("from public.reports")) return queryReturning([{ visible: 1 }]);
       if (sql.includes("check_evidence_upload_rate_limit")) return queryReturning([rateLimitRow(true)]);
       if (sql.includes("add_researcher_file_evidence")) {
         captured = params;
@@ -120,6 +121,7 @@ describe("report-file-evidence service: hash is computed server-side from the ac
     const bytes = new Uint8Array([9, 9]);
     let captured: unknown[] | undefined;
     fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
+      if (sql.includes("from public.reports")) return queryReturning([{ visible: 1 }]);
       if (sql.includes("check_evidence_upload_rate_limit")) return queryReturning([rateLimitRow(true)]);
       if (sql.includes("add_organization_file_evidence")) {
         captured = params;
@@ -141,6 +143,7 @@ describe("report-file-evidence service: hash is computed server-side from the ac
 describe("report-file-evidence service: an object is never orphaned by a failed finalize without an attempted cleanup", () => {
   function mockRateLimitOkButFinalizeRejects(finalizeMessage: string) {
     fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("from public.reports")) return queryReturning([{ visible: 1 }]);
       if (sql.includes("check_evidence_upload_rate_limit")) return queryReturning([rateLimitRow(true)]);
       throw new Error(finalizeMessage);
     });
@@ -167,6 +170,23 @@ describe("report-file-evidence service: an object is never orphaned by a failed 
 
     expect(error).toBeInstanceOf(OrganizationServiceError);
     expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("FORBIDDEN");
+  });
+});
+
+describe("report-file-evidence service: an upload against a report the caller can't see never reaches storage", () => {
+  it("throws REPORT_NOT_FOUND and never calls putObject when RLS hides the report", async () => {
+    fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("from public.reports")) return queryReturning([]);
+      if (sql.includes("check_evidence_upload_rate_limit")) return queryReturning([rateLimitRow(true)]);
+      return queryReturning([FILE_ROW]);
+    });
+    const { addResearcherFileEvidence, OrganizationServiceError } = await import("../../services/report-file-evidence");
+
+    const error: unknown = await addResearcherFileEvidence("someone-elses-report", { filename: "a.txt", contentType: "text/plain", bytes: new Uint8Array([1]) }).catch((thrown) => thrown);
+
+    expect(error).toBeInstanceOf(OrganizationServiceError);
+    expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("REPORT_NOT_FOUND");
+    expect(mockedStore.putObject).not.toHaveBeenCalled();
   });
 });
 
