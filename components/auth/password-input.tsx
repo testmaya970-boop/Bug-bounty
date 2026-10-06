@@ -18,7 +18,7 @@ type PasswordInputProps = {
   helperText?: string;
   error?: string;
   required?: boolean;
-  autoComplete: "current-password" | "new-password";
+  autoComplete: "current-password" | "new-password" | "off";
   minLength?: number;
   value: string;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;

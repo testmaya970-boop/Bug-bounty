@@ -46,9 +46,10 @@ export type ReputationFactCount = {
 export type ReputationLedgerEntry = {
   id: string;
   factType: ReputationFactType;
-  reportId: string;
-  programId: string;
-  organizationId: string;
+  /** Null for CTF solves, which belong to no report, program or organization. */
+  reportId: string | null;
+  programId: string | null;
+  organizationId: string | null;
   confirmedSeverity: ReportSeverity | null;
   duplicateOfReportId: string | null;
   occurredAt: string;

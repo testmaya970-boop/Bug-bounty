@@ -14,22 +14,13 @@ import { listMyPendingProgramInvitations, listMyProgramParticipations } from "..
 import { listPublicPrograms, listTopBountyPrograms } from "../../services/programs";
 import { listRecommendedPrograms } from "../../services/researcher-profiles";
 import { getCurrentUser } from "../../lib/auth/current-user";
-import { FOCUS_AREA_ORDER } from "../../lib/researcher-identity-labels";
-import type { ResearcherFocusArea } from "../../types/researcher-identity";
+import { hasActiveProgramFilter, parsePublicProgramFilters } from "../../lib/program-filters";
 
 type ProgramsTab = "all" | "mine" | "invitations";
-type ProgramsSearchParams = { tab?: string; q?: string; status?: string; focusArea?: string };
+type ProgramsSearchParams = { tab?: string; q?: string; status?: string; focusArea?: string; assetType?: string; programType?: string; minBounty?: string; kyc?: string; sort?: string };
 
 function parseTabParam(value: string | undefined): ProgramsTab {
   return value === "mine" || value === "invitations" ? value : "all";
-}
-
-function parseStatusParam(value: string | undefined): "active" | "paused" | undefined {
-  return value === "active" || value === "paused" ? value : undefined;
-}
-
-function parseFocusAreaParam(value: string | undefined): ResearcherFocusArea | undefined {
-  return value && (FOCUS_AREA_ORDER as string[]).includes(value) ? (value as ResearcherFocusArea) : undefined;
 }
 
 /**
@@ -39,19 +30,17 @@ function parseFocusAreaParam(value: string | undefined): ResearcherFocusArea | u
  * search -> reload -> identical results, and the filters survive a bookmark/share.
  */
 async function AllProgramsTab({ searchParams }: { searchParams: ProgramsSearchParams }) {
-  const status = parseStatusParam(searchParams.status);
-  const focusArea = parseFocusAreaParam(searchParams.focusArea);
-  const search = searchParams.q?.trim() || undefined;
+  const filters = parsePublicProgramFilters(searchParams);
   const [{ items: programs, nextCursor }, topBounty, recommended] = await Promise.all([
-    listPublicPrograms({ search, status, focusArea }),
+    listPublicPrograms(filters),
     listTopBountyPrograms(),
     listRecommendedPrograms(),
   ]);
-  const isFiltered = Boolean(search || status || focusArea);
+  const isFiltered = hasActiveProgramFilter(filters);
 
   return (
     <div className="space-y-8">
-      <PublicProgramSearchForm tab="all" search={search} status={status} focusArea={focusArea} />
+      <PublicProgramSearchForm tab="all" filters={filters} />
 
       {!isFiltered && topBounty.length > 0 && (
         <div className="space-y-3">
@@ -86,7 +75,7 @@ async function AllProgramsTab({ searchParams }: { searchParams: ProgramsSearchPa
               : "Organizations occasionally open a program to the whole community. Check back later, or ask an organization to invite you directly."}
           </EmptyState>
         ) : (
-          <PublicProgramList initialPrograms={programs} initialNextCursor={nextCursor} search={search} status={status} focusArea={focusArea} />
+          <PublicProgramList key={JSON.stringify(filters)} initialPrograms={programs} initialNextCursor={nextCursor} filters={filters} />
         )}
       </div>
     </div>
@@ -152,11 +141,10 @@ function PendingInvitationsTab({ invitations }: { invitations: Awaited<ReturnTyp
 }
 
 async function AnonymousProgramsPage({ searchParams }: { searchParams: ProgramsSearchParams }) {
-  const status = parseStatusParam(searchParams.status);
-  const focusArea = parseFocusAreaParam(searchParams.focusArea);
-  const search = searchParams.q?.trim() || undefined;
-  const isFiltered = Boolean(search || status || focusArea);
-  const [{ items: programs, nextCursor }, topBounty] = await Promise.all([listPublicPrograms({ search, status, focusArea }), listTopBountyPrograms()]);
+  const filters = parsePublicProgramFilters(searchParams);
+  const isFiltered = hasActiveProgramFilter(filters);
+  const [{ items: programs, nextCursor }, topBounty] = await Promise.all([listPublicPrograms(filters), listTopBountyPrograms()]);
+  // Only the loaded page is known here; say so rather than implying a total.
   const activeCount = programs.filter((program) => program.status === "active").length;
 
   return (
@@ -178,13 +166,13 @@ async function AnonymousProgramsPage({ searchParams }: { searchParams: ProgramsS
             page: a bare heading with nothing else to look at before the first list. */}
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <SectionLabel>Registry · Open to the community</SectionLabel>
-          {activeCount > 0 && <span className="font-mono text-xs font-semibold text-success">{activeCount} active now</span>}
+          {activeCount > 0 && <span className="font-mono text-xs font-semibold text-success">{nextCursor ? `${activeCount}+ active now` : `${activeCount} active now`}</span>}
         </div>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Security research programs open to the community</h1>
         <p className="mt-2 text-sm text-ink-muted">Sign in (or create a researcher account) once you find a program that fits, to submit a report.</p>
 
         <div className="mt-8">
-          <PublicProgramSearchForm search={search} status={status} focusArea={focusArea} />
+          <PublicProgramSearchForm filters={filters} />
         </div>
 
         {!isFiltered && topBounty.length > 0 && (
@@ -209,7 +197,7 @@ async function AnonymousProgramsPage({ searchParams }: { searchParams: ProgramsS
                 : "Check back later, or ask an organization to invite you directly."}
             </EmptyState>
           ) : (
-            <PublicProgramList initialPrograms={programs} initialNextCursor={nextCursor} search={search} status={status} focusArea={focusArea} />
+            <PublicProgramList key={JSON.stringify(filters)} initialPrograms={programs} initialNextCursor={nextCursor} filters={filters} />
           )}
         </div>
       </main>

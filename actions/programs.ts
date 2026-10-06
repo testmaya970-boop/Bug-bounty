@@ -23,6 +23,8 @@ import {
 import type { EngagementType, ProgramSummary, ProgramType, PublicProgramSummary } from "@/types/program";
 import type { Page } from "@/types/pagination";
 
+import type { PublicProgramFilters } from "@/lib/program-filters";
+
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
 // engagementType, like programType, is accepted ONLY at creation -- there is no
@@ -197,6 +199,11 @@ const listPublicProgramsPageSchema = z.object({
   search: z.string().max(160).optional(),
   status: z.enum(["active", "paused"]).optional(),
   focusArea: focusAreaEnum.optional(),
+  assetType: z.enum(["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"]).optional(),
+  programType: z.enum(["bounty", "vdp"]).optional(),
+  minBountyMinorUnits: z.number().int().positive().optional(),
+  requiresKyc: z.boolean().optional(),
+  sort: z.enum(["recent", "bounty", "name"]).optional(),
   cursor: z.string().optional(),
 });
 
@@ -204,11 +211,12 @@ const listPublicProgramsPageSchema = z.object({
  * visitors too (a Server Action is callable without a session; the underlying RPC is
  * itself anon-granted, see docs/decisions/0042). The first page renders server-side from
  * the page component directly; this is only ever invoked for subsequent pages. */
-export async function listPublicProgramsPageAction(input: { search?: string; status?: "active" | "paused"; focusArea?: string; cursor?: string }): Promise<ActionResult<Page<PublicProgramSummary>>> {
+export async function listPublicProgramsPageAction(input: PublicProgramFilters & { cursor?: string }): Promise<ActionResult<Page<PublicProgramSummary>>> {
   const parsed = listPublicProgramsPageSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: "Check your search and try again." };
   try {
-    const page = await listPublicPrograms({ search: parsed.data.search, status: parsed.data.status, focusArea: parsed.data.focusArea }, parsed.data.cursor);
+    const { cursor, ...filters } = parsed.data;
+    const page = await listPublicPrograms(filters, cursor);
     return { ok: true, data: page };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };

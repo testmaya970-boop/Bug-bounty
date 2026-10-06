@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { withServiceRoleTransaction } from "@/lib/db/pool";
 import { recordError } from "@/lib/error-tracking";
+import { readBodyWithin } from "@/lib/read-body";
 import { VERIFIED_USER_ID_HEADER } from "@/lib/session/middleware";
 
 // Receives browser errors from lib/report-client-error.ts. Unauthenticated on purpose (a
@@ -19,34 +20,12 @@ const bodySchema = z.object({
 // The schema's own limits (1000 + 8000 + 500 + 100 chars) fit comfortably in 16 KiB.
 const MAX_BODY_BYTES = 16 * 1024;
 
-/** Reads at most `limit` bytes, counting the actual stream -- a missing or false
- * Content-Length can't get past it. Without this, request.json() buffered and parsed an
- * unauthenticated 50 MB body in full before the schema rejected it (security review). */
-async function readBodyWithin(request: NextRequest, limit: number): Promise<string | null> {
-  if (Number(request.headers.get("content-length") ?? 0) > limit) return null;
-  if (!request.body) return "";
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > limit) {
-      await reader.cancel();
-      return null;
-    }
-    chunks.push(value);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
-
 export async function POST(request: NextRequest) {
   const raw = await readBodyWithin(request, MAX_BODY_BYTES);
   if (raw === null) return new NextResponse(null, { status: 413 });
   let json: unknown = null;
   try {
-    json = JSON.parse(raw);
+    json = JSON.parse(raw.toString("utf8"));
   } catch {
     return new NextResponse(null, { status: 400 });
   }

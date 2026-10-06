@@ -397,9 +397,10 @@ test("org journey: researcher accepts an invitation, sees the finalized amount, 
   await expect(page.getByText(/USD 500\.00/).first()).toBeVisible(); // bounty + payment panels
   await expect(page.getByText("Payouts are processed off-platform by your program contact.")).toBeVisible();
 
-  // --- Analytics preview badges present (researcher-side Reports analytics) -------------
+  // --- Researcher Reports: only real analytics (the sample "Preview" sections were removed) --
   await page.goto("/reports");
-  await expect(page.getByText("Preview").first()).toBeVisible();
+  await expect(page.getByText("Preview")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /E2E seed:/ }).first()).toBeVisible();
 
   // --- Hai reachable, honest stub, real waitlist join -----------------------------------
   await page.getByRole("link", { name: "Hai" }).click();

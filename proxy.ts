@@ -52,5 +52,11 @@ export const config = {
   // trusting it) never ran either -- a full, unauthenticated account-impersonation path.
   // Removed entirely rather than narrowed to a path prefix, since there is currently no
   // static image asset under public/ for it to protect.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|ctf-artifacts).*)"],
+  //
+  // `api/webhooks/jira/` is excluded because Jira's server-to-server deliveries carry no
+  // Unpatched session for this proxy to validate. The route is NOT ungated: it
+  // authenticates every request itself by recomputing an HMAC over the body with the
+  // organization's server-held secret (see that route's header). A fixed-PATH exclusion;
+  // no request header decides whether any gate runs.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|api/webhooks/jira/|ctf-artifacts).*)"],
 };

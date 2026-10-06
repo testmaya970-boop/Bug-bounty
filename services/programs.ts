@@ -344,12 +344,24 @@ export async function getProgramFocusAreas(programId: string): Promise<Researche
 // none of them touch `programs`/`program_scope_entries` via a direct table select, since
 // `anon` has no grant on either table at all (see 202608260002/202608310002).
 
-type PublicProgramRow = { id: string; organization_id: string; name: string; organization_name: string; status: ProgramSummary["status"]; program_type: ProgramType; description: string | null; updated_at: string };
+type PublicProgramRow = {
+  id: string;
+  organization_id: string;
+  name: string;
+  organization_name: string;
+  status: ProgramSummary["status"];
+  program_type: ProgramType;
+  description: string | null;
+  updated_at: string;
+  requires_kyc?: boolean;
+  bounty_min_minor_units?: number | null;
+  bounty_max_minor_units?: number | null;
+  bounty_currency?: string | null;
+};
 
-/** get_public_program (the program detail page's own fetch) does not compute the real
- * signals below -- 0/empty/null here means "not computed by this call," never a fabricated
- * zero. list_public_programs (mapPublicProgramListRow, below) is the one that actually
- * aggregates them. */
+/** get_public_program (the program detail page's own fetch) returns the bounty range and KYC
+ * requirement (202610060014) but not the counts below -- 0/empty here means "not computed by
+ * this call," never a fabricated zero. list_public_programs aggregates those. */
 function mapPublicProgramRow(row: PublicProgramRow): PublicProgramSummary {
   return {
     id: row.id,
@@ -361,21 +373,21 @@ function mapPublicProgramRow(row: PublicProgramRow): PublicProgramSummary {
     description: row.description,
     focusAreas: [],
     assetTypes: [],
-    bountyMinMinorUnits: null,
-    bountyMaxMinorUnits: null,
-    bountyCurrency: null,
+    bountyMinMinorUnits: row.bounty_min_minor_units ?? null,
+    bountyMaxMinorUnits: row.bounty_max_minor_units ?? null,
+    bountyCurrency: row.bounty_currency ?? null,
     activeResearcherCount: 0,
     resolvedReportCount: 0,
     updatedAt: row.updated_at,
+    requiresKyc: row.requires_kyc ?? false,
   };
 }
 
 type PublicProgramListRow = PublicProgramRow & {
+  joined: boolean;
+  sort_value: string;
   focus_areas: ResearcherFocusArea[];
   asset_types: PublicProgramSummary["assetTypes"];
-  bounty_min_minor_units: number | null;
-  bounty_max_minor_units: number | null;
-  bounty_currency: string | null;
   active_researcher_count: number;
   resolved_report_count: number;
 };
@@ -391,16 +403,19 @@ function mapPublicProgramListRow(row: PublicProgramListRow): PublicProgramSummar
     description: row.description,
     focusAreas: row.focus_areas ?? [],
     assetTypes: row.asset_types ?? [],
-    bountyMinMinorUnits: row.bounty_min_minor_units,
-    bountyMaxMinorUnits: row.bounty_max_minor_units,
-    bountyCurrency: row.bounty_currency,
+    bountyMinMinorUnits: row.bounty_min_minor_units ?? null,
+    bountyMaxMinorUnits: row.bounty_max_minor_units ?? null,
+    bountyCurrency: row.bounty_currency ?? null,
     activeResearcherCount: row.active_researcher_count,
     resolvedReportCount: row.resolved_report_count,
     updatedAt: row.updated_at,
+    requiresKyc: row.requires_kyc ?? false,
+    joined: row.joined,
   };
 }
 
-export type PublicProgramFilters = { search?: string; status?: "active" | "paused"; focusArea?: ResearcherFocusArea };
+export type { PublicProgramFilters } from "@/lib/program-filters";
+import type { PublicProgramFilters } from "@/lib/program-filters";
 
 /**
  * Search/status/focus-area filters are applied server-side inside `list_public_programs`
@@ -421,6 +436,11 @@ export async function listPublicPrograms(filters?: PublicProgramFilters, cursor?
         filters?.search ?? null,
         filters?.status ?? null,
         filters?.focusArea ?? null,
+        filters?.assetType ?? null,
+        filters?.programType ?? null,
+        filters?.minBountyMinorUnits ?? null,
+        filters?.requiresKyc ?? null,
+        filters?.sort ?? "recent",
         decoded?.sortValue ?? null,
         decoded?.id ?? null,
         pageSize,
@@ -430,7 +450,9 @@ export async function listPublicPrograms(filters?: PublicProgramFilters, cursor?
     mapError(error as { message: string });
   }
   const items = rows.map(mapPublicProgramListRow);
-  const nextCursor = rows.length === pageSize ? encodeCursor(rows[rows.length - 1].updated_at, rows[rows.length - 1].id) : null;
+  // The cursor carries the row's own sort key (created_at, bounty or name -- never a
+  // value an edit changes), so paging is stable under every sort.
+  const nextCursor = rows.length === pageSize ? encodeCursor(rows[rows.length - 1].sort_value, rows[rows.length - 1].id) : null;
   return { items, nextCursor };
 }
 

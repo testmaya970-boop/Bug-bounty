@@ -218,3 +218,53 @@ export async function listResearchersForOrganization(organizationId: string): Pr
     lastSubmittedAt: row.last_submitted_at,
   }));
 }
+
+export type OrganizationTopResearcher = {
+  researcherId: string;
+  displayName: string;
+  resolvedCount: number;
+  highOrCriticalCount: number;
+  invalidCount: number;
+  signalPercent: number | null;
+  currency: string | null;
+  awardedMinorUnits: number;
+  paidMinorUnits: number;
+  lastSubmittedAt: string;
+};
+
+/** Researcher performance for this organization (get_organization_top_researchers,
+ * 202610060015): valid reports, severity, signal and money awarded vs actually paid. */
+export async function getOrganizationTopResearchers(organizationId: string, limit = 10): Promise<OrganizationTopResearcher[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{
+        researcher_id: string;
+        display_name: string;
+        resolved_count: string;
+        high_or_critical_count: string;
+        invalid_count: string;
+        signal_percent: number | null;
+        currency: string | null;
+        awarded_minor_units: string;
+        paid_minor_units: string;
+        last_submitted_at: string;
+      }>(client, "public.get_organization_top_researchers", [organizationId, limit]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({
+    researcherId: row.researcher_id,
+    displayName: row.display_name,
+    resolvedCount: Number(row.resolved_count),
+    highOrCriticalCount: Number(row.high_or_critical_count),
+    invalidCount: Number(row.invalid_count),
+    signalPercent: row.signal_percent,
+    currency: row.currency,
+    awardedMinorUnits: Number(row.awarded_minor_units),
+    paidMinorUnits: Number(row.paid_minor_units),
+    lastSubmittedAt: row.last_submitted_at,
+  }));
+}

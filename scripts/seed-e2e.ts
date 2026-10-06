@@ -83,6 +83,10 @@ export const E2E_NOTIF_PROGRAM_NAME = "E2E Notifications Program";
 export const E2E_UNRELATED_ADMIN_EMAIL = "e2e.unrelated-admin@unpatched.demo";
 export const E2E_UNRELATED_ORG_NAME = "E2E Unrelated Org";
 export const E2E_UNRELATED_PROGRAM_NAME = "E2E Unrelated Program";
+// e2e/jira-integration.spec.ts -- see ensureIntegrationsOrg.
+export const E2E_INTEGRATIONS_ADMIN_EMAIL = "e2e.integrations-admin@unpatched.demo";
+export const E2E_INTEGRATIONS_ORG_NAME = "E2E Integrations Org";
+export const E2E_INTEGRATIONS_PROGRAM_NAME = "E2E Integrations Program";
 
 // CTF events (db/migrations/202609290001_ctf_events.sql). Three states so the events
 // surface has real data to render and the leaderboard has a seeded solve to assert against:
@@ -497,6 +501,44 @@ async function ensureUnrelatedOrg(): Promise<void> {
   await ensureScopeAndActivate(unrelatedAdmin.id, unrelatedProgram, "api.e2e-unrelated.example", "public");
 }
 
+/** e2e/jira-integration.spec.ts: its OWN organization, because a connected Jira makes the
+ * outbox worker try to sync every report event in that org -- isolating it here means no
+ * other spec's triage activity can ever reach the Jira consumer mid-run. One accepted
+ * report (the only state the inbound "issue moved to Done" maps from). Reset every run:
+ * any leftover connection is deleted (its report links cascade) and the report goes back
+ * to `accepted` -- a plain data reset of a row that went through the real RPCs once. */
+async function ensureIntegrationsOrg(researcherId: string): Promise<{ organizationId: string; programId: string; reportId: string | null }> {
+  const admin = await ensureUser(E2E_INTEGRATIONS_ADMIN_EMAIL, "E2E Integrations Admin", "e2e_integrations_admin");
+  const org = await ensureOrganization(admin.id, E2E_INTEGRATIONS_ORG_NAME);
+  let program = await ensureProgram(admin.id, org.id, E2E_INTEGRATIONS_PROGRAM_NAME);
+  program = await ensureScopeAndActivate(admin.id, program, "api.e2e-integrations.example", "public");
+  await tryStep(withActor(researcherId, (client) => client.query("select public.join_public_program($1)", [program.id])), "join_public_program (veteran, integrations program)");
+  await withServiceRole((client) => client.query("delete from public.jira_connections where organization_id = $1", [org.id]));
+
+  const title = "E2E seed: accepted report for the Jira walk";
+  let report = await withServiceRole(async (client) => {
+    const { rows } = await client.query<{ id: string; status: string }>("select id, status from public.reports where program_id = $1 and title = $2", [program.id, title]);
+    return rows[0] ?? null;
+  });
+  if (!report) {
+    const created = await tryStep(
+      withActor(researcherId, (client) =>
+        submitReportAcknowledgingPolicy(client, [program.id, "domain", "api.e2e-integrations.example", title, "Seed data for the Jira integration E2E walk.", "other", "Seed impact statement.", "high"]),
+      ),
+      "submit_report (jira-walk fixture)",
+    );
+    if (created) {
+      await tryStep(withActor(admin.id, (client) => client.query("select public.accept_report($1)", [created.id])), "accept_report (jira-walk fixture)");
+      report = { id: created.id, status: "accepted" };
+    }
+  } else if (report.status !== "accepted") {
+    await withServiceRole((client) => client.query("update public.reports set status = 'accepted', resolution_summary = null, updated_at = now() where id = $1", [report!.id]));
+    console.log(`Jira-walk seed report existed at "${report.status}" -- reset to "accepted".`);
+  }
+  console.log(`${E2E_INTEGRATIONS_ORG_NAME} ready (no Jira connection, one accepted report).`);
+  return { organizationId: org.id, programId: program.id, reportId: report?.id ?? null };
+}
+
 /** Seed three CTF events (ended / active / upcoming) plus real solves so the events surface
  * and per-event leaderboards have data to render and assert against. Events are created via
  * the real create_ctf_event / set_ctf_event_challenges RPCs (with a brief platform_admin
@@ -657,13 +699,15 @@ async function main() {
   // fixture reports out of the program page's 5-report preview that journeys click through.
   const policyReports = await withServiceRole((client) => client.query("delete from public.reports where title like 'E2E policy-bound report %'"));
   if (policyReports.rowCount) console.log(`Removed ${policyReports.rowCount} report(s) left by the program-policy spec.`);
+  // e2e/discovery.spec.ts saves a server-side draft every run.
+  await withServiceRole((client) => client.query("delete from public.report_drafts d using public.users u where u.id = d.researcher_id and u.email like 'e2e.%'"));
   const admin = await ensureUser(E2E_ADMIN_EMAIL, "E2E Admin", "e2e_admin");
   await ensureUser(E2E_INVITED_EMAIL, "E2E Invited Researcher", "e2e_invited");
   const veteran = await ensureUser(E2E_VETERAN_EMAIL, "E2E Veteran Researcher", "e2e_veteran");
   const newcomer = await ensureUser(E2E_NEWCOMER_EMAIL, "E2E Newcomer Researcher", "e2e_newcomer");
   await resetSettingsAccount(await ensureUser(E2E_SETTINGS_EMAIL, "E2E Settings Researcher", "e2e_settings"));
   await resetSettingsAccount(await ensureUser(E2E_PASSWORD_CASE_EMAIL, "E2E Settings Researcher", "e2e_password"));
-  await ensureUser(E2E_HUNTER_EMAIL, "E2E Hunter Researcher", "e2e_hunter");
+  const hunter = await ensureUser(E2E_HUNTER_EMAIL, "E2E Hunter Researcher", "e2e_hunter");
   const platformAdmin = await ensureUser(E2E_PLATFORM_ADMIN_EMAIL, "E2E Platform Admin", "e2e_platform_admin");
   await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [platformAdmin.id]));
   const launchAdmin = await ensureUser(E2E_LAUNCH_ADMIN_EMAIL, "E2E Launch Admin", "e2e_launch_admin");
@@ -675,6 +719,8 @@ async function main() {
 
   let publicProgram = await ensureProgram(admin.id, org.id, E2E_PUBLIC_PROGRAM_NAME);
   publicProgram = await ensureScopeAndActivate(admin.id, publicProgram, "api.e2e-public.example", "public");
+  // e2e/discovery.spec.ts drafts a report here as the hunter (the veteran is near its sign-in limit).
+  await tryStep(withActor(hunter.id, (client) => client.query("select public.join_public_program($1)", [publicProgram.id])), "join_public_program (hunter, public program)");
   // e2e/program-policy.spec.ts: a published policy (safe harbor, coordinated disclosure, SLA
   // targets) researchers must accept before submitting. Published once; later runs keep it.
   const publicPolicy = await withServiceRole((client) => client.query("select 1 from public.program_policy_versions where program_id = $1", [publicProgram.id]));
@@ -775,6 +821,8 @@ async function main() {
   console.log("");
 
   await ensureUnrelatedOrg();
+  const integrations = await ensureIntegrationsOrg(veteran.id);
+  console.log("");
 
   await seedCtfEvents(admin.id, veteran.id, newcomer.id);
   console.log("");
@@ -793,8 +841,22 @@ async function main() {
   // database inside the spec itself) keeps the spec's own access model honest: it drives
   // the browser exactly like a real attacker with a guessed/leaked id would, nothing more.
   const fixturePath = path.join(process.cwd(), "e2e", ".seed-fixture.json");
-  await writeFile(fixturePath, JSON.stringify({ organizationId: org.id, publicProgramId: publicProgram.id, privateProgramId: privateProgram.id }, null, 2));
-  console.log(`Wrote e2e/.seed-fixture.json (organizationId, publicProgramId, privateProgramId).`);
+  await writeFile(
+    fixturePath,
+    JSON.stringify(
+      {
+        organizationId: org.id,
+        publicProgramId: publicProgram.id,
+        privateProgramId: privateProgram.id,
+        integrationsOrganizationId: integrations.organizationId,
+        integrationsProgramId: integrations.programId,
+        integrationsReportId: integrations.reportId,
+      },
+      null,
+      2,
+    ),
+  );
+  console.log(`Wrote e2e/.seed-fixture.json (organizationId, publicProgramId, privateProgramId, integrations*).`);
 
   await pool.end();
 

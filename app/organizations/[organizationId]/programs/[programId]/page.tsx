@@ -19,6 +19,7 @@ import { ProgramVisibilityPanel } from "../../../../../components/programs/progr
 import { ProgramPolicySummary } from "../../../../../components/programs/program-policy";
 import { PublishProgramPolicyDialog } from "../../../../../components/programs/program-policy-editor";
 import { getProgramPolicy } from "../../../../../services/program-policy";
+import { PublicProgramTerms } from "../../../../../components/programs/public-program-terms";
 import { ProgramAccessInstructionsEditor, ProgramAccessInstructionsNotice } from "../../../../../components/programs/program-access-instructions-panel";
 import { ProgramAccessFileEditor, ProgramAccessFileNotice } from "../../../../../components/programs/program-access-file-panel";
 import { getProgramAccessFile } from "../../../../../services/program-access-file";
@@ -107,6 +108,7 @@ async function renderProgramControlCenterPage({
               <ProgramTypeBadge programType={publicProgram.programType} />
             </div>
             {publicProgram.description && <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-ink-muted">{publicProgram.description}</p>}
+              <PublicProgramTerms program={publicProgram} />
               <div className="mt-5 border-t border-border pt-4">
                 <h2 className="text-sm font-semibold text-ink">Program policy</h2>
                 <div className="mt-2">
@@ -269,6 +271,7 @@ async function renderProgramControlCenterPage({
                 <ProgramTypeBadge programType={publicProgram.programType} />
               </div>
               {publicProgram.description && <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-ink-muted">{publicProgram.description}</p>}
+              <PublicProgramTerms program={publicProgram} />
               <div className="mt-5 border-t border-border pt-4">
                 <h2 className="text-sm font-semibold text-ink">Program policy</h2>
                 <div className="mt-2">

@@ -35,6 +35,8 @@ export function PublicProgramGrid({ programs }: { programs: PublicProgramSummary
               <div className="flex shrink-0 flex-col items-end gap-1">
                 <ProgramStatusBadge status={program.status} />
                 <ProgramTypeBadge programType={program.programType} />
+                {program.joined && <span className="rounded-full border border-success/40 px-2 py-0.5 text-[11px] font-semibold text-success">Joined</span>}
+                {program.requiresKyc && <span className="rounded-full border border-warning/40 px-2 py-0.5 text-[11px] font-semibold text-warning">ID verification required</span>}
               </div>
             </div>
 

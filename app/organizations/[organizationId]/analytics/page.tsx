@@ -1,6 +1,8 @@
 import React from "react";
 import { OrganizationSla } from "../../../../components/organizations/organization-sla";
+import { OrganizationTopResearchers } from "../../../../components/organizations/organization-top-researchers";
 import { getOrganizationSlaSummary } from "../../../../services/program-policy";
+import { getOrganizationTopResearchers } from "../../../../services/organization-analytics";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
@@ -105,7 +107,7 @@ export default async function OrganizationAnalyticsPage({
     );
   }
 
-  const [organizations, programs, severityStatusBreakdown, weeklyVolume, resolutionPerformance, bountySpendSummary, weeklyBountySpend, programBountySpend, slaSummary] = await Promise.all([
+  const [organizations, programs, severityStatusBreakdown, weeklyVolume, resolutionPerformance, bountySpendSummary, weeklyBountySpend, programBountySpend, slaSummary, topResearchers] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listProgramsForOrganization(organizationId),
     getOrganizationSeverityStatusBreakdown(organizationId),
@@ -115,6 +117,7 @@ export default async function OrganizationAnalyticsPage({
     getOrganizationWeeklyBountySpend(organizationId),
     getOrganizationProgramBountySpend(organizationId),
     getOrganizationSlaSummary(organizationId),
+    getOrganizationTopResearchers(organizationId),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
@@ -171,7 +174,7 @@ export default async function OrganizationAnalyticsPage({
                   <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
                     <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-ink-muted">
                       <tr>
-                        {["Program", "Status", "Open", "Aging 60+ days", "Unresolved high/critical", "Spend"].map((header) => (
+                        {["Program", "Status", "Open", "Aging 60+ days", "Unresolved high/critical", "Awarded"].map((header) => (
                           <th key={header} scope="col" className="px-4 py-3 font-semibold">
                             {header}
                           </th>
@@ -239,6 +242,7 @@ export default async function OrganizationAnalyticsPage({
                   <SectionLabel>Organization-wide</SectionLabel>
                   <OrganizationReportAnalytics severityStatusBreakdown={severityStatusBreakdown} weeklyVolume={weeklyVolume} resolutionPerformance={resolutionPerformance} />
                 </div>
+                <OrganizationTopResearchers rows={topResearchers} />
                 <OrganizationSla rows={slaSummary} programNames={new Map(programs.map((program) => [program.id, program.name]))} />
                 <OrganizationBountySpend summary={bountySpendSummary} weeklySpend={weeklyBountySpend} />
               </div>

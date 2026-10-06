@@ -30,7 +30,6 @@ export function ChallengeCard({ challenge, solved }: { challenge: MockCtfChallen
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-ink-muted">
         <DifficultyBadge difficulty={challenge.difficulty} />
         <span className="font-mono font-semibold text-ink">{challenge.points} pts</span>
-        <span>{challenge.solveCount.toLocaleString("en-US")} solves</span>
         <span>~{challenge.estimatedMinutes} min</span>
       </div>
     </Link>

@@ -67,6 +67,14 @@ export function canCreateProgram(role: OrganizationRole): boolean {
   return PROGRAM_CREATION_ROLES.includes(role);
 }
 
+const INTEGRATION_ROLES: readonly OrganizationRole[] = ["owner", "security_admin"];
+
+/** Connect, edit, or disconnect third-party integrations (Jira). Matches the
+ * private.has_org_role check in create/update/delete_jira_connection (202610010001). */
+export function canManageIntegrations(role: OrganizationRole): boolean {
+  return INTEGRATION_ROLES.includes(role);
+}
+
 const PAYMENT_ROLES: readonly OrganizationRole[] = ["owner", "security_admin", "billing_admin"];
 
 /** Payouts, payment obligations, platform fees. Matches lock_and_authorize_report_for_
@@ -123,6 +131,7 @@ const ACCESS_SUMMARIES: Record<OrganizationRole, OrganizationAccessSummary> = {
       "Read and triage every report, and decide bounties",
       "Run payouts and see platform fees",
       "Invite, suspend, and remove members (except owners), and assign program teams",
+      "Connect and manage integrations (Jira)",
     ],
     cannot: ["Change an existing member's role", "Invite or remove owners"],
   },

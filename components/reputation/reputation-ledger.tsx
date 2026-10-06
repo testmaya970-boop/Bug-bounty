@@ -9,7 +9,7 @@ import { ErrorState } from "../ui/feedback";
 import { SeverityBadge } from "../ui/badge";
 import { reputationFactTypeEventLabel } from "../../lib/reputation-labels";
 import { listReputationLedgerPageAction } from "../../actions/reputation";
-import type { ReputationLedgerEntry } from "../../types/reputation";
+import type { ReputationLedgerEntry } from "../../types/reputation";
 import { LocalTime } from "../ui/local-time";
 
 /** Report title/program name for one ledger row -- joined on client-side from the
@@ -20,7 +20,9 @@ import { LocalTime } from "../ui/local-time";
 export type ReputationEvidence = { title: string; programName: string };
 
 function LedgerRow({ entry, evidence }: { entry: ReputationLedgerEntry; evidence: ReputationEvidence | undefined }) {
-  const reportHref = `/organizations/${entry.organizationId}/programs/${entry.programId}/reports/${entry.reportId}` as Route;
+  // CTF solves have no report (or org/program): they link to the CTF section instead of a
+  // /organizations/null/... 404 (found by the UI sweep).
+  const reportHref = (entry.reportId ? `/organizations/${entry.organizationId}/programs/${entry.programId}/reports/${entry.reportId}` : "/ctf") as Route;
   const showSeverity = entry.confirmedSeverity && entry.confirmedSeverity !== "none";
 
   return (
@@ -31,7 +33,7 @@ function LedgerRow({ entry, evidence }: { entry: ReputationLedgerEntry; evidence
           href={reportHref}
           className="mt-0.5 block truncate text-sm font-semibold text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
-          {evidence?.title ?? "Report"}
+          {evidence?.title ?? (entry.reportId ? "Report" : "CTF practice")}
         </Link>
         <p className="mt-0.5 font-mono text-xs text-ink-muted">
           {evidence?.programName && <>{evidence.programName} · </>}
@@ -82,7 +84,7 @@ export function ReputationLedgerSection({
       <SectionLabel>Reputation ledger</SectionLabel>
       <RegistryList className="mt-2">
         {entries.map((entry) => (
-          <LedgerRow key={entry.id} entry={entry} evidence={evidenceByReportId[entry.reportId]} />
+          <LedgerRow key={entry.id} entry={entry} evidence={entry.reportId ? evidenceByReportId[entry.reportId] : undefined} />
         ))}
       </RegistryList>
 

@@ -33,6 +33,8 @@ import {
   startTriage,
   submitReport,
   assignReport,
+  saveMyReportDraft,
+  deleteMyReportDraft,
 } from "@/services/reports";
 import { getReportTimeline, type ReportTimelinePage } from "@/services/timeline";
 import { getActorMembership } from "@/services/organization-members";
@@ -378,16 +380,22 @@ export async function listReportsForOrganizationPageAction(input: {
   );
 }
 
-const listMyReportsSchema = z.object({ cursor: z.string().optional() });
+const listMyReportsSchema = z.object({
+  cursor: z.string().optional(),
+  status: z.enum(["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"]).optional(),
+  programId: uuidSchema.optional(),
+  severity: severitySchema.optional(),
+});
 
-export async function listMyReportsPageAction(input: { cursor?: string }): Promise<ActionResult<Page<ReportSummary>>> {
+export async function listMyReportsPageAction(input: { cursor?: string; status?: ReportStatus; programId?: string; severity?: ReportSeverity }): Promise<ActionResult<Page<ReportSummary>>> {
   const parsed = listMyReportsSchema.safeParse(input);
   if (!parsed.success) return invalidInput();
 
   const user = await getCurrentUser();
   if (!user) return { ok: false as const, code: "AUTH_REQUIRED", message: "Your session has expired. Sign in again to continue." };
 
-  return toResult(listMyReports(user.id, parsed.data.cursor));
+  const { cursor, ...filters } = parsed.data;
+  return toResult(listMyReports(user.id, cursor, undefined, filters));
 }
 
 // --- Collaboration (see docs/decisions/0064-report-collaboration-scope.md) ---
@@ -541,4 +549,31 @@ export async function assignReportAction(input: z.infer<typeof assignSchema>): P
   const result = await toResult(assignReport(parsed.data.reportId, parsed.data.assigneeId));
   if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
   return result;
+}
+
+// Server-side report drafts (202610060014): typed text only, never attachments.
+const draftSchema = z.object({
+  programId: uuidSchema,
+  draft: z.object({
+    assetType: assetTypeSchema,
+    target: z.string().max(2048),
+    title: z.string().max(200),
+    weaknessType: z.union([weaknessTypeSchema, z.literal("")]),
+    description: z.string().max(20000),
+    impact: z.string().max(20000),
+    researcherSeverity: z.union([severitySchema, z.literal("")]),
+    stagedEvidence: z.array(z.object({ localId: z.string().max(64), evidenceType: evidenceTypeSchema, content: z.string().max(20000) })).max(20),
+  }),
+});
+
+export async function saveReportDraftAction(input: z.infer<typeof draftSchema>): Promise<ActionResult<string>> {
+  const parsed = draftSchema.safeParse(input);
+  if (!parsed.success) return invalidInput("This draft could not be saved.");
+  return toResult(saveMyReportDraft(parsed.data.programId, parsed.data.draft));
+}
+
+export async function deleteReportDraftAction(input: { programId: string }): Promise<ActionResult<void>> {
+  const parsed = z.object({ programId: uuidSchema }).safeParse(input);
+  if (!parsed.success) return invalidInput();
+  return toResult(deleteMyReportDraft(parsed.data.programId));
 }

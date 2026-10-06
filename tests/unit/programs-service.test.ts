@@ -254,10 +254,15 @@ describe("programs service: public discovery (withPublicTransaction)", () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
     const { listPublicPrograms } = await import("../../services/programs");
 
-    const { items } = await listPublicPrograms({ search: "acme", status: "active", focusArea: "web_applications" }, undefined, 10);
+    const { items } = await listPublicPrograms(
+      { search: "acme", status: "active", focusArea: "web_applications", assetType: "domain", programType: "bounty", minBountyMinorUnits: 50000, requiresKyc: false, sort: "bounty" },
+      undefined,
+      10,
+    );
 
     expect(capturedSql).toContain("list_public_programs");
-    expect(capturedParams).toEqual(["acme", "active", "web_applications", null, null, 10]);
+    // search, status, focus, asset, type, min bounty, kyc, sort, cursor value, cursor id, limit
+    expect(capturedParams).toEqual(["acme", "active", "web_applications", "domain", "bounty", 50000, false, "bounty", null, null, 10]);
     expect(items[0]).toMatchObject({ id: "prog-1", focusAreas: ["web_applications"], activeResearcherCount: 5, resolvedReportCount: 2 });
   });
 

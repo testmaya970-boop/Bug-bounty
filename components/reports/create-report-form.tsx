@@ -10,7 +10,7 @@ import { ProgramPolicySummary } from "../programs/program-policy";
 import type { ProgramPolicy } from "../../types/program-policy";
 import { MarkdownTextarea } from "../ui/markdown-textarea";
 import { SectionLabel } from "../ui/security-primitives";
-import { submitReportAction, addResearcherEvidenceAction } from "../../actions/reports";
+import { submitReportAction, addResearcherEvidenceAction, deleteReportDraftAction, saveReportDraftAction } from "../../actions/reports";
 import { uploadResearcherFileEvidenceAction } from "../../actions/report-file-evidence";
 import { EVIDENCE_TYPE_LABELS, EVIDENCE_TYPES, FileField, MAX_FILE_SIZE_BYTES, type TextualEvidenceType } from "./report-evidence";
 import { assetTypeLabel } from "../../lib/scope-labels";
@@ -119,16 +119,11 @@ export function classifyFailure(code: string, message: string): SubmitFailure {
 type StagedEvidence = { localId: string; evidenceType: TextualEvidenceType; content: string };
 type StagedFile = { localId: string; file: File };
 
-/** A per-program draft, persisted to localStorage -- real, on top of (not replacing) the
- * existing beforeunload loss-prevention prompt below. Only serializable fields are saved:
- * stagedFiles holds raw browser File objects, which cannot round-trip through JSON/
- * localStorage, so attached files are never part of a restored draft (the researcher
- * re-attaches them, same as they would after any other kind of page reload). Keyed per
- * program (`sentinel-report-draft-${programId}`) so drafts for two different programs
- * never collide or overwrite each other. Standard localStorage pattern (read once on
- * mount inside useEffect, write on change) with try/catch discipline -- localStorage can throw in a private-browsing context or when
- * site data is blocked, and a draft failing to save/load must never break the form itself. */
-type DraftFields = {
+/** A per-program draft saved on the server (report_drafts, 202610060014), so it survives
+ * another browser or device. Only typed fields are kept: stagedFiles holds raw browser File
+ * objects, which never leave the browser until submission, so a restored draft never has
+ * attachments. Saving is best-effort: a draft that fails to save must never break the form. */
+export type DraftFields = {
   assetType: ProgramAssetType;
   target: string;
   title: string;
@@ -140,36 +135,14 @@ type DraftFields = {
   savedAt: string;
 };
 
-function draftStorageKey(programId: string): string {
-  return `sentinel-report-draft-${programId}`;
-}
-
-function readDraft(programId: string): DraftFields | null {
-  try {
-    const raw = window.localStorage.getItem(draftStorageKey(programId));
-    if (!raw) return null;
-    return JSON.parse(raw) as DraftFields;
-  } catch {
-    return null;
-  }
-}
-
 function writeDraft(programId: string, draft: DraftFields): void {
-  try {
-    window.localStorage.setItem(draftStorageKey(programId), JSON.stringify(draft));
-  } catch {
-    /* Best-effort only -- a draft that can't be saved (private browsing, blocked site
-       data, storage quota) must never break the form the researcher is actively filling
-       in. */
-  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- savedAt is the server's own updated_at
+  const { savedAt, ...fields } = draft;
+  void saveReportDraftAction({ programId, draft: fields }).catch(() => {});
 }
 
 function clearDraft(programId: string): void {
-  try {
-    window.localStorage.removeItem(draftStorageKey(programId));
-  } catch {
-    /* Same best-effort reasoning as writeDraft. */
-  }
+  void deleteReportDraftAction({ programId }).catch(() => {});
 }
 
 /** Presentation only -- a professional evidence collection shows a size, not just a
@@ -201,6 +174,7 @@ export function CreateReportForm({
   programName,
   inScopeTargets = [],
   policy = null,
+  initialDraft = null,
 }: {
   organizationId: string;
   programId: string;
@@ -208,6 +182,8 @@ export function CreateReportForm({
   inScopeTargets?: { assetType: ProgramAssetType; displayTarget: string }[];
   /** The program's effective policy; when set, the researcher must accept this exact version. */
   policy?: ProgramPolicy | null;
+  /** The researcher's saved draft for this program, loaded by the page. */
+  initialDraft?: DraftFields | null;
 }) {
   const router = useRouter();
   const [policyAccepted, setPolicyAccepted] = useState(false);
@@ -254,7 +230,7 @@ export function CreateReportForm({
   useEffect(() => {
     if (hasRestoredDraft.current) return;
     hasRestoredDraft.current = true;
-    const draft = readDraft(programId);
+    const draft = initialDraft;
     if (!draft) return;
     setAssetType(draft.assetType);
     setTarget(draft.target);

@@ -25,7 +25,23 @@ const nextConfig: NextConfig = {
   // The application's own 10 MiB evidence size limit (see
   // docs/decisions/0011-binary-evidence-storage.md) is the one a user actually sees
   // enforced; this just needs enough headroom for multipart overhead plus that limit.
-  experimental: { serverActions: { bodySizeLimit: "12mb" } },
+  //
+  // allowedOrigins: Server Actions refuse a request whose Origin differs from its
+  // (forwarded) host -- Next's CSRF check. A reverse proxy or dev tunnel that rewrites
+  // Origin (e.g. a VS Code dev tunnel sends Origin: localhost:3100 with the tunnel's
+  // x-forwarded-host) fails it on every form. SERVER_ACTIONS_ALLOWED_ORIGINS (comma
+  // separated, e.g. "localhost:3100") opts specific origins in; unset in production, so
+  // the check stays strict. Safe to list a local origin: a browser always sends the true
+  // origin of the page making the request, so another site can't claim it.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "12mb",
+      allowedOrigins: (process.env.SERVER_ACTIONS_ALLOWED_ORIGINS ?? "")
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    },
+  },
   async headers() {
     // Applied to every response this Next.js app itself serves. Evidence downloads are
     // NOT affected: those are presigned S3/MinIO URLs served directly by the object

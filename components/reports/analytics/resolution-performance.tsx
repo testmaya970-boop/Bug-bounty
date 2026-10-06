@@ -21,7 +21,7 @@ export function ResolutionPerformance({ performance }: { performance: MockResolu
           </p>
         </div>
         <div className="bg-surface p-4">
-          <p className="text-xs text-ink-muted">Median time to resolution</p>
+          <p className="text-xs text-ink-muted">Median time to close (any outcome)</p>
           <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">
             {performance.medianTimeToResolutionDays}
             <span className="ml-1 text-sm font-normal text-ink-muted">days</span>

@@ -8,7 +8,7 @@ import { listPublicProgramsPageAction } from "../../actions/programs";
 import { PublicProgramGrid } from "./public-program-grid";
 import { PublicProgramTable } from "./public-program-table";
 import type { PublicProgramSummary } from "../../types/program";
-import type { ResearcherFocusArea } from "../../types/researcher-identity";
+import type { PublicProgramFilters } from "../../lib/program-filters";
 
 type ViewMode = "grid" | "table";
 
@@ -25,15 +25,11 @@ type ViewMode = "grid" | "table";
 export function PublicProgramList({
   initialPrograms,
   initialNextCursor,
-  search,
-  status,
-  focusArea,
+  filters = {},
 }: {
   initialPrograms: PublicProgramSummary[];
   initialNextCursor: string | null;
-  search?: string;
-  status?: "active" | "paused";
-  focusArea?: ResearcherFocusArea;
+  filters?: PublicProgramFilters;
 }) {
   const [programs, setPrograms] = useState(initialPrograms);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
@@ -45,7 +41,7 @@ export function PublicProgramList({
     if (!nextCursor) return;
     setLoadError(null);
     startTransition(async () => {
-      const result = await listPublicProgramsPageAction({ search, status, focusArea, cursor: nextCursor });
+      const result = await listPublicProgramsPageAction({ ...filters, cursor: nextCursor });
       if (!result.ok) {
         setLoadError(result.message);
         return;

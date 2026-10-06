@@ -69,6 +69,10 @@ export type PublicProgramSummary = {
   activeResearcherCount: number;
   resolvedReportCount: number;
   updatedAt: string;
+  /** Identity verification is required before submitting (202610060014: shown before joining). */
+  requiresKyc?: boolean;
+  /** The signed-in viewer already participates. */
+  joined?: boolean;
 };
 
 /** list_top_bounty_programs' row shape -- the curated "highest-paying" section. Only ever

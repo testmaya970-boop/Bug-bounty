@@ -403,14 +403,25 @@ function mapMyReportRow(row: MyReportRow): ReportSummary {
  * itself (list_my_reports gained p_limit/p_before_submitted_at/p_before_id in
  * docs/decisions/0018), which does the composite-tiebreaker comparison correctly in SQL
  * rather than approximating it here. */
-export async function listMyReports(userId: string, cursor?: string, limit?: number): Promise<Page<ReportSummary>> {
+export type MyReportFilters = { status?: ReportStatus; programId?: string; severity?: ReportSeverity };
+
+/** The researcher's own reports, newest first, filtered in the database (202610060014) so
+ * every page honours the filter -- not just the rows already loaded. */
+export async function listMyReports(userId: string, cursor?: string, limit?: number, filters: MyReportFilters = {}): Promise<Page<ReportSummary>> {
   const pageSize = clampPageSize(limit);
   const decoded = cursor ? decodeCursor(cursor) : null;
 
   let rows;
   try {
     rows = await withActorTransaction(userId, (client) =>
-      callRpc<MyReportRow>(client, "public.list_my_reports", [pageSize, decoded?.sortValue ?? null, decoded?.id ?? null]),
+      callRpc<MyReportRow>(client, "public.list_my_reports", [
+        pageSize,
+        decoded?.sortValue ?? null,
+        decoded?.id ?? null,
+        filters.status ?? null,
+        filters.programId ?? null,
+        filters.severity ?? null,
+      ]),
     );
   } catch (error) {
     mapError(error as { message: string });
@@ -1295,4 +1306,75 @@ export async function listAssignableStaff(organizationId: string, programId?: st
     mapError(error as { message: string });
   }
   return rows.map((row) => ({ userId: row.user_id, displayName: row.display_name }));
+}
+
+/** Every program the researcher has reported to -- the /reports program filter's options. */
+export async function listMyReportedPrograms(userId: string): Promise<{ id: string; name: string }[]> {
+  let rows;
+  try {
+    rows = await withActorTransaction(userId, (client) =>
+      client
+        .query<{ id: string; name: string }>(
+          "select distinct p.id, p.name from public.reports r join public.programs p on p.id = r.program_id where r.researcher_id = $1 order by p.name",
+          [userId],
+        )
+        .then((r) => r.rows),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows;
+}
+
+/** A researcher-safe history of their report: outcomes and decisions, never who on the
+ * organization's side made them or any internal note (get_report_status_history). */
+export type ReportStatusEvent = { action: string; occurredAt: string; detail: string | null };
+
+export async function getReportStatusHistory(reportId: string): Promise<ReportStatusEvent[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ action: string; occurred_at: string; detail: string | null }>(client, "public.get_report_status_history", [reportId]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({ action: row.action, occurredAt: row.occurred_at, detail: row.detail }));
+}
+
+/** The researcher's saved draft for a program (report_drafts, 202610060014), or null. */
+export async function getMyReportDraft(programId: string): Promise<{ draft: Record<string, unknown>; updatedAt: string } | null> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      client
+        .query<{ draft: Record<string, unknown>; updated_at: string }>("select draft, updated_at from public.report_drafts where program_id = $1 and researcher_id = $2", [programId, actor?.id ?? null])
+        .then((r) => r.rows),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows[0] ? { draft: rows[0].draft, updatedAt: rows[0].updated_at } : null;
+}
+
+export async function saveMyReportDraft(programId: string, draft: Record<string, unknown>): Promise<string> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<{ save_my_report_draft: string }>(client, "public.save_my_report_draft", [programId, JSON.stringify(draft)]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows[0]?.save_my_report_draft ?? new Date().toISOString();
+}
+
+export async function deleteMyReportDraft(programId: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.delete_my_report_draft", [programId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
 }

@@ -197,7 +197,7 @@ describe("reports service: reads", () => {
     const { listMyReports } = await import("../../services/reports");
 
     const { items, nextCursor } = await listMyReports("actor-1");
-    expect(captured).toEqual([20, null, null]);
+    expect(captured).toEqual([20, null, null, null, null, null]); // limit, cursor (2), status, program, severity
     expect(items[0]).toEqual({ id: "report-1", programId: "prog-1", organizationId: "org-1", programName: "Acme Bounty", organizationName: "Acme Security", title: "IDOR", displayTarget: "https://api.example.com/admin", status: "new", confirmedSeverity: null, submittedAt: "2026-08-27T00:00:00Z" });
     // Fewer rows than the page size -> no next page.
     expect(nextCursor).toBeNull();
@@ -244,7 +244,7 @@ describe("reports service: reads", () => {
 
     await listMyReports("actor-1", encodeCursor("2026-08-27T00:00:01Z", "report-19"), 10);
 
-    expect(captured).toEqual([10, "2026-08-27T00:00:01Z", "report-19"]);
+    expect(captured).toEqual([10, "2026-08-27T00:00:01Z", "report-19", null, null, null]);
   });
 });
 

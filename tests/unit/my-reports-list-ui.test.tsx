@@ -19,7 +19,7 @@ const summary: ReportSummary = {
   submittedAt: "2026-08-27T00:00:00Z",
 };
 
-const noFilters = { filters: { sort: "newest" as const }, isFiltered: false };
+const noFilters = { filters: {} };
 
 describe("MyReportsList: pagination footer reflects whether a next page genuinely exists", () => {
   it("shows 'Load more' when a next cursor is present", () => {

@@ -69,7 +69,7 @@ function SpendSummaryTile({ summary }: { summary: OrganizationBountySpendSummary
   );
 }
 
-/** One currency's real weekly payout trend, trailing 12 weeks -- a single-series bar
+/** One currency's weekly bounty awards (finalized decisions, by finalization week), trailing 12 weeks -- a single-series bar
  * chart (never blended across currencies: see the migration's own note on why summing
  * different currencies would fabricate a meaningless number). Modeled directly on
  * OrganizationWeeklyVolume's own hover/crosshair mechanism, adapted to one value series. */
@@ -117,7 +117,7 @@ function WeeklySpendChart({ currency, weeks }: { currency: string; weeks: Organi
             <p className="font-semibold text-ink">Week of {formatWeekLabel(weeks[hoveredIndex].weekStart)}</p>
             <p className="mt-0.5 font-mono font-semibold text-ink">{formatMoney(weeks[hoveredIndex].paidMinorUnits, currency)}</p>
             <p className="text-ink-muted">
-              {weeks[hoveredIndex].payoutCount} payout{weeks[hoveredIndex].payoutCount === 1 ? "" : "s"}
+              {weeks[hoveredIndex].payoutCount} award{weeks[hoveredIndex].payoutCount === 1 ? "" : "s"}
             </p>
           </div>
         )}
@@ -154,7 +154,7 @@ export function OrganizationBountySpend({ summary, weeklySpend }: { summary: Org
     <div className="space-y-6">
       <div>
         <SectionLabel>Bounty spend</SectionLabel>
-        <p className="mt-1 text-sm text-ink-muted">Real, finalized payouts across every program -- never a policy's max range or a pending recommendation.</p>
+        <p className="mt-1 text-sm text-ink-muted">Bounties awarded across every program, and how much of that has actually been paid out.</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {summary.map((row) => (
             <SpendSummaryTile key={row.currency} summary={row} />
@@ -164,7 +164,7 @@ export function OrganizationBountySpend({ summary, weeklySpend }: { summary: Org
 
       {weeksByCurrency.size > 0 && (
         <div>
-          <SectionLabel>Weekly payout trend</SectionLabel>
+          <SectionLabel>Weekly awards</SectionLabel>
           <p className="mt-1 text-sm text-ink-muted">Past 12 weeks, by the date each payout was finalized.</p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             {[...weeksByCurrency.entries()].map(([currency, weeks]) => (

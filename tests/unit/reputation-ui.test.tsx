@@ -78,6 +78,14 @@ describe("ReputationLedgerSection: real evidence, real links, honest degradation
     expect(html).toContain("/organizations/org-1/programs/program-1/reports/report-1");
   });
 
+  it("a CTF solve (no report, program or organization) links to /ctf, never /organizations/null/...", () => {
+    const ctf: ReputationLedgerEntry = { ...BASE_ENTRY, id: "fact-ctf", factType: "ctf_challenge_solved", reportId: null, programId: null, organizationId: null, confirmedSeverity: null };
+    const html = renderToStaticMarkup(<ReputationLedgerSection initialEntries={[ctf]} initialNextCursor={null} evidenceByReportId={{}} />);
+    expect(html).not.toContain("null");
+    expect(html).toContain('href="/ctf"');
+    expect(html).toContain("CTF challenge solved");
+  });
+
   it("degrades to a bare 'Report' label (never an error, never blank) when the report is outside the joined evidence page", () => {
     const html = renderToStaticMarkup(<ReputationLedgerSection initialEntries={[BASE_ENTRY]} initialNextCursor={null} evidenceByReportId={{}} />);
     expect(html).toContain(">Report<");
