@@ -8,9 +8,10 @@ import { EmptyState, PermissionDenied } from "../../../../../components/ui/feedb
 import { ResearcherStatusBadge } from "../../../../../components/ui/badge";
 import { SectionLabel } from "../../../../../components/ui/security-primitives";
 import { getActorMembership } from "../../../../../services/organization-members";
+import { canViewOrganizationResearchers } from "../../../../../services/authorization";
 import { listCurrentUserOrganizations } from "../../../../../services/organizations";
 import { listResearchersForOrganization } from "../../../../../services/organization-analytics";
-import { getCurrentUser } from "../../../../../lib/auth/current-user";
+import { getCurrentUser } from "../../../../../lib/auth/current-user";
 import { LocalTime } from "../../../../../components/ui/local-time";
 
 /**
@@ -35,6 +36,13 @@ export default async function OrganizationResearcherDetailPage({ params }: { par
     return (
       <AppShell title="Researcher" user={user} organizationId={organizationId}>
         <PermissionDenied>You do not have access to this organization.</PermissionDenied>
+      </AppShell>
+    );
+  }
+  if (!canViewOrganizationResearchers(actor.role)) {
+    return (
+      <AppShell title="Researcher" user={user} organizationId={organizationId}>
+        <PermissionDenied>The researcher list is available to owners, security admins and program managers.</PermissionDenied>
       </AppShell>
     );
   }

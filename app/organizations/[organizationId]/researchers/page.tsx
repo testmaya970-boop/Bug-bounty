@@ -8,6 +8,7 @@ import { SectionLabel } from "../../../../components/ui/security-primitives";
 import { PermissionDenied } from "../../../../components/ui/feedback";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
 import { getActorMembership } from "../../../../services/organization-members";
+import { canViewOrganizationResearchers } from "../../../../services/authorization";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listResearchersForOrganization } from "../../../../services/organization-analytics";
 import {
@@ -15,7 +16,7 @@ import {
   summarizeOrganizationResearcherRelationship,
 } from "../../../../lib/organization-researcher-relationship";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
-import { cn } from "../../../../lib/cn";
+import { cn } from "../../../../lib/cn";
 import { LocalTime } from "../../../../components/ui/local-time";
 
 /**
@@ -40,8 +41,8 @@ import { LocalTime } from "../../../../components/ui/local-time";
  * not "exists"). Impact leads with the real resolved count, severity distribution trails
  * in small mono glyphs. Recency renders as telemetry (mono, muted) not a plain date.
  *
- * Access matches the org home/analytics pages' own gate: any active organization member,
- * not narrowed to owner/security_admin -- read-only descriptive data.
+ * Access: owners, security admins and program managers -- the same roles the sidebar shows
+ * this page to, now also enforced by list_researchers_for_organization (202610060004).
  */
 export default async function OrganizationResearchersPage({ params }: { params: Promise<{ organizationId: string }> }) {
   const { organizationId } = await params;
@@ -53,6 +54,13 @@ export default async function OrganizationResearchersPage({ params }: { params: 
     return (
       <AppShell title="Researchers" user={user} organizationId={organizationId}>
         <PermissionDenied>You do not have access to this organization.</PermissionDenied>
+      </AppShell>
+    );
+  }
+  if (!canViewOrganizationResearchers(actor.role)) {
+    return (
+      <AppShell title="Researchers" user={user} organizationId={organizationId}>
+        <PermissionDenied>The researcher list is available to owners, security admins and program managers.</PermissionDenied>
       </AppShell>
     );
   }

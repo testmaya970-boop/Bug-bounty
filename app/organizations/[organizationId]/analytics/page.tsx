@@ -12,6 +12,7 @@ import { ProgramHealthSection } from "../../../../components/programs/program-he
 import { ProgramStatusBadge } from "../../../../components/ui/badge";
 import { SectionLabel } from "../../../../components/ui/security-primitives";
 import { getActorMembership } from "../../../../services/organization-members";
+import { canViewOrganizationAnalytics } from "../../../../services/authorization";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listProgramsForOrganization } from "../../../../services/programs";
 import {
@@ -91,6 +92,13 @@ export default async function OrganizationAnalyticsPage({
     return (
       <AppShell title="Analytics" user={user} organizationId={organizationId}>
         <PermissionDenied>You do not have access to this organization.</PermissionDenied>
+      </AppShell>
+    );
+  }
+  if (!canViewOrganizationAnalytics(actor.role)) {
+    return (
+      <AppShell title="Analytics" user={user} organizationId={organizationId}>
+        <PermissionDenied>Organization analytics are available to owners and security admins.</PermissionDenied>
       </AppShell>
     );
   }

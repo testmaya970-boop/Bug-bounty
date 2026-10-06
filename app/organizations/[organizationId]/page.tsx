@@ -9,7 +9,7 @@ import { AssetTypeBadge, SeverityBadge, StatusBadge } from "../../../components/
 import { ActivityTimeline } from "../../../components/ui/data-display";
 import { RegistryList, SectionLabel } from "../../../components/ui/security-primitives";
 import { OrganizationHeader } from "../../../components/organizations/organization-header";
-import { canManageMembers } from "../../../services/authorization";
+import { canManageMembers, canManagePayments, canViewOrganizationAnalytics } from "../../../services/authorization";
 import { getActorMembership, getOrganizationAuditActivity, listOrganizationMembers } from "../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../services/organizations";
 import { listProgramsForOrganization } from "../../../services/programs";
@@ -20,7 +20,7 @@ import { getCurrentUser } from "../../../lib/auth/current-user";
 import { reportNextActionLabel } from "../../../lib/report-status";
 import { describeOrganizationActivity } from "../../../lib/organization-activity-labels";
 import { perfTimed } from "../../../lib/perf-trace";
-import type { Report } from "../../../types/report";
+import type { Report } from "../../../types/report";
 import { LocalTime } from "../../../components/ui/local-time";
 
 // Turn 6 (phase/9-ia): Home's contract is glance-only -- a KPI row, one de-duplicated
@@ -106,8 +106,9 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
         listOpenReportsForOrganization(organizationId),
         canSeeAdminActivity ? listOrganizationMembers(organizationId) : Promise.resolve([]),
         canSeeAdminActivity ? getOrganizationAuditActivity(organizationId) : Promise.resolve(null),
-        getOrganizationResolutionPerformance(organizationId),
-        getOrganizationBountySpendSummary(organizationId),
+        // Org-wide figures follow the same role rules as Analytics and Payments (202610060004).
+        canViewOrganizationAnalytics(actor.role) ? getOrganizationResolutionPerformance(organizationId) : Promise.resolve(null),
+        canManagePayments(actor.role) ? getOrganizationBountySpendSummary(organizationId) : Promise.resolve(null),
       ]),
   );
   const organization = organizations.find((org) => org.id === organizationId);
@@ -164,16 +165,20 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <KpiTile label="Active engagements" value={activeEngagementCount.toLocaleString("en-US")} />
           <KpiTile label="Open reports" value={openReports.length.toLocaleString("en-US")} />
-          <KpiTile
-            label="Median time to first triage"
-            value={resolutionPerformance.medianHoursToFirstTriage !== null ? `${resolutionPerformance.medianHoursToFirstTriage.toFixed(1)}h` : "—"}
-            hint={resolutionPerformance.medianHoursToFirstTriage === null ? "No triaged reports yet" : undefined}
-          />
-          <KpiTile
-            label="Total paid"
-            value={bountySpendSummary.length > 0 ? bountySpendSummary.map((summary) => formatMoney(summary.totalPaidMinorUnits, summary.currency)).join(", ") : "—"}
-            hint={bountySpendSummary.length === 0 ? "No finalized payouts yet" : undefined}
-          />
+          {resolutionPerformance && (
+            <KpiTile
+              label="Median time to first triage"
+              value={resolutionPerformance.medianHoursToFirstTriage !== null ? `${resolutionPerformance.medianHoursToFirstTriage.toFixed(1)}h` : "—"}
+              hint={resolutionPerformance.medianHoursToFirstTriage === null ? "No triaged reports yet" : undefined}
+            />
+          )}
+          {bountySpendSummary && (
+            <KpiTile
+              label="Total paid"
+              value={bountySpendSummary.length > 0 ? bountySpendSummary.map((summary) => formatMoney(summary.totalPaidMinorUnits, summary.currency)).join(", ") : "—"}
+              hint={bountySpendSummary.length === 0 ? "No finalized payouts yet" : undefined}
+            />
+          )}
         </div>
 
         {programs.length === 0 ? (

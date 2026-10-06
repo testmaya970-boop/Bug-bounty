@@ -75,6 +75,19 @@ export function canManagePayments(role: OrganizationRole): boolean {
   return PAYMENT_ROLES.includes(role);
 }
 
+/** Org-wide analytics (severity, volume, resolution time). Matches the role list
+ * private.authorize_organization_read is given in 202610060004. */
+export function canViewOrganizationAnalytics(role: OrganizationRole): boolean {
+  return MEMBER_MANAGEMENT_ROLES.includes(role);
+}
+
+const RESEARCHER_INTEL_ROLES: readonly OrganizationRole[] = ["owner", "security_admin", "program_manager"];
+
+/** The organization's researcher list (list_researchers_for_organization, 202610060004). */
+export function canViewOrganizationResearchers(role: OrganizationRole): boolean {
+  return RESEARCHER_INTEL_ROLES.includes(role);
+}
+
 export type OrganizationAccessSummary = {
   role: OrganizationRole;
   label: string;
