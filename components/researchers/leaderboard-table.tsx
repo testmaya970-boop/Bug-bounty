@@ -113,11 +113,11 @@ export function LeaderboardTable({ rows, myResearcherId }: { rows: PublicLeaderb
               </span>
             </div>
 
-            {visibleRows.map((row) => {
+            {visibleRows.map((row, index) => {
               const isMe = myResearcherId && row.researcherId === myResearcherId;
               return (
                 <div
-                  key={row.researcherId}
+                  key={row.researcherId ?? `anonymous-${index}`}
                   role="row"
                   className={cn("grid items-center gap-3 border-b border-border/70 py-2.5 transition-colors duration-150 last:border-0 hover:bg-surface-muted motion-reduce:transition-none", GRID_COLS, isMe && "bg-surface-muted")}
                 >

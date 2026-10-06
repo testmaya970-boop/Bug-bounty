@@ -67,10 +67,11 @@ export type ReputationScore = number;
 /** One row of the real, public leaderboard (`get_public_leaderboard`) -- ordered by score
  * descending, ties broken by resolvedCount then researcherId, both server-side. Only
  * researchers with at least one reputation_ledger fact appear; a researcher with zero
- * history is absent, never shown at score 0. `publicUsername` is null for a researcher who
- * has not set one -- the row still appears (by display name), just with no profile link. */
+ * history is absent, never shown at score 0. A researcher who has not set a public username
+ * still holds their rank but appears as "Anonymous researcher" with a null researcherId --
+ * except to themself (202610060002). */
 export type PublicLeaderboardRow = {
-  researcherId: string;
+  researcherId: string | null;
   displayName: string;
   publicUsername: string | null;
   score: ReputationScore;
