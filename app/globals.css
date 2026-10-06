@@ -5,8 +5,11 @@
   --color-accent-2: var(--accent-2); --color-on-accent-2: var(--on-accent-2); --color-glass-border: var(--glass-border); --color-glass-border-strong: var(--glass-border-strong);
   --color-hero-surface: var(--hero-surface); --color-hero-surface-raised: var(--hero-surface-raised); --color-hero-ink: var(--hero-ink); --color-hero-ink-muted: var(--hero-ink-muted); --color-hero-border: var(--hero-border); --color-hero-border-strong: var(--hero-border-strong); --color-action-on-dark: var(--action-on-dark);
   --color-record-canvas: var(--record-canvas); --color-record-ink: var(--record-ink); --color-record-ink-muted: var(--record-ink-muted); --color-record-border: var(--record-border); --color-record-red: var(--record-red);
-  --font-display: var(--font-display-face), "Arial Black", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Netras type system (netras.ai's own Google Fonts link): Inter 600/700/800 for headings,
+     Open Sans for body. --font-display is KEPT as a token (~100 `font-display` call sites)
+     but now resolves to real Inter -- no separate faux-black display face. */
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-open-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   --animate-enter-rise: enter-rise 0.22s ease-out both;
   --animate-enter-fade: enter-fade 0.22s ease-out both;
@@ -14,7 +17,16 @@
   --animate-glow-pulse: glow-pulse 1.6s ease-in-out 2;
   --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-status-pulse: status-pulse 2s ease-in-out infinite;
-  --animate-grid-drift: grid-drift 18s linear infinite;
+  /* Netras geometry (netras.ai's real CSS): buttons 0.4rem, cards 0.5rem, icon tiles
+     0.6rem, logo mark 0.25rem, chips 999px (rounded-full, unchanged). Remapping Tailwind's
+     own radius scale here re-tunes the ~290 existing rounded-* call sites in one place
+     (rounded-md = buttons/inputs, rounded-lg = cards, rounded-xl = tiles). */
+  --radius: 0.25rem; --radius-sm: 0.25rem; --radius-md: 0.4rem; --radius-lg: 0.5rem; --radius-xl: 0.6rem; --radius-2xl: 0.6rem;
+  /* Netras shadows: card at rest 0 1px 3px /4%; raised/hover 0 12px 30px -12px /12%. The
+     larger utilities (menus, dialogs) share the hover value, a touch deeper for 2xl. */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04); --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 12px 30px -12px rgba(0, 0, 0, 0.12); --shadow-lg: 0 12px 30px -12px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 12px 30px -12px rgba(0, 0, 0, 0.12); --shadow-2xl: 0 24px 48px -16px rgba(0, 0, 0, 0.18);
 }
 
 /* Vermilion/pine-teal theme (docs/decisions/0079), replacing 0073's flat monochrome
@@ -65,22 +77,39 @@
    learning-section.tsx, program-header.tsx) referenced var(--glow-action)/
    var(--glow-accent-2) for a shadow effect the global rule was already nullifying;
    removing the token is the same no-op made explicit, not a behavior change. */
+/* Netras rebrand (supersedes Tactical Telemetry above). Values extracted from netras.ai's
+   live stylesheet, not guessed: white page, #f3f6f9 alternate ground, #e5e7eb borders,
+   ONE red accent #ee0000 (hover #c50000), #0a0a0a high-emphasis ink, #4b5563 body ink.
+   Same token NAMES as before -- only values change. Netras itself has no status colors;
+   --info/--success/--warning/--danger/--severity-* carry real product meaning (report
+   severity, status badges) so they stay independent semantic tokens, re-tuned from the
+   dark-substrate values (which were all too pale for a white ground).
+
+   Contrast, computed (WCAG relative luminance) on --canvas #ffffff / --surface-muted #f3f6f9:
+   ink #0a0a0a 19.8:1 / 18.3:1; ink-muted #4b5563 7.6:1 / 7.0:1;
+   action #ee0000 4.53:1 / 4.18:1 -- passes AA as text on white; on the muted ground it
+     only clears the 3:1 large-text/UI bar, so small red text belongs on white surfaces;
+   on-action #ffffff on #ee0000 4.53:1, on hover #c50000 6.2:1;
+   info #1d4ed8 6.7:1 / 6.2:1; success #15803d 5.0:1 / 4.6:1; warning #b45309 5.0:1 / 4.6:1;
+   danger/severity-critical #c50000 6.2:1 / 5.7:1 (darker than --action so a critical
+   finding never reads as a mere brand-red link); severity-high #c2410c 5.2:1 / 4.8:1;
+   severity-medium #7a6b1a 5.3:1 / 4.9:1; severity-low = info; severity-none #4b5563 7.6:1.
+   --accent-2 is now the near-black secondary fill (white text on it 19.8:1). */
 :root {
-  color-scheme: dark;
-  --canvas: #0a0a0a; --surface: #0a0a0a; --surface-muted: #121212; --surface-raised: #161616; --surface-hover: #1e1e1e;
-  --ink: #eaeaea; --ink-muted: #9a9a9a;
-  --border: #2e2e2e; --border-strong: #4a4a4a;
-  --action: #ff2a2a; --action-hover: #ff5454; --on-action: #0a0a0a; --focus: #ff2a2a;
-  --accent-2: #eaeaea; --on-accent-2: #0a0a0a;
-  --info: #6fa8ff; --success: #6bcb77; --warning: #f2b233; --danger: #ff2a2a; --on-danger: #0a0a0a;
-  --severity-critical: #ff2a2a; --severity-high: #f2b233; --severity-medium: #d9c75a; --severity-low: #6fa8ff; --severity-none: #8a8a8a;
-  --glass-border: #2e2e2e; --glass-border-strong: #4a4a4a;
+  color-scheme: light;
+  --canvas: #ffffff; --surface: #ffffff; --surface-muted: #f3f6f9; --surface-raised: #ffffff; --surface-hover: #fff5f5;
+  --ink: #0a0a0a; --ink-muted: #4b5563;
+  --border: #e5e7eb; --border-strong: #d1d5db;
+  --action: #ee0000; --action-hover: #c50000; --on-action: #ffffff; --focus: #ee0000;
+  --accent-2: #0a0a0a; --on-accent-2: #ffffff;
+  --info: #1d4ed8; --success: #15803d; --warning: #b45309; --danger: #c50000; --on-danger: #ffffff;
+  --severity-critical: #c50000; --severity-high: #c2410c; --severity-medium: #7a6b1a; --severity-low: #1d4ed8; --severity-none: #4b5563;
+  --glass-border: #e5e7eb; --glass-border-strong: #d1d5db;
 }
 
-/* Superseded by the single Tactical Telemetry substrate above: .dark no longer defines
-   its own palette (the old Prussian-blue values are gone), so the class ThemeProvider
-   toggles has no visual effect -- one substrate, per the brutalist skill's rule. */
-.dark { color-scheme: dark; }
+/* netras.ai has a single light theme and no dark mode. .dark stays (layout.tsx still puts
+   it on <html>) but resolves to the identical light palette -- no second theme. */
+.dark { color-scheme: light; }
 
 :root {
   /* Public-marketing-only dark hero surface (docs/decisions/0075, re-themed 0079) -- a
@@ -98,20 +127,18 @@
      the same #c7331e fails AA against this dark teal (2.7:1); this brighter tint clears
      5.8:1 for the small eyebrow/label text that sits directly on these dark panels
      (see components/dashboard/command-row.tsx's eyebrow label). */
-  /* Tactical Telemetry: these "dark panel" tokens now resolve to the same single
-     substrate as everything else (see the top :root block) -- no teal hue, no glass
-     fill, no gradient. --hero-gradient stays as a token (callers still reference it)
-     but is a flat color, per the brutalist rule against gradients. */
-  --hero-surface: #0a0a0a; --hero-surface-raised: #161616;
-  --hero-ink: #eaeaea; --hero-ink-muted: #9a9a9a;
-  --hero-border: #2e2e2e; --hero-border-strong: #4a4a4a;
-  --hero-glass-fill: #121212;
-  /* Every use of this token sits on a `bg-ink` panel, which under the single dark
-     substrate is now an INVERTED phosphor-white slab (#EAEAEA) -- so it needs a red that
-     passes on white, not on black. #FF2A2A on #EAEAEA is only 3.3:1 (fails AA for the
-     small eyebrow text it renders); #B00000 is 6.5:1, computed. */
-  --action-on-dark: #b00000;
-  --hero-gradient: #0a0a0a;
+  /* Netras: netras.ai's own homepage hero is white, so the hero tokens alias the light
+     base tokens instead of keeping a parallel palette -- the signed-out hero is a light,
+     Netras-consistent hero, not a dark panel inside a light app. */
+  --hero-surface: var(--canvas); --hero-surface-raised: var(--surface-muted);
+  --hero-ink: var(--ink); --hero-ink-muted: var(--ink-muted);
+  --hero-border: var(--border); --hero-border-strong: var(--border-strong);
+  --hero-glass-fill: var(--surface-muted);
+  /* Every use of this token sits on a `bg-ink` panel, which is near-black (#0a0a0a) again
+     on the light theme. Brand #ee0000 on #0a0a0a is only 4.37:1 (fails AA for the small
+     eyebrow text it renders); #ff3b3b is 5.6:1, computed. */
+  --action-on-dark: #ff3b3b;
+  --hero-gradient: var(--canvas);
 
   /* Chapter zones (docs/decisions/0076) -- the homepage's visual-rhythm system. Each
      zone is a full-width SECTION background, not a card fill: the user asked for
@@ -146,9 +173,10 @@
      AA (4.5:1). */
   /* Moved from the light Swiss-print substrate onto the product's single dark one --
      the preview route must not be the one place a second substrate survives. */
-  --record-canvas: #0a0a0a; --record-ink: #eaeaea; --record-ink-muted: #9a9a9a;
-  --record-border: #2e2e2e;
-  --record-red: #ff2a2a;
+  /* Netras: back onto the single light theme (same aliases as the hero tokens above). */
+  --record-canvas: var(--canvas); --record-ink: var(--ink); --record-ink-muted: var(--ink-muted);
+  --record-border: var(--border);
+  --record-red: var(--action);
 }
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--canvas); }
@@ -161,76 +189,39 @@ html { min-width: 320px; background: var(--canvas); }
    -- felt as a very faint warmth in the corners, not a decoration competing with
    content; `background-attachment: fixed` keeps it a page-level backdrop rather than a
    texture that scrolls oddly with content sections. */
-/* Flat substrate: the old ambient radial washes are gone (the brutalist skill prohibits
-   gradients). */
+/* Flat white page (netras.ai's own --bg); the old ambient radial washes stay gone. */
 body {
   min-width: 320px; margin: 0; color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5;
   background: var(--canvas);
 }
+/* netras.ai's selection highlight: 18% red wash under #0a0a0a text. */
+::selection { background: rgba(238, 0, 0, 0.18); color: #0a0a0a; }
 button, input, textarea, select { font: inherit; }
 code, pre, kbd, samp { font-family: var(--font-mono); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
 
-/* ---------- Tactical Telemetry: global geometry + surface rules ----------
-   Deliberately global and !important: the skill's rules are absolute ("all corners must
-   be exactly 90 degrees", "soft drop shadows and translucency are strictly prohibited"),
-   and there are ~290 rounded-* and ~40 shadow call sites. Enforcing it here, once, means
-   no component can drift back -- rather than hand-editing every call site and hoping none
-   is missed. */
-*, *::before, *::after {
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  text-shadow: none !important;
-}
+/* Netras: the Tactical Telemetry global `border-radius: 0 / box-shadow: none /
+   backdrop-filter: none / text-shadow: none !important` rule is GONE -- netras.ai uses
+   rounded buttons/cards/chips and real soft shadows. Radius and shadow values now come
+   from the Tailwind scale remapped in @theme above, so every existing rounded-* and shadow-*
+   call site picks up Netras geometry without per-component edits. The CRT scanline/noise
+   body::after overlay and the forced-uppercase h1/h2 display treatment are removed too. */
 
-/* Focus backstop. Killing box-shadow above also kills Tailwind's `ring-*` utilities
-   (they are implemented as box-shadow), and a few inputs used a ring as part of their
-   focus state -- without this, keyboard focus could become invisible there. A solid
-   2px hazard-red outline on every :focus-visible element guarantees focus is always
-   visible, and matches the outline style buttons and links already used. */
+/* Focus backstop: a solid 2px red outline on every :focus-visible element, so focus stays
+   visible even where a component relied only on a ring. Netras red is 4.53:1 on white
+   (non-text UI only needs 3:1). */
 :focus-visible {
   outline: 2px solid var(--focus) !important;
   outline-offset: 2px;
 }
 
-/* Macro-typography: heavy grotesque, uppercase, tight tracking/leading. h1/h2 only --
-   the skill scopes this treatment to structural headers, and tight negative tracking at
-   small sizes (h3 and below, body) hurts legibility. !important on font-family because
-   some pages set their own display face via a next/font className (a single class
-   outranks an element selector); the skill requires one heavy grotesque, so it must win. */
-h1, h2 {
-  font-family: var(--font-display) !important;
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: -0.02em;
-  line-height: 0.95;
+/* Netras headings: normal-case Inter bold, slight negative tracking -- no forced
+   uppercase, no heavy display face. In @layer base (not unlayered) so it is a default
+   only -- a component's own font-* or tracking-* utility class still wins. */
+@layer base {
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.015em; }
+  h1 { font-weight: 800; }
 }
-
-/* Micro-typography: mono gets the skill's generous terminal tracking everywhere. It is
-   NOT uppercased globally: font-mono also renders scope targets, URLs, report IDs, and
-   code, and uppercasing a case-sensitive URL path or code sample would misrepresent the
-   data itself. Uppercase is applied to labels/nav/metadata at the component level. */
-.font-mono, code, kbd, samp, data, output {
-  letter-spacing: 0.06em;
-}
-
-/* Mechanical grain + CRT scanlines: one fixed, non-interactive overlay over the whole
-   viewport. Static (no animation), so there is nothing to disable under reduced motion.
-   Kept low-opacity so it reads as a physical texture, never as reduced text contrast. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0.5;
-  background-image:
-    repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0, 0, 0, 0.22) 2px, rgba(0, 0, 0, 0.22) 3px),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-}
-@media print { body::after { display: none; } }
 
 /* Shared soft-glass surface: a mostly-opaque tinted fill + a light backdrop blur + a
    thin border, used by Card/Panel/PrimaryActionPanel instead of a flat background so the
@@ -240,17 +231,31 @@ body::after {
    premium. A plain CSS class (not a Tailwind utility) because `backdrop-filter` plus a
    `color-mix`-derived translucent fill isn't expressible as a one-off utility without an
    arbitrary-value class at every call site -- one definition here, reused everywhere. */
-/* Tactical Telemetry: the class names are kept (dozens of call sites use them) but they
-   are no longer glass -- a solid, opaque fill plus a hard 1px rule. Translucency and
-   blur are prohibited by the brutalist skill; a compartment is defined by its border. */
+/* Netras card: the class names are kept (dozens of call sites) -- solid white fill, the
+   #e5e7eb hairline, and netras.ai's resting card shadow. Linked cards (an <a> carrying
+   the class) get Netras's hover: -4px lift, deeper shadow, border tinted toward red.
+   In @layer components (through .elevation-shadow below) so a call site's own border-* or
+   shadow-* utility wins over these defaults, as Tailwind intends. */
+@layer components {
 .glass-surface {
   background: var(--surface);
   border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .glass-surface-raised {
   background: var(--surface-raised);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.12);
 }
+a:is(.glass-surface, .glass-surface-raised) { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+@media (hover: hover) and (pointer: fine) {
+  a:is(.glass-surface, .glass-surface-raised):hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.12);
+    border-color: rgba(238, 0, 0, 0.35);
+  }
+}
+@media (prefers-reduced-motion: reduce) { a:is(.glass-surface, .glass-surface-raised):hover { transform: none; } }
 
 /* The dark hero's own glass surface (docs/decisions/0075) -- same recipe as
    .glass-surface above (blur + thin border over a translucent fill) but tuned for a
@@ -267,26 +272,16 @@ body::after {
    as a flat outline pasted under a box). Applied sitewide in place of ad hoc one-layer
    shadow arbitrary values -- swap the color mix for --hero-* alpha values on dark
    surfaces via the sibling class below. */
-/* Tactical Telemetry: no soft shadows. "Elevation" is expressed as a stronger rule. */
+/* Netras elevation: netras.ai's raised-card shadow. */
 .elevation-shadow, .elevation-shadow-dark {
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.12);
+}
 }
 
-/* A restrained dot-grid texture (docs/decisions/0062) for the app's dark `bg-ink`
-   surfaces -- the command row hero, the auth identity panel, the featured-track tile --
-   the same category of decorative background pattern HackerOne/Bugcrowd/Immunefi-style
-   security platforms use behind a dark hero, kept abstract/technical (evenly-spaced dots)
-   rather than a literal "cyber" motif (DESIGN.md Section 1 still forbids matrix rain/
-   hacker costume). Pure CSS radial-gradient tiling, no image asset; drawn at a low,
-   fixed opacity via `currentColor` so it always matches the canvas text color it's
-   painted on (`text-canvas` on a `bg-ink` panel) with zero extra tokens. Layer it
-   UNDER the existing radial glow gradients (lower in DOM order or a lower z-index), never
-   over interactive content. */
-.dot-grid {
-  background-image: radial-gradient(currentColor 1px, transparent 1px);
-  background-size: 22px 22px;
-  color: color-mix(in srgb, currentColor 14%, transparent);
-}
+/* .dot-grid (decision 0062's dark-panel dot texture) is removed: a purely decorative
+   brutalist flourish. Its four call sites are aria-hidden, absolutely-positioned empty
+   divs, so with no rule they simply paint nothing -- no layout depends on them. */
 
 /* The public marketing page's one recurring graphic signature (see docs/decisions/0035):
    a traveling pulse along the signal line's rule. Purely decorative/atmospheric (the
@@ -343,11 +338,6 @@ body::after {
    open item) -- never decorative, never on a static/historical row. `motion-safe:` gated
    at the call site; reduced motion gets the dot with no animation property at all. */
 @keyframes status-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-
-/* A restrained ambient drift for the dot-grid texture on major command surfaces only
-   (never a data table, never body text) -- large-amplitude/slow enough to read as
-   "instrument idle," not a marketing parallax effect. `motion-safe:` gated. */
-@keyframes grid-drift { 0% { background-position: 0 0; } 100% { background-position: 44px 44px; } }
 
 /* ---------- Hero art (docs/decisions/0082) ----------
    Ported from .claude/skills/unpatched-hero-art/reference/unpatched-hero.html per that

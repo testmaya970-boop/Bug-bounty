@@ -45,9 +45,9 @@ const headingClass = "font-display text-ink";
 // Tactical Telemetry: square slabs, uppercase mono labels. The primary CTA is the
 // page's one solid hazard-red block (dark text -- white on this red fails AA at 3.7:1).
 const primaryLinkClass =
-  "inline-flex min-h-12 items-center gap-2 bg-action px-7 font-mono text-xs font-bold uppercase tracking-[0.1em] text-on-action transition-[transform,background-color] duration-200 ease-out hover:bg-action-hover active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+  "inline-flex min-h-12 items-center gap-2 rounded-md bg-action px-7 text-sm font-semibold text-on-action transition-[transform,background-color] duration-200 ease-out hover:bg-action-hover active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 const secondaryLinkClass =
-  "inline-flex min-h-12 items-center gap-2 border border-ink bg-surface px-7 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink transition-[transform,background-color,color] duration-200 ease-out hover:bg-ink hover:text-canvas active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+  "inline-flex min-h-12 items-center gap-2 rounded-md border border-border-strong bg-surface px-7 text-sm font-semibold text-ink transition-[transform,background-color,color] duration-200 ease-out hover:border-action hover:bg-surface-hover active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 // The `+`/rotate icon gets an explicit duration/ease (was `transition-transform` alone,
 // resolving to Tailwind's default 150ms/default ease -- fine, but undocumented). The

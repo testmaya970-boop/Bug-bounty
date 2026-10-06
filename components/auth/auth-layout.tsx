@@ -82,26 +82,25 @@ export function AuthLayout({
   const isAccent2 = identity.accent === "accent-2";
   return (
     <div className="min-h-dvh bg-canvas text-ink lg:flex">
-      {/* Same low ambient green/orange glow as every other dark bg-ink panel in the app
-          (docs/decisions/0062) -- a flat solid identity band was the single largest area
-          of unbroken color on the entire auth flow and read as an unfinished block rather
-          than a deliberate dark panel. Deliberately static (no drift/motion), matching
-          this component's own "auth stays calm" note above. The ambient corner glow was
-          removed under the Tactical Telemetry reskin (gradients are prohibited); the
-          researcher/organization entry points are still distinguished by the signal dot's
-          color below and by their copy. */}
-      <div className="relative overflow-hidden bg-ink px-4 py-8 text-canvas sm:px-6 lg:flex lg:w-[26rem] lg:shrink-0 lg:flex-col lg:justify-between lg:py-12">
-        <div aria-hidden="true" className="dot-grid pointer-events-none absolute inset-0 text-canvas" />
+      {/* Netras rebrand: this panel used to invert to a dark bg-ink/text-canvas surface
+          (the "Tactical Telemetry" reskin's dark identity band). Netras's own site has no
+          dark panels at all -- a single light substrate throughout -- so rather than pick
+          new dark-panel colors for a pattern the brand doesn't have, this now uses the
+          same light surface-muted/border tokens as the rest of the app, with a left rule
+          in the variant's accent color as the one visual distinguishing mark (instead of
+          a dot-grid texture + color inversion). */}
+      <div className="relative overflow-hidden border-b border-border bg-surface-muted px-4 py-8 lg:flex lg:w-[26rem] lg:shrink-0 lg:flex-col lg:justify-between lg:border-b-0 lg:border-r lg:py-12 lg:px-6">
+        <div aria-hidden="true" className={cn("absolute inset-y-0 left-0 w-1", isAccent2 ? "bg-accent-2" : "bg-action")} />
         <div className="relative flex items-center gap-3">
-          <span className="text-lg font-bold tracking-tight">Unpatched</span>
-          <span className="hidden border-l border-canvas/25 pl-3 text-[11px] font-semibold uppercase tracking-wider text-canvas/50 sm:inline">Security operations</span>
+          <span className="text-lg font-bold tracking-tight text-ink">Unpatched</span>
+          <span className="hidden border-l border-border pl-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted sm:inline">Security operations</span>
         </div>
-        <p className="relative mt-6 flex max-w-sm items-center gap-2 text-lg font-semibold tracking-tight lg:mt-0">
-          <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full motion-safe:animate-[signal-pulse-once_900ms_ease-out_1]", isAccent2 ? "bg-canvas" : "bg-action")} />
+        <p className="relative mt-6 flex max-w-sm items-center gap-2 text-lg font-semibold tracking-tight text-ink lg:mt-0">
+          <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full motion-safe:animate-[signal-pulse-once_900ms_ease-out_1]", isAccent2 ? "bg-accent-2" : "bg-action")} />
           {identity.tagline}
         </p>
         <div className="relative mt-8 hidden lg:block">
-          <WorkflowDiagram stages={identity.stages} tone="inverted" />
+          <WorkflowDiagram stages={identity.stages} tone="default" />
         </div>
       </div>
 

@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { Archivo_Black, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Open_Sans } from "next/font/google";
 import "./globals.css";
 import { ClientErrorListener } from "../components/client-error-listener";
 import { TimeZoneProvider } from "../components/ui/local-time";
 import { TIME_ZONE_COOKIE, isValidTimeZone } from "../lib/format-date";
 
-// Tactical Telemetry type system (taste-skill:industrial-brutalist-ui): Archivo Black is
-// the heavy neo-grotesque for structural headers (one weight -- it is black by design),
-// Inter for UI/body text, JetBrains Mono for telemetry metadata. All loaded as CSS
+// Netras type system (netras.ai's own Google Fonts link): Inter 600/700/800 for headings,
+// Open Sans 400-700 for body/UI, plus JetBrains Mono for code/data. All loaded as CSS
 // variables here, once, at the root -- consumed via globals.css's --font-display/
 // --font-sans/--font-mono tokens (@theme inline), never re-imported per component.
-const archivoBlack = Archivo_Black({ subsets: ["latin"], weight: "400", variable: "--font-display-face", display: "swap" });
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap" });
+const inter = Inter({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--font-inter", display: "swap" });
+const openSans = Open_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-open-sans", display: "swap" });
 // JetBrains Mono: every existing `font-mono` call site (targets, report/org ids, CVSS
 // scores, bounty figures) previously fell through to Tailwind's default mono stack, which
 // resolves to whatever system monospace font the visitor's OS happens to have -- never a
@@ -43,12 +42,10 @@ export const metadata: Metadata = {
 // for correctness over the alternative of auditing and annotating every individual route.
 export const dynamic = "force-dynamic";
 
-// One substrate (Tactical Telemetry): the palette and color-scheme are set entirely in
-// globals.css. The old light/dark ThemeProvider and its pre-paint init script are gone --
-// no toggle UI ever consumed them, and the script actively fought the single substrate by
-// writing an inline `color-scheme: light` for anyone with a saved "light" preference
-// (light native scrollbars and <select> popups on a black page). The `dark` class stays
-// static on <html> so any remaining `dark:` utility still resolves the same way everywhere.
+// One theme (Netras light): the palette and color-scheme are set entirely in globals.css.
+// The old light/dark ThemeProvider and its pre-paint init script are gone. The `dark`
+// class stays static on <html> for anything that still targets it, but globals.css
+// resolves it to the same light palette -- there is no dark mode.
 // The viewer's time zone for every timestamp (components/ui/local-time.tsx): reported by
 // the browser in a cookie, validated here -- it is client-controlled -- before any render
 // hands it to Intl. A request cookie read, not a data fetch.
@@ -67,7 +64,7 @@ async function viewerTimeZone(): Promise<string | null> {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const timeZone = await viewerTimeZone();
   return (
-    <html lang="en" className={`dark ${archivoBlack.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`dark ${inter.variable} ${openSans.variable} ${jetbrainsMono.variable}`}>
       <body>
         <TimeZoneProvider initialZone={timeZone}>{children}</TimeZoneProvider>
         <ClientErrorListener />
