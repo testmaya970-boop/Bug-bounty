@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { peekPasswordResetToken } from "@/services/auth";
+import { getNativeEnv } from "@/lib/env";
 
 // Verifies an app-owned password-reset token (lib/auth/tokens.ts), replacing Supabase
 // Auth's own token_hash-based verifyOtp for that one remaining link-based flow.
@@ -12,7 +13,8 @@ import { peekPasswordResetToken } from "@/services/auth";
 // reset-password page with the token still attached; confirmPasswordReset (called from
 // that page) is what actually verifies/consumes it.
 export async function GET(request: NextRequest) {
-  const requestOrigin = `${request.headers.get("x-forwarded-proto") ?? "http"}://${request.headers.get("host")}`;
+  // Never the request's Host/X-Forwarded-* headers -- the client controls those.
+  const requestOrigin = getNativeEnv().APP_ORIGIN;
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token");
   const type = searchParams.get("type");

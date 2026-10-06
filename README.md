@@ -24,12 +24,18 @@ Built on Next.js 15 (App Router) and a standalone, self-hosted PostgreSQL instan
 ## Local setup
 
 ```bash
-# 1. Start Postgres and MinIO
+# 1. Container secrets (gitignored .env, read by docker compose -- never committed)
+printf 'POSTGRES_PASSWORD=%s\nMINIO_ROOT_USER=sentinel_minio\nMINIO_ROOT_PASSWORD=%s\n' \
+  "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" > .env
+
+# 2. Start Postgres and MinIO (both bound to 127.0.0.1 only)
 docker compose -f docker-compose.native.yml up -d
 
-# 2. Configure environment
+# 3. Configure environment
 cp .env.example .env.local
-# Fill in DATABASE_URL, SESSION_COOKIE_SECRET, and the S3_* values.
+# Fill in APP_ORIGIN, DATABASE_URL, SESSION_COOKIE_SECRET, and the S3_* values. S3_* must be
+# a scoped app key (not the MinIO root): set S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY, then run
+#   bash scripts/storage-app-user.sh
 # See docs/env.md for what each variable does and its production implications.
 
 # 3. Install dependencies and apply the schema
@@ -41,7 +47,8 @@ npm run seed:demo   # or seed:launch / seed:e2e — see below
 npm run dev
 ```
 
-For a fresh environment also run `npm run storage:init` (creates the evidence bucket).
+For a fresh environment also run `npm run storage:init` with the MinIO root keys once
+(creates the evidence bucket); the app's own scoped key cannot create buckets.
 Releasing, rollback, backups/restore, and health checks: see [docs/operations.md](docs/operations.md).
 
 ### Seed scripts

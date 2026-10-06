@@ -8,6 +8,7 @@ import { createSession, revokeSession, SESSION_COOKIE_NAME } from "@/lib/auth/se
 import { getCurrentSessionId } from "@/lib/auth/current-user";
 import { activeEmailProvider } from "@/lib/email-provider";
 import { randomUUID } from "node:crypto";
+import { getNativeEnv } from "@/lib/env";
 
 export class AuthServiceError extends Error {
   constructor(
@@ -20,11 +21,6 @@ export class AuthServiceError extends Error {
 }
 
 const SESSION_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
-
-async function requestOrigin(): Promise<string> {
-  const h = await headers();
-  return `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
-}
 
 async function setSessionCookie(cookieValue: string): Promise<void> {
   const cookieStore = await cookies();
@@ -238,7 +234,9 @@ export async function resendConfirmationEmail(email: string): Promise<void> {
  */
 export async function requestPasswordReset(email: string): Promise<void> {
   const normalizedEmail = email.trim().toLowerCase();
-  const origin = await requestOrigin();
+  // Configured origin only: a client-supplied Host header must never decide where the
+  // emailed reset link (and its token) points.
+  const origin = getNativeEnv().APP_ORIGIN;
 
   await withServiceRoleTransaction(async (client) => {
     const { rows } = await client.query<{ id: string }>("select id from public.users where email = $1", [normalizedEmail]);

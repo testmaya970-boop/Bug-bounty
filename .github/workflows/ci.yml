@@ -75,6 +75,7 @@ jobs:
           cat > .env.local <<ENV
           DATABASE_URL=postgres://sentinel_app_runtime:sentinel_dev_password@localhost:5432/sentinel
           MIGRATION_DATABASE_URL=postgres://sentinel_app:ci_password@localhost:5432/sentinel
+          APP_ORIGIN=http://127.0.0.1:3100
           SESSION_COOKIE_SECRET=$(openssl rand -hex 32)
           S3_ENDPOINT=http://localhost:9000
           S3_REGION=us-east-1

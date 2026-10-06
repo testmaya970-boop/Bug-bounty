@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { DEV_KYC_ENCRYPTION_KEY, findConfigurationProblems, findKycEncryptionKeyProblem } from "../../lib/startup-check";
 
 const VALID = {
+  APP_ORIGIN: "https://app.example.test",
   DATABASE_URL: "postgres://app:s3cret@db:5432/sentinel",
   SESSION_COOKIE_SECRET: "a".repeat(64),
   S3_ENDPOINT: "http://minio:9000",
@@ -44,6 +45,19 @@ describe("startup configuration check", () => {
     }
     expect(findConfigurationProblems(withEnv({ ...VALID, EMAIL_PROVIDER: "dev" }), false)).toEqual([]);
     expect(findConfigurationProblems(withEnv({ ...VALID, EMAIL_PROVIDER: "dev", LOCAL_PROD_TEST: "1" }), true)).toEqual([]);
+  });
+
+  it("rejects the committed dev database password and MinIO root credentials in production", () => {
+    const dev = withEnv({ ...VALID, DATABASE_URL: "postgres://sentinel_app_runtime:sentinel_dev_password@localhost:55432/sentinel", S3_ACCESS_KEY_ID: "sentinel_minio" });
+    expect(findConfigurationProblems(dev, true).join("\n")).toMatch(/local-dev password[\s\S]*MinIO root/);
+    expect(findConfigurationProblems(dev, false)).toEqual([]);
+  });
+
+  it("requires APP_ORIGIN, as an https origin in production", () => {
+    expect(findConfigurationProblems(withEnv({ ...VALID, APP_ORIGIN: undefined }), false).join("\n")).toMatch(/APP_ORIGIN/);
+    expect(findConfigurationProblems(withEnv({ ...VALID, APP_ORIGIN: "https://app.example.test/some/path" }), false).join("\n")).toMatch(/APP_ORIGIN/);
+    expect(findConfigurationProblems(withEnv({ ...VALID, APP_ORIGIN: "http://app.example.test" }), true)).toEqual(["APP_ORIGIN must be an https:// origin in production"]);
+    expect(findConfigurationProblems(withEnv({ ...VALID, APP_ORIGIN: "http://app.example.test" }), false)).toEqual([]);
   });
 
   it("rejects a missing or dev-only KYC encryption key, accepts a real one", () => {

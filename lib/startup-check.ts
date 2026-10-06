@@ -24,6 +24,15 @@ export function findConfigurationProblems(env: NodeJS.ProcessEnv, isProduction: 
     for (const name of ["DATABASE_URL", "SESSION_COOKIE_SECRET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"]) {
       if (env[name]?.includes("your-")) problems.push(`${name} still has the .env.example placeholder value`);
     }
+    // The committed local-dev credentials (db/init/01-app-role.sql, the old compose file)
+    // and the MinIO root user must never reach production.
+    if (env.DATABASE_URL?.includes("sentinel_dev_password")) problems.push("DATABASE_URL still uses the committed local-dev password");
+    if (env.S3_SECRET_ACCESS_KEY === "sentinel_dev_password" || env.S3_ACCESS_KEY_ID === "sentinel_minio") {
+      problems.push("S3 credentials are the MinIO root/dev credentials -- use a scoped app user (scripts/storage-app-user.sh)");
+    }
+    if (!env.APP_ORIGIN?.startsWith("https://") && !isLocalProdTest(env)) {
+      problems.push("APP_ORIGIN must be an https:// origin in production");
+    }
     // The dev provider logs instead of sending but reports success, so notification
     // deliveries would be recorded as "delivered" while nobody receives anything.
     if ((env.EMAIL_PROVIDER ?? "dev") === "dev" && !isLocalProdTest(env)) {

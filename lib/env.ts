@@ -8,6 +8,14 @@ import { z } from "zod";
  * points these at docker-compose.native.yml's MinIO.
  */
 const nativeSchema = z.object({
+  // The app's own public origin, e.g. https://app.example.com. Every absolute link the app
+  // emails or redirects to is built from this -- never from the request's Host or
+  // X-Forwarded-* headers, which the client controls (password-reset link poisoning).
+  APP_ORIGIN: z
+    .string()
+    .url()
+    .refine((value) => /^https?:\/\/[^/]+\/?$/.test(value), "APP_ORIGIN must be an origin like https://app.example.com (no path)")
+    .transform((value) => value.replace(/\/$/, "")),
   DATABASE_URL: z.string().min(1),
   SESSION_COOKIE_SECRET: z.string().min(32),
   S3_ENDPOINT: z.string().min(1),
@@ -23,6 +31,7 @@ const nativeSchema = z.object({
 
 export function getNativeEnv() {
   return nativeSchema.parse({
+    APP_ORIGIN: process.env.APP_ORIGIN,
     DATABASE_URL: process.env.DATABASE_URL,
     SESSION_COOKIE_SECRET: process.env.SESSION_COOKIE_SECRET,
     S3_ENDPOINT: process.env.S3_ENDPOINT,
