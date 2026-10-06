@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { ctfFlag } from "../lib/ctf-flags";
 
 // Real, browser-driven CTF coverage against a prod build (playwright.config.ts):
 //  - solving one challenge per category end-to-end (submit the flag a player would derive
@@ -6,9 +7,9 @@ import { test, expect, type Page } from "@playwright/test";
 //  - a seeded event's real leaderboard rendering a seeded solve,
 //  - the platform-admin event-creation flow.
 //
-// Flags below are the ones a player derives by doing each challenge's technique against its
-// embedded/downloadable artifact (verified independently by npm run ctf:artifacts:verify).
-// They are the submission a solver would make -- not read from any app response.
+// Flags are derived from CTF_FLAG_SECRET (lib/ctf-flags.ts, loaded from .env.local by
+// playwright.config.ts) -- the same value a player recovers from each challenge's artifact
+// (npm run ctf:artifacts:verify proves that). Never read from any app response.
 
 const PASSWORD = "E2ESeed!2026";
 const RESEARCHER_EMAIL = "e2e.veteran@unpatched.demo"; // a seeded researcher
@@ -26,15 +27,13 @@ async function signIn(page: Page, email: string, password = PASSWORD) {
   await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
 }
 
-// One challenge per category (slug -> flag). newcomer has no practice solves for these
-// (only an ended-event backfill of c-web-1, which is web -- so use a different web slug here).
+// One live challenge per category that has any (web's were all retired).
 const ONE_PER_CATEGORY: Array<{ slug: string; flag: string; category: string }> = [
-  { slug: "search-and-destroy", flag: "unpatched{r3fl3ct3d_xss_101}", category: "web" },
-  { slug: "rotten-cipher", flag: "unpatched{caesar_was_n0_cryptographer}", category: "crypto" },
-  { slug: "the-license-checker", flag: "unpatched{str1ngs_and_a_d1sassembler}", category: "reverse-engineering" },
-  { slug: "buffer-of-secrets", flag: "unpatched{cl4ssic_st4ck_0v3rfl0w}", category: "binary-pwn" },
-  { slug: "the-hidden-stream", flag: "unpatched{app3nd3d_data_aft3r_e0i}", category: "forensics" },
-  { slug: "the-hidden-channel", flag: "unpatched{dns_tunn3l_data_ex0}", category: "network" },
+  { slug: "rotten-cipher", flag: ctfFlag("c-crypto-1"), category: "crypto" },
+  { slug: "the-license-checker", flag: ctfFlag("c-re-1"), category: "reverse-engineering" },
+  { slug: "format-string-101", flag: ctfFlag("c-pwn-4"), category: "binary-pwn" },
+  { slug: "the-hidden-stream", flag: ctfFlag("c-forensics-1"), category: "forensics" },
+  { slug: "the-hidden-channel", flag: ctfFlag("c-network-2"), category: "network" },
 ];
 
 test.describe("CTF challenges are solvable", () => {
@@ -67,12 +66,23 @@ test.describe("CTF challenges are solvable", () => {
     await expect(link).toHaveAttribute("href", /\/ctf-artifacts\/c-network-1\/capture\.pcap$/);
   });
 
-  test("a wrong flag is still refused (regression guard on the existing behaviour)", async ({ page }) => {
+  test("a wrong flag, and a pre-rotation plaintext flag, are both refused", async ({ page }) => {
     await signIn(page, BROWSER_EMAIL);
-    await page.goto("/ctf/type-juggler");
-    await page.getByLabel("Flag").fill("unpatched{not_the_flag}");
-    await page.getByRole("button", { name: "Submit flag" }).click();
-    await expect(page.getByText("Incorrect flag. Try again.")).toBeVisible();
+    await page.goto("/ctf/the-repeating-key");
+    for (const wrong of ["unpatched{not_the_flag}", "unpatched{x0r_k3y_r3us3_1s_fatal}"]) {
+      await page.getByLabel("Flag").fill(wrong);
+      await page.getByRole("button", { name: "Submit flag" }).click();
+      await expect(page.getByText("Incorrect flag. Try again.")).toBeVisible();
+    }
+  });
+
+  test("retired challenges are gone from the catalog and their pages", async ({ page }) => {
+    await signIn(page, BROWSER_EMAIL);
+    await page.goto("/ctf");
+    await expect(page.getByText("Rotten Cipher").first()).toBeVisible();
+    await expect(page.getByText("The Cookie Jar")).toHaveCount(0);
+    await page.goto("/ctf/cookie-jar");
+    await expect(page.getByText("This challenge does not exist.")).toBeVisible();
   });
 });
 
@@ -104,7 +114,7 @@ test.describe("CTF events", () => {
     await page.goto("/ctf/the-hidden-stream");
     const flagField = page.getByLabel("Flag");
     if (await flagField.isVisible().catch(() => false)) {
-      await flagField.fill("unpatched{app3nd3d_data_aft3r_e0i}");
+      await flagField.fill(ctfFlag("c-forensics-1"));
       await page.getByRole("button", { name: "Submit flag" }).click();
       await expect(page.getByText(/points/i).first()).toBeVisible({ timeout: 20000 });
     }
@@ -133,7 +143,8 @@ test.describe("platform admin: CTF event management", () => {
     // Lands on the edit page; pick a couple of challenges and save.
     await page.waitForURL(/\/platform\/ctf-events\/[0-9a-f-]+$/);
     await expect(page.getByText("Challenges in this event")).toBeVisible();
-    await page.getByRole("checkbox", { name: /The Cookie Jar/ }).check();
+    await expect(page.getByRole("checkbox", { name: /The Cookie Jar/ })).toHaveCount(0); // retired
+    await page.getByRole("checkbox", { name: /The Repeating Key/ }).check();
     await page.getByRole("checkbox", { name: /Rotten Cipher/ }).check();
     await page.getByRole("button", { name: "Save challenge set" }).click();
     await expect(page.getByText("Saved.").first()).toBeVisible({ timeout: 20000 });

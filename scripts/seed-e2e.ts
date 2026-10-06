@@ -30,6 +30,7 @@ import argon2 from "argon2";
 import { createHash, randomBytes } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { ctfFlag } from "../lib/ctf-flags";
 
 for (const oid of [1082, 1114, 1184]) pgTypes.setTypeParser(oid, (value: string) => new Date(value).toISOString());
 
@@ -513,6 +514,11 @@ async function seedCtfEvents(adminId: string, veteranId: string, newcomerId: str
       return rows[0] ?? null;
     });
     if (existing) {
+      // A not-yet-ended event's set is re-applied so a retired challenge drops out of it;
+      // an ended event keeps the set its final leaderboard was earned on.
+      if (status !== "ended") {
+        await tryStep(withActor(adminId, (client) => client.query("select public.set_ctf_event_challenges($1, $2)", [existing.id, challengeIds])), `set_ctf_event_challenges (${slug})`);
+      }
       console.log(`CTF event "${slug}" already exists.`);
       return existing.id;
     }
@@ -547,7 +553,7 @@ async function seedCtfEvents(adminId: string, veteranId: string, newcomerId: str
     iso(now - day),
     iso(now + 2 * day),
     "active",
-    ["c-web-1", "c-web-2", "c-crypto-1", "c-forensics-1", "c-network-1"],
+    ["c-crypto-1", "c-forensics-1", "c-network-1", "c-re-1"],
   );
 
   await ensureEvent(
@@ -557,7 +563,7 @@ async function seedCtfEvents(adminId: string, veteranId: string, newcomerId: str
     iso(now + 3 * day),
     iso(now + 5 * day),
     "scheduled", // published, but the future window makes its effective status "upcoming"
-    ["c-crypto-4", "c-re-1", "c-pwn-1"],
+    ["c-crypto-4", "c-re-2", "c-pwn-4"],
   );
 
   await withServiceRole((client) => client.query("delete from public.platform_admins where user_id = $1", [adminId]));
@@ -594,8 +600,8 @@ async function seedCtfEvents(adminId: string, veteranId: string, newcomerId: str
   // live (the window is open now), proving the real solve->event-leaderboard path end to end.
   if (activeId) {
     await tryStep(
-      withActor(veteranId, (client) => client.query("select * from public.submit_ctf_flag($1, $2)", ["c-web-2", "unpatched{r3fl3ct3d_xss_101}"])),
-      "submit_ctf_flag (veteran, active event, c-web-2)",
+      withActor(veteranId, (client) => client.query("select * from public.submit_ctf_flag($1, $2)", ["c-network-1", ctfFlag("c-network-1")])),
+      "submit_ctf_flag (veteran, active event, c-network-1)",
     );
     console.log("Veteran solved one challenge in the ACTIVE event via the real submit_ctf_flag path.");
   }

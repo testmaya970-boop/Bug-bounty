@@ -2,6 +2,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 // The release gate's own prod server: its own port and build folder (next.config.ts's
 // distDir), so it never reuses or overwrites a `next dev` running on :3000.
+// Specs derive CTF flags from CTF_FLAG_SECRET; CI writes the same .env.local.
+try {
+  process.loadEnvFile(".env.local");
+} catch {}
 const E2E_PORT = Number(process.env.E2E_PORT ?? 3100);
 const E2E_BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
 

@@ -1,5 +1,0 @@
-ClientHello offered: TLS 1.3, TLS 1.2 (strong ciphers)
-ServerHello (tampered) selected: TLS 1.0, TLS_RSA_EXPORT_WITH_RC4_40 (broken export cipher)
-The version was forced DOWN mid-handshake. The export cipher's tiny key is trivially
-brute-forced, so the following application record decrypts to:
-unpatched{v3rsi0n_d0wngrad3_attack}

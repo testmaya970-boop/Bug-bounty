@@ -119,9 +119,9 @@ const ctrNonceReuse = {
 const smallExponent = {
   id: "c-crypto-4",
   build() {
-    const p = nextPrimeFromSeed(this.id + ":p", 512);
-    const q = nextPrimeFromSeed(this.id + ":q", 512);
-    const n = p * q; // ~1024-bit modulus; flag as int is ~200 bits, so m^3 (~600 bits) < n
+    const p = nextPrimeFromSeed(this.id + ":p", 1024);
+    const q = nextPrimeFromSeed(this.id + ":q", 1024);
+    const n = p * q; // ~2048-bit modulus; flag as int is ~420 bits, so m^3 (~1260 bits) < n
     const e = 3n;
     const m = bufToBigInt(Buffer.from(FLAGS[this.id]));
     const c = modpow(m, e, n);

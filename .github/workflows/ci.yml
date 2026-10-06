@@ -84,6 +84,7 @@ jobs:
           S3_SECRET_ACCESS_KEY=ci_minio_password
           S3_FORCE_PATH_STYLE=true
           EMAIL_PROVIDER=dev
+          CTF_FLAG_SECRET=${{ secrets.CTF_FLAG_SECRET }}
           ENV
       - name: Schema, bucket, seed
         run: |

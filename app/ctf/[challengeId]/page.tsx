@@ -10,6 +10,7 @@ import { FlagSubmissionForm } from "../../../components/ctf/flag-submission-form
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { listMyCtfSolves } from "../../../services/ctf";
 import { findCtfChallengeBySlug, findCtfTrackById, MOCK_CTF_CATEGORY_META } from "../../../lib/mock/ctf";
+import { getCtfMaterial } from "../../../lib/ctf-material";
 
 // Same small formatter the evidence/access-file panels use (kept local -- a 3-line pure
 // helper isn't worth a shared export threaded through unrelated files).
@@ -44,6 +45,7 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
 
   const track = challenge.trackId ? findCtfTrackById(challenge.trackId) : undefined;
   const categoryLabel = MOCK_CTF_CATEGORY_META[challenge.categoryId].label;
+  const { embed: embeddedData, files: artifacts } = getCtfMaterial(challenge.id);
   const solves = await listMyCtfSolves();
   const existingSolve = solves.find((solve) => solve.challengeId === challenge.id) ?? null;
 
@@ -68,14 +70,14 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
               <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink">{challenge.prompt}</p>
             </Card>
 
-            {(challenge.embeddedData || (challenge.artifacts && challenge.artifacts.length > 0)) && (
+            {(embeddedData || (artifacts && artifacts.length > 0)) && (
               <Card className="p-5 sm:p-6">
                 <SectionLabel>Challenge material</SectionLabel>
                 <p className="mt-2 text-sm text-ink-muted">Everything you need to derive the flag is here. Apply the technique from the briefing to this material.</p>
 
-                {challenge.artifacts && challenge.artifacts.length > 0 && (
+                {artifacts && artifacts.length > 0 && (
                   <div className="mt-4 space-y-2">
-                    {challenge.artifacts.map((artifact) => (
+                    {artifacts.map((artifact) => (
                       <a
                         key={artifact.path}
                         href={artifact.path}
@@ -92,9 +94,9 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
                   </div>
                 )}
 
-                {challenge.embeddedData && (
+                {embeddedData && (
                   <pre className="mt-4 max-h-[28rem] overflow-auto rounded-md border border-border bg-surface-muted p-3 font-mono text-xs leading-relaxed text-ink">
-                    {challenge.embeddedData}
+                    {embeddedData}
                   </pre>
                 )}
               </Card>

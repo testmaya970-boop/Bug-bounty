@@ -14,6 +14,7 @@ dev values come from `docker-compose.native.yml`'s own services.
 
 | Var | Used by | Notes |
 |---|---|---|
+| `APP_ORIGIN` | `lib/env.ts`, `services/auth.ts`, `app/auth/confirm/route.ts` | The app's public origin (no path). Every emailed link and auth redirect is built from it, never from request `Host`/`X-Forwarded-*` headers. Must be `https://` in production (`lib/startup-check.ts`). |
 | `DATABASE_URL` | `lib/db/pool.ts` | Standalone Postgres connection string. **Must** be a plain, non-superuser, non-BYPASSRLS role (`sentinel_app_runtime` locally) — a superuser connection silently bypasses RLS regardless of any `SET ROLE` the app performs. |
 | `SESSION_COOKIE_SECRET` | `lib/auth/session.ts` | Signs/validates the opaque session cookie. Min 32 bytes. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. |
 | `S3_ENDPOINT` | `lib/evidence-store.ts` | S3-compatible object storage endpoint for evidence file uploads. Local dev: MinIO (`docker-compose.native.yml`). |
@@ -43,6 +44,7 @@ silently-broken feature.
 | `EMAIL_PROVIDER` | `lib/email-provider.ts` | `dev` (a simulated provider that logs instead of sending — never sends real email) | Set to `resend` only when `RESEND_API_KEY` and `EMAIL_FROM` below are both also set. See `docs/decisions/0022-real-email-provider-integration.md`. **Production refuses to boot on `dev`/unset** (`lib/startup-check.ts`); the local prod-build test sets `LOCAL_PROD_TEST=1` (playwright.config.ts) to allow it there. |
 | `RESEND_API_KEY` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
 | `EMAIL_FROM` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
+| `CTF_FLAG_SECRET` | `lib/ctf-flags.ts` (build scripts and E2E only, never the app) | — | Derives every CTF flag. All environments must share the value the committed `public/ctf-artifacts/` and flag-hash migrations were generated with; CI reads it from the `CTF_FLAG_SECRET` repo secret. Rotating it means regenerating artifacts (`npm run ctf:artifacts:verify`) and a new flag-hash migration. |
 | `NEXT_PUBLIC_APP_URL` | `actions/program-researchers.ts` | `http://localhost:3000` | Base URL used to build the accept-invitation link sent in a program-researcher-invitation email. **Must be set to the real production URL before launch** — the fallback is a real, silent bug in production (every invitation email would link to `localhost`). |
 | `PERF_TRACE` | `lib/perf-trace.ts` | disabled (no tracing) | Set to `1` to enable temporary server-side latency instrumentation (middleware → auth → DB → render). Diagnostic only, safe to leave unset. |
 | `NODE_ENV` | `services/auth.ts`, `components/auth/confirm-email-pending.tsx` | set by the Next.js/Node toolchain itself, not user-configured | Gates `secure` cookie flag and a dev-only "confirm email" shortcut. Never set manually — `next build`/`next start` set this correctly. |

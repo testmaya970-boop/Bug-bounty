@@ -1,44 +1,20 @@
 // Shared helpers for the CTF artifact generators (scripts/ctf-artifacts/*).
 // Pure Node stdlib -- no new dependency. Each generator builds a challenge's static
 // artifact AND exposes a solver that re-derives the flag from that same artifact, so
-// `npm run ctf:artifacts -- --verify` proves every one of the 28 flags is genuinely
+// `npm run ctf:artifacts:verify` proves every live flag is genuinely
 // derivable (and matches db/migrations/...ctf... 's hashed plaintext) before anything ships.
 import { createHash } from "node:crypto";
 
-// The 28 plaintext flags, id -> flag. This is the ONE place outside the migration the
-// plaintext appears, and only so the generator can (a) embed the RIGHT bytes and (b)
-// assert its own solver recovers exactly this. It is a build-time script, never shipped to
-// a client and never imported by app code (lib/mock/ctf.ts still has no `flag` field).
-export const FLAGS = {
-  "c-web-1": "unpatched{c00k1e_tru5t_1ssue}",
-  "c-web-2": "unpatched{r3fl3ct3d_xss_101}",
-  "c-web-3": "unpatched{1d0r_invo1c3_l3ak}",
-  "c-web-4": "unpatched{csrf_n0_t0k3n_n0_pr0bl3m}",
-  "c-web-5": "unpatched{ssrf_m3tadata_r3ach}",
-  "c-web-6": "unpatched{lo0se_c0mpar3_magic_hash}",
-  "c-web-7": "unpatched{ssti_rc3_ach13v3d}",
-  "c-crypto-1": "unpatched{caesar_was_n0_cryptographer}",
-  "c-crypto-2": "unpatched{x0r_k3y_r3us3_1s_fatal}",
-  "c-crypto-3": "unpatched{n0nce_reuse_breaks_ctr}",
-  "c-crypto-4": "unpatched{cub3_r00t_rsa_n0_padding}",
-  "c-crypto-5": "unpatched{alg_none_is_never_none}",
-  "c-crypto-6": "unpatched{hastad_broadcast_attack}",
-  "c-re-1": "unpatched{str1ngs_and_a_d1sassembler}",
-  "c-re-2": "unpatched{junk_c0de_hid3s_n0thing}",
-  "c-re-3": "unpatched{unpack3d_and_und3rst00d}",
-  "c-re-4": "unpatched{custom_vm_bytec0de_solv3d}",
-  "c-re-5": "unpatched{d3bugg3r_d3t3ct3d_and_d3f3at3d}",
-  "c-pwn-1": "unpatched{cl4ssic_st4ck_0v3rfl0w}",
-  "c-pwn-2": "unpatched{r0p_ch41n_c0mpl3t3}",
-  "c-pwn-3": "unpatched{uaf_dangling_p0int3r_pwn}",
-  "c-pwn-4": "unpatched{printf_leaks_the_stack}",
-  "c-forensics-1": "unpatched{app3nd3d_data_aft3r_e0i}",
-  "c-forensics-2": "unpatched{f1l3_carving_r3c0v3ry}",
-  "c-forensics-3": "unpatched{plaintext_liv3s_in_ram}",
-  "c-network-1": "unpatched{pl41ntext_cr3ds_1n_pcap}",
-  "c-network-2": "unpatched{dns_tunn3l_data_ex0}",
-  "c-network-3": "unpatched{v3rsi0n_d0wngrad3_attack}",
-};
+// Flags are derived from CTF_FLAG_SECRET (lib/ctf-flags.ts), never written down: the repo
+// holds only readable bases and the flag hashes. Retired challenges (RETIRED_CTF_CHALLENGE_IDS,
+// whose material revealed the flag) get no flag and no artifacts. Run via tsx with the env
+// loaded -- see the ctf:artifacts scripts in package.json.
+import { ctfFlag, CTF_FLAG_BASES } from "../../lib/ctf-flags.ts";
+import { RETIRED_CTF_CHALLENGE_IDS } from "../../lib/mock/ctf.ts";
+
+export const FLAGS = Object.fromEntries(
+  Object.keys(CTF_FLAG_BASES).filter((id) => !RETIRED_CTF_CHALLENGE_IDS.has(id)).map((id) => [id, ctfFlag(id)]),
+);
 
 export function sha256hex(input) {
   return createHash("sha256").update(input).digest("hex");

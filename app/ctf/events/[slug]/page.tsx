@@ -10,7 +10,7 @@ import { DifficultyBadge, CtfCategoryBadge, Badge } from "../../../../components
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 import { getCtfEventBySlug, getCtfEventLeaderboard } from "../../../../services/ctf-events";
 import { formatDateTime } from "../../../../lib/format-date";
-import { MOCK_CTF_CHALLENGES, MOCK_CTF_CATEGORY_META, type MockCtfChallenge } from "../../../../lib/mock/ctf";
+import { ALL_CTF_CHALLENGES, MOCK_CTF_CATEGORY_META, type MockCtfChallenge } from "../../../../lib/mock/ctf";
 import type { CtfEventEffectiveStatus } from "../../../../types/ctf-event";
 
 const STATUS_COPY: Record<CtfEventEffectiveStatus, { label: string; tone: string }> = {
@@ -47,7 +47,7 @@ export default async function CtfEventDetailPage({ params }: { params: Promise<{
   const status = STATUS_COPY[event.effectiveStatus];
   const solvedCount = event.challenges.filter((c) => c.solvedInEvent).length;
   const totalPoints = event.challenges.reduce((sum, c) => sum + c.points, 0);
-  const byId = new Map<string, MockCtfChallenge>(MOCK_CTF_CHALLENGES.map((c) => [c.id, c]));
+  const byId = new Map<string, MockCtfChallenge>(ALL_CTF_CHALLENGES.map((c) => [c.id, c]));
 
   return (
     <AppShell title="CTF event" user={user}>

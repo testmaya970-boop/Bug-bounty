@@ -18,7 +18,6 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FLAGS, sha256hex } from "./lib.mjs";
 import { cryptoChallenges } from "./crypto.mjs";
-import { webChallenges } from "./web.mjs";
 import { forensicsNetworkChallenges } from "./forensics-network.mjs";
 import { reChallenges, pwnChallenges } from "./re-pwn.mjs";
 
@@ -30,7 +29,7 @@ const repoRoot = join(__dirname, "..", "..");
 const outDir = join(repoRoot, "public", "ctf-artifacts");
 const manifestPath = join(repoRoot, "lib", "mock", "ctf-artifacts.manifest.json");
 
-const ALL = [...webChallenges, ...cryptoChallenges, ...reChallenges, ...pwnChallenges, ...forensicsNetworkChallenges];
+const ALL = [...cryptoChallenges, ...reChallenges, ...pwnChallenges, ...forensicsNetworkChallenges].filter((ch) => ch.id in FLAGS);
 
 // Content types for the download links (Next serves public/ statically; the browser uses
 // these for the "download" affordance). Keyed by extension.
@@ -90,11 +89,13 @@ function verify() {
     if (typeof ch.files === "function") artifact = ch.files();
     const got = ch.solve(artifact);
     const want = FLAGS[ch.id];
-    const flagOk = got === want;
+    // The inline text is shown on the page as-is: it must never carry the flag itself.
+    const embedLeaks = typeof artifact.embed === "string" && artifact.embed.includes(want);
+    const flagOk = got === want && !embedLeaks;
     // Cross-check the flag hashes to what the migration seeds (sha256(trim(flag))).
     const hash = sha256hex(want.trim());
     if (flagOk) ok++;
-    else failures.push({ id: ch.id, got, want });
+    else failures.push({ id: ch.id, got, want, embedLeaks });
     console.log(`${flagOk ? "PASS" : "FAIL"}  ${ch.id.padEnd(14)} flag_hash=${hash.slice(0, 16)}...  ${flagOk ? "" : `got=${JSON.stringify(got)}`}`);
   }
   console.log(`\n${ok}/${ALL.length} challenges: solver recovered the exact seeded flag from its own artifact.`);
@@ -102,7 +103,7 @@ function verify() {
     console.error("FAILURES:", failures);
     process.exit(1);
   }
-  // Also assert we covered exactly the 28 ids in FLAGS, no more/less.
+  // Also assert every live challenge id has a generator, no more/less.
   const ids = new Set(ALL.map((c) => c.id));
   const missing = Object.keys(FLAGS).filter((id) => !ids.has(id));
   const extra = [...ids].filter((id) => !(id in FLAGS));
@@ -110,7 +111,7 @@ function verify() {
     console.error("ID MISMATCH -- missing:", missing, "extra:", extra);
     process.exit(1);
   }
-  console.log(`All ${ALL.length} challenge ids match the migration's seeded set exactly.`);
+  console.log(`All ${ALL.length} live challenge ids have a generator.`);
 }
 
 const manifest = build();
