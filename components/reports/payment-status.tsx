@@ -169,6 +169,10 @@ export function RecordPaymentResultDialog({ organizationId, programId, reportId,
   }
 
   function handleContinue() {
+    if (outcome === "succeeded" && providerReferenceId.trim().length === 0) {
+      setError("Enter the transfer reference (e.g. a wire confirmation number).");
+      return;
+    }
     if (outcome === "failed" && failureCode.trim().length === 0) {
       setError("Enter a failure code (e.g. the reason the transfer could not be completed).");
       return;
@@ -213,7 +217,7 @@ export function RecordPaymentResultDialog({ organizationId, programId, reportId,
               <option value="failed">Failed: the transfer could not be completed</option>
             </Select>
             {outcome === "succeeded" && (
-              <Input label="Reference (optional)" helperText="e.g. a wire confirmation number." value={providerReferenceId} onChange={(event) => setProviderReferenceId(event.target.value)} />
+              <Input label="Transfer reference" required helperText="e.g. a wire confirmation number -- proof the payment was actually made." value={providerReferenceId} onChange={(event) => setProviderReferenceId(event.target.value)} maxLength={200} />
             )}
             {outcome === "failed" && (
               <>

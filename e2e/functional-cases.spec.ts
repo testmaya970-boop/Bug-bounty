@@ -255,7 +255,7 @@ test("billing admin pays a bounty end to end: initiate, record success, ledger s
   await row.getByRole("button", { name: "Record payout result" }).click();
   const record = page.getByRole("dialog", { name: "Record the outcome of this payout attempt" });
   await record.getByLabel("Outcome").selectOption("succeeded");
-  await record.getByLabel("Reference (optional)").fill("WIRE-E2E-001");
+  await record.getByLabel("Transfer reference").fill("WIRE-E2E-001");
   await record.getByRole("button", { name: "Continue" }).click();
   await record.getByRole("button", { name: "Confirm" }).click();
   await expect(row.getByText("Paid")).toBeVisible();
