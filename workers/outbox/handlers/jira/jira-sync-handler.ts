@@ -92,8 +92,12 @@ type SyncContextRow = {
   message_author_name: string | null;
 };
 
+/** Links back to Unpatched inside Jira issues: the pinned public origin, like every other
+ * outbound link (APP_ORIGIN). */
 function appUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const origin = process.env.APP_ORIGIN;
+  if (!origin) throw new PermanentHandlerError("APP_ORIGIN is not set -- Jira issues would link to an unreachable address");
+  return origin.replace(/\/$/, "");
 }
 
 export function reportUrl(ctx: Pick<SyncContextRow, "organization_id" | "program_id" | "report_id">): string {

@@ -80,6 +80,7 @@ const fetchMock = vi.fn();
 const json = (status: number, body?: unknown) => new Response(body === undefined ? null : JSON.stringify(body), { status });
 
 beforeEach(() => {
+  vi.stubEnv("APP_ORIGIN", "https://app.example.test"); // links back to Unpatched from Jira
   db.receiptExists = false;
   db.context = { ...REPORT };
   db.rpcCalls = [];

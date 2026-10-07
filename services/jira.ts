@@ -2,6 +2,7 @@ import "server-only";
 import { withActorTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { mapRpcError as mapError } from "@/services/rpc-error";
+import { getNativeEnv } from "@/lib/env";
 
 /** Org-admin Jira connection management (db/migrations/202610010001_jira_integration.sql).
  * Every RPC re-derives the actor from auth.uid() and enforces owner/security_admin itself;
@@ -115,5 +116,6 @@ export async function getReportJiraLink(reportId: string): Promise<ReportJiraLin
 
 /** Shown to the admin so they can paste it into Jira's webhook settings. Not a secret. */
 export function jiraWebhookUrl(organizationId: string): string {
-  return `${(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "")}/api/webhooks/jira/${organizationId}`;
+  // The pinned public origin (APP_ORIGIN) -- the address Jira must be able to reach.
+  return `${getNativeEnv().APP_ORIGIN}/api/webhooks/jira/${organizationId}`;
 }

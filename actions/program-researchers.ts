@@ -13,6 +13,7 @@ import {
   suspendResearcher as suspendResearcherService,
 } from "@/services/program-researchers";
 import { activeEmailProvider } from "@/lib/email-provider";
+import { getNativeEnv } from "@/lib/env";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
@@ -53,7 +54,8 @@ export async function inviteResearcherToProgram(input: z.infer<typeof inviteSche
     // widening that schema is a larger change than this fix warrants). Best-effort: a
     // failed send never fails the invitation itself, which already succeeded and is real
     // regardless of whether this email arrives.
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    // The pinned public origin (APP_ORIGIN), like every other emailed link.
+    const appUrl = getNativeEnv().APP_ORIGIN;
     const acceptUrl = `${appUrl}/program-invitations/${result.data.token}`;
     try {
       await activeEmailProvider.send({

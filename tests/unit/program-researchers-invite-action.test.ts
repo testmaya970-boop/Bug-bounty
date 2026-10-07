@@ -9,6 +9,8 @@ vi.mock("@/services/program-researchers", async () => {
 });
 vi.mock("@/lib/email-provider", () => ({ activeEmailProvider: { name: "test", send: vi.fn() } }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+// Links are built from the pinned public origin (APP_ORIGIN), never request headers or a fallback.
+vi.mock("@/lib/env", () => ({ getNativeEnv: () => ({ APP_ORIGIN: process.env.APP_ORIGIN ?? "https://app.example.test" }) }));
 
 import { inviteResearcherToProgram } from "../../actions/program-researchers";
 import { inviteResearcher } from "../../services/program-researchers";
@@ -86,9 +88,9 @@ describe("inviteResearcherToProgram action: a real invitation must actually reac
     expect(result.ok).toBe(true);
   });
 
-  it("builds the accept link from NEXT_PUBLIC_APP_URL when set, falling back to localhost otherwise", async () => {
+  it("builds the accept link from APP_ORIGIN (the pinned public origin)", async () => {
     mockedInvite.mockResolvedValue(REAL_INVITATION);
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://unpatched.example");
+    vi.stubEnv("APP_ORIGIN", "https://unpatched.example");
 
     await inviteResearcherToProgram(VALID_INPUT);
 

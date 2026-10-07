@@ -45,7 +45,6 @@ silently-broken feature.
 | `RESEND_API_KEY` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
 | `EMAIL_FROM` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
 | `CTF_FLAG_SECRET` | `lib/ctf-flags.ts` (build scripts and E2E only, never the app) | — | Derives every CTF flag. All environments must share the value the committed `public/ctf-artifacts/` and flag-hash migrations were generated with; CI reads it from the `CTF_FLAG_SECRET` repo secret. Rotating it means regenerating artifacts (`npm run ctf:artifacts:verify`) and a new flag-hash migration. |
-| `NEXT_PUBLIC_APP_URL` | `actions/program-researchers.ts` | `http://localhost:3000` | Base URL used to build the accept-invitation link sent in a program-researcher-invitation email. **Must be set to the real production URL before launch** — the fallback is a real, silent bug in production (every invitation email would link to `localhost`). |
 | `PERF_TRACE` | `lib/perf-trace.ts` | disabled (no tracing) | Set to `1` to enable temporary server-side latency instrumentation (middleware → auth → DB → render). Diagnostic only, safe to leave unset. |
 | `NODE_ENV` | `services/auth.ts`, `components/auth/confirm-email-pending.tsx` | set by the Next.js/Node toolchain itself, not user-configured | Gates `secure` cookie flag and a dev-only "confirm email" shortcut. Never set manually — `next build`/`next start` set this correctly. |
 
