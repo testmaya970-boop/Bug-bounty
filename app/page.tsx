@@ -142,7 +142,7 @@ function PublicHome() {
           {/* TITLE PAGE (docs/decisions/0082/0083) -- the chaptered-editorial hero:
               type on the paper ground, the hero-art bleeding off both edges as the
               only imagery above the fold. Headline/copy/buttons unchanged. */}
-          <section className="relative overflow-hidden px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
+          <section className="hero-art-host relative overflow-hidden px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
             <HeroArt />
             <div className="relative mx-auto max-w-2xl text-center">
               <h1 data-motion="hero-heading" className={`${headingClass} text-4xl leading-[1.05] sm:text-5xl lg:text-[3.4rem]`}>

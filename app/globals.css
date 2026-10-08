@@ -443,5 +443,8 @@ a:is(.glass-surface, .glass-surface-raised) { transition: transform 0.2s ease, b
 @media (max-width: 1199px) { .hero-art-labels { display: none; } }
 @media (max-width: 820px) {
   .hero-art-bug { --hero-art-sw: 2.8; height: 30vh; top: 64px; transform: translate(-50%, 0); }
-  .hero-art-seal { --hero-art-sw: 2.6; height: 30vh; top: auto; bottom: 2%; transform: translate(50%, 0); }
+  .hero-art-seal { --hero-art-sw: 2.6; height: 24vh; top: auto; bottom: 2%; transform: translate(50%, 0); }
+  /* A phone hero is only as tall as its copy, so a bottom-pinned seal climbed into the
+     paragraph and buttons. Reserve its height below the CTAs instead. */
+  .hero-art-host { padding-bottom: calc(24vh + 1.5rem); }
 }
