@@ -254,6 +254,65 @@ describe("auth service: signUpWithPassword always requires email confirmation", 
     expect(error).toBeInstanceOf(AuthServiceError);
     expect((error as InstanceType<typeof AuthServiceError>).code).toBe("EMAIL_TAKEN");
   });
+
+  it("rejects a VERIFIED existing email with EMAIL_TAKEN without calling create_user", async () => {
+    const sqls: string[] = [];
+    fakeClient.query.mockImplementation(async (sql: string) => {
+      sqls.push(sql);
+      if (sql.includes("from public.users where email")) return queryReturning([{ id: "user-1", email_verified_at: "2026-10-01T00:00:00Z" }]);
+      return queryReturning([]);
+    });
+    const { signUpWithPassword } = await import("../../services/auth");
+
+    await expect(signUpWithPassword("taken@example.test", "a-new-strong-password")).rejects.toMatchObject({ code: "EMAIL_TAKEN" });
+    expect(sqls.some((sql) => sql.includes("create_user") || sql.includes("create_signup_verification_challenge"))).toBe(false);
+  });
+
+  it("re-issues a code for a NEVER-verified existing email, carrying the new password on the challenge without touching the account row", async () => {
+    const { activeEmailProvider } = await import("../../lib/email-provider");
+    const sqls: string[] = [];
+    let challengeArgs: unknown[] | undefined;
+    fakeClient.query.mockImplementation(async (sql: string, args: unknown[]) => {
+      sqls.push(sql);
+      if (sql.includes("from public.users where email")) return queryReturning([{ id: "user-1", email_verified_at: null }]);
+      if (sql.includes("create_signup_verification_challenge")) {
+        challengeArgs = args;
+        return queryReturning([{ create_signup_verification_challenge: "challenge-2" }]);
+      }
+      return queryReturning([]);
+    });
+    const { signUpWithPassword } = await import("../../services/auth");
+
+    const result = await signUpWithPassword("stuck@example.test", "a-new-strong-password", { intent: "organization", companyName: "Assurex" });
+
+    expect(result).toEqual({ status: "confirm_email", email: "stuck@example.test" });
+    expect(challengeArgs?.[0]).toBe("user-1");
+    const metadata = JSON.parse(challengeArgs?.[3] as string);
+    expect(metadata).toMatchObject({ intent: "organization", companyName: "Assurex" });
+    expect(metadata.passwordHash).toMatch(/^\$argon2/);
+    expect(sqls.some((sql) => sql.includes("create_user") || /update public\.users/.test(sql))).toBe(false);
+    expect(activeEmailProvider.send).toHaveBeenCalledWith(expect.objectContaining({ to: "stuck@example.test" }));
+  });
+});
+
+describe("auth service: resendConfirmationEmail keeps the pending signup's metadata", () => {
+  it("passes the latest challenge's metadata to the new challenge instead of an empty object", async () => {
+    let challengeArgs: unknown[] | undefined;
+    fakeClient.query.mockImplementation(async (sql: string, args: unknown[]) => {
+      if (sql.includes("from public.users where email")) return queryReturning([{ id: "user-1", email_verified_at: null }]);
+      if (sql.includes("select metadata from public.signup_verification_challenges")) return queryReturning([{ metadata: { intent: "organization", companyName: "Acme" } }]);
+      if (sql.includes("create_signup_verification_challenge")) {
+        challengeArgs = args;
+        return queryReturning([{ create_signup_verification_challenge: "challenge-3" }]);
+      }
+      return queryReturning([]);
+    });
+    const { resendConfirmationEmail } = await import("../../services/auth");
+
+    await resendConfirmationEmail("new@example.test");
+
+    expect(JSON.parse(challengeArgs?.[3] as string)).toEqual({ intent: "organization", companyName: "Acme" });
+  });
 });
 
 describe("auth service: verifySignupCode checks the emailed 6-digit code, never a raw link token", () => {
@@ -268,6 +327,22 @@ describe("auth service: verifySignupCode checks the emailed 6-digit code, never 
     const { verifySignupCode } = await import("../../services/auth");
 
     await expect(verifySignupCode("new@example.test", "123456")).resolves.toEqual({ userId: "user-1", intent: "organization", companyName: "Acme" });
+  });
+
+  it("applies a pending password from a repeat signup only after the code is valid, and never returns the hash", async () => {
+    let passwordUpdateArgs: unknown[] | undefined;
+    fakeClient.query.mockImplementation(async (sql: string, args: unknown[]) => {
+      if (sql.includes("select id from public.users")) return queryReturning([{ id: "user-1" }]);
+      if (sql.includes("verify_signup_verification_challenge")) return queryReturning([{ outcome: "valid", metadata: { passwordHash: "$argon2id$new" } }]);
+      if (sql.includes("set password_hash")) passwordUpdateArgs = args;
+      return queryReturning([]);
+    });
+    const { verifySignupCode } = await import("../../services/auth");
+
+    const result = await verifySignupCode("stuck@example.test", "123456");
+
+    expect(passwordUpdateArgs).toEqual(["$argon2id$new", "user-1"]);
+    expect(JSON.stringify(result)).not.toContain("argon2");
   });
 
   it("rejects with INVALID_CODE when the RPC reports the outcome 'invalid' (wrong/expired/exhausted -- never raised, see the migration's own comment on why)", async () => {

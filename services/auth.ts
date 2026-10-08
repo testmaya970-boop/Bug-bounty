@@ -72,6 +72,30 @@ export async function signUpWithPassword(
   const { code, codeHash, ttlSeconds } = generateSignupOtpChallenge();
 
   const userId = await withServiceRoleTransaction(async (client) => {
+    // An earlier signup that never entered its code (or whose code email never arrived)
+    // would otherwise lock this email out forever with EMAIL_TAKEN. Re-issue a code instead.
+    // The new password rides on the challenge and is applied only in verifySignupCode, once
+    // the code proves ownership of the email -- this row is never touched before then (an
+    // unverified row may also be a real account mid email-change, services/account.ts).
+    const { rows: existing } = await client.query<{ id: string; email_verified_at: string | null }>(
+      "select id, email_verified_at from public.users where email = $1",
+      [normalizedEmail],
+    );
+    if (existing[0]?.email_verified_at) throw new AuthServiceError("An account with this email already exists.", "EMAIL_TAKEN");
+    if (existing[0]) {
+      try {
+        await callRpc(client, "public.create_signup_verification_challenge", [
+          existing[0].id,
+          codeHash,
+          ttlSeconds,
+          JSON.stringify({ intent: metadata?.intent, companyName: metadata?.companyName, passwordHash }),
+        ]);
+      } catch (error) {
+        throw mapDbError(error);
+      }
+      return existing[0].id;
+    }
+
     let user;
     try {
       const { rows } = await client.query<{ id: string }>(
@@ -206,8 +230,15 @@ export async function resendConfirmationEmail(email: string): Promise<void> {
     const user = rows[0];
     if (!user || user.email_verified_at) return;
 
+    // Carry the latest challenge's metadata forward -- the RPC invalidates it, and "{}"
+    // here used to turn an organization signup into a researcher one on resend.
+    const { rows: latest } = await client.query<{ metadata: unknown }>(
+      "select metadata from public.signup_verification_challenges where user_id = $1 order by created_at desc limit 1",
+      [user.id],
+    );
+
     try {
-      await callRpc(client, "public.create_signup_verification_challenge", [user.id, codeHash, ttlSeconds, "{}"]);
+      await callRpc(client, "public.create_signup_verification_challenge", [user.id, codeHash, ttlSeconds, JSON.stringify(latest[0]?.metadata ?? {})]);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       // A genuine rate limit is the one outcome this function's own caller (resendConfirmationEmailAction)
@@ -277,7 +308,7 @@ export async function verifySignupCode(email: string, code: string): Promise<{ u
 
     let rows;
     try {
-      rows = await callRpc<{ outcome: string; metadata: { intent?: "researcher" | "organization"; companyName?: string } }>(
+      rows = await callRpc<{ outcome: string; metadata: { intent?: "researcher" | "organization"; companyName?: string; passwordHash?: string } }>(
         client,
         "public.verify_signup_verification_challenge",
         [user.id, codeHash],
@@ -287,6 +318,12 @@ export async function verifySignupCode(email: string, code: string): Promise<{ u
     }
     const row = rows[0];
     if (!row || row.outcome !== "valid") throw new AuthServiceError("That code didn't match or has expired. Request a new one and try again.", "INVALID_CODE");
+
+    // Set by a repeat signup on a never-verified email (signUpWithPassword): the password
+    // chosen on that latest attempt wins, now that the code has proven email ownership.
+    if (row.metadata?.passwordHash) {
+      await client.query("update public.users set password_hash = $1, updated_at = now() where id = $2", [row.metadata.passwordHash, user.id]);
+    }
 
     // Organization sign-up (work email enforced in signUpAction) is the only way to get an
     // organization account -- the only kind allowed to create an organization (202609280002).
@@ -339,7 +376,9 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
     if (!result) {
       throw new AuthServiceError("This link has expired or was already used. Request a new one.", "SESSION_EXPIRED");
     }
-    await client.query("update public.users set password_hash = $1, must_reset_password = false, updated_at = now() where id = $2", [passwordHash, result.userId]);
+    // Using the emailed link proves inbox ownership, so it also verifies the email --
+    // otherwise a never-verified account resets fine and still can't sign in.
+    await client.query("update public.users set password_hash = $1, must_reset_password = false, email_verified_at = coalesce(email_verified_at, now()), updated_at = now() where id = $2", [passwordHash, result.userId]);
     return result.userId;
   });
 
