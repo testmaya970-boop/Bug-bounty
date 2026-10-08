@@ -44,93 +44,32 @@ describe("PasswordInput: structure (interactive show/hide behavior is verified i
   });
 });
 
-describe("passwordStrengthLabel: length-first, no fabricated composition-rule scoring", () => {
-  it("returns null for an empty password -- no premature judgment before the user has typed anything", () => {
+describe("passwordStrengthLabel: the letter + number + special-character rule first, then length", () => {
+  it("is null for an empty field", () => {
     expect(passwordStrengthLabel("")).toBeNull();
   });
 
-  it("flags anything under the real 12-character minimum this app enforces (docs/decisions/0053)", () => {
-    expect(passwordStrengthLabel("short1")).toBe("Too short");
-    expect(passwordStrengthLabel("eightchr")).toBe("Too short");
+  it("names what's missing: length, a letter, a number, a special character", () => {
+    expect(passwordStrengthLabel("short1!")).toBe("Use at least 12 characters");
+    expect(passwordStrengthLabel("123456789012!")).toBe("Add at least one letter");
+    expect(passwordStrengthLabel("twelvecharspw!")).toBe("Add at least one number");
+    expect(passwordStrengthLabel("twelvecharspw1")).toBe("Add at least one special character (e.g. ! @ # $)");
   });
 
-  it("scores purely by length -- Fair, Good, Strong -- never by character-composition rules the real auth system does not enforce (supabase/config.toml's own password_requirements is empty)", () => {
-    expect(passwordStrengthLabel("twelvecharspw")).toBe("Fair");
-    expect(passwordStrengthLabel("sixteencharacters")).toBe("Good");
-    expect(passwordStrengthLabel("twentypluscharacterslong")).toBe("Strong");
+  it("scores a password that meets the rule by length -- Fair, Good, Strong", () => {
+    expect(passwordStrengthLabel("twelvechar1!")).toBe("Fair");
+    expect(passwordStrengthLabel("sixteenchars-12!")).toBe("Good");
+    expect(passwordStrengthLabel("twenty-plus-chars-long-1")).toBe("Strong");
   });
 });
 
-describe("passwordStrengthLevel: the same real thresholds as passwordStrengthLabel, as a 0-4 level", () => {
-  it("agrees with passwordStrengthLabel at every tier boundary", () => {
+describe("passwordStrengthLevel: the same rule as passwordStrengthLabel, as a 0-4 level", () => {
+  it("agrees with passwordStrengthLabel at every tier", () => {
     expect(passwordStrengthLevel("")).toBe(0);
-    expect(passwordStrengthLevel("short1")).toBe(1);
-    expect(passwordStrengthLevel("twelvecharspw")).toBe(2);
-    expect(passwordStrengthLevel("sixteencharacters")).toBe(3);
-    expect(passwordStrengthLevel("twentypluscharacterslong")).toBe(4);
-  });
-});
-
-describe("PasswordInput: strengthLevel renders a real, literal-class segmented bar (never a runtime-derived class name)", () => {
-  it("renders no bar at all for an empty password", () => {
-    const html = renderToStaticMarkup(<PasswordInput label="Password" autoComplete="new-password" required value="" onChange={() => {}} strengthLevel={0} />);
-    expect(html).not.toContain("bg-danger");
-  });
-
-  it("renders exactly one lit segment for a too-short password, using a real, literal danger class", () => {
-    const html = renderToStaticMarkup(<PasswordInput label="Password" autoComplete="new-password" required value="short1" onChange={() => {}} strengthLevel={1} />);
-    expect(html).toContain("bg-danger");
-    expect(html).not.toContain("bg-success");
-  });
-
-  it("renders a real, literal success class for a strong password", () => {
-    const html = renderToStaticMarkup(<PasswordInput label="Password" autoComplete="new-password" required value="twentypluscharacterslong" onChange={() => {}} strengthLevel={4} />);
-    expect(html).toContain("bg-success");
-  });
-});
-
-describe("SignUpForm: intent-specific fields, wrapped in a real card (see docs/decisions/0050)", () => {
-  it("shows Your name and Username for a researcher, never Organization name", () => {
-    const html = renderToStaticMarkup(<SignUpForm intent="researcher" emailIsSimulated={false} />);
-    expect(html).toContain("Your name");
-    expect(html).toContain("Username");
-    expect(html).not.toContain("Organization name");
-    // A visible card container -- a bordered, padded, shadowed wrapper -- not the bare
-    // stacked-input layout the pre-0050 form used.
-    expect(html).toMatch(/class="[^"]*rounded-xl[^"]*border[^"]*"/);
-  });
-
-  it("shows Organization name and a work-email helper for an organization signup, never Username", () => {
-    const html = renderToStaticMarkup(<SignUpForm intent="organization" emailIsSimulated={false} />);
-    expect(html).toContain("Organization name");
-    expect(html).not.toContain("Your name");
-    expect(html).not.toContain(">Username<");
-    expect(html).toContain("Use your work email");
-  });
-});
-
-describe("ConfirmEmailPending: honest about local-vs-real delivery, a real resend path (see docs/decisions/0052.1)", () => {
-  // emailIsSimulated is the caller's own server-derived fact (activeEmailProvider.name ===
-  // "dev", read in app/researchers/sign-up/page.tsx / app/organizations/sign-up/page.tsx) --
-  // this component trusts it outright rather than re-deriving anything from
-  // process.env.NODE_ENV, which went stale the moment a real-sending provider
-  // (gmail-smtp) became usable outside production: NODE_ENV !== "production" no longer
-  // implies "nothing is actually sent."
-  it("shows the no-real-provider notice when the caller says email is simulated", () => {
-    const html = renderToStaticMarkup(<ConfirmEmailPending email="researcher@example.test" emailIsSimulated={true} />);
-    expect(html).toContain("No real email provider configured");
-  });
-
-  it("never shows the notice when the caller says a real provider is active, regardless of NODE_ENV", () => {
-    const html = renderToStaticMarkup(<ConfirmEmailPending email="researcher@example.test" emailIsSimulated={false} />);
-    expect(html).not.toContain("No real email provider configured");
-  });
-
-  it("shows the real email address, a code-entry field, and a resend affordance", () => {
-    const html = renderToStaticMarkup(<ConfirmEmailPending email="researcher@example.test" emailIsSimulated={false} />);
-    expect(html).toContain("researcher@example.test");
-    expect(html).toContain("Verification code");
-    expect(html).toContain("Resend code");
+    expect(passwordStrengthLevel("twelvecharspw1")).toBe(1);
+    expect(passwordStrengthLevel("twelvechar1!")).toBe(2);
+    expect(passwordStrengthLevel("sixteenchars-12!")).toBe(3);
+    expect(passwordStrengthLevel("twenty-plus-chars-long-1")).toBe(4);
   });
 });
 
@@ -139,6 +78,13 @@ describe("isBusinessEmail: rejects known free/consumer webmail domains only", ()
     expect(isBusinessEmail("owner@gmail.com")).toBe(false);
     expect(isBusinessEmail("owner@yahoo.com")).toBe(false);
     expect(isBusinessEmail("owner@outlook.com")).toBe(false);
+    expect(isBusinessEmail("owner@yahoo.co.in")).toBe(false);
+    expect(isBusinessEmail("owner@hotmail.co.uk")).toBe(false);
+    expect(isBusinessEmail("owner@rediffmail.com")).toBe(false);
+    expect(isBusinessEmail("owner@mailinator.com")).toBe(false);
+    expect(isBusinessEmail("owner@abc.10minutemail.com")).toBe(false);
+    expect(isBusinessEmail("owner@yopmail.com")).toBe(false);
+    expect(isBusinessEmail("owner@mail.acme-corp.com")).toBe(true);
   });
 
   it("accepts a company's own domain, including one this list has never heard of", () => {

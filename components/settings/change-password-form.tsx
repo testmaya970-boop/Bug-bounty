@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { PasswordInput, passwordStrengthLabel, passwordStrengthLevel } from "../auth/password-input";
+import { PASSWORD_RULE_TEXT, passwordProblem } from "../../lib/auth/password-policy";
 import { Button } from "../ui/button";
 import { Alert } from "../ui/feedback";
 import { changeMyPasswordAction } from "../../actions/account";
@@ -54,7 +55,7 @@ export function ChangePasswordForm() {
           setSaved(false);
         }}
         strengthLevel={passwordStrengthLevel(password)}
-        helperText={strength ? `At least 12 characters. Strength: ${strength}.` : "At least 12 characters. Length matters more than symbols."}
+        helperText={!password ? PASSWORD_RULE_TEXT : (passwordProblem(password) ?? `Strength: ${strength}.`)}
       />
       <PasswordInput
         label="Confirm new password"

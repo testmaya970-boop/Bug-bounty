@@ -167,7 +167,7 @@ describe("resetPasswordAction: requires the token from the emailed reset link", 
   it("rejects a missing token as INVALID_INPUT without calling the service", async () => {
     const { resetPasswordAction } = await import("../../actions/auth");
 
-    const result = await resetPasswordAction({ token: "", password: "a-real-new-password" });
+    const result = await resetPasswordAction({ token: "", password: "a-real-new-password-1" });
 
     expect(result.ok).toBe(false);
     expect(mockedConfirmPasswordReset).not.toHaveBeenCalled();
@@ -178,7 +178,7 @@ describe("resetPasswordAction: requires the token from the emailed reset link", 
 
     const result = await resetPasswordAction({ token: "a-real-token", password: "short" });
 
-    expect(result).toEqual({ ok: false, code: "INVALID_INPUT", message: "Use at least 12 characters -- longer is the single strongest thing a password can be." });
+    expect(result).toEqual({ ok: false, code: "INVALID_INPUT", message: "Use at least 12 characters." });
     expect(mockedConfirmPasswordReset).not.toHaveBeenCalled();
   });
 
@@ -186,17 +186,17 @@ describe("resetPasswordAction: requires the token from the emailed reset link", 
     mockedConfirmPasswordReset.mockResolvedValue(undefined);
     const { resetPasswordAction } = await import("../../actions/auth");
 
-    const result = await resetPasswordAction({ token: "a-real-token", password: "a-real-new-password" });
+    const result = await resetPasswordAction({ token: "a-real-token", password: "a-real-new-password-1" });
 
     expect(result).toEqual({ ok: true });
-    expect(mockedConfirmPasswordReset).toHaveBeenCalledWith("a-real-token", "a-real-new-password");
+    expect(mockedConfirmPasswordReset).toHaveBeenCalledWith("a-real-token", "a-real-new-password-1");
   });
 
   it("on failure (e.g. an expired/already-used token), returns the mapped error", async () => {
     mockedConfirmPasswordReset.mockRejectedValue(new AuthServiceError("This link has expired or was already used. Request a new one.", "SESSION_EXPIRED"));
     const { resetPasswordAction } = await import("../../actions/auth");
 
-    const result = await resetPasswordAction({ token: "a-real-token", password: "a-real-new-password" });
+    const result = await resetPasswordAction({ token: "a-real-token", password: "a-real-new-password-1" });
 
     expect(result).toEqual({ ok: false, code: "SESSION_EXPIRED", message: "This link has expired or was already used. Request a new one." });
   });

@@ -22,11 +22,11 @@ export default async function HaiPage() {
   const alreadyOnWaitlist = await amIOnHaiWaitlist();
 
   return (
-    <AppShell title="Hai" user={user}>
+    <AppShell title="Assistant" user={user}>
       <div className="mx-auto max-w-xl space-y-6">
         <div>
           <SectionLabel>In design</SectionLabel>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">Hai, a co-pilot for triage</h2>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">Unpatched Assistant, a co-pilot for triage</h2>
           <p className="mt-3 text-sm text-ink-muted">
             We're designing an AI co-pilot to help with the parts of triage that repeat -- duplicate detection, severity suggestions, first-pass write-ups. Nothing is built yet: no
             model, no chat, no responses. This page exists to be honest about that, not to preview a feature that doesn't exist.

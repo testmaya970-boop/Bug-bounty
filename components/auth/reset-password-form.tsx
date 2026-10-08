@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PasswordInput, passwordStrengthLabel, passwordStrengthLevel } from "./password-input";
+import { PASSWORD_RULE_TEXT, passwordProblem } from "../../lib/auth/password-policy";
 import { Button } from "../ui/button";
 import { resetPasswordAction } from "../../actions/auth";
 
@@ -44,7 +45,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         strengthLevel={passwordStrengthLevel(password)}
-        helperText={strength ? `At least 12 characters. Strength: ${strength}.` : "At least 12 characters. Length matters more than symbols."}
+        helperText={!password ? PASSWORD_RULE_TEXT : (passwordProblem(password) ?? `Strength: ${strength}.`)}
       />
       <PasswordInput
         label="Confirm new password"

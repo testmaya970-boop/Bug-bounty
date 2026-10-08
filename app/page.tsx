@@ -27,6 +27,7 @@ import { ReputationCharts } from "../components/reputation/reputation-charts";
 import { CommandRow } from "../components/dashboard/command-row";
 import { OperationalGrid } from "../components/dashboard/operational-grid";
 import { StandingSplit } from "../components/dashboard/standing-split";
+import { getMyEmailAliasAddress } from "../services/email-alias";
 import { ReferenceStrip } from "../components/dashboard/reference-strip";
 import { LearningSection } from "../components/dashboard/learning-section";
 import { MOCK_CHALLENGE_CATEGORIES, MOCK_CHALLENGE_SPOTLIGHT } from "../lib/mock/researcher-dashboard";
@@ -423,8 +424,8 @@ async function renderHomePage() {
   const hasResearcherParticipation = participations.length > 0;
   if (hasOrganization && !hasResearcherParticipation) redirect("/organizations" as Route);
 
-  const [invitations, dashboardSummary, reputationLedgerPage, reputationProgramCounts, myReportsPage, featuredPrograms, leaderboard, reputationScore, paymentObligations] =
-    await perfTimed("HomePage 9-query dashboard batch", () =>
+  const [invitations, dashboardSummary, reputationLedgerPage, reputationProgramCounts, myReportsPage, featuredPrograms, leaderboard, reputationScore, paymentObligations, emailAlias] =
+    await perfTimed("HomePage 10-query dashboard batch", () =>
       Promise.all([
         listMyPendingProgramInvitations(),
         // Replaces four separate round trips (getMyReputationSummary,
@@ -453,6 +454,7 @@ async function renderHomePage() {
         // app/settings/payments/page.tsx already use -- feeds CommandRow's real
         // "lifetime rewards" stat, replacing the fabricated MOCK_RESEARCHER_STATUS figure.
         listMyPaymentObligations(user.id),
+        getMyEmailAliasAddress(user.id),
       ]),
     );
   const { reputationSummary: reputationCounts, reputationSeverityCounts, reportStatusCounts, reportsNeedingResponse } = dashboardSummary;
@@ -532,6 +534,22 @@ async function renderHomePage() {
         </div>
 
         <CommandRow action={primaryAction} status={researcherStatus} />
+
+        {emailAlias.enabled && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-raised px-5 py-3 shadow-sm">
+            <div className="min-w-0">
+              <SectionLabel>Email alias</SectionLabel>
+              {emailAlias.address ? (
+                <p className="mt-0.5 truncate font-mono text-sm text-ink select-all">{emailAlias.address}</p>
+              ) : (
+                <p className="mt-0.5 text-sm text-ink-muted">Get a private alias for signing up test accounts on program targets.</p>
+              )}
+            </div>
+            <Link prefetch={false} href={"/settings/email-alias" as Route} className="shrink-0 text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              {emailAlias.address ? "Manage alias →" : "Create your alias →"}
+            </Link>
+          </div>
+        )}
 
         <OperationalGrid activePrograms={activePrograms} featuredPrograms={featuredPrograms} challenges={MOCK_CHALLENGE_SPOTLIGHT} />
 

@@ -21,32 +21,32 @@ import { perfTimed } from "../../../../lib/perf-trace";
  * denial, not a new permission model). No fabricated event types, no invented category --
  * the type filter is entity_type, already a real column on every row.
  */
-export default async function OrganizationHactivityPage({ params }: { params: Promise<{ organizationId: string }> }) {
-  return perfTimed("route: hactivity (total)", () => renderHactivityPage(params));
+export default async function OrganizationActivityPage({ params }: { params: Promise<{ organizationId: string }> }) {
+  return perfTimed("route: activity (total)", () => renderActivityPage(params));
 }
 
-async function renderHactivityPage(paramsPromise: Promise<{ organizationId: string }>) {
+async function renderActivityPage(paramsPromise: Promise<{ organizationId: string }>) {
   const { organizationId } = await paramsPromise;
   const user = await getCurrentUser();
-  if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/hactivity` as Route);
+  if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/activity` as Route);
 
-  const actor = await perfTimed("hactivity: getActorMembership", () => getActorMembership(user.id, organizationId));
+  const actor = await perfTimed("activity: getActorMembership", () => getActorMembership(user.id, organizationId));
   if (!actor || actor.status !== "active" || !canManageMembers(actor.role)) {
     return (
-      <AppShell title="Hactivity" user={user} organizationId={organizationId}>
+      <AppShell title="Activity" user={user} organizationId={organizationId}>
         <PermissionDenied>Only an organization owner or security admin can view the activity feed.</PermissionDenied>
       </AppShell>
     );
   }
 
-  const [organizations, members, activityPage] = await perfTimed("hactivity: main batch", () =>
+  const [organizations, members, activityPage] = await perfTimed("activity: main batch", () =>
     Promise.all([listCurrentUserOrganizations(user.id), listOrganizationMembers(organizationId), getOrganizationAuditActivity(organizationId)]),
   );
   const organization = organizations.find((org) => org.id === organizationId);
   const actorNames = Object.fromEntries(members.map((member) => [member.userId, member.displayName]));
 
   return (
-    <AppShell title="Hactivity" user={user} organizationId={organizationId}>
+    <AppShell title="Activity" user={user} organizationId={organizationId}>
       <div className="max-w-3xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 

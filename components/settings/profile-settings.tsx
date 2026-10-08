@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import Link from "next/link";
-import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { Input, Textarea } from "../ui/form";
 import { Button } from "../ui/button";
 import { Alert } from "../ui/feedback";
 import { SectionLabel } from "../ui/security-primitives";
-import { updateMyBiographyAction, updateMyDisplayNameAction, setMyPublicUsernameAction } from "../../actions/researcher-profiles";
+import { updateMyBiographyAction, updateMyDisplayNameAction } from "../../actions/researcher-profiles";
 
 /**
  * The real, minimal self-service identity every account type shares -- display name
@@ -17,22 +15,14 @@ import { updateMyBiographyAction, updateMyDisplayNameAction, setMyPublicUsername
  * disclosed, deferred capability -- see that same doc), no skills/certifications/
  * location/social links: this product's own repeated "no invented social metrics" rule
  * applies here too.
- *
- * The "Public profile" section (docs/decisions/0065) is new: setting a real,
- * collision-checked public username publishes display name, biography, stated focus
- * areas, and the real reputation score at /researchers/[username] -- an explicit,
- * opt-in action, never automatic. Clearing it (submitting empty) un-publishes the
- * profile without deleting anything else.
  */
 export function ProfileSettings({
   initialDisplayName,
   initialBiography,
-  initialPublicUsername,
   researcherFields = true,
 }: {
   initialDisplayName: string;
   initialBiography: string;
-  initialPublicUsername: string | null;
   /** false for an organization account: a biography "shown to organizations reviewing
    * your reports" and a public researcher profile do not apply to it. */
   researcherFields?: boolean;
@@ -40,16 +30,12 @@ export function ProfileSettings({
   const router = useRouter();
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [biography, setBiography] = useState(initialBiography);
-  const [publicUsername, setPublicUsername] = useState(initialPublicUsername ?? "");
   const [nameError, setNameError] = useState<string | null>(null);
   const [bioError, setBioError] = useState<string | null>(null);
-  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [nameSaved, setNameSaved] = useState(false);
   const [bioSaved, setBioSaved] = useState(false);
-  const [usernameSaved, setUsernameSaved] = useState<string | null>(null);
   const [namePending, startNameTransition] = useTransition();
   const [bioPending, startBioTransition] = useTransition();
-  const [usernamePending, startUsernameTransition] = useTransition();
 
   function handleSaveName(event: React.FormEvent) {
     event.preventDefault();
@@ -77,21 +63,6 @@ export function ProfileSettings({
         return;
       }
       setBioSaved(true);
-      router.refresh();
-    });
-  }
-
-  function handleSaveUsername(event: React.FormEvent) {
-    event.preventDefault();
-    setUsernameError(null);
-    setUsernameSaved(null);
-    startUsernameTransition(async () => {
-      const result = await setMyPublicUsernameAction({ username: publicUsername });
-      if (!result.ok) {
-        setUsernameError(result.message);
-        return;
-      }
-      setUsernameSaved(publicUsername.trim()); // "" = unpublished, which gets its own confirmation
       router.refresh();
     });
   }
@@ -145,39 +116,6 @@ export function ProfileSettings({
             </div>
           </form>
 
-          <form className="space-y-3 border-t border-border pt-6" onSubmit={handleSaveUsername}>
-            <SectionLabel>Public profile</SectionLabel>
-            <p className="text-sm text-ink-muted">
-              Optional. Choose a public username to publish a profile at /researchers/{"{username}"} showing your display name, biography, stated focus areas, and your real reputation score. Clear this field
-              and save to unpublish it.
-            </p>
-            <Input
-              label="Public username"
-              placeholder="e.g. shiva-researches"
-              value={publicUsername}
-              onChange={(event) => {
-                setPublicUsername(event.target.value);
-                setUsernameSaved(null);
-              }}
-              maxLength={30}
-              helperText="3-30 characters: lowercase letters, numbers, and hyphens only."
-              error={usernameError ?? undefined}
-            />
-            {usernameSaved === "" && <Alert tone="success" title="Public profile unpublished." />}
-            {!!usernameSaved && (
-              <Alert tone="success" title="Public profile published.">
-                <Link prefetch={false} href={`/researchers/${usernameSaved}` as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-                  View your public profile →
-                </Link>
-              </Alert>
-            )}
-            {usernameSaved === null && publicUsername.trim() === "" && initialPublicUsername && <Alert tone="info" title="Saving with this field empty will unpublish your public profile." />}
-            <div className="flex justify-end">
-              <Button type="submit" pending={usernamePending}>
-                Save
-              </Button>
-            </div>
-          </form>
         </>
       )}
     </div>

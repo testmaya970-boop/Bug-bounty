@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { Input } from "../ui/form";
 import { PasswordInput, passwordStrengthLabel, passwordStrengthLevel } from "./password-input";
+import { PASSWORD_RULE_TEXT, passwordProblem } from "../../lib/auth/password-policy";
 import { Button } from "../ui/button";
 import { ConfirmEmailPending } from "./confirm-email-pending";
 import { signUpAction } from "../../actions/auth";
@@ -22,6 +23,7 @@ export function SignUpForm({ intent, emailIsSimulated }: { intent?: "researcher"
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -33,6 +35,15 @@ export function SignUpForm({ intent, emailIsSimulated }: { intent?: "researcher"
     setError(null);
     if (emailTouchedAndPersonal) {
       setError("Use your work email address to create an organization account.");
+      return;
+    }
+    const problem = passwordProblem(password);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(confirmPassword ? "Passwords don't match." : "Confirm your password.");
       return;
     }
     startTransition(async () => {
@@ -84,8 +95,8 @@ export function SignUpForm({ intent, emailIsSimulated }: { intent?: "researcher"
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          error={emailTouchedAndPersonal ? "Use your work email address." : undefined}
-          helperText={intent === "organization" && !emailTouchedAndPersonal ? "Use your work email, not a personal gmail/yahoo/outlook address." : undefined}
+          error={emailTouchedAndPersonal ? "Use your work email address. Personal and temporary email addresses aren't accepted." : undefined}
+          helperText={intent === "organization" && !emailTouchedAndPersonal ? "Use your work email. Personal (Gmail, Yahoo, Outlook...) and temporary email addresses aren't accepted." : undefined}
         />
         <PasswordInput
           label="Password"
@@ -95,7 +106,15 @@ export function SignUpForm({ intent, emailIsSimulated }: { intent?: "researcher"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           strengthLevel={passwordStrengthLevel(password)}
-          helperText={strength ? `At least 12 characters. Strength: ${strength}.` : "At least 12 characters. Length matters more than symbols."}
+          helperText={!password ? PASSWORD_RULE_TEXT : (passwordProblem(password) ?? `Strength: ${strength}.`)}
+        />
+        <PasswordInput
+          label="Confirm password"
+          autoComplete="new-password"
+          required
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+          error={confirmPassword.length > 0 && confirmPassword !== password ? "Passwords don't match." : undefined}
         />
         {error && (
           <p role="alert" className="text-sm font-medium text-danger">

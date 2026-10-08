@@ -259,12 +259,12 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // panel shows the amount too.
   await expect(page.getByText(/USD 500\.00/).first()).toBeVisible();
 
-  // --- Hactivity shows the transitions --------------------------------------------------
+  // --- Activity shows the transitions --------------------------------------------------
   // Currently on the Inbox page (ProgramHeader) -- breadcrumb back to Engagements, then
-  // the org header's own Hactivity tab (Hactivity itself is org-scoped, not per-program).
+  // the org header's own Activity tab (Activity itself is org-scoped, not per-program).
   await breadcrumbEngagements(page).click();
-  await sidebarNav(page, "Hactivity").click();
-  // .first(): Hactivity keeps every past run's events for this seeded report.
+  await sidebarNav(page, "Activity").click();
+  // .first(): Activity keeps every past run's events for this seeded report.
   await expect(page.getByText(/started triage/).first()).toBeVisible();
   await expect(page.getByText(/accepted a report/).first()).toBeVisible();
   await expect(page.getByText(/resolved a report/).first()).toBeVisible();
@@ -278,7 +278,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // right after triage/accept/resolve -- see the researcher leg below.
 
   // --- Analytics ---------------------------------------------------------------------
-  // Already on an org-scoped page (Hactivity) -- Analytics is org-wide too.
+  // Already on an org-scoped page (Activity) -- Analytics is org-wide too.
   await sidebarNav(page, "Analytics").click();
   await expect(page.getByRole("heading", { name: /Analytics/ })).toBeVisible();
 
@@ -337,9 +337,9 @@ test("nav de-duplication: every one of the nine org routes highlights exactly on
   await page.waitForURL(/\/researchers$/);
   await expectSingleSidebarHighlight(page, "Researchers");
 
-  await sidebarNav(page, "Hactivity").click();
-  await page.waitForURL(/\/hactivity$/);
-  await expectSingleSidebarHighlight(page, "Hactivity");
+  await sidebarNav(page, "Activity").click();
+  await page.waitForURL(/\/activity$/);
+  await expectSingleSidebarHighlight(page, "Activity");
 
   await sidebarNav(page, "Analytics").click();
   await page.waitForURL(/\/analytics$/);
@@ -366,7 +366,7 @@ test("nav de-duplication: every one of the nine org routes highlights exactly on
   await signOut(page);
 });
 
-test("org journey: researcher accepts an invitation, sees the finalized amount, gets notified, and reaches Hai", async ({ page }) => {
+test("org journey: researcher accepts an invitation, sees the finalized amount, gets notified, and reaches the Assistant", async ({ page }) => {
   await signIn(page, INVITED_EMAIL);
 
   // --- Accept the (seeded) pending private-program invitation via the real accept flow --
@@ -403,8 +403,8 @@ test("org journey: researcher accepts an invitation, sees the finalized amount, 
   await expect(page.getByRole("link", { name: /E2E seed:/ }).first()).toBeVisible();
 
   // --- Hai reachable, honest stub, real waitlist join -----------------------------------
-  await page.getByRole("link", { name: "Hai" }).click();
-  await expect(page.getByRole("heading", { name: /Hai, a co-pilot for triage/ })).toBeVisible();
+  await page.getByRole("link", { name: "Assistant", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /Unpatched Assistant, a co-pilot for triage/ })).toBeVisible();
   await expect(page.getByText(/Nothing is built yet/)).toBeVisible();
 
   await signOut(page);

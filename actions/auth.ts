@@ -10,6 +10,7 @@ import { isSafeRedirect } from "@/lib/auth/safe-redirect";
 import { determineDefaultDestination } from "@/lib/auth/default-destination";
 import { isBusinessEmail } from "@/lib/auth/business-email";
 import { perfTimed } from "@/lib/perf-trace";
+import { passwordProblem } from "@/lib/auth/password-policy";
 
 export type AuthActionResult = { ok: true; status?: "confirm_email"; email?: string } | { ok: false; code: string; message: string };
 
@@ -49,7 +50,12 @@ const credentialsSchema = z.object({
 // empty) -- current OWASP/NIST guidance treats length as the primary real strength
 // signal; a longer minimum is a genuine security improvement, a composition requirement
 // mostly is not. See docs/decisions/0053.
-const strongPasswordSchema = z.string().min(12, "Use at least 12 characters -- longer is the single strongest thing a password can be.");
+// Composition rule added on product direction (2026-10-08): letter + number + special
+// character on top of the 12-character minimum -- see lib/auth/password-policy.ts.
+const strongPasswordSchema = z.string().superRefine((value, ctx) => {
+  const problem = passwordProblem(value);
+  if (problem) ctx.addIssue({ code: "custom", message: problem });
+});
 
 const usernamePattern = /^[a-zA-Z0-9_]{3,32}$/;
 

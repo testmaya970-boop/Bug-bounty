@@ -44,3 +44,17 @@ export async function createMyEmailAlias(): Promise<string> {
   }
   return `${rows[0].ensure_my_email_alias}@${config.domain}`;
 }
+
+/** Just the address, for the researcher dashboard: one indexed lookup, nothing when the
+ * feature isn't configured. */
+export async function getMyEmailAliasAddress(userId: string): Promise<{ enabled: boolean; address: string | null }> {
+  const config = getAliasMailConfig();
+  if (!config) return { enabled: false, address: null };
+  let localPart: string | null = null;
+  try {
+    localPart = await withActorTransaction(userId, async (client) => (await client.query<{ local_part: string }>("select local_part from public.researcher_email_aliases where user_id = $1", [userId])).rows[0]?.local_part ?? null);
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return { enabled: true, address: localPart ? `${localPart}@${config.domain}` : null };
+}

@@ -5,7 +5,6 @@ import { RegistryList, SectionLabel } from "../../../components/ui/security-prim
 import { ProfileSettings } from "../../../components/settings/profile-settings";
 import { listCurrentUserOrganizations } from "../../../services/organizations";
 import { getMyBiography } from "../../../services/researcher-profiles";
-import { getMyPublicUsername } from "../../../services/reputation";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 
 export default async function PublicProfileSettingsPage() {
@@ -14,9 +13,8 @@ export default async function PublicProfileSettingsPage() {
 
   // An organization account has no biography or public researcher profile: nothing to load.
   const isOrganization = user.accountType === "organization";
-  const [biography, publicUsername, organizations] = await Promise.all([
+  const [biography, organizations] = await Promise.all([
     isOrganization ? null : getMyBiography(user.id),
-    isOrganization ? null : getMyPublicUsername(user.id),
     listCurrentUserOrganizations(user.id),
   ]);
 
@@ -29,7 +27,7 @@ export default async function PublicProfileSettingsPage() {
         </p>
       </div>
 
-      <ProfileSettings initialDisplayName={user.displayName} initialBiography={biography ?? ""} initialPublicUsername={publicUsername} researcherFields={!isOrganization} />
+      <ProfileSettings initialDisplayName={user.displayName} initialBiography={biography ?? ""} researcherFields={!isOrganization} />
 
       {organizations.length > 0 && (
         <div className="border-t border-border pt-6">

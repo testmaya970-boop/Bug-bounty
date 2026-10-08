@@ -16,9 +16,13 @@ import { withAnonTransaction, callRpc } from "@/lib/db/pool";
  * response, the same information-hiding principle submit_report's own scope-match
  * rejection uses (0008).
  */
+// API access is "coming soon" (product direction, 2026-10-08): no token is accepted, not
+// even one issued before the settings page was closed. Flip to true at launch.
+const API_TOKENS_ENABLED = false;
+
 export async function resolveBearerUserId(request: NextRequest): Promise<string | null> {
   const header = request.headers.get("authorization");
-  if (!header) return null;
+  if (!header || !API_TOKENS_ENABLED) return null;
 
   // Any `<brand>_pat_` prefix: tokens issued before the rename keep working (the hash decides).
   const match = /^Bearer\s+([a-z]+_pat_\S+)$/.exec(header.trim());

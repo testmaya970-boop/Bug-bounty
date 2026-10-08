@@ -49,7 +49,7 @@ describe("signUpAction: email confirmation is always required now -- no role or 
     mockedSignUp.mockResolvedValue({ status: "confirm_email", email: "pending@example.test" });
     const { signUpAction } = await import("../../actions/auth");
 
-    const result = await signUpAction({ email: "pending@example.test", password: "a-real-password", intent: "researcher" });
+    const result = await signUpAction({ email: "pending@example.test", password: "a-real-password-1", intent: "researcher" });
 
     expect(mockedRedirect).not.toHaveBeenCalled();
     expect(result).toEqual({ ok: true, status: "confirm_email", email: "pending@example.test" });
@@ -58,7 +58,7 @@ describe("signUpAction: email confirmation is always required now -- no role or 
   it("rejects a personal-email-domain organization signup before ever calling signUpWithPassword", async () => {
     const { signUpAction } = await import("../../actions/auth");
 
-    const result = await signUpAction({ email: "owner@gmail.com", password: "a-real-password", intent: "organization", companyName: "Acme" });
+    const result = await signUpAction({ email: "owner@gmail.com", password: "a-real-password-1", intent: "organization", companyName: "Acme" });
 
     expect(result).toEqual({ ok: false, code: "PERSONAL_EMAIL", message: "Use your work email address to create an organization account." });
     expect(mockedSignUp).not.toHaveBeenCalled();
@@ -68,7 +68,7 @@ describe("signUpAction: email confirmation is always required now -- no role or 
     mockedSignUp.mockResolvedValue({ status: "confirm_email", email: "owner@acme.test" });
     const { signUpAction } = await import("../../actions/auth");
 
-    await signUpAction({ email: "owner@acme.test", password: "a-real-password", intent: "organization", companyName: "Acme" });
+    await signUpAction({ email: "owner@acme.test", password: "a-real-password-1", intent: "organization", companyName: "Acme" });
 
     expect(mockedCreateOrganization).not.toHaveBeenCalled();
   });
@@ -77,9 +77,9 @@ describe("signUpAction: email confirmation is always required now -- no role or 
     mockedSignUp.mockResolvedValue({ status: "confirm_email", email: "r@example.test" });
     const { signUpAction } = await import("../../actions/auth");
 
-    await signUpAction({ email: "r@example.test", password: "a-real-password", intent: "researcher", displayName: "Riley Researcher", username: "riley_r" });
+    await signUpAction({ email: "r@example.test", password: "a-real-password-1", intent: "researcher", displayName: "Riley Researcher", username: "riley_r" });
 
-    expect(mockedSignUp).toHaveBeenCalledWith("r@example.test", "a-real-password", { displayName: "Riley Researcher", username: "riley_r", intent: "researcher", companyName: undefined });
+    expect(mockedSignUp).toHaveBeenCalledWith("r@example.test", "a-real-password-1", { displayName: "Riley Researcher", username: "riley_r", intent: "researcher", companyName: undefined });
   });
 });
 
@@ -98,7 +98,7 @@ describe("signInAction: destination is the account's own real, server-derived co
     mockedListParticipations.mockResolvedValue([]);
     const { signInAction } = await import("../../actions/auth");
 
-    const result = await signInAction({ email: "owner@example.test", password: "a-real-password" });
+    const result = await signInAction({ email: "owner@example.test", password: "a-real-password-1" });
 
     expect(result).toEqual({ ok: true, destination: "/organizations" });
     expect(mockedRedirect).not.toHaveBeenCalled();
@@ -109,7 +109,7 @@ describe("signInAction: destination is the account's own real, server-derived co
     mockedListOrgs.mockResolvedValue([]);
     const { signInAction } = await import("../../actions/auth");
 
-    const result = await signInAction({ email: "researcher@example.test", password: "a-real-password" });
+    const result = await signInAction({ email: "researcher@example.test", password: "a-real-password-1" });
 
     expect(result).toEqual({ ok: true, destination: "/" });
     // listMyProgramParticipations is only ever consulted once an organization is already
@@ -124,7 +124,7 @@ describe("signInAction: destination is the account's own real, server-derived co
     mockedListParticipations.mockResolvedValue([{ programId: "p-1", organizationId: "org-2", programName: "Bounty", organizationName: "Other Org", status: "active", programStatus: "active", joinedAt: "2026-01-01" }]);
     const { signInAction } = await import("../../actions/auth");
 
-    const result = await signInAction({ email: "both@example.test", password: "a-real-password" });
+    const result = await signInAction({ email: "both@example.test", password: "a-real-password-1" });
 
     expect(result).toEqual({ ok: true, destination: "/" });
   });
@@ -134,7 +134,7 @@ describe("signInAction: destination is the account's own real, server-derived co
     mockedListOrgs.mockResolvedValue([]);
     const { signInAction } = await import("../../actions/auth");
 
-    const result = await signInAction({ email: "new@example.test", password: "a-real-password" });
+    const result = await signInAction({ email: "new@example.test", password: "a-real-password-1" });
 
     expect(result).toEqual({ ok: true, destination: "/" });
     expect(mockedListParticipations).not.toHaveBeenCalled();
@@ -144,7 +144,7 @@ describe("signInAction: destination is the account's own real, server-derived co
     mockedSignIn.mockResolvedValue({ mfaRequired: false, userId: "user-1" });
     const { signInAction } = await import("../../actions/auth");
 
-    const result = await signInAction({ email: "u@example.test", password: "a-real-password", redirectTo: "/organizations/org-1/programs" });
+    const result = await signInAction({ email: "u@example.test", password: "a-real-password-1", redirectTo: "/organizations/org-1/programs" });
 
     expect(result).toEqual({ ok: true, destination: "/organizations/org-1/programs" });
     expect(mockedListOrgs).not.toHaveBeenCalled();
@@ -157,7 +157,7 @@ describe("signInAction: destination is the account's own real, server-derived co
     mockedListParticipations.mockResolvedValue([]);
     const { signInAction } = await import("../../actions/auth");
 
-    const result = await signInAction({ email: "u@example.test", password: "a-real-password", redirectTo: "//evil.test" });
+    const result = await signInAction({ email: "u@example.test", password: "a-real-password-1", redirectTo: "//evil.test" });
 
     expect(result).toEqual({ ok: true, destination: "/" });
   });
@@ -168,7 +168,7 @@ describe("signInAction: destination is the account's own real, server-derived co
     mockedListParticipations.mockResolvedValue([]);
     const { signInAction } = await import("../../actions/auth");
 
-    const result = await signInAction({ email: "mfa@example.test", password: "a-real-password" });
+    const result = await signInAction({ email: "mfa@example.test", password: "a-real-password-1" });
 
     expect(result).toEqual({ ok: true, destination: "/mfa/verify?redirectTo=%2Forganizations" });
     expect(mockedRedirect).not.toHaveBeenCalled();
@@ -179,7 +179,7 @@ describe("signInAction: destination is the account's own real, server-derived co
     mockedIsPlatformAdmin.mockResolvedValue(true);
     const { signInAction } = await import("../../actions/auth");
 
-    const result = await signInAction({ email: "admin@example.test", password: "a-real-password" });
+    const result = await signInAction({ email: "admin@example.test", password: "a-real-password-1" });
 
     expect(result).toEqual({ ok: true, destination: "/platform/programs" });
     // Platform-admin status is checked first and short-circuits the rest of the routing
@@ -195,7 +195,7 @@ describe("signInAction: destination is the account's own real, server-derived co
     mockedListParticipations.mockResolvedValue([{ programId: "p-1", organizationId: "org-2", programName: "Bounty", organizationName: "Other Org", status: "active", programStatus: "active", joinedAt: "2026-01-01" }]);
     const { signInAction } = await import("../../actions/auth");
 
-    const result = await signInAction({ email: "admin-both@example.test", password: "a-real-password" });
+    const result = await signInAction({ email: "admin-both@example.test", password: "a-real-password-1" });
 
     expect(result).toEqual({ ok: true, destination: "/platform/programs" });
   });

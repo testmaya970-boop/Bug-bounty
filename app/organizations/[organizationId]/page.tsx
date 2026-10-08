@@ -222,7 +222,7 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
         )}
 
         {/* Last-5 activity, linking out -- never the full feed (that would duplicate a
-            route this same turn adds: Hactivity, /organizations/{id}/hactivity). */}
+            route this same turn adds: Activity, /organizations/{id}/activity). */}
         {canSeeAdminActivity && recentActivity.length > 0 && (
           <div>
             <div className="flex items-center justify-between gap-3">
@@ -230,7 +230,7 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
                 <SectionLabel>Activity</SectionLabel>
                 <h2 className="mt-0.5 text-base font-semibold text-ink">Recent activity</h2>
               </div>
-              <Link prefetch={false} href={`/organizations/${organizationId}/hactivity` as Route} className="text-sm font-medium text-action hover:text-action-hover">
+              <Link prefetch={false} href={`/organizations/${organizationId}/activity` as Route} className="text-sm font-medium text-action hover:text-action-hover">
                 View all activity →
               </Link>
             </div>

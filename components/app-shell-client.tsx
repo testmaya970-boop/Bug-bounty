@@ -124,11 +124,11 @@ const SYSTEM_NAV: NavItem[] = [
   // Item 15 of the 15-point nav map (Turn 6, phase/9-ia) -- same honest-stub posture as
   // Coming Soon above: no chat, no model, just what's real (a waitlist signup). See
   // app/hai/page.tsx's own comment.
-  { href: "/hai" as Route, label: "Hai", icon: Wand2 },
+  { href: "/assistant" as Route, label: "Assistant", icon: Wand2 },
 ];
 
 // A platform-admin-only account (isPlatformAdminOnly below) has no researcher/org context
-// for "Coming Soon" or "Hai" to mean anything -- both are researcher-facing feature
+// for "Coming Soon" or "Assistant" to mean anything -- both are researcher-facing feature
 // previews, confirmed live to have zero relevance to an admin-only sidebar. Notifications
 // stays (platform-admin actions -- approvals, rejections -- generate real notifications
 // too), just narrowed to the one real destination for this context.
@@ -153,7 +153,7 @@ const ACCOUNT_MENU_LINKS: { href: Route; label: string }[] = [
 // where they were) was flagged live, on a real screenshot, as the disease -- not the
 // individual routes. New standing rule (AGENTS.md): one hierarchy level, one nav control.
 //
-// Hactivity (Turn 6, phase/9-ia) was missing from this list entirely -- built after this
+// Activity (Turn 6, phase/9-ia) was missing from this list entirely -- built after this
 // grouping's own comment was written, and never backfilled. Added here now; it was never
 // missing from the org header's own nine, only from this second, now-deleted nav.
 // roles: who the section is for (docs: services/authorization.ts's ACCESS_SUMMARIES). A
@@ -191,10 +191,10 @@ const ORG_SECURITY_NAV: OrgNavItem[] = [
   // program is in draft), this is the read-only cross-program view.
   { href: (id) => `/organizations/${id}/assets` as Route, label: "Assets", icon: Target, matchesPath: prefixMatch, roles: REPORT_WORKERS },
   { href: (id) => `/organizations/${id}/researchers` as Route, label: "Researchers", icon: Trophy, matchesPath: prefixMatch, roles: ["owner", "security_admin", "program_manager"] },
-  // Hactivity: the org's full, chronological audit event feed (services/organization-
+  // Activity: the org's full, chronological audit event feed (services/organization-
   // members.ts's getOrganizationAuditActivity) -- owner/security_admin only, matching
   // audit_logs' own read policy.
-  { href: (id) => `/organizations/${id}/hactivity` as Route, label: "Hactivity", icon: Activity, matchesPath: prefixMatch, roles: ORG_ADMINS },
+  { href: (id) => `/organizations/${id}/activity` as Route, label: "Activity", icon: Activity, matchesPath: prefixMatch, roles: ORG_ADMINS },
 ];
 const ORG_INSIGHTS_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}/analytics` as Route, label: "Analytics", icon: FileWarning, matchesPath: prefixMatch, roles: ORG_ADMINS }];
 const ORG_ORGANIZATION_NAV: OrgNavItem[] = [

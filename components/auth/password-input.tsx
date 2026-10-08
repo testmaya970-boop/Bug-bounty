@@ -2,6 +2,7 @@
 
 import React, { forwardRef, useId, useState } from "react";
 import { Label } from "../ui/form";
+import { passwordProblem } from "../../lib/auth/password-policy";
 
 const inputClass =
   "min-h-11 w-full rounded-md border border-border bg-surface px-3 pr-16 text-sm text-ink outline-none placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70";
@@ -111,7 +112,8 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(fu
  * it is what the server will actually reject. */
 export function passwordStrengthLabel(password: string): string | null {
   if (password.length === 0) return null;
-  if (password.length < 12) return "Too short";
+  const problem = passwordProblem(password);
+  if (problem) return problem.replace(/.$/, "");
   if (password.length < 16) return "Fair";
   if (password.length < 20) return "Good";
   return "Strong";
@@ -122,7 +124,7 @@ export function passwordStrengthLabel(password: string): string | null {
  * independently-maintained scoring rules that could drift apart. */
 export function passwordStrengthLevel(password: string): 0 | 1 | 2 | 3 | 4 {
   if (password.length === 0) return 0;
-  if (password.length < 12) return 1;
+  if (passwordProblem(password)) return 1;
   if (password.length < 16) return 2;
   if (password.length < 20) return 3;
   return 4;

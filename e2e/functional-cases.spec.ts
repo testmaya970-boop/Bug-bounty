@@ -20,11 +20,11 @@ async function signIn(page: Page, email = EMAIL, password = PASSWORD) {
 }
 
 
-test("profile: display name, biography and public username save and survive a reload", async ({ page }) => {
+test("profile: display name and biography save and survive a reload; no public username field", async ({ page }) => {
   await signIn(page);
   const bio = `Bio ${stamp()}`;
-  const username = `e2e-settings-${stamp()}`;
   await page.goto("/settings/profile");
+  await expect(page.getByLabel("Public username")).toHaveCount(0);
 
   await page.getByLabel("Display name").fill("E2E Settings Renamed");
   await page.getByRole("button", { name: "Save" }).nth(0).click();
@@ -32,44 +32,18 @@ test("profile: display name, biography and public username save and survive a re
   await page.getByLabel("Biography").fill(bio);
   await page.getByRole("button", { name: "Save" }).nth(1).click();
   await expect(page.getByText("Biography updated.")).toBeVisible();
-  await page.getByLabel("Public username").fill("Not Valid!");
-  await page.getByRole("button", { name: "Save" }).nth(2).click();
-  await expect(page.getByText("Public profile published.")).toHaveCount(0);
-  await page.getByLabel("Public username").fill(username);
-  await page.getByRole("button", { name: "Save" }).nth(2).click();
-  await expect(page.getByText("Public profile published.")).toBeVisible();
 
   await page.reload();
   await expect(page.getByLabel("Display name")).toHaveValue("E2E Settings Renamed");
   await expect(page.getByLabel("Biography")).toHaveValue(bio);
-  await page.goto(`/researchers/${username}`);
-  await expect(page.getByText("E2E Settings Renamed").first()).toBeVisible();
-  await expect(page.getByText(bio)).toBeVisible();
-
-  // Unpublish again, so the next run starts from the same state.
-  await page.goto("/settings/profile");
-  await page.getByLabel("Public username").fill("");
-  await page.getByRole("button", { name: "Save" }).nth(2).click();
-  await expect(page.getByText("Public profile unpublished.")).toBeVisible();
-  expect((await page.request.get(`/researchers/${username}`)).status()).toBe(404);
 });
 
-test("api token: a generated token authenticates the API, and stops the moment it is revoked", async ({ page, request }) => {
+test("api token: the page says coming soon, and a bearer token is not accepted yet", async ({ page, request }) => {
   await signIn(page);
   await page.goto("/settings/api-tokens");
-  const name = `sweep ${stamp()}`;
-  await page.getByLabel("Token name").fill(name);
-  await page.getByRole("button", { name: "Generate token" }).click();
-  await expect(page.getByText("Save this token now")).toBeVisible();
-  const token = (await page.getByText(/^unpatched_pat_/).innerText()).trim();
-
-  const api = (t: string) => request.get("/api/v1/reports", { headers: { Authorization: `Bearer ${t}` } });
-  expect((await api(token)).status()).toBe(200);
-  expect((await api(`${token}x`)).status()).toBe(401);
-
-  await page.locator("li", { hasText: name }).getByRole("button", { name: "Revoke" }).click();
-  await expect(page.locator("li", { hasText: name })).toHaveCount(0);
-  expect((await api(token)).status()).toBe(401);
+  await expect(page.getByText("Coming soon")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Generate token" })).toHaveCount(0);
+  expect((await request.get("/api/v1/reports", { headers: { Authorization: "Bearer unpatched_pat_anything" } })).status()).toBe(401);
 });
 
 test("report templates: create, edit and delete", async ({ page }) => {

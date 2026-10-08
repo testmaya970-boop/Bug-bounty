@@ -77,28 +77,7 @@ test("measure button click latencies across app", async ({ page }) => {
     results.push({ label: "Programs > Load more", ms: -1, url: "(button not present)", method: "-", contentType: null, status: 0 });
   }
 
-  // --- 2. /settings/api-tokens -> Generate token ---
-  await page.goto("/settings/api-tokens");
-  await page.waitForLoadState("networkidle");
-  const isTokenResponse = (url: string) => url.includes("/settings/api-tokens");
-  async function generateToken(n: number) {
-    const nameInput = page.getByLabel("Token name");
-    await nameInput.fill(`perf-test-token-${Date.now()}-${n}`);
-    const genBtn = page.getByRole("button", { name: /Generate token/i });
-    return measureClick(page, `API Tokens > Generate (${n === 1 ? "1st, fresh nav" : "2nd, steady-state"})`, () => genBtn.click(), isTokenResponse);
-  }
-  results.push(await generateToken(1));
-  results.push(await generateToken(2));
-
-  // Clean up: revoke the two tokens we just created, also measuring Revoke timings
-  const isRevokeResponse = (url: string) => url.includes("/settings/api-tokens");
-  const revokeButtons = page.getByRole("button", { name: /Revoke/i });
-  const revokeCount = await revokeButtons.count();
-  for (let i = 0; i < Math.min(2, revokeCount); i++) {
-    const btn = page.getByRole("button", { name: /Revoke/i }).first();
-    const m = await measureClick(page, `API Tokens > Revoke (${i === 0 ? "1st" : "2nd"})`, () => btn.click(), isRevokeResponse);
-    results.push(m);
-  }
+  // (API tokens are "coming soon": nothing to click on /settings/api-tokens.)
 
   // --- 3. /settings/report-templates -> Save template (real server action click) ---
   await page.goto("/settings/report-templates");
