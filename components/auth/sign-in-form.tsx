@@ -7,6 +7,7 @@ import { Input } from "../ui/form";
 import { PasswordInput } from "./password-input";
 import { Button } from "../ui/button";
 import { signInAction, resendConfirmationEmailAction } from "../../actions/auth";
+import { ConfirmEmailPending } from "./confirm-email-pending";
 
 /** Passkeys were evaluated for this slice and deliberately deferred -- Supabase's own
  * client SDK marks passkey methods "experimental," and this project's
@@ -54,8 +55,13 @@ export function SignInForm({ redirectTo }: { redirectTo?: string }) {
     startResendTransition(async () => {
       const result = await resendConfirmationEmailAction({ email });
       if (result.ok) setResendSent(true);
+      else setError(result.message);
     });
   }
+
+  // The resend emails a 6-digit code -- show the same code-entry step signup uses, or the
+  // code has nowhere to go.
+  if (resendSent) return <ConfirmEmailPending email={email} emailIsSimulated={false} />;
 
   return (
     <>
@@ -84,7 +90,6 @@ export function SignInForm({ redirectTo }: { redirectTo?: string }) {
             <Button type="button" variant="secondary" pending={resendPending} onClick={handleResend}>
               Resend confirmation email
             </Button>
-            {resendSent && <p className="mt-2 text-success">Sent. Check your email.</p>}
           </div>
         )}
         <Button type="submit" pending={pending} className="w-full justify-center">

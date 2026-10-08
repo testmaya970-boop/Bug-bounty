@@ -7,7 +7,9 @@ try {
   process.loadEnvFile(".env.local");
 } catch {}
 const E2E_PORT = Number(process.env.E2E_PORT ?? 3100);
-const E2E_BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
+// E2E_BASE_URL: point the browser at an HTTPS front (scripts/https-proxy.mjs) for the iPhone tests.
+const E2E_SERVER_URL = `http://127.0.0.1:${E2E_PORT}`;
+const E2E_BASE_URL = process.env.E2E_BASE_URL ?? E2E_SERVER_URL;
 
 // Turn 8 (phase/9-ia successor): the release gate this codebase's own AGENTS.md now
 // requires ("E2E journey suite green against prod build with deterministic seed. No tag
@@ -43,14 +45,20 @@ export default defineConfig({
   // background during these very runs), never an application defect. 45s gives real
   // margin against that specific, external constraint; a clean environment needs far less.
   expect: { timeout: 45_000 },
-  use: { baseURL: E2E_BASE_URL, trace: "retain-on-failure" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  use: { baseURL: E2E_BASE_URL, trace: "retain-on-failure", ignoreHTTPSErrors: true },
+  // e2e/mobile/ runs on phone emulation only (touch, small viewport, mobile UA): Android on
+  // Chromium and iPhone on WebKit, Safari's engine (`npx playwright install webkit`).
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /mobile\// },
+    { name: "android", use: { ...devices["Pixel 7"] }, testMatch: /mobile\/.*\.spec\.ts/ },
+    { name: "iphone", use: { ...devices["iPhone 14"] }, testMatch: /mobile\/.*\.spec\.ts/ },
+  ],
   webServer: [
     // Measured live: a standalone `npm run build` alone takes ~135s on this machine; 180s
     // left no margin for `next start` to then boot within the same window. 300s -- then
     // measured 202s for the build alone with a `next dev` running alongside, which blew
     // past 300s once seeding and boot were added. 600s.
-    { command: `npm run build && npm run start -- -p ${E2E_PORT}`, url: E2E_BASE_URL, env: { NEXT_DIST_DIR: ".next-prod", LOCAL_PROD_TEST: "1", APP_ORIGIN: E2E_BASE_URL }, reuseExistingServer: !process.env.CI, timeout: 600_000 },
+    { command: `npm run build && npm run start -- -p ${E2E_PORT}`, url: E2E_SERVER_URL, env: { NEXT_DIST_DIR: ".next-prod", LOCAL_PROD_TEST: "1", APP_ORIGIN: E2E_BASE_URL }, reuseExistingServer: !process.env.CI, timeout: 600_000 },
     { command: "npm run worker:outbox", reuseExistingServer: !process.env.CI, timeout: 30_000 },
   ],
 });

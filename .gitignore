@@ -1,6 +1,7 @@
 node_modules/
 .next/
 .next-prod/
+.next-mobile/
 coverage/
 playwright-report/
 test-results/

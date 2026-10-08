@@ -47,9 +47,12 @@ export function ConfirmEmailPending({ email, emailIsSimulated }: { email: string
     setError(null);
     startTransition(async () => {
       const result = await verifySignupCodeAction({ email, code });
-      if (!result.ok) setError(result.message);
-      // On success, verifySignupCodeAction redirects server-side -- nothing further to
-      // do here (a Server Action's redirect() throws, so this line is never reached).
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      // A real hard navigation, like SignInForm: see verifySignupCodeAction's comment.
+      window.location.href = result.destination;
     });
   }
 

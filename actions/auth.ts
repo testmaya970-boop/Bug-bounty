@@ -121,7 +121,7 @@ const verifySignupCodeSchema = z.object({
  * carried on the verification challenge's metadata -- identical best-effort behavior to
  * what the old route did, just reached via a typed code instead of a followed link.
  */
-export async function verifySignupCodeAction(input: { email: string; code: string; redirectTo?: string }): Promise<AuthActionResult> {
+export async function verifySignupCodeAction(input: { email: string; code: string; redirectTo?: string }): Promise<SignInResult> {
   const parsed = verifySignupCodeSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Enter the 6-digit code we emailed you." };
 
@@ -148,7 +148,10 @@ export async function verifySignupCodeAction(input: { email: string; code: strin
       // "Create organization" is the next visible action, not an error page.
     }
   }
-  redirect(destination as Route);
+  // Returned, not redirect()ed: same cookie race as signInAction (docs/decisions/0077) --
+  // on iPhone Safari the soft navigation dropped the just-set session cookie and bounced
+  // the freshly verified account to /sign-in. The caller hard-navigates instead.
+  return { ok: true, destination: destination as Route };
 }
 
 export async function signInAction(input: { email: string; password: string; redirectTo?: string }): Promise<SignInResult> {

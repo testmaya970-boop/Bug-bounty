@@ -41,6 +41,8 @@ vi.mock("@/lib/env", async () => {
   return {
     ...actual,
     getNativeEnv: () => ({
+      // A public tunnel origin, like the one phones use to reach a dev laptop.
+      APP_ORIGIN: "https://dev-tunnel.example.test",
       DATABASE_URL: "postgres://test",
       SESSION_COOKIE_SECRET: "test-secret-at-least-32-bytes-long",
       S3_ENDPOINT: "http://test",
@@ -184,6 +186,23 @@ describe("auth service: requestPasswordReset is neutral to account existence", (
     await requestPasswordReset("real@example.test");
 
     expect(activeEmailProvider.send).toHaveBeenCalledWith(expect.objectContaining({ to: "real@example.test", subject: expect.stringContaining("Reset") }));
+  });
+
+  it("emails a link on the configured public origin, so it opens on a phone -- never localhost or the request's Host", async () => {
+    const { activeEmailProvider } = await import("../../lib/email-provider");
+    const sendMock = activeEmailProvider.send as ReturnType<typeof vi.fn>;
+    sendMock.mockClear();
+    fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("select id from public.users")) return queryReturning([{ id: "user-1" }]);
+      return queryReturning([]);
+    });
+    const { requestPasswordReset } = await import("../../services/auth");
+
+    await requestPasswordReset("phone@example.test");
+
+    const link = /https?:\/\/\S+/.exec(sendMock.mock.calls[0][0].text)?.[0] ?? "";
+    expect(link).toMatch(/^https:\/\/dev-tunnel\.example\.test\/auth\/confirm\?type=recovery&token=[\w-]+$/);
+    expect(link).not.toContain("localhost");
   });
 });
 

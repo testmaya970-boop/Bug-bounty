@@ -130,15 +130,16 @@ describe("verifySignupCodeAction: the signup-time code-verification step", () =>
     expect(mockedVerifySignupCode).not.toHaveBeenCalled();
   });
 
-  it("on a correct code, establishes a session and redirects to the account's default destination", async () => {
+  it("on a correct code, establishes a session and returns the account's default destination for a hard navigation (no redirect() -- iPhone cookie race)", async () => {
     mockedVerifySignupCode.mockResolvedValue({ userId: "user-1" });
     const { verifySignupCodeAction } = await import("../../actions/auth");
 
-    await verifySignupCodeAction({ email: "researcher@example.test", code: "123456" });
+    const result = await verifySignupCodeAction({ email: "researcher@example.test", code: "123456" });
 
     expect(mockedVerifySignupCode).toHaveBeenCalledWith("researcher@example.test", "123456");
     expect(mockedEstablishSessionForUser).toHaveBeenCalledWith("user-1");
-    expect(mockedRedirect).toHaveBeenCalledWith("/");
+    expect(result).toEqual({ ok: true, destination: "/" });
+    expect(mockedRedirect).not.toHaveBeenCalled();
   });
 
   it("does not redirect and returns the mapped error when the code is wrong/expired", async () => {
@@ -156,9 +157,9 @@ describe("verifySignupCodeAction: the signup-time code-verification step", () =>
     mockedVerifySignupCode.mockResolvedValue({ userId: "user-1" });
     const { verifySignupCodeAction } = await import("../../actions/auth");
 
-    await verifySignupCodeAction({ email: "researcher@example.test", code: "123456", redirectTo: "/programs" });
+    const result = await verifySignupCodeAction({ email: "researcher@example.test", code: "123456", redirectTo: "/programs" });
 
-    expect(mockedRedirect).toHaveBeenCalledWith("/programs");
+    expect(result).toEqual({ ok: true, destination: "/programs" });
   });
 });
 
