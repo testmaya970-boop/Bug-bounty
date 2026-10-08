@@ -7,6 +7,7 @@ import { z } from "zod";
 import {
   OrganizationServiceError,
   beginMfaEnrollment,
+  beginTotpEnrollment,
   clearMyBackupCodes,
   confirmMfaEnrollment,
   generateMyBackupCodes,
@@ -17,6 +18,7 @@ import {
   unenrollMfaFactor,
   verifyMfaCode,
   type MfaEnrollment,
+  type TotpEnrollment,
 } from "@/services/mfa";
 import { isSafeRedirect } from "@/lib/auth/safe-redirect";
 
@@ -32,7 +34,17 @@ export async function beginMfaEnrollmentAction(): Promise<ActionResult<MfaEnroll
   }
 }
 
-const confirmSchema = z.object({ factorId: z.string().uuid(), code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code we emailed you.") });
+export async function beginTotpEnrollmentAction(): Promise<ActionResult<TotpEnrollment>> {
+  try {
+    const data = await beginTotpEnrollment();
+    return { ok: true, data };
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
+    throw error;
+  }
+}
+
+const confirmSchema = z.object({ factorId: z.string().uuid(), code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code.") });
 
 export async function confirmMfaEnrollmentAction(input: z.infer<typeof confirmSchema>): Promise<ActionResult<void>> {
   const parsed = confirmSchema.safeParse(input);
@@ -84,7 +96,7 @@ export async function requestMfaVerificationCodeAction(): Promise<ActionResult<v
   }
 }
 
-const verifyGateSchema = z.object({ factorId: z.string().uuid(), code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code we emailed you."), redirectTo: z.string().optional() });
+const verifyGateSchema = z.object({ factorId: z.string().uuid(), code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code."), redirectTo: z.string().optional() });
 
 /** The sign-in-time gate action -- on success, redirects to the destination the user was
  * originally headed to (or a safe default), the same pattern signInAction already uses. */

@@ -8,6 +8,7 @@ import { PasswordInput } from "./password-input";
 import { Button } from "../ui/button";
 import { signInAction, resendConfirmationEmailAction } from "../../actions/auth";
 import { ConfirmEmailPending } from "./confirm-email-pending";
+import { hardNavigate } from "./hard-navigate";
 
 /** Passkeys were evaluated for this slice and deliberately deferred -- Supabase's own
  * client SDK marks passkey methods "experimental," and this project's
@@ -46,7 +47,7 @@ export function SignInForm({ redirectTo }: { redirectTo?: string }) {
       // client-side RSC-navigation-follow was confirmed live to not reliably carry the
       // session cookie this same response just set (a real, reproducible bug, not
       // theoretical). A genuine browser navigation always includes it.
-      window.location.href = result.destination;
+      hardNavigate(result.destination); // see hard-navigate.ts (iPhone Safari)
     });
   }
 

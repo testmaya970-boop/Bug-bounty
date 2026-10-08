@@ -5,7 +5,9 @@ import { getCurrentUser, getCurrentSessionId } from "@/lib/auth/current-user";
 import { elevateSessionToAal2 } from "@/lib/auth/session";
 import { generateOtpChallenge, hashOtpCode } from "@/lib/auth/mfa-otp";
 import { activeEmailProvider } from "@/lib/email-provider";
+import { generateTotpSecret, totpUri } from "@/lib/auth/totp";
 import { randomUUID } from "node:crypto";
+import QRCode from "qrcode";
 
 export { OrganizationServiceError };
 
@@ -26,25 +28,26 @@ async function requireCurrentUser(): Promise<{ id: string; email: string | null 
   return user;
 }
 
-export type MfaFactor = { id: string; status: "verified" | "unverified"; createdAt: string };
+export type MfaMethod = "email" | "totp";
+export type MfaFactor = { id: string; status: "verified" | "unverified"; createdAt: string; method: MfaMethod };
 
 export async function listMyMfaFactors(): Promise<MfaFactor[]> {
   const user = await requireCurrentUser();
-  let rows: { id: string; status: string; created_at: string }[];
+  let rows: { id: string; status: string; created_at: string; method: string }[];
   try {
     rows = await withActorTransaction(user.id, (client) => callRpc(client, "public.list_my_mfa_factors"));
   } catch (error) {
     mapError(error as { message: string });
   }
-  return rows.map((row) => ({ id: row.id, status: row.status as MfaFactor["status"], createdAt: row.created_at }));
+  return rows.map((row) => ({ id: row.id, status: row.status as MfaFactor["status"], createdAt: row.created_at, method: row.method as MfaMethod }));
 }
 
 async function sendOtpEmail(email: string, code: string, purpose: "enroll" | "verify"): Promise<void> {
-  const subject = purpose === "enroll" ? "Confirm two-factor authentication" : "Your Sentinel sign-in code";
+  const subject = purpose === "enroll" ? "Confirm two-factor authentication" : "Your Unpatched sign-in code";
   await activeEmailProvider.send({
     to: email,
     subject,
-    text: `Your Sentinel verification code is: ${code}\n\nThis code expires in 10 minutes. If you did not request this, you can ignore this email.`,
+    text: `Your Unpatched verification code is: ${code}\n\nThis code expires in 10 minutes. If you did not request this, you can ignore this email.`,
     idempotencyKey: `mfa-${purpose}-${randomUUID()}`,
   });
 }
@@ -83,13 +86,53 @@ export async function beginMfaEnrollment(): Promise<MfaEnrollment> {
  * looked up -- the challenge is scoped to the authenticated actor via auth.uid(), never
  * a client-supplied id. */
 export async function confirmMfaEnrollment(factorId: string, code: string): Promise<void> {
-  return verifyChallengeCode(code);
+  return verifySecondFactor(code);
 }
 
 /** The sign-in-time check -- identical mechanics as enrollment confirmation, just
  * reached from a different page (/mfa/verify instead of /settings). */
 export async function verifyMfaCode(factorId: string, code: string): Promise<void> {
-  return verifyChallengeCode(code);
+  return verifySecondFactor(code);
+}
+
+/** Routes a 6-digit code to the account's own method -- never one the caller picks, so an
+ * authenticator account can't be verified with an emailed code. */
+async function verifySecondFactor(code: string): Promise<void> {
+  const factors = await listMyMfaFactors();
+  return factors[0]?.method === "totp" ? verifyTotpCode(code) : verifyChallengeCode(code);
+}
+
+export type TotpEnrollment = { factorId: string; secret: string; qrSvg: string };
+
+/** Starts authenticator-app enrollment: a fresh secret is stored (encrypted, unverified)
+ * and returned once, as a setup key and QR code, for the user to add to their app. The
+ * factor turns verified only when a real code from that app is confirmed. */
+export async function beginTotpEnrollment(): Promise<TotpEnrollment> {
+  const user = await requireCurrentUser();
+  const secret = generateTotpSecret();
+  try {
+    await withActorTransaction(user.id, (client) => callRpc(client, "public.begin_my_totp_enrollment", [secret.hex]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  const qrSvg = await QRCode.toString(totpUri(user.email ?? user.id, secret.base32), { type: "svg", margin: 1, errorCorrectionLevel: "M" });
+  return { factorId: user.id, secret: secret.base32, qrSvg };
+}
+
+async function verifyTotpCode(code: string): Promise<void> {
+  const user = await requireCurrentUser();
+  const sessionId = await getCurrentSessionId();
+  let outcome: string;
+  try {
+    const rows = await withActorTransaction(user.id, (client) => callRpc<{ verify_my_totp_code: string }>(client, "public.verify_my_totp_code", [code]));
+    outcome = rows[0]?.verify_my_totp_code;
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  if (outcome === "rate_limited") throw new OrganizationServiceError("Too many wrong codes. Wait 15 minutes and try again.", "RATE_LIMITED");
+  if (outcome === "invalid") throw new OrganizationServiceError("That code didn't match. Enter the current code from your authenticator app.", "INVALID_CODE");
+  // Same as an emailed code: a real second factor elevates this session (see verifyChallengeCode).
+  if (sessionId) await withServiceRoleTransaction((client) => elevateSessionToAal2(client, sessionId));
 }
 
 async function verifyChallengeCode(code: string): Promise<void> {

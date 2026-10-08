@@ -33,6 +33,8 @@ function queryReturning(rows: unknown[]) {
 }
 
 const USER = { id: "user-1", email: "researcher@example.test" };
+const EMAIL_FACTOR_ROW = { id: "user-1", status: "verified", created_at: "2026-10-01T00:00:00Z", method: "email" };
+const TOTP_FACTOR_ROW = { ...EMAIL_FACTOR_ROW, method: "totp" };
 
 async function mockedCurrentUser() {
   const { getCurrentUser } = await import("../../lib/auth/current-user");
@@ -126,6 +128,7 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
   it("calls verify_mfa_challenge with only the code's hash", async () => {
     let verifyArgs: unknown[] | undefined;
     fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
+      if (sql.includes("list_my_mfa_factors")) return queryReturning([EMAIL_FACTOR_ROW]);
       if (sql.includes("verify_mfa_challenge")) {
         verifyArgs = params;
         return queryReturning([{ verify_mfa_challenge: "enroll" }]);
@@ -142,6 +145,7 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
 
   it("maps the RPC's own INVALID_CODE error (no owned/unconsumed challenge exists at all) to a real, user-facing error -- never a raw provider string", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("list_my_mfa_factors")) return queryReturning([EMAIL_FACTOR_ROW]);
       if (sql.includes("verify_mfa_challenge")) throw new Error("INVALID_CODE: that code is invalid or has expired");
       throw new Error(`unexpected query: ${sql}`);
     });
@@ -155,6 +159,7 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
 
   it("maps the RPC's own returned 'invalid' outcome (a wrong/expired/exhausted code, which verify_mfa_challenge never raises for -- see its own migration comment on why) to the identical INVALID_CODE error", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("list_my_mfa_factors")) return queryReturning([EMAIL_FACTOR_ROW]);
       if (sql.includes("verify_mfa_challenge")) return queryReturning([{ verify_mfa_challenge: "invalid" }]);
       throw new Error(`unexpected query: ${sql}`);
     });
@@ -168,6 +173,7 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
 
   it("elevates the current session to aal2 on a successful sign-in-time ('verify' purpose) check", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("list_my_mfa_factors")) return queryReturning([EMAIL_FACTOR_ROW]);
       if (sql.includes("verify_mfa_challenge")) return queryReturning([{ verify_mfa_challenge: "verify" }]);
       throw new Error(`unexpected query: ${sql}`);
     });
@@ -180,6 +186,7 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
 
   it("also elevates the session for an 'enroll' purpose success -- MfaSettings immediately calls generate_my_mfa_backup_codes right after, which itself requires a real aal2 session (202609020001); an earlier version skipped elevation here, which made every enrollment's own backup-code step fail with STRONG_AUTH_REQUIRED (confirmed live)", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("list_my_mfa_factors")) return queryReturning([EMAIL_FACTOR_ROW]);
       if (sql.includes("verify_mfa_challenge")) return queryReturning([{ verify_mfa_challenge: "enroll" }]);
       throw new Error(`unexpected query: ${sql}`);
     });
@@ -188,6 +195,61 @@ describe("confirmMfaEnrollment / verifyMfaCode: a real server-side challenge che
     await confirmMfaEnrollment("user-1", "123456");
 
     expect(await mockedElevate()).toHaveBeenCalledWith(fakeClient, "session-1");
+  });
+});
+
+describe("authenticator app (TOTP): codes go to verify_my_totp_code, never the email path", () => {
+  it("routes a code for a totp account to verify_my_totp_code with the plain code, and elevates the session", async () => {
+    const calls: string[] = [];
+    fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
+      calls.push(sql);
+      if (sql.includes("list_my_mfa_factors")) return queryReturning([TOTP_FACTOR_ROW]);
+      if (sql.includes("verify_my_totp_code")) {
+        expect(params).toEqual(["123456"]);
+        return queryReturning([{ verify_my_totp_code: "verify" }]);
+      }
+      throw new Error(`unexpected query: ${sql}`);
+    });
+    const { verifyMfaCode } = await import("../../services/mfa");
+
+    await verifyMfaCode("user-1", "123456");
+
+    expect(calls.some((sql) => sql.includes("verify_mfa_challenge"))).toBe(false);
+    expect(await mockedElevate()).toHaveBeenCalledWith(fakeClient, "session-1");
+  });
+
+  it.each([
+    ["invalid", "INVALID_CODE"],
+    ["rate_limited", "RATE_LIMITED"],
+  ])("maps the '%s' outcome to %s and does not elevate", async (outcome, code) => {
+    fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("list_my_mfa_factors")) return queryReturning([TOTP_FACTOR_ROW]);
+      if (sql.includes("verify_my_totp_code")) return queryReturning([{ verify_my_totp_code: outcome }]);
+      throw new Error(`unexpected query: ${sql}`);
+    });
+    const { verifyMfaCode } = await import("../../services/mfa");
+
+    await expect(verifyMfaCode("user-1", "000000")).rejects.toMatchObject({ code });
+    expect(await mockedElevate()).not.toHaveBeenCalled();
+  });
+
+  it("beginTotpEnrollment stores a 40-hex secret and returns the same secret as base32 plus a QR SVG", async () => {
+    let storedHex = "";
+    fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
+      if (sql.includes("begin_my_totp_enrollment")) {
+        storedHex = params[0] as string;
+        return queryReturning([]);
+      }
+      throw new Error(`unexpected query: ${sql}`);
+    });
+    const { beginTotpEnrollment } = await import("../../services/mfa");
+    const { base32Decode } = await import("../../lib/auth/totp");
+
+    const result = await beginTotpEnrollment();
+
+    expect(storedHex).toMatch(/^[0-9a-f]{40}$/);
+    expect(base32Decode(result.secret).toString("hex")).toBe(storedHex);
+    expect(result.qrSvg).toContain("<svg");
   });
 });
 

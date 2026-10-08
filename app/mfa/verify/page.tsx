@@ -27,15 +27,15 @@ export default async function MfaVerifyPage({ searchParams }: { searchParams: Pr
   const verifiedFactor = factors.find((factor) => factor.status === "verified");
   if (!verifiedFactor) redirect((isSafeRedirect(redirectTo) ? redirectTo : "/") as Route);
 
-  // No more GoTrue-issued TOTP factor to check a code against locally -- landing on this
-  // page is itself the trigger to email a fresh 'verify' challenge (create_mfa_challenge
-  // invalidates any still-live challenge before issuing a new one, so re-rendering this
-  // page on a redirect loop can never leave two valid codes outstanding at once).
-  await requestMfaVerificationCode();
+  // Email method: landing on this page is itself the trigger to email a fresh 'verify'
+  // challenge (create_mfa_challenge invalidates any still-live challenge before issuing a
+  // new one, so re-rendering this page on a redirect loop can never leave two valid codes
+  // outstanding at once). Authenticator method: nothing to send -- the code is in the app.
+  if (verifiedFactor.method === "email") await requestMfaVerificationCode();
 
   return (
     <AuthLayout eyebrow="Two-factor authentication" title="Verify it's you" description="This account has two-factor authentication enabled." variant="default">
-      <MfaVerifyForm factorId={verifiedFactor.id} redirectTo={isSafeRedirect(redirectTo) ? redirectTo : undefined} />
+      <MfaVerifyForm factorId={verifiedFactor.id} method={verifiedFactor.method} redirectTo={isSafeRedirect(redirectTo) ? redirectTo : undefined} />
     </AuthLayout>
   );
 }

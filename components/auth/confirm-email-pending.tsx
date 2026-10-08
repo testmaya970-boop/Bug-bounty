@@ -5,6 +5,7 @@ import { Input } from "../ui/form";
 import { Button } from "../ui/button";
 import { Alert } from "../ui/feedback";
 import { resendConfirmationEmailAction, verifySignupCodeAction } from "../../actions/auth";
+import { hardNavigate } from "./hard-navigate";
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -52,7 +53,7 @@ export function ConfirmEmailPending({ email, emailIsSimulated }: { email: string
         return;
       }
       // A real hard navigation, like SignInForm: see verifySignupCodeAction's comment.
-      window.location.href = result.destination;
+      hardNavigate(result.destination);
     });
   }
 

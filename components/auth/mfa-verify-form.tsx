@@ -13,7 +13,8 @@ import { redeemBackupCodeGateAction, requestMfaVerificationCodeAction, verifyMfa
  * factor and this session hasn't cleared it yet. middleware's redirect into this page is
  * itself the trigger to send the first code (see app/mfa/verify/page.tsx).
  */
-export function MfaVerifyForm({ factorId, redirectTo }: { factorId: string; redirectTo?: string }) {
+export function MfaVerifyForm({ factorId, method, redirectTo }: { factorId: string; method: "email" | "totp"; redirectTo?: string }) {
+  const isTotp = method === "totp";
   const [useBackupCode, setUseBackupCode] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function MfaVerifyForm({ factorId, redirectTo }: { factorId: string; redi
           maxLength={6}
           value={code}
           onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-          helperText="Enter the 6-digit code we emailed you."
+          helperText={isTotp ? "Enter the 6-digit code from your authenticator app." : "Enter the 6-digit code we emailed you."}
         />
       )}
       {error && (
@@ -69,7 +70,7 @@ export function MfaVerifyForm({ factorId, redirectTo }: { factorId: string; redi
       <Button type="submit" pending={pending} className="w-full justify-center">
         {pending ? "Verifying…" : "Verify"}
       </Button>
-      {!useBackupCode && (
+      {!useBackupCode && !isTotp && (
         <button
           type="button"
           onClick={handleResend}
@@ -88,7 +89,7 @@ export function MfaVerifyForm({ factorId, redirectTo }: { factorId: string; redi
         }}
         className="w-full text-center text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus"
       >
-        {useBackupCode ? "Use your emailed code instead" : "Use a backup code instead"}
+        {useBackupCode ? (isTotp ? "Use your authenticator app instead" : "Use your emailed code instead") : "Use a backup code instead"}
       </button>
     </form>
   );
