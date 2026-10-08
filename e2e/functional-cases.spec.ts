@@ -131,16 +131,24 @@ test("password and email changes demand the current password; a changed password
   // ...nor the password.
   const next = `Rotated-${stamp()}-Passphrase`;
   await passwordForm.getByRole("textbox", { name: "Current password" }).fill("not-my-password");
-  await passwordForm.getByRole("textbox", { name: "New password" }).fill(next);
+  await passwordForm.getByRole("textbox", { name: "New password", exact: true }).fill(next);
+  await passwordForm.getByRole("textbox", { name: "Confirm new password" }).fill(next);
   await passwordForm.getByRole("button", { name: "Update password" }).click();
   await expect(passwordForm.getByRole("alert")).toHaveText("Your current password is not correct.");
 
   await passwordForm.getByRole("textbox", { name: "Current password" }).fill(PASSWORD);
-  await passwordForm.getByRole("textbox", { name: "New password" }).fill("short");
+  await passwordForm.getByRole("textbox", { name: "New password", exact: true }).fill("short");
+  await passwordForm.getByRole("textbox", { name: "Confirm new password" }).fill("short");
   await passwordForm.getByRole("button", { name: "Update password" }).click();
   await expect(passwordForm.getByRole("alert")).toContainText("12 characters");
 
-  await passwordForm.getByRole("textbox", { name: "New password" }).fill(next);
+  // A mistyped confirmation is refused before the server is asked.
+  await passwordForm.getByRole("textbox", { name: "New password", exact: true }).fill(next);
+  await passwordForm.getByRole("textbox", { name: "Confirm new password" }).fill(`${next}x`);
+  await passwordForm.getByRole("button", { name: "Update password" }).click();
+  await expect(passwordForm.getByRole("alert")).toHaveText("Passwords don't match."); // under the field, once
+
+  await passwordForm.getByRole("textbox", { name: "Confirm new password" }).fill(next);
   await passwordForm.getByRole("button", { name: "Update password" }).click();
   await expect(page.getByText("Password updated.")).toBeVisible();
 
@@ -156,7 +164,8 @@ test("password and email changes demand the current password; a changed password
 
   // Put the seed password back through the same form.
   await passwordForm.getByRole("textbox", { name: "Current password" }).fill(next);
-  await passwordForm.getByRole("textbox", { name: "New password" }).fill(PASSWORD);
+  await passwordForm.getByRole("textbox", { name: "New password", exact: true }).fill(PASSWORD);
+  await passwordForm.getByRole("textbox", { name: "Confirm new password" }).fill(PASSWORD);
   await passwordForm.getByRole("button", { name: "Update password" }).click();
   await expect(page.getByText("Password updated.")).toBeVisible();
 });

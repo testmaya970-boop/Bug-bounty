@@ -12,15 +12,21 @@ import { changeMyPasswordAction } from "../../actions/account";
 export function ChangePasswordForm() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const strength = passwordStrengthLabel(password);
+  const mismatch = confirmPassword.length > 0 && confirmPassword !== password;
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     setSaved(false);
+    if (password !== confirmPassword) {
+      if (!confirmPassword) setError("Confirm your new password.");
+      return;
+    }
     startTransition(async () => {
       const result = await changeMyPasswordAction({ currentPassword, password });
       if (!result.ok) {
@@ -29,6 +35,7 @@ export function ChangePasswordForm() {
       }
       setSaved(true);
       setPassword("");
+      setConfirmPassword("");
       setCurrentPassword("");
     });
   }
@@ -49,7 +56,18 @@ export function ChangePasswordForm() {
         strengthLevel={passwordStrengthLevel(password)}
         helperText={strength ? `At least 12 characters. Strength: ${strength}.` : "At least 12 characters. Length matters more than symbols."}
       />
-      {saved && <Alert tone="success" title="Password updated." />}
+      <PasswordInput
+        label="Confirm new password"
+        autoComplete="new-password"
+        required
+        value={confirmPassword}
+        onChange={(event) => {
+          setConfirmPassword(event.target.value);
+          setSaved(false);
+        }}
+        error={mismatch ? "Passwords don't match." : undefined}
+      />
+      {saved &&<Alert tone="success" title="Password updated." />}
       {error && (
         <p role="alert" className="text-sm font-medium text-danger">
           {error}

@@ -9,12 +9,17 @@ import { resetPasswordAction } from "../../actions/auth";
 export function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    if (password !== confirmPassword) {
+      if (!confirmPassword) setError("Confirm your new password.");
+      return;
+    }
     startTransition(async () => {
       const result = await resetPasswordAction({ token, password });
       if (!result.ok) {
@@ -27,6 +32,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   }
 
   const strength = passwordStrengthLabel(password);
+  const mismatch = confirmPassword.length > 0 && confirmPassword !== password;
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit} noValidate>
@@ -39,6 +45,16 @@ export function ResetPasswordForm({ token }: { token: string }) {
         onChange={(event) => setPassword(event.target.value)}
         strengthLevel={passwordStrengthLevel(password)}
         helperText={strength ? `At least 12 characters. Strength: ${strength}.` : "At least 12 characters. Length matters more than symbols."}
+      />
+      <PasswordInput
+        label="Confirm new password"
+        autoComplete="new-password"
+        required
+        value={confirmPassword}
+        onChange={(event) => {
+          setConfirmPassword(event.target.value);
+        }}
+        error={mismatch ? "Passwords don't match." : undefined}
       />
       {error && (
         <p role="alert" className="text-sm font-medium text-danger">

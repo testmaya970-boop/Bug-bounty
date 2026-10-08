@@ -126,7 +126,8 @@ test("resetting the password of a never-confirmed account lets it sign in (no de
     ),
   );
   await page.goto(`/auth/confirm?type=recovery&token=${encodeURIComponent(token)}`);
-  await page.getByRole("textbox", { name: "New password" }).fill(SECOND_PASSWORD);
+  await page.getByRole("textbox", { name: "New password", exact: true }).fill(SECOND_PASSWORD);
+  await page.getByRole("textbox", { name: "Confirm new password" }).fill(SECOND_PASSWORD);
   await page.getByRole("button", { name: "Update password" }).tap();
   await page.waitForURL(/\/sign-in\?reset=success/);
 
@@ -159,7 +160,15 @@ test("password reset from the emailed link works end to end on the phone", async
   // Redirected to the app's own origin, never to a localhost the phone can't reach.
   expect(new URL(page.url()).origin).toBe(new URL(baseURL!).origin);
   await expect(page).toHaveURL(/\/reset-password\?token=/);
-  await page.getByRole("textbox", { name: "New password" }).fill(SECOND_PASSWORD);
+
+  // A typo in the confirmation is caught before anything is submitted.
+  await page.getByRole("textbox", { name: "New password", exact: true }).fill(SECOND_PASSWORD);
+  await page.getByRole("textbox", { name: "Confirm new password" }).fill(`${SECOND_PASSWORD}x`);
+  await page.getByRole("button", { name: "Update password" }).tap();
+  await expect(page.getByText("Passwords don't match.").first()).toBeVisible();
+  await expect(page).toHaveURL(/\/reset-password\?token=/);
+
+  await page.getByRole("textbox", { name: "Confirm new password" }).fill(SECOND_PASSWORD);
   await page.getByRole("button", { name: "Update password" }).tap();
   await page.waitForURL(/\/sign-in\?reset=success/);
 
