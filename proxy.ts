@@ -58,7 +58,5 @@ export const config = {
   // authenticates every request itself by recomputing an HMAC over the body with the
   // organization's server-held secret (see that route's header). A fixed-PATH exclusion;
   // no request header decides whether any gate runs.
-  // `api/inbound/email` is Mailgun's alias delivery: same reasoning, authenticated by
-  // Mailgun's HMAC signature inside the route (app/api/inbound/email/route.ts).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|api/webhooks/jira/|api/inbound/email$|ctf-artifacts).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|api/webhooks/jira/|ctf-artifacts).*)"],
 };

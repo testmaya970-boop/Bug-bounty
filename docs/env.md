@@ -45,11 +45,12 @@ silently-broken feature.
 | `RESEND_API_KEY` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
 | `EMAIL_FROM` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
 | `CTF_FLAG_SECRET` | `lib/ctf-flags.ts` (build scripts and E2E only, never the app) | — | Derives every CTF flag. All environments must share the value the committed `public/ctf-artifacts/` and flag-hash migrations were generated with; CI reads it from the `CTF_FLAG_SECRET` repo secret. Rotating it means regenerating artifacts (`npm run ctf:artifacts:verify`) and a new flag-hash migration. |
-| `ALIAS_EMAIL_DOMAIN` | `lib/mailgun.ts` | — (feature off) | Researcher email aliases (`username@<this domain>`), e.g. `alias.netras.ai`. A subdomain whose MX records point at Mailgun; also the Mailgun sending domain. The feature is off until this, `MAILGUN_API_KEY` and `MAILGUN_WEBHOOK_SIGNING_KEY` are all set. See docs/decisions/0086. |
-| `MAILGUN_API_KEY` | `lib/mailgun.ts` | — | Mailgun private API key, used to send the forwarded copies. Secret. |
-| `MAILGUN_WEBHOOK_SIGNING_KEY` | `lib/mailgun.ts` | — | Mailgun's HTTP webhook signing key; `/api/inbound/email` refuses any delivery whose signature doesn't verify against it. Secret. |
-| `MAILGUN_API_BASE` | `lib/mailgun.ts` | `https://api.mailgun.net` | `https://api.eu.mailgun.net` if the Mailgun domain is in the EU region. |
-| `ALIAS_EMAIL_BRAND` | `lib/mailgun.ts` | `Netras` | Shown in a forwarded email's sender name ("noreply@shop.com via Netras"). |
+| `ALIAS_EMAIL_DOMAIN` | `lib/alias-mail.ts` | — (feature off) | Researcher email aliases (`username@<this domain>`), e.g. `alias.netras.ai`. A domain on the Hostinger Email plan whose catch-all is `ALIAS_MAILBOX_USER`. The feature is off until this, `ALIAS_MAILBOX_USER` and `ALIAS_MAILBOX_PASSWORD` are all set. See docs/decisions/0086. |
+| `ALIAS_MAILBOX_USER` | `lib/alias-mail.ts` | — | The catch-all mailbox login, e.g. `forwarder@alias.netras.ai`. `workers/alias-mail` reads it over IMAP and sends the forwarded copies from it over SMTP. |
+| `ALIAS_MAILBOX_PASSWORD` | `lib/alias-mail.ts` | — | That mailbox password. Secret. |
+| `ALIAS_IMAP_HOST` / `ALIAS_SMTP_HOST` | `lib/alias-mail.ts` | `imap.hostinger.com` / `smtp.hostinger.com` | Ports 993 and 465, TLS. |
+| `ALIAS_POLL_INTERVAL_MS` | `workers/alias-mail/run.ts` | `30000` | How often the worker checks the mailbox. |
+| `ALIAS_EMAIL_BRAND` | `lib/alias-mail.ts` | `Netras` | Shown in a forwarded email sender name ("noreply@shop.com via Netras"). |
 | `PERF_TRACE` | `lib/perf-trace.ts` | disabled (no tracing) | Set to `1` to enable temporary server-side latency instrumentation (middleware → auth → DB → render). Diagnostic only, safe to leave unset. |
 | `NODE_ENV` | `services/auth.ts`, `components/auth/confirm-email-pending.tsx` | set by the Next.js/Node toolchain itself, not user-configured | Gates `secure` cookie flag and a dev-only "confirm email" shortcut. Never set manually — `next build`/`next start` set this correctly. |
 

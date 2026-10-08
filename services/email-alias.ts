@@ -2,15 +2,15 @@ import "server-only";
 import { withActorTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { mapRpcError as mapError } from "@/services/rpc-error";
-import { getAliasEmailConfig } from "@/lib/mailgun";
+import { getAliasMailConfig } from "@/lib/alias-mail";
 
 export type EmailAliasForward = { id: string; sender: string; subject: string | null; status: string; receivedAt: string };
 export type MyEmailAlias = { enabled: boolean; address: string | null; recentForwards: EmailAliasForward[] };
 
 /** The researcher's alias (if created) and its recent deliveries. `enabled` is false until
- * the alias domain and Mailgun are configured (lib/mailgun.ts). */
+ * the alias domain and its Hostinger mailbox are configured (lib/alias-mail.ts). */
 export async function getMyEmailAlias(): Promise<MyEmailAlias> {
-  const config = getAliasEmailConfig();
+  const config = getAliasMailConfig();
   const actor = await getCurrentUser();
   let result;
   try {
@@ -33,7 +33,7 @@ export async function getMyEmailAlias(): Promise<MyEmailAlias> {
 }
 
 export async function createMyEmailAlias(): Promise<string> {
-  const config = getAliasEmailConfig();
+  const config = getAliasMailConfig();
   if (!config) throw new Error("Email aliases are not configured");
   const actor = await getCurrentUser();
   let rows;

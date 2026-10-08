@@ -164,7 +164,7 @@ export function createResendEmailProvider(): EmailProvider {
  * `code` (e.g. "EAUTH", "ECONNECTION") and, for a real SMTP-protocol rejection, a
  * `responseCode` (the numeric SMTP reply code) -- both are used here, `code` first since
  * a connection-level failure has no responseCode at all. */
-function classifySmtpFailure(error: unknown): { permanent: boolean; error: string } {
+export function classifySmtpFailure(error: unknown): { permanent: boolean; error: string } {
   const err = error as { code?: string; responseCode?: number; message?: string; response?: string };
   const message = err.response ?? err.message ?? String(error);
 
