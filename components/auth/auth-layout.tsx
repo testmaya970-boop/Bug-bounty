@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { cn } from "../../lib/cn";
 import { SectionLabel } from "../ui/security-primitives";
 import { WorkflowDiagram, type WorkflowStage } from "../marketing/workflow-diagram";
@@ -92,7 +93,15 @@ export function AuthLayout({
       <div className="relative overflow-hidden border-b border-border bg-surface-muted px-4 py-8 lg:flex lg:w-[26rem] lg:shrink-0 lg:flex-col lg:justify-between lg:border-b-0 lg:border-r lg:py-12 lg:px-6">
         <div aria-hidden="true" className={cn("absolute inset-y-0 left-0 w-1", isAccent2 ? "bg-accent-2" : "bg-action")} />
         <div className="relative flex items-center gap-3">
-          <span className="text-lg font-bold tracking-tight text-ink">Unpatched</span>
+          <Link
+            prefetch={false}
+            href="/"
+            aria-label="Back to Unpatched home"
+            className="group -mx-1 inline-flex items-center gap-1.5 rounded-md px-1 text-lg font-bold tracking-tight text-ink hover:text-ink/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            <span aria-hidden="true" className="text-ink-muted transition-transform motion-safe:group-hover:-translate-x-0.5">←</span>
+            Unpatched
+          </Link>
           <span className="hidden border-l border-border pl-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted sm:inline">Security operations</span>
         </div>
         <p className="relative mt-6 flex max-w-sm items-center gap-2 text-lg font-semibold tracking-tight text-ink lg:mt-0">
