@@ -1,6 +1,6 @@
 # 0060 — Security-ops typography system (post-hoc)
 
-Related: [[0035-sentinel-visual-identity-system]], [[0043-researcher-visual-identity-pass]].
+Related: [[0035-unpatched-visual-identity-system]], [[0043-researcher-visual-identity-pass]].
 
 ## Why this doc exists
 

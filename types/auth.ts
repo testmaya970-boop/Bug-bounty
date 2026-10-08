@@ -1,6 +1,6 @@
 export type PlatformRole = "researcher" | "organization_owner" | "program_manager" | "triager" | "platform_admin";
 
-// Sentinel's own profile fields (public.users), not a mirror of the Supabase Auth user
+// Unpatched's own profile fields (public.users), not a mirror of the Supabase Auth user
 // object -- session/credential/provider-internal fields stay in the auth layer and are
 // never duplicated here.
 /** "organization" only for accounts created through organization sign-up; see 202609280002. */

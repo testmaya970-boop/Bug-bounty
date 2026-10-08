@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context
 
-`docs/decisions/0024`–`0026` established that Sentinel behaves as `Researcher ↔ Organization` with no real third party, and that `platform_role`/`requirePlatformAdmin()` are confirmed dead scaffolding (never set to anything but the default, zero call sites). This slice makes the platform tier real for the first time — narrowly: one read-only operational queue (`Needs Recovery`) over data that already exists, plus exactly one recovery action, proven safe before being written.
+`docs/decisions/0024`–`0026` established that Unpatched behaves as `Researcher ↔ Organization` with no real third party, and that `platform_role`/`requirePlatformAdmin()` are confirmed dead scaffolding (never set to anything but the default, zero call sites). This slice makes the platform tier real for the first time — narrowly: one read-only operational queue (`Needs Recovery`) over data that already exists, plus exactly one recovery action, proven safe before being written.
 
 ## Why platform authority exists, and why not sooner
 

@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { withAnonTransaction, callRpc } from "@/lib/db/pool";
 
 /**
- * Resolves an `Authorization: Bearer sentinel_pat_...` header to a real, verified user id
+ * Resolves an `Authorization: Bearer unpatched_pat_...` header to a real, verified user id
  * -- the missing half of docs/decisions/0055's personal access tokens. verify_api_token
  * is `security definer`, so it already runs against `public.personal_access_tokens` with
  * the function owner's privileges regardless of caller role -- no RLS bypass is needed at
@@ -20,7 +20,8 @@ export async function resolveBearerUserId(request: NextRequest): Promise<string 
   const header = request.headers.get("authorization");
   if (!header) return null;
 
-  const match = /^Bearer\s+(sentinel_pat_\S+)$/.exec(header.trim());
+  // Any `<brand>_pat_` prefix: tokens issued before the rename keep working (the hash decides).
+  const match = /^Bearer\s+([a-z]+_pat_\S+)$/.exec(header.trim());
   if (!match) return null;
 
   const tokenHash = createHash("sha256").update(match[1]).digest("hex");

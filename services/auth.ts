@@ -117,8 +117,8 @@ export async function signUpWithPassword(
 
   await activeEmailProvider.send({
     to: normalizedEmail,
-    subject: "Confirm your Sentinel account",
-    text: `Your Sentinel verification code is: ${code}\n\nEnter this code to finish creating your account. This code expires in 15 minutes. If you did not create this account, you can ignore this email.`,
+    subject: "Confirm your Unpatched account",
+    text: `Your Unpatched verification code is: ${code}\n\nEnter this code to finish creating your account. This code expires in 15 minutes. If you did not create this account, you can ignore this email.`,
     idempotencyKey: `signup-verify-${userId}-${randomUUID()}`,
   });
 
@@ -251,8 +251,8 @@ export async function resendConfirmationEmail(email: string): Promise<void> {
 
     await activeEmailProvider.send({
       to: normalizedEmail,
-      subject: "Confirm your Sentinel account",
-      text: `Your Sentinel verification code is: ${code}\n\nEnter this code to finish creating your account. This code expires in 15 minutes.`,
+      subject: "Confirm your Unpatched account",
+      text: `Your Unpatched verification code is: ${code}\n\nEnter this code to finish creating your account. This code expires in 15 minutes.`,
       idempotencyKey: `signup-verify-resend-${user.id}-${randomUUID()}`,
     });
   });
@@ -278,8 +278,8 @@ export async function requestPasswordReset(email: string): Promise<void> {
     const resetUrl = `${origin}/auth/confirm?type=recovery&token=${encodeURIComponent(token)}`;
     await activeEmailProvider.send({
       to: normalizedEmail,
-      subject: "Reset your Sentinel password",
-      text: `Reset your Sentinel password:\n\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, you can ignore this email.`,
+      subject: "Reset your Unpatched password",
+      text: `Reset your Unpatched password:\n\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, you can ignore this email.`,
       idempotencyKey: `password-reset-${user.id}-${randomUUID()}`,
     });
   });

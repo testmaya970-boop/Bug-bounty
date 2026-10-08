@@ -3,11 +3,11 @@
 Date: 2026-08-31
 Status: **Proposal only. No code was changed in this slice, per explicit instruction. Awaiting review before implementation.**
 
-This document answers the brief for Sentinel's public homepage (`/`, plus how it hands off to `/researchers/sign-up` and `/organizations/sign-up`, established in `docs/decisions/0030`). It does not touch the authenticated product. Nothing here is implemented yet.
+This document answers the brief for Unpatched's public homepage (`/`, plus how it hands off to `/researchers/sign-up` and `/organizations/sign-up`, established in `docs/decisions/0030`). It does not touch the authenticated product. Nothing here is implemented yet.
 
 ## A load-bearing fact this proposal is built on
 
-`DESIGN.md` — the actual, existing design-system document — states its own scope in its first paragraph: **"This is the visual source of truth for Sentinel... It is for product interfaces, not marketing experiments."** The homepage was never inside `DESIGN.md`'s jurisdiction. That is precisely why it currently reads as generic: nothing was ever asked to give it its own visual identity, and the version built in `0030` correctly solved the *product* problem (an honest, non-fake, two-path entry point) without solving the *visual* one, because that wasn't its brief. This proposal is the first document to treat the homepage as its own design problem — consistent with, but not governed by, `DESIGN.md`.
+`DESIGN.md` — the actual, existing design-system document — states its own scope in its first paragraph: **"This is the visual source of truth for Unpatched... It is for product interfaces, not marketing experiments."** The homepage was never inside `DESIGN.md`'s jurisdiction. That is precisely why it currently reads as generic: nothing was ever asked to give it its own visual identity, and the version built in `0030` correctly solved the *product* problem (an honest, non-fake, two-path entry point) without solving the *visual* one, because that wasn't its brief. This proposal is the first document to treat the homepage as its own design problem — consistent with, but not governed by, `DESIGN.md`.
 
 A second, concrete fact worth surfacing: `DESIGN.md`'s own documented color values have drifted from what's actually shipped. `DESIGN.md` lists `--canvas: #f7f9fa` (cool, blue-tinted); the live `app/globals.css` has `--canvas: #faf8f3` (warm cream), with its own comment explaining an intentional past shift "from the previous cool blue-gray" that was never back-ported into `DESIGN.md`. This proposal uses the real, live values, not the stale documented ones — and flags the drift as a separate, small housekeeping item, not something to fix inside this slice.
 
@@ -32,40 +32,40 @@ Researched (live-fetched where the site rendered; tagged FACT for directly obser
 - **Raycast**: dark, glassmorphic, motion-and-video-heavy, no monospace despite being a developer tool — closer in spirit to the commodity pattern than the restrained end of the reference set.
 - **GitHub**: an animated code-editor/Copilot-chat demonstration *is* the hero visual — the most literal "show the real tool working" execution in the entire research set, backed by GitHub's own established Mona Sans (display) / Monaspace (mono) typeface pairing.
 
-**Synthesis — commodity patterns confirmed present across most of the 11 sites**: customer-logo carousels plus G2/star-rating badges as the default trust signal; repeated stat-band walls ("$X protected," "X% faster"); testimonial carousels duplicated two or three times down one page; a single sans-serif typeface used everywhere with no technical/monospace counterpoint, even on sites whose entire subject is code and vulnerabilities. All four are named explicitly in Section 2 as patterns Sentinel will not adopt.
+**Synthesis — commodity patterns confirmed present across most of the 11 sites**: customer-logo carousels plus G2/star-rating badges as the default trust signal; repeated stat-band walls ("$X protected," "X% faster"); testimonial carousels duplicated two or three times down one page; a single sans-serif typeface used everywhere with no technical/monospace counterpoint, even on sites whose entire subject is code and vulnerabilities. All four are named explicitly in Section 2 as patterns Unpatched will not adopt.
 
 **Synthesis — the three techniques judged most transferable, none of them a "look like X" instruction**:
-1. Pair a display typeface with a *genuine* monospace, and use the monospace to show a real artifact (Linear's literal code diff; GitHub's Mona Sans/Monaspace system) rather than as a decorative label. Sentinel already has a real monospace convention for targets/identifiers in the product — this is the one technique that requires no new capability, only extending an existing one to the homepage.
-2. Prefer a real, current data signal over an invented stat wall (GitHub Security Lab's live CVE count and disclosure list, the single most distinctive credibility device found across all 11 sites) — directly reinforcing Section 9's own conclusion: Sentinel has no honest anonymous-reachable number to show today, so the workflow-preview must be clearly illustrative, not an invented substitute stat.
-3. Show real product UI as one restrained, well-composed object against a mostly-quiet ground with a single accent color (Linear/Vercel/GitHub's shared pattern) rather than full-bleed decoration (YesWeHack) or omitting product UI entirely (HackerOne/Bugcrowd/Intigriti/Immunefi). This is a genuine differentiation opportunity specifically because none of the three direct bug-bounty competitors do it — directly shapes Section 8's "WHAT'S HAPPENING ON SENTINEL" section design.
+1. Pair a display typeface with a *genuine* monospace, and use the monospace to show a real artifact (Linear's literal code diff; GitHub's Mona Sans/Monaspace system) rather than as a decorative label. Unpatched already has a real monospace convention for targets/identifiers in the product — this is the one technique that requires no new capability, only extending an existing one to the homepage.
+2. Prefer a real, current data signal over an invented stat wall (GitHub Security Lab's live CVE count and disclosure list, the single most distinctive credibility device found across all 11 sites) — directly reinforcing Section 9's own conclusion: Unpatched has no honest anonymous-reachable number to show today, so the workflow-preview must be clearly illustrative, not an invented substitute stat.
+3. Show real product UI as one restrained, well-composed object against a mostly-quiet ground with a single accent color (Linear/Vercel/GitHub's shared pattern) rather than full-bleed decoration (YesWeHack) or omitting product UI entirely (HackerOne/Bugcrowd/Intigriti/Immunefi). This is a genuine differentiation opportunity specifically because none of the three direct bug-bounty competitors do it — directly shapes Section 8's "WHAT'S HAPPENING ON UNPATCHED" section design.
 
 ## 2. Commodity patterns we will explicitly reject
 
 - **The centered-hero-with-two-equal-button-choice pattern** the previous homepage itself used (`0030`'s `AudienceChoice`) — two text blocks of identical visual weight is exactly the "generic CRUD chooser" the task calls out. The choice should survive, but subordinated to an actual product statement, not presented as the page's opening move.
-- **Logo walls, stat bars, and G2/Gartner-style trust badges** — the dominant persuasion mechanism across HackerOne/Bugcrowd/Intigriti's own marketing (confirmed in the prior acquisition-focused research pass, `0030`). Sentinel has no real customer count, researcher count, or bounty total to honestly show yet, and `DESIGN.md` itself already forbids fabricated metrics ("Use actual data or a clearly marked development fixture. Do not ship fabricated metrics.") — this rule was written for the product, and this proposal extends it to the homepage without exception.
+- **Logo walls, stat bars, and G2/Gartner-style trust badges** — the dominant persuasion mechanism across HackerOne/Bugcrowd/Intigriti's own marketing (confirmed in the prior acquisition-focused research pass, `0030`). Unpatched has no real customer count, researcher count, or bounty total to honestly show yet, and `DESIGN.md` itself already forbids fabricated metrics ("Use actual data or a clearly marked development fixture. Do not ship fabricated metrics.") — this rule was written for the product, and this proposal extends it to the homepage without exception.
 - **Fake hacker/cyberpunk decoration** — Matrix rain, neon green, glowing borders, fake terminal screenshots. Explicitly named as off-limits in the brief, and already the exact posture `DESIGN.md` takes for the product ("Prefer quiet surfaces, strong typography, and measured contrast over neon effects, cyberpunk imagery, glowing borders, terminal decoration, or stock 'hacker' visuals").
 - **Card-grid feature walls** ("[icon] [headline] [three lines]" × 6) — commodity SaaS-template furniture. Every section in this proposal has a specific job (Section 8) rather than existing to fill a grid.
 - **A wholesale new color palette "because competitors are darker/bolder."** Addressed directly in Section 4: rejected, with reasoning.
 
-## 3. Sentinel visual thesis
+## 3. Unpatched visual thesis
 
-**What Sentinel should feel like, in concrete properties, not adjectives:**
+**What Unpatched should feel like, in concrete properties, not adjectives:**
 
-- **Density is not uniform — it shifts on purpose.** The hero is comparatively spacious (an editorial headline needs room to breathe). Immediately after it, the "what's actually happening on Sentinel" section becomes dense — real component-grade rows, thin dividers, monospace targets — matching the *product's own* established density exactly (the triage inbox, the evidence list, the Needs Recovery queue all already look like this). This density *shift* is the specific mechanism that reads as "serious instrument" rather than either a "spacious SaaS brochure" (uniformly sparse) or a "hacker terminal" (uniformly dense and dark). Nothing else on the page needs to be dense to earn this effect — one well-placed dense section does the work.
+- **Density is not uniform — it shifts on purpose.** The hero is comparatively spacious (an editorial headline needs room to breathe). Immediately after it, the "what's actually happening on Unpatched" section becomes dense — real component-grade rows, thin dividers, monospace targets — matching the *product's own* established density exactly (the triage inbox, the evidence list, the Needs Recovery queue all already look like this). This density *shift* is the specific mechanism that reads as "serious instrument" rather than either a "spacious SaaS brochure" (uniformly sparse) or a "hacker terminal" (uniformly dense and dark). Nothing else on the page needs to be dense to earn this effect — one well-placed dense section does the work.
 - **Typography carries the hierarchy alone-or-nearly-alone**, per `DESIGN.md`'s own stated principle for the product ("Hierarchy comes mainly from surface, border, spacing, and type... avoid gradients on operational surfaces") — extended here to marketing. Concretely: one new, genuinely editorial display face for the hero headline only (Section 6), the existing system-ui stack unchanged for every paragraph of supporting copy, and the existing monospace stack unchanged for every technical fragment (eyebrows, target strings, workflow labels) — three registers, each already meaning something specific in the product, now doing the same job at a larger scale.
 - **Geometry stays exactly as sharp/quiet as the product's.** Existing border radii, existing thin 1px dividers, existing `rounded-lg`/`rounded-md` scale — no new geometric language introduced. A visitor who signs up should never feel a seam between the homepage and the workspace.
 - **Color is not being replaced.** Addressed in full in Section 4.
 - **Real product fragments, not illustration.** The "what's happening" section and the researcher/organization explanations are composed from the *actual* `Badge`/`StatusBadge`/`SeverityBadge` components and the actual monospace target-string treatment already in production — not a freshly-drawn mockup, not stock imagery. If it looks like a screenshot, it's because it's assembled from the same code that produces the real screen.
 - **Motion is a hierarchy signal, not decoration.** At most: a brief (150–200ms, matching `DESIGN.md`'s existing product motion budget exactly), reduced-motion-respecting reveal as the dense workflow section scrolls into view. No looping animation, no auto-playing "typing" effect, no particle/gradient motion.
 
-**The test this thesis has to pass**: a screenshot with the logo removed should still read as Sentinel — because the monospace target strings, the exact severity/status color-plus-dot convention, and the thin-rule dense-row treatment are all things a visitor would recognize from the product itself, not from a marketing template.
+**The test this thesis has to pass**: a screenshot with the logo removed should still read as Unpatched — because the monospace target strings, the exact severity/status color-plus-dot convention, and the thin-rule dense-row treatment are all things a visitor would recognize from the product itself, not from a marketing template.
 
 ## 4. Color direction: extend, do not replace
 
-The brief asks to "research current premium product color systems and redesign Sentinel's palette deliberately." Having done that research (Section 1) and re-read `DESIGN.md`'s own governing philosophy, the considered conclusion is: **the existing 16-token system is not the problem, and should not be replaced.** Reasoning:
+The brief asks to "research current premium product color systems and redesign Unpatched's palette deliberately." Having done that research (Section 1) and re-read `DESIGN.md`'s own governing philosophy, the considered conclusion is: **the existing 16-token system is not the problem, and should not be replaced.** Reasoning:
 
 - The actual homepage weakness the task describes — "beige background, large heading, paragraph, two audience sections, text links, huge empty areas" — is a **layout and typography** failure, not a color failure. Swapping `--canvas`/`--ink`/`--action` for a new palette would not fix a page whose real problem is uniform density and no display typography.
-- `DESIGN.md`'s own Section 6 states the product's hierarchy already "comes mainly from surface, border, spacing, and type," explicitly **not** from a richer color system — and the competitor research (Section 1) independently confirms that vanity-metric-driven sites lean on *color/logo density* as a trust mechanic precisely because their copy and layout don't carry enough weight on their own. Sentinel's competitive difference should be the opposite: confident enough in its typography and real product fragments that it does not need a busier palette to compensate.
+- `DESIGN.md`'s own Section 6 states the product's hierarchy already "comes mainly from surface, border, spacing, and type," explicitly **not** from a richer color system — and the competitor research (Section 1) independently confirms that vanity-metric-driven sites lean on *color/logo density* as a trust mechanic precisely because their copy and layout don't carry enough weight on their own. Unpatched's competitive difference should be the opposite: confident enough in its typography and real product fragments that it does not need a busier palette to compensate.
 - A parallel marketing-only palette would violate `DESIGN.md`'s own explicit rule against inventing a second visual language, and would create exactly the "seam between the front door and the interior" this thesis is designed to avoid.
 
 **No new color token is proposed.** The existing `action` teal (`#0b6f69` light / `#58c4b5` dark) already reads as confident and saturated at any display size tested; `ink` (`#18140f` light) already provides strong, accessible contrast for large display type against `canvas` (`#faf8f3`). If implementation reveals a genuine, specific contrast gap at hero scale, `DESIGN.md`'s own governance rule applies: add one token, with a one-line rationale, rather than a parallel palette.
@@ -92,24 +92,24 @@ Net effect: three registers (editorial serif / system-ui prose / monospace techn
 
 ## 7. Researcher vs. organization acquisition paths
 
-Unchanged in substance from `0030`: `/researchers/sign-up` and `/organizations/sign-up` remain the two real entry points, `create_organization`'s authorization remains untouched (any authenticated account may still call it explicitly — see Section 11), and the platform/organization/researcher distinction is preserved exactly. What changes is *where in the page's narrative* the choice appears and *how much visual weight* it carries: the choice moves from being the page's opening statement (as `0030` shipped it) to being the page's *conclusion*, after the visitor has already seen what Sentinel is and how the workflow actually works — "I am here to find security programs" vs. "I am here to operate a security program" should be an informed choice by the time it's offered, not the first thing asked.
+Unchanged in substance from `0030`: `/researchers/sign-up` and `/organizations/sign-up` remain the two real entry points, `create_organization`'s authorization remains untouched (any authenticated account may still call it explicitly — see Section 11), and the platform/organization/researcher distinction is preserved exactly. What changes is *where in the page's narrative* the choice appears and *how much visual weight* it carries: the choice moves from being the page's opening statement (as `0030` shipped it) to being the page's *conclusion*, after the visitor has already seen what Unpatched is and how the workflow actually works — "I am here to find security programs" vs. "I am here to operate a security program" should be an informed choice by the time it's offered, not the first thing asked.
 
 ## 8. Proposed homepage structure
 
 ```
 HEADER
-Sentinel [wordmark]  ·  Security operations              Sign in
+Unpatched [wordmark]  ·  Security operations              Sign in
 
 HERO  (comparatively spacious)
-  eyebrow (monospace, small, uppercase): SENTINEL
+  eyebrow (monospace, small, uppercase): UNPATCHED
   headline (new editorial serif, large): Security research,
     built around the signal.
-  supporting statement (system-ui, 1-2 sentences): what Sentinel
+  supporting statement (system-ui, 1-2 sentences): what Unpatched
     actually is -- program, scope, report, triage, resolution,
     recorded honestly. No adjectives without a referent.
   [Explore how it works ↓]   (scrolls to the next section, not a CTA to sign up yet)
 
-WHAT'S HAPPENING ON SENTINEL  (dense -- the density shift)
+WHAT'S HAPPENING ON UNPATCHED  (dense -- the density shift)
   A real, component-grade sequence using the actual Badge/
   StatusBadge/SeverityBadge/monospace-target treatment:
     PROGRAM → SCOPE → REPORT → TRIAGE → RESOLUTION
@@ -138,7 +138,7 @@ PROGRAM DISCOVERY (honest, not fabricated)
   see Section 9 -- never a fake program list.
 
 FINAL STATEMENT
-  One specific, decisive closing line grounded in what Sentinel
+  One specific, decisive closing line grounded in what Unpatched
   actually does differently (e.g. its real, disclosed evidence
   trail and non-scored reputation model -- see 0026's own "10x
   opportunity" findings), not "Ready to get started?"
@@ -156,7 +156,7 @@ FOOTER
 
 Re-confirmed, not re-guessed: `public.programs` has no visibility column (verified directly against the schema in `0024`/`0025`, unchanged since). There is no anonymous-safe program listing query, and none should be invented in this slice — Section 4 of the brief is explicit on this point, and `0026` already named the visibility column as its own, separately-reasoned next slice.
 
-**What is honestly available to show an anonymous visitor**: nothing that would require a new anonymous-reachable query. The "what's happening on Sentinel" workflow section and the researcher/organization explanation sections are composed entirely from **illustrative content using real components** — not a live database read. This is the correct honest boundary: the *code* rendering the preview is real (the same `Badge`/`StatusBadge` components the product uses), the *content* is clearly a worked example, not a claim about live data.
+**What is honestly available to show an anonymous visitor**: nothing that would require a new anonymous-reachable query. The "what's happening on Unpatched" workflow section and the researcher/organization explanation sections are composed entirely from **illustrative content using real components** — not a live database read. This is the correct honest boundary: the *code* rendering the preview is real (the same `Badge`/`StatusBadge` components the product uses), the *content* is clearly a worked example, not a claim about live data.
 
 **Never fabricate, regardless of visual pressure to fill space**: company counts, researcher counts, bounty totals, success/resolution rates, response-time SLAs, rankings, program counts. None of these exist in a form an anonymous query could honestly produce today, and `DESIGN.md` already forbids exactly this for the product — extended here without exception.
 
@@ -189,7 +189,7 @@ Verify 1440/1280/1024/768/390/320, per the brief. The mobile composition is not 
 7. `create_organization`'s authorization, and every other RLS/RPC/domain boundary, is provably unchanged.
 8. No horizontal overflow at 1440/1280/1024/768/390/320; the mobile layout is a deliberately re-composed experience, not a stacked desktop layout.
 9. One `h1`, correct heading hierarchy, keyboard-operable CTAs with accessible names, visible focus states, sufficient contrast in both themes, and `prefers-reduced-motion` respected.
-10. A screenshot of the finished page, with the logo removed, should be identifiable as Sentinel to someone who has seen the product — because it reuses the product's own component grammar, not because it says so in text.
+10. A screenshot of the finished page, with the logo removed, should be identifiable as Unpatched to someone who has seen the product — because it reuses the product's own component grammar, not because it says so in text.
 
 ---
 

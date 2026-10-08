@@ -99,7 +99,7 @@ describe("notification email rendering: plain text only, no HTML injection surfa
 
 describe("resend email provider: missing configuration behavior", () => {
   it("throws immediately (fail-fast) when RESEND_API_KEY is missing, never silently falling back to the dev provider", () => {
-    vi.stubEnv("EMAIL_FROM", "sentinel@example.test");
+    vi.stubEnv("EMAIL_FROM", "noreply@example.test");
     expect(() => createResendEmailProvider()).toThrow(/RESEND_API_KEY/);
   });
 
@@ -112,7 +112,7 @@ describe("resend email provider: missing configuration behavior", () => {
 describe("resend email provider: request construction, mapping, and idempotency", () => {
   function makeProvider() {
     vi.stubEnv("RESEND_API_KEY", "re_test_key");
-    vi.stubEnv("EMAIL_FROM", "sentinel@example.test");
+    vi.stubEnv("EMAIL_FROM", "noreply@example.test");
     return createResendEmailProvider();
   }
 
@@ -130,7 +130,7 @@ describe("resend email provider: request construction, mapping, and idempotency"
     expect(headers.Authorization).toBe("Bearer re_test_key");
     expect(headers["Idempotency-Key"]).toBe("delivery-1");
     const body = JSON.parse(init.body as string);
-    expect(body).toEqual({ from: "sentinel@example.test", to: ["researcher@example.test"], subject: "Unpatched: subject", text: "body" });
+    expect(body).toEqual({ from: "noreply@example.test", to: ["researcher@example.test"], subject: "Unpatched: subject", text: "body" });
   });
 
   it("maps a 2xx response with a real message id to success, with that id as the provider reference", async () => {

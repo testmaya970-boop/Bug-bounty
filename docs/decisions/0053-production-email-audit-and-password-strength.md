@@ -21,7 +21,7 @@ none inferred:
 
 **Conclusion, stated exactly as asked:**
 
-- Where is production Sentinel deployed? **Nowhere. No deployment exists.**
+- Where is production Unpatched deployed? **Nowhere. No deployment exists.**
 - Which Supabase project does it use? **None -- no Supabase Cloud project has ever been
   linked to this repository.**
 - Do Production and Preview use separate Supabase environments? **N/A -- neither exists.**
@@ -50,7 +50,7 @@ concretely, to actually stand up production email delivery:
    provider's SPF/DKIM DNS records to. `supabase/config.toml`'s already-present, currently
    commented `[auth.email.smtp]` block is the exact real place these values go, using
    Supabase's own `env(...)` indirection so no secret is ever committed to source.
-4. A decision on the **production Site URL** (e.g. `https://sentinel.yourdomain.com`) so
+4. A decision on the **production Site URL** (e.g. `https://unpatched.yourdomain.com`) so
    `supabase/config.toml`'s `site_url`/`additional_redirect_urls` and this project's own
    confirm-route host-header logic (0023, unchanged) resolve correctly.
 

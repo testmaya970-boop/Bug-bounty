@@ -16,7 +16,7 @@ disclosed piece stubbed) · MOCK (fixture data) · ABSENT (does not exist).
 not urgent) · P3 (later differentiation, correctly deferred).
 **Platform tag**: **H1** = HackerOne only, **BC** = Bugcrowd only, **Both** = confirmed on
 both. Unconfirmed items from the source research are carried through honestly rather than
-silently dropped — they don't get a Sentinel verdict, since a feature that may not even be
+silently dropped — they don't get a Unpatched verdict, since a feature that may not even be
 real for the competitor can't meaningfully be "closed."
 
 ---
@@ -25,7 +25,7 @@ real for the competitor can't meaningfully be "closed."
 
 ### 1. Account & profile
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Public profile page (bio, "hacker story", ambitions) | Both | REAL — `app/researchers/[username]` | — |
 | Social/external links (GitHub, GitLab, Twitter, etc.) | Both | ABSENT | P2 |
@@ -39,21 +39,21 @@ real for the competitor can't meaningfully be "closed."
 | Background check (Clear program, Checkr, 7-year lookback, eligibility thresholds) | H1 | ABSENT | P3 |
 | Residency & citizenship verification | H1 | ABSENT | P3 |
 | Identity Verification (IDV) required before Managed Bug Bounty submission | BC | ABSENT | P3 |
-| Trust score composite (tenure + verification + escalations) | BC | ABSENT (Sentinel deliberately uses a non-scored, evidence-linked ledger instead — see `0016`, and `0026` Section K.1's stated differentiation) | — (intentional divergence) |
+| Trust score composite (tenure + verification + escalations) | BC | ABSENT (Unpatched deliberately uses a non-scored, evidence-linked ledger instead — see `0016`, and `0026` Section K.1's stated differentiation) | — (intentional divergence) |
 | Mandatory 2FA (TOTP + security keys + backup codes) | Both | REAL — `0052` | — |
 | Device registration / trusted devices | H1 | ABSENT | P3 |
 | Session management (view/revoke active sessions) | H1 | REAL | — |
-| Friend/social connections ("easier collaboration") | BC | ABSENT (Sentinel's collaboration flow adds by username directly, no friend-graph prerequisite) | — |
+| Friend/social connections ("easier collaboration") | BC | ABSENT (Unpatched's collaboration flow adds by username directly, no friend-graph prerequisite) | — |
 | Personal calendar export | H1 | ABSENT | P3 |
 | Hacker email alias | H1 | ABSENT | P3 |
 | External service linking (Hack the Box account) | H1 | ABSENT | P3 |
 | API personal access token | Both | REAL — `settings/api-tokens` | — |
 | @bugcrowdninja.com email address for researchers | BC | ABSENT | P3 |
-| Dark/light theme toggle | H1 ([moderate confidence]) | ABSENT — Sentinel is single-theme by deliberate design (`0073`) | — (intentional divergence) |
+| Dark/light theme toggle | H1 ([moderate confidence]) | ABSENT — Unpatched is single-theme by deliberate design (`0073`) | — (intentional divergence) |
 
 ### 2. Program discovery
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Public program directory/list | Both | REAL — public program browsing exists | — |
 | Filters: asset type, reward range, industry, program type | Both | PARTIAL — some filtering exists on `/programs`; industry/reward-range filters not confirmed present | P2 |
@@ -64,11 +64,11 @@ real for the competitor can't meaningfully be "closed."
 | Program policy page: scope, out-of-scope, rewards table, response SLA | Both | REAL — program scope + bounty policy are real; response-SLA display to researcher is ABSENT (no SLA metric surfaced) | P1 |
 | Program-level "response efficiency"/compliance badges shown to researcher | H1 (Program Levels, Gold Standard Safe Harbor badge) | ABSENT | P2 |
 | Hacker-authored program ratings/reviews | Neither confirmed — H1 explicitly has no such feature (reverse: programs review hackers); BC not confirmed either | ABSENT (matches competitor absence — not a gap) | — |
-| Eligibility indicators (Signal/Reputation threshold, submission caps) | H1 (4-tier Signal Requirements gating submission caps) / BC (90-day activity + validity-rate thresholds for private-program eligibility) | ABSENT — Sentinel's reputation ledger exists but is not used as an eligibility gate anywhere | P2 |
+| Eligibility indicators (Signal/Reputation threshold, submission caps) | H1 (4-tier Signal Requirements gating submission caps) / BC (90-day activity + validity-rate thresholds for private-program eligibility) | ABSENT — Unpatched's reputation ledger exists but is not used as an eligibility gate anywhere | P2 |
 
 ### 3. Applying/joining a program
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Private program invitations | Both | REAL | — |
 | Invitation accept/decline, expiry | Both (H1: 14-day expiry) | REAL (accept/decline); expiry timing not confirmed identical | — |
@@ -80,12 +80,12 @@ real for the competitor can't meaningfully be "closed."
 
 ### 4. Report submission
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Title, free-text description | Both | REAL | — |
 | Weakness/CWE-style category selection | H1 (CWE taxonomy) / BC (VRT taxonomy) | REAL — `weaknessType` enum exists (`0047`) | — |
 | Severity self-assessment (None–Critical / P1–P5) | Both | REAL — `researcherSeverity`, advisory-only by design | — |
-| CVSS calculator (multiple versions) | H1 (3.0/3.1/4.0) / BC (customer-side only, not researcher-visible) | REAL — CVSS 3.1 fields exist and are researcher-facing (`0069`) — Sentinel's researcher-facing CVSS exposure is a genuine point ahead of Bugcrowd's model | — |
+| CVSS calculator (multiple versions) | H1 (3.0/3.1/4.0) / BC (customer-side only, not researcher-visible) | REAL — CVSS 3.1 fields exist and are researcher-facing (`0069`) — Unpatched's researcher-facing CVSS exposure is a genuine point ahead of Bugcrowd's model | — |
 | Impact field | Both | REAL | — |
 | Steps to reproduce | Both (folded into description on both) | REAL — part of `description` | — |
 | Affected asset/target selection tied to real scope | Both | REAL — scope-matched, server-enforced | — |
@@ -96,11 +96,11 @@ real for the competitor can't meaningfully be "closed."
 | Report template (program-defined, pre-populated) | Both (BC: 100+ VRT-linked templates) | REAL — report submission templates exist (`0070`) | — |
 | AI-assisted report writing/clarity check | H1 (Report Assistant / Hai) | ABSENT | P3 |
 | Embedded/no-login/anonymous submission widget | H1 | ABSENT | P3 |
-| Post-submission evidence-attach failure recovery | [not a competitor-documented feature either way] | REAL — Sentinel's own honest one-time banner (identified as a strength in this session's researcher audit) | — |
+| Post-submission evidence-attach failure recovery | [not a competitor-documented feature either way] | REAL — Unpatched's own honest one-time banner (identified as a strength in this session's researcher audit) | — |
 
 ### 5. Report lifecycle & tracking
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Full, real report status enum | Both | REAL — 9 real statuses, hardcoded-per-RPC transitions (`0009`) | — |
 | Auto-close after inactivity (Needs More Info → Informative after 30 days) | H1 | ABSENT — `needs_information` has no auto-close today | P2 |
@@ -115,10 +115,10 @@ real for the competitor can't meaningfully be "closed."
 
 ### 6. Collaboration
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Add collaborators to a report, weighted/percentage bounty split | Both (H1: max 10, weight-ratio formula; BC: max 10, percentages summing to 100%) | **REAL — built and live-verified this session** (`0064`), including an infinite-recursion RLS bug caught and fixed before shipping | — |
-| Collaborator invitation must be accepted before earning credit | H1 | PARTIAL — Sentinel's `add_report_collaborator` adds immediately (submitter-added, no separate accept step) | P2 |
+| Collaborator invitation must be accepted before earning credit | H1 | PARTIAL — Unpatched's `add_report_collaborator` adds immediately (submitter-added, no separate accept step) | P2 |
 | Collaboration lock after report reaches certain states | Both | REAL — locked once past `new`/`triaging`, matching both competitors' actual mechanics | — |
 | Payout fan-out to each collaborator's real split | Both | **ABSENT, disclosed** — `create_payment_obligation` still pays the submitter only; this is `0064`'s own stated next step, not silently missing | P1 |
 | "Collaborators tab" on a program page for pre-report coordination | H1 | ABSENT | P3 |
@@ -127,27 +127,27 @@ real for the competitor can't meaningfully be "closed."
 
 ### 7. Payments
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Bank transfer, PayPal, crypto (BTC/USDC) payout methods | Both (H1: 37-currency Currencycloud + Coinbase Prime crypto; BC: bank/PayPal/limited BTC) | PARTIAL — `payment_obligations`/`payment_attempts` ledger is REAL; the provider behind it is manual/operator-confirmed only, no live rails of any kind | P1 |
 | Minimum payout threshold, configurable schedule | Both (H1: $15–$100 by method, configurable $100–$10k; BC: configurable, $10k max) | ABSENT — no threshold/schedule concept exists | P2 |
 | Tax form collection (W-9/W-8BEN/W-8BEN-E) | Both | ABSENT — `researcher_payout_details` collects bank/PayPal info but no tax-form flow | P2 |
 | Payment history/statements, CSV export | BC (confirmed); H1 [unconfirmed] | REAL — `BountyTrackRecord`/`listMyPaymentObligations` show real obligation history; no CSV export | P3 |
 | Payout speed SLA (1–10 business days by method) | Both | ABSENT — no committed timing since the provider is manual | P2 |
-| Unclaimed-funds/forfeiture policy | H1 (9-month forfeiture) | ABSENT (not applicable at Sentinel's current scale/maturity) | P3 |
+| Unclaimed-funds/forfeiture policy | H1 (9-month forfeiture) | ABSENT (not applicable at Unpatched's current scale/maturity) | P3 |
 | Points/Kudos non-cash reward system (VDP-only) | BC | ABSENT — VDP programs exist (`0074`'s "real VDP vs bounty distinction") but carry no non-cash reward mechanic | P3 |
 | Business/entity-level payout account | H1 | ABSENT | P3 |
-| External Payments (claim a bounty without a pre-existing account) | H1 | ABSENT — not applicable, Sentinel requires an account for report submission itself | — |
+| External Payments (claim a bounty without a pre-existing account) | H1 | ABSENT — not applicable, Unpatched requires an account for report submission itself | — |
 
 ### 8. Reputation, ranking, gamification
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
-| Reputation score with defined per-outcome deltas | Both (H1: +7/+2/0/−5/−10 by exact outcome, floor 0; BC: severity-weighted Kudos) | REAL — Sentinel's own ledger (`0016`) uses different point values (+25/+10/−5) but the same "real, append-only, per-outcome fact" shape | — |
-| Percentile ranking vs. other researchers (Signal/Impact) | H1 | REAL, but non-percentile by deliberate design — Sentinel shows a real score, not an opaque percentile (`0016`'s stated differentiation, reaffirmed in `0026` Section K.1) | — (intentional divergence) |
-| Public leaderboard (global, filterable) | Both (H1: 8+ distinct leaderboard views — reputation, critical-reputation, OWASP-category, country, asset-type, up-and-comers, most-upvoted, CTF, pentester; BC: single global Rank leaderboard, filterable by time/severity/country) | REAL — Sentinel has one real, RPC-backed leaderboard (`get_public_leaderboard`); far fewer cross-cuts than H1's 8, roughly matching BC's single-view simplicity | P2 |
-| Per-program "Top Hackers"/Hall of Fame | Both | ABSENT — no per-program recognition list exists (Sentinel's leaderboard is platform-wide only) | P2 |
-| Achievement badges (H1: 20 confirmed named badges; BC: 4 badge families with numeric levels) | Both | REAL — Sentinel has real, computed-read-side badges (`0071`), fewer than either competitor's catalog | P2 |
+| Reputation score with defined per-outcome deltas | Both (H1: +7/+2/0/−5/−10 by exact outcome, floor 0; BC: severity-weighted Kudos) | REAL — Unpatched's own ledger (`0016`) uses different point values (+25/+10/−5) but the same "real, append-only, per-outcome fact" shape | — |
+| Percentile ranking vs. other researchers (Signal/Impact) | H1 | REAL, but non-percentile by deliberate design — Unpatched shows a real score, not an opaque percentile (`0016`'s stated differentiation, reaffirmed in `0026` Section K.1) | — (intentional divergence) |
+| Public leaderboard (global, filterable) | Both (H1: 8+ distinct leaderboard views — reputation, critical-reputation, OWASP-category, country, asset-type, up-and-comers, most-upvoted, CTF, pentester; BC: single global Rank leaderboard, filterable by time/severity/country) | REAL — Unpatched has one real, RPC-backed leaderboard (`get_public_leaderboard`); far fewer cross-cuts than H1's 8, roughly matching BC's single-view simplicity | P2 |
+| Per-program "Top Hackers"/Hall of Fame | Both | ABSENT — no per-program recognition list exists (Unpatched's leaderboard is platform-wide only) | P2 |
+| Achievement badges (H1: 20 confirmed named badges; BC: 4 badge families with numeric levels) | Both | REAL — Unpatched has real, computed-read-side badges (`0071`), fewer than either competitor's catalog | P2 |
 | Streaks (consecutive resolved reports/months) | Both (via badges, not a separate mechanic on either) | ABSENT | P3 |
 | Swag/merchandise rewards | Both | ABSENT | P3 |
 | MVP/incentive-tier program (BC) / Hacker Milestone Rewards (H1, new Sept 2025) | Both | ABSENT | P3 |
@@ -155,17 +155,17 @@ real for the competitor can't meaningfully be "closed."
 
 ### 9. Learning & training
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Free structured training curriculum (Hacker101 / Bugcrowd University) | Both | ABSENT — no training-content library exists | P2 |
-| CTF / practice challenges | Both (H1: dozens of levels, 26-pt program-invite eligibility, dedicated leaderboard; BC: occasional one-off events, no standing product) | **PARTIAL** — Sentinel's own CTF is closer to H1's shape (standing product, real flag verification, real reputation credit) than BC's (one-off events only) — but Sentinel's challenge *content* is fixed/seeded with no on-screen disclosure, a real honesty gap flagged in `0074` | P0 (disclosure) |
+| CTF / practice challenges | Both (H1: dozens of levels, 26-pt program-invite eligibility, dedicated leaderboard; BC: occasional one-off events, no standing product) | **PARTIAL** — Unpatched's own CTF is closer to H1's shape (standing product, real flag verification, real reputation credit) than BC's (one-off events only) — but Unpatched's challenge *content* is fixed/seeded with no on-screen disclosure, a real honesty gap flagged in `0074` | P0 (disclosure) |
 | Live/virtual hacking events | H1 | ABSENT — explicitly scoped and deferred (`0067`) | P3 |
 | Community forum / Discord | Both | ABSENT | P3 |
 | Mentorship program | H1 (informal + "Community Day" formal track) | ABSENT | P3 |
 
 ### 10. Communication & notifications
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | In-app notifications with read/unread state | Both | REAL | — |
 | Granular notification preferences | Both | REAL | — |
@@ -177,28 +177,28 @@ real for the competitor can't meaningfully be "closed."
 
 ### 11. Disclosure
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Disclosure request flow (initiate, approve/decline) | Both | REAL (`0009`-era disclosure workflow) | — |
-| Full vs. limited/summary disclosure levels | H1 | ABSENT — Sentinel's disclosure is binary (published or not), no partial/summary tier | P2 |
+| Full vs. limited/summary disclosure levels | H1 | ABSENT — Unpatched's disclosure is binary (published or not), no partial/summary tier | P2 |
 | Auto-default-to-public after timeout | H1 (30 days, CVD-compliance-dependent) | ABSENT | P3 |
-| Public disclosed-report feed (Hacktivity / CrowdStream) | Both | REAL — Sentinel's public disclosure feed exists | — |
+| Public disclosed-report feed (Hacktivity / CrowdStream) | Both | REAL — Unpatched's public disclosure feed exists | — |
 | Feed filters/sort (severity, asset type, date, upvotes) | Both (H1: rich Lucene-style filtering; BC: simpler) | PARTIAL — feed exists, filter richness not confirmed to match either competitor | P3 |
 | Upvoting on disclosed reports | H1 | ABSENT | P3 |
 
 ### 12. API & tooling
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Personal API token generation | Both | REAL | — |
-| Full researcher-facing REST API (reports, programs, payments, hacktivity) | Both (H1: ~10+ documented endpoints; BC: versioned, role-scoped) | PARTIAL — Sentinel has exactly 1 endpoint (list-my-reports) of a much larger representative surface, disclosed as intentional (`0018`) | P2 |
+| Full researcher-facing REST API (reports, programs, payments, hacktivity) | Both (H1: ~10+ documented endpoints; BC: versioned, role-scoped) | PARTIAL — Unpatched has exactly 1 endpoint (list-my-reports) of a much larger representative surface, disclosed as intentional (`0018`) | P2 |
 | CLI tool | Neither confirmed as an official first-party tool on either platform | ABSENT (matches competitor absence — not a gap) | — |
 | Browser extension | Neither confirmed as official on either platform | ABSENT (matches competitor absence — not a gap) | — |
-| Public vulnerability-taxonomy API (VRT) | BC | Not directly applicable — Sentinel's weakness taxonomy (`0047`) is internal, not published as an open standard | P3 |
+| Public vulnerability-taxonomy API (VRT) | BC | Not directly applicable — Unpatched's weakness taxonomy (`0047`) is internal, not published as an open standard | P3 |
 
 ### 13. Trust & safety
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Safe harbor legal language | Both | ABSENT — no safe-harbor statement surfaced to researchers | P1 |
 | Code of Conduct | Both | ABSENT — no researcher-facing code of conduct document exists | P1 |
@@ -207,7 +207,7 @@ real for the competitor can't meaningfully be "closed."
 
 ### 14. Anything else, small
 
-| Feature | Platform | Sentinel today | Priority |
+| Feature | Platform | Unpatched today | Priority |
 |---|---|---|---|
 | Researcher referral program | [unconfirmed for both — H1 has no confirmed hacker-referral program; BC's is customer-side only] | ABSENT (matches competitor absence — not a gap) | — |
 | Swag store | Both | ABSENT | P3 |
@@ -233,9 +233,9 @@ real for the competitor can't meaningfully be "closed."
   "start with researcher-initiated flagging" recommendation) and does not require the full
   platform-admin foundation to exist first — an organization's own owner/security_admin
   could resolve a mediation request today, the same way they resolve everything else.
-- **Sentinel's researcher-facing CVSS exposure (`0069`) is a genuine point of parity-or-
+- **Unpatched's researcher-facing CVSS exposure (`0069`) is a genuine point of parity-or-
   better against Bugcrowd specifically** — Bugcrowd's CVSS calculator is confirmed
-  customer-side only, never shown to the researcher; Sentinel shows CVSS to the submitting
+  customer-side only, never shown to the researcher; Unpatched shows CVSS to the submitting
   researcher. Worth stating as a real, verified differentiator, not just an assumption.
 - **Safe harbor / Code of Conduct (Section 13) is a real, cheap, high-trust-value gap**
   neither previous audit (`0025`/`0026`/`0074`) flagged, because it's a legal/content gap,
@@ -278,7 +278,7 @@ changed them. Unchanged axes are carried forward with their original basis cited
 | E. Public program marketplace | NOT READY | Unchanged — `program_visibility` still doesn't exist |
 | F. Production commercial launch | NOT READY | Unchanged — platform operations layer is still ~5% real |
 
-**The honest overall statement, updated**: Sentinel remains a well-built two-party product
+**The honest overall statement, updated**: Unpatched remains a well-built two-party product
 that cannot yet safely operate as a three-party platform at scale — but the two-party
 product itself got measurably better this session on both sides (researcher: +5pp;
 organization: +5pp), while the platform tier remains exactly where `0025` found it. The

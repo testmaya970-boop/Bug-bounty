@@ -13,7 +13,7 @@ researcher profile/directory. This is not one team missing the idea once; it is 
 position reaffirmed across roughly ten months of the product's own history, most explicitly in
 0016 ("a wrong guess baked into a scoring formula is far harder to walk back than a missing
 feature") and 0049 ("a stranger being able to browse every researcher is a different privacy
-posture than Sentinel has chosen"). Per AGENTS.md's authority order, a current, explicit task
+posture than Unpatched has chosen"). Per AGENTS.md's authority order, a current, explicit task
 requirement outranks any of these documents — but Section 9's own rule is that a change this
 significant needs a real decision doc and a DOMAIN.md rewrite, not a silent reversal. This is
 that document.

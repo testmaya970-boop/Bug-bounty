@@ -2,7 +2,7 @@
 
 Related: [[0004-program-authorization]], [[0005-program-lifecycle]], [[0007-researcher-access]],
 [[0021-program-lifecycle-transitions]], [[0024-three-perspective-product-model]],
-[[0025-platform-operations-gap-audit]], [[0026-sentinel-product-strategy-and-10x-gap-analysis]].
+[[0025-platform-operations-gap-audit]], [[0026-unpatched-product-strategy-and-10x-gap-analysis]].
 
 Per the task's explicit stop condition: **no migration, no RLS change, no new column, no
 UI was written for this document.** Every claim below is cited against the live schema.
@@ -49,7 +49,7 @@ left exactly as 0007 built it, not silently changed."*
 So: "researcher can't see this draft program" and "researcher can't see this active
 program" are, today, **the identical case** -- both are explained entirely by "no
 invitation exists yet," and lifecycle status is not a variable in the equation either
-way. That is itself the real finding: Sentinel has never actually modeled "discovery" as
+way. That is itself the real finding: Unpatched has never actually modeled "discovery" as
 a concept distinct from "access." There is exactly one axis today (membership), and the
 task's own instinct to ask "are these being conflated?" is correct -- they aren't
 conflated so much as one of the three axes (discovery) simply doesn't exist yet.
@@ -91,14 +91,14 @@ not an edge case; it is the default, majority state industry-wide.
 
 ## 5. Access models evaluated
 
-| Model | Researcher experience | Org experience | Security/privacy | Abuse risk | Complexity | Sentinel fit today |
+| Model | Researcher experience | Org experience | Security/privacy | Abuse risk | Complexity | Unpatched fit today |
 |---|---|---|---|---|---|---|
-| A. Invite-only (current) | Passive; waits for an email | Full control, one at a time | Strongest -- existence itself is hidden from non-members | None | Already built | **Yes** -- matches the industry default and Sentinel's current trust/reputation maturity (none yet) |
-| B. Public discovery | Browse/apply like a job board | Exposed to unsolicited traffic immediately | Program existence, scope, and org identity all become public by default | High -- no vetting means noise/low-quality submissions, and public scope disclosure itself can be a target map | High (search, filtering, abuse controls, a real public route) | **No** -- Sentinel has no researcher reputation/vetting signal at all yet; this is the mistake 0026 already named as a premature-marketplace risk |
+| A. Invite-only (current) | Passive; waits for an email | Full control, one at a time | Strongest -- existence itself is hidden from non-members | None | Already built | **Yes** -- matches the industry default and Unpatched's current trust/reputation maturity (none yet) |
+| B. Public discovery | Browse/apply like a job board | Exposed to unsolicited traffic immediately | Program existence, scope, and org identity all become public by default | High -- no vetting means noise/low-quality submissions, and public scope disclosure itself can be a target map | High (search, filtering, abuse controls, a real public route) | **No** -- Unpatched has no researcher reputation/vetting signal at all yet; this is the mistake 0026 already named as a premature-marketplace risk |
 | C. Application-based | Researcher requests access to a listed program | Org reviews/approves requests | Program must still be listed somewhere -- partial exposure | Medium -- spam applications | Medium (needs a request/review queue, still needs *some* discovery surface) | Not yet -- depends on solving discovery first |
 | D. Public + application | Same as C but fully public listing | Same as B's exposure | Same as B | High | Highest | **No** |
 | E. Public + invitation | Some programs public, most invite-only (HackerOne/Bugcrowd's actual shape) | Org chooses per-program | Matches researched reality exactly | Only as risky as the org's own choice | Medium-high (needs the toggle, a public route, and everything B implies for the public subset) | **Eventually, not now** -- correct long-run target, premature today |
-| F. Eligibility-gated discovery (no public route) | Reputation-qualifying researchers see an "opportunities" style list; everyone else sees nothing | Org can widen exposure without going fully public | No public route to secure; only pre-vetted accounts ever see anything | Low | Medium (needs a real reputation signal to gate on -- Sentinel's reputation ledger exists per prior audits but has never been used as a gate) | **The real future direction**, once reputation is trustworthy enough to gate on |
+| F. Eligibility-gated discovery (no public route) | Reputation-qualifying researchers see an "opportunities" style list; everyone else sees nothing | Org can widen exposure without going fully public | No public route to secure; only pre-vetted accounts ever see anything | Low | Medium (needs a real reputation signal to gate on -- Unpatched's reputation ledger exists per prior audits but has never been used as a gate) | **The real future direction**, once reputation is trustworthy enough to gate on |
 
 ## 6. The critical product question
 
@@ -108,22 +108,22 @@ it?*
 **No, not automatically, and not based on "active" alone.** The research is unambiguous:
 every platform studied keeps the large majority of active, fully-operating programs
 permanently undiscoverable to anyone not individually granted access. "Active" answers
-"is work happening," not "who may know about it." Sentinel does not need a marketplace to
+"is work happening," not "who may know about it." Unpatched does not need a marketplace to
 become a real platform -- it needs organizations to be able to run real, accountable
 engagements with researchers they've chosen, which is exactly what today's invite-only
-model already does correctly. Sentinel becomes a real marketplace later, the same way
+model already does correctly. Unpatched becomes a real marketplace later, the same way
 every researched competitor did: by first having a trustworthy reputation signal worth
 gating a discovery layer on (Model F), not by exposing everything active by default
 (which none of them do either).
 
 ## 7. Recommended minimum model
 
-**Do not add a schema column for this now.** The research does not support it: Sentinel's
+**Do not add a schema column for this now.** The research does not support it: Unpatched's
 current single-axis (access-only, invitation-gated) model is not a gap relative to the
 industry -- it *is* the industry's own default, majority state. Adding a
 `program_access_mode`/`discovery` column today would model a capability (public or
 eligibility-gated discovery) that has no safe implementation yet, because it depends on a
-reputation-gating mechanism Sentinel has not built or proven (Model F's prerequisite).
+reputation-gating mechanism Unpatched has not built or proven (Model F's prerequisite).
 Building the column without the gate it needs to be safe would be exactly the
 "invent a marketplace before its prerequisites exist" mistake 0026 already flagged.
 

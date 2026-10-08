@@ -6,7 +6,7 @@ Related: [[0031-public-front-door-visual-thesis]], [[0030-public-entry-and-two-s
 
 0031 researched and proposed a visual direction for the public homepage and was
 approved as the foundation, with one explicit condition: implement it so the result is
-recognizably Sentinel, not a well-executed generic SaaS template with a wordmark swapped
+recognizably Unpatched, not a well-executed generic SaaS template with a wordmark swapped
 in. This decision records what was actually built and why, since 0031 itself is a
 proposal document, not a record of the shipped page.
 
@@ -29,7 +29,7 @@ Four new presentation components were added under `components/marketing/`:
   section and by both the researcher and organization sections.
 - `program-discovery-preview.tsx` — a permanently dashed, opacity-reduced, dash-only
   placeholder (never a loading skeleton) standing in for the marketplace listing
-  Sentinel does not yet have.
+  Unpatched does not yet have.
 
 One typeface was added: Fraunces (via `next/font/google`), scoped to homepage headline
 elements only through its generated `className`. `app/globals.css` was not touched — the

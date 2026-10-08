@@ -10,7 +10,7 @@ concluded it was the one genuinely safe, high-value, low-risk gap. Everything el
 HackerOne screenshot showed was evaluated and, in every other case, rejected or
 explicitly deferred with a stated reason -- not silently skipped.
 
-## A. Current Sentinel researcher model (verified against the live schema, not inferred)
+## A. Current Unpatched researcher model (verified against the live schema, not inferred)
 
 - `public.users`: `id`, `username` (auto-derived at signup, e.g. `shiva_a3f9e2` --
   never chosen, never editable by anyone before this slice), `display_name` (also
@@ -23,14 +23,14 @@ explicitly deferred with a stated reason -- not silently skipped.
   trigger (`handle_new_auth_user`) only ever inserts into `public.users`; no INSERT RLS
   policy existed even if a client had tried to create its own row.
 - `public.reputation_ledger` (0016): the real "verified research history" --
-  fact-based, per-outcome, no score. This is Sentinel's actual answer to HackerOne's
+  fact-based, per-outcome, no score. This is Unpatched's actual answer to HackerOne's
   reputation/impact tables, and it was already correct; this audit did not touch it.
 - No public per-researcher profile route exists (`/researchers` is strictly self-only --
   confirmed by reading the route directly, not inferred). No organization can view any
   researcher's identity beyond `report.researcherName` (a bare display name) on a report
   they submitted to that organization's own program.
 - Researcher invitation (`invite_researcher_to_program`) is pure cold-email: "The
-  researcher does not need an existing Sentinel account." Zero identity/history is
+  researcher does not need an existing Unpatched account." Zero identity/history is
   visible to an organization before inviting someone. This matches 0038/0039's own
   earlier, deliberate conclusion (a narrow, org-scoped signal only -- not a directory)
   and this audit did not find new evidence to reopen that call.
@@ -51,12 +51,12 @@ your comments, and in reports you submit" framing.
 | Avatar | **ADAPT (deferred)** | `avatar_path` column is real and ready; actual image upload/storage is a separable slice (needs a bucket, size/type validation, UI) -- not built here, disclosed, not half-built. |
 | Biography / About me | **ADAPT** | Real, already existed, was unreachable -- implemented this slice, shown to organizations on the report they're triaging. |
 | Username (editable, public) | **REJECT (for now)** | Real gap (auto-generated, ugly, never chosen), but editable-username-as-public-identifier is its own product decision (collision handling, public-profile-URL implications) entangled with the REJECTed public-directory question below -- not a small addition. |
-| Public profile page / directory | **REJECT** | 0038/0039 already researched and explicitly rejected a directory/marketplace; this audit found no new evidence to reopen that call. A stranger being able to browse every researcher is a different privacy posture than Sentinel has chosen. |
+| Public profile page / directory | **REJECT** | 0038/0039 already researched and explicitly rejected a directory/marketplace; this audit found no new evidence to reopen that call. A stranger being able to browse every researcher is a different privacy posture than Unpatched has chosen. |
 | Location / Country | **REJECT** | Explicitly forbidden by 0042's own researcher-profile constraint; no security-research purpose it serves that scope/program targeting doesn't already cover. |
 | Languages + proficiency | **REJECT** | Same reasoning as location -- social-profile filler, not a security-research fact. |
-| "Open for employment" | **REJECT** | A hiring-marketplace feature; Sentinel is not building one. |
+| "Open for employment" | **REJECT** | A hiring-marketplace feature; Unpatched is not building one. |
 | External platform handles (Bugcrowd/GitHub/etc.) | **REJECT** | Unverifiable self-reported claims with zero real data behind them -- exactly the "fake reputation adjacent" pattern 0016/0039 already rejected once. |
-| Reputation/Impact/Signal tables | **KEEP (already correct)** | `reputation_ledger` is Sentinel's real, fact-based equivalent -- already built, already right, not touched. |
+| Reputation/Impact/Signal tables | **KEEP (already correct)** | `reputation_ledger` is Unpatched's real, fact-based equivalent -- already built, already right, not touched. |
 | Skills & Interests, certifications | **REJECT** | Explicitly forbidden by 0042. |
 | Leaderboard | **REJECT** | Explicitly forbidden by 0016/0042/0043, repeatedly. |
 
@@ -98,7 +98,7 @@ yet" placeholder.
 1. This slice (self-service identity) -- done.
 2. A real, chosen, editable public username with collision handling -- not done, not
    started.
-3. A real product decision, with the user's explicit sign-off, on whether Sentinel wants
+3. A real product decision, with the user's explicit sign-off, on whether Unpatched wants
    a public-profile/directory posture at all -- 0038/0039 already said no for now; that
    decision would need to be deliberately revisited, not incidentally reopened by a
    profile-editing slice.

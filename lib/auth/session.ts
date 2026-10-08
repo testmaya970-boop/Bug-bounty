@@ -22,7 +22,7 @@ import { getNativeEnv } from "@/lib/env";
  * unforgeable even if the database is read but SESSION_COOKIE_SECRET is not.
  */
 
-export const SESSION_COOKIE_NAME = "sentinel_session";
+export const SESSION_COOKIE_NAME = "unpatched_session";
 
 export type SessionRow = {
   id: string;

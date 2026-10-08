@@ -48,7 +48,7 @@ export const config = {
   // image assets at all (only ctf-artifacts, already excluded by name above). That clause
   // therefore let an attacker reach any dynamic route with zero session validation: proxy
   // never ran, so lib/session/middleware.ts's own header-strip step (the one thing standing
-  // between a client-supplied x-sentinel-verified-user-id header and getCurrentUser()
+  // between a client-supplied x-unpatched-verified-user-id header and getCurrentUser()
   // trusting it) never ran either -- a full, unauthenticated account-impersonation path.
   // Removed entirely rather than narrowed to a path prefix, since there is currently no
   // static image asset under public/ for it to protect.

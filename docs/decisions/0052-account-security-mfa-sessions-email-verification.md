@@ -65,7 +65,7 @@ so the gate is reached immediately, not just eventually.
    shared `CODE: message` parser uses `/^([A-Z_]+): (.+)$/` -- no digits allowed. A
    digit-bearing error code silently fell through to a generic "UNKNOWN" message. Caught by
    a unit test, not by inspection; renamed to `STRONG_AUTH_REQUIRED` everywhere.
-2. **Every session showed `user_agent: "node"`.** Sentinel makes every Supabase Auth call
+2. **Every session showed `user_agent: "node"`.** Unpatched makes every Supabase Auth call
    server-side (Server Components, Server Actions, Route Handlers) -- without forwarding
    the real incoming request's `User-Agent` header, GoTrue only ever sees the Next.js
    server process's own outbound request, not the real browser/device. Found live while

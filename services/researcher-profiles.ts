@@ -184,7 +184,7 @@ export async function updateMyPersonalDetails(input: { gender?: ResearcherGender
 // KYC -- public.researcher_kyc, self + platform-admin only. upsertMyKyc is write-only from
 // the client's perspective: the raw Aadhaar/PAN/passport/phone value is never read back,
 // only statuses (see get_my_kyc_status's own comment on why). No fake "Verify via
-// DigiLocker" call exists here -- Sentinel has no real government-ID-verification
+// DigiLocker" call exists here -- Unpatched has no real government-ID-verification
 // provider; a platform admin marks a field verified/rejected after manual review.
 // ---------------------------------------------------------------------------
 

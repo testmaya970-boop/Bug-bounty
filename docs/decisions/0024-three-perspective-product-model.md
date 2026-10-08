@@ -1,11 +1,11 @@
-# 0024: Three-perspective product/permission audit — Researcher vs Organization vs Sentinel Platform Admin
+# 0024: Three-perspective product/permission audit — Researcher vs Organization vs Unpatched Platform Admin
 
 Date: 2026-08-31
 Status: Audit only — no fixes implemented in this slice, by explicit instruction.
 
 ## Purpose
 
-This document answers one question: does Sentinel behave like a serious security platform for the right person at every stage, across its three fundamentally different users — Researcher, Organization/security team, and Sentinel Platform Admin? It is research + a live-tested gap analysis, not an implementation. Every claim about Sentinel's own behavior below was verified against the actual RLS/RPC/migration layer and, where stated, against a real running instance with real accounts — never inferred from UI copy or button visibility alone.
+This document answers one question: does Unpatched behave like a serious security platform for the right person at every stage, across its three fundamentally different users — Researcher, Organization/security team, and Unpatched Platform Admin? It is research + a live-tested gap analysis, not an implementation. Every claim about Unpatched's own behavior below was verified against the actual RLS/RPC/migration layer and, where stated, against a real running instance with real accounts — never inferred from UI copy or button visibility alone.
 
 ---
 
@@ -43,7 +43,7 @@ Every one of the three market leaders draws **three** authorization tiers, not t
 
 ---
 
-## 2. Sentinel's actual roles — audited against the database, not the UI
+## 2. Unpatched's actual roles — audited against the database, not the UI
 
 Every capability below is sourced from the actual RLS policy, `SECURITY DEFINER` RPC, or grant statement that enforces it — cited by migration file. Where a role or capability is *only* documented in prose (`DOMAIN.md`) but not implemented in the schema, that is called out explicitly as a gap, not conflated with the real thing.
 
@@ -60,12 +60,12 @@ Source domain: `program_researchers` (`202608260006_researcher_access_foundation
 | Communicate on a report | Yes | `post_researcher_message` (report-scoped, own reports only). |
 | Attach evidence | Yes | Text/code/URL/log evidence + binary file evidence, both researcher- and org-authored variants exist. |
 | Track own report status | Yes | `list_my_reports`, paginated, self-scoped. |
-| Request a retest | **No** | No retest/reopening mechanism exists anywhere in the schema — DOMAIN.md states directly that terminal outcomes have no exit transition. All three competitors have a named retest concept; Sentinel has none. |
+| Request a retest | **No** | No retest/reopening mechanism exists anywhere in the schema — DOMAIN.md states directly that terminal outcomes have no exit transition. All three competitors have a named retest concept; Unpatched has none. |
 | See program state (active/paused/closed) | Yes | Surfaced on the participation card. |
 | See reward info | Only after a bounty is finalized on their own report | No public "bounty table"/reward-range-per-severity is shown to a researcher before or during testing — bounty policy is configured by the org but not exposed to researchers as a scope-time reference (contrast: all three competitors show this upfront, e.g. HackerOne/Bugcrowd's reward tables, Intigriti's bounty table). |
 | Manage own workspace | Partial | Own report history and an honest, non-scored reputation summary (`get_my_reputation_summary`) exist. **No profile/bio page, no payment-method management page, no personal account settings page of any kind** — confirmed by inspecting every `app/` route; `/settings` is organization-only and explicitly states "You don't belong to an organization yet" for a pure researcher. |
 
-**Researcher gap headline**: Sentinel has zero program-discovery surface and zero retest mechanism — both are core, documented features on all three competitor platforms. `DOMAIN.md`'s own wording ("The architecture supports public, private, invite-only, and vulnerability disclosure programs") is aspirational prose, not a schema fact — there is no column backing it today.
+**Researcher gap headline**: Unpatched has zero program-discovery surface and zero retest mechanism — both are core, documented features on all three competitor platforms. `DOMAIN.md`'s own wording ("The architecture supports public, private, invite-only, and vulnerability disclosure programs") is aspirational prose, not a schema fact — there is no column backing it today.
 
 ### Organization roles — audited against `services/authorization.ts` and the RLS/RPC layer it mirrors
 
@@ -81,9 +81,9 @@ Five roles exist on `organization_members.role`: **owner, security_admin, progra
 
 Two structural facts worth flagging precisely, because they are easy to misread from the enum name alone:
 1. **`billing_admin` exists in name only.** Confirmed by grep across every migration: the payment/payout migration (`202608290001_payment_ledger_and_payout_orchestration.sql`) explicitly notes *"billing_admin gains no new capability here"* — payment creation/initiation/cancellation is owner/security_admin-only, identical to bounty finalization. There is no billing surface anywhere in `app/` for any role.
-2. **The org-level `program_manager` role is not the same thing as program-level access.** `DOMAIN.md` is explicit about this and the schema enforces it: holding the org-level `program_manager` role grants **zero automatic access to any program** — real program access comes only from an explicit `program_members` row (role: `manager`, the only program-level role that exists) or from Owner/Security Admin's organization-wide oversight. Unlike Bugcrowd's Program Administrator/Analyst/Viewer or Intigriti's Admin/Editor/Member/Reader, Sentinel has exactly **one** program-scoped role (`manager`) — no viewer/read-only, no analyst-without-reward-authority tier exists at the program level.
+2. **The org-level `program_manager` role is not the same thing as program-level access.** `DOMAIN.md` is explicit about this and the schema enforces it: holding the org-level `program_manager` role grants **zero automatic access to any program** — real program access comes only from an explicit `program_members` row (role: `manager`, the only program-level role that exists) or from Owner/Security Admin's organization-wide oversight. Unlike Bugcrowd's Program Administrator/Analyst/Viewer or Intigriti's Admin/Editor/Member/Reader, Unpatched has exactly **one** program-scoped role (`manager`) — no viewer/read-only, no analyst-without-reward-authority tier exists at the program level.
 
-### Sentinel Platform Admin — determined to not exist as a real capability
+### Unpatched Platform Admin — determined to not exist as a real capability
 
 Searched for: `platform_admin`, `platform_role`, `superuser`, `internal admin`, `support role`, `moderation role`, `global operator`, service-role-only operations.
 
@@ -91,14 +91,14 @@ Searched for: `platform_admin`, `platform_role`, `superuser`, `internal admin`, 
 
 **Also found, decisively**: grepping every migration for any statement that ever sets `platform_role` to anything other than its default returns **zero matches**. No RPC, trigger, or migration ever assigns `'platform_admin'` (or `'organization_owner'`, `'program_manager'`, or `'triager'` — the other three non-default values) to any user, ever. And grepping the entire application for call sites of `requirePlatformAdmin` returns exactly two files: its own definition and its own unit test — it is **never called from any action, service, route, or RPC in the actual product**.
 
-> **Sentinel currently has no first-class platform administration layer.** A `platform_role` column and a guard function exist in the schema/codebase, but nothing in the product can ever legitimately set a user's `platform_role` to `platform_admin` (or to any of the other three non-`researcher` values), and the one function that would gate a platform-admin-only capability is dead code with zero call sites. Functionally, every user in Sentinel today is identical at the platform layer — the only real authorization differentiation happens at the organization-membership and program-participation layers.
+> **Unpatched currently has no first-class platform administration layer.** A `platform_role` column and a guard function exist in the schema/codebase, but nothing in the product can ever legitimately set a user's `platform_role` to `platform_admin` (or to any of the other three non-`researcher` values), and the one function that would gate a platform-admin-only capability is dead code with zero call sites. Functionally, every user in Unpatched today is identical at the platform layer — the only real authorization differentiation happens at the organization-membership and program-participation layers.
 
 Consequences that follow directly from this, verified against the RLS layer:
 - **No cross-organization visibility exists for anyone.** `audit_logs` RLS (`"audit logs read by org admins"`, `202608260001_organization_membership_lifecycle.sql`) scopes strictly to that organization's own owner/security_admin — there is no platform-wide audit view, matching none of HackerOne/Bugcrowd/Intigriti's model, where the platform itself retains cross-customer audit/enforcement capability.
-- **No managed/platform-side triage exists.** Every one of the three competitors interposes its own staff (security analysts / ASEs / Triage team) between a raw submission and the organization's own review. Sentinel has no equivalent — every report goes straight to the owning organization's own triage, with no platform-side first-pass validation option.
-- **No platform-wide researcher enforcement exists.** All three competitors reserve the right to ban/sanction a researcher across every program on the platform (Code of Conduct violations, sanctioned-country screening, behavior-points systems). Sentinel has no cross-program suspension mechanism for a researcher — `program_researchers.status` (`active`/`suspended`/`revoked`) is scoped to one program row at a time; suspending a researcher on one program does nothing to their standing on any other.
-- **No dispute mediation exists.** Two of three competitors (HackerOne, Bugcrowd) run a named mediation function; Sentinel has no equivalent for either side (researcher vs. org) of a disagreement.
-- **Payment custody sits with the organization, not a platform authority.** All three competitors are the payments processor (identity verification, tax, payout disbursement) standing between the org's bounty decision and the researcher's bank account. In Sentinel, `payment_obligations`/`payment_attempts` are org-owner/security_admin-operated directly (manual-provider only, per `docs/decisions/0014`) — there is no platform-side payment intermediary, verification, or disbursement step at all.
+- **No managed/platform-side triage exists.** Every one of the three competitors interposes its own staff (security analysts / ASEs / Triage team) between a raw submission and the organization's own review. Unpatched has no equivalent — every report goes straight to the owning organization's own triage, with no platform-side first-pass validation option.
+- **No platform-wide researcher enforcement exists.** All three competitors reserve the right to ban/sanction a researcher across every program on the platform (Code of Conduct violations, sanctioned-country screening, behavior-points systems). Unpatched has no cross-program suspension mechanism for a researcher — `program_researchers.status` (`active`/`suspended`/`revoked`) is scoped to one program row at a time; suspending a researcher on one program does nothing to their standing on any other.
+- **No dispute mediation exists.** Two of three competitors (HackerOne, Bugcrowd) run a named mediation function; Unpatched has no equivalent for either side (researcher vs. org) of a disagreement.
+- **Payment custody sits with the organization, not a platform authority.** All three competitors are the payments processor (identity verification, tax, payout disbursement) standing between the org's bounty decision and the researcher's bank account. In Unpatched, `payment_obligations`/`payment_attempts` are org-owner/security_admin-operated directly (manual-provider only, per `docs/decisions/0014`) — there is no platform-side payment intermediary, verification, or disbursement step at all.
 
 ---
 
@@ -106,7 +106,7 @@ Consequences that follow directly from this, verified against the RLS layer:
 
 **Product rule stated**: *"A researcher should not be able to create an organization merely because they have a researcher account."*
 
-**Sentinel's actual, live-tested behavior violates this rule.** `create_organization` (`202608260003_organization_creation.sql`) has exactly one authorization check:
+**Unpatched's actual, live-tested behavior violates this rule.** `create_organization` (`202608260003_organization_creation.sql`) has exactly one authorization check:
 
 ```sql
 if actor is null then raise exception 'AUTH_REQUIRED: authentication required' using errcode = '28000'; end if;
@@ -126,18 +126,18 @@ That is the entire gate. No role check, no `platform_role` check, no "has this u
 
 Anonymous is correctly blocked. Every authenticated identity — including a pure researcher with no organizational standing whatsoever — succeeds identically. This was verified against the real local Postgres/GoTrue instance (not a mock), and the created test organizations/accounts were deleted afterward.
 
-This also surfaces a related identity-model fact worth naming precisely: because `platform_role` (Section 2) is inert and organization membership/researcher participation are deliberately-separate, orthogonal domains (`DOMAIN.md`'s own explicit statement), **nothing in Sentinel's data model represents "this person's primary account type."** A user is simultaneously (or by turns) a researcher on zero-or-more programs and an owner/member of zero-or-more organizations, with no first-class flag distinguishing "a researcher" from "an organization" as the two competitor platforms above implicitly assume when a company signs up. The three-tier navigation (`components/app-shell.tsx`) reflects this directly and deliberately — both "Research" and "Organization" nav groups are shown to every signed-in user unconditionally, with an explicit code comment stating this is intentional rather than an oversight, since hiding either would hide real, reachable functionality from a user who happens to hold both kinds of standing.
+This also surfaces a related identity-model fact worth naming precisely: because `platform_role` (Section 2) is inert and organization membership/researcher participation are deliberately-separate, orthogonal domains (`DOMAIN.md`'s own explicit statement), **nothing in Unpatched's data model represents "this person's primary account type."** A user is simultaneously (or by turns) a researcher on zero-or-more programs and an owner/member of zero-or-more organizations, with no first-class flag distinguishing "a researcher" from "an organization" as the two competitor platforms above implicitly assume when a company signs up. The three-tier navigation (`components/app-shell.tsx`) reflects this directly and deliberately — both "Research" and "Organization" nav groups are shown to every signed-in user unconditionally, with an explicit code comment stating this is intentional rather than an oversight, since hiding either would hide real, reachable functionality from a user who happens to hold both kinds of standing.
 
 ---
 
 ## Gap analysis summary (audit only — nothing below has been implemented)
 
-1. **No platform administration layer exists**, despite schema/code scaffolding (`platform_role`, `requirePlatformAdmin`) suggesting one was planned. All three competitor platforms treat the platform company as an active third tier with real operational authority (launch approval, managed triage, mediation, platform-wide researcher enforcement, payment custody). Sentinel has none of this — the closest thing, `platform_role`, is dead weight today.
+1. **No platform administration layer exists**, despite schema/code scaffolding (`platform_role`, `requirePlatformAdmin`) suggesting one was planned. All three competitor platforms treat the platform company as an active third tier with real operational authority (launch approval, managed triage, mediation, platform-wide researcher enforcement, payment custody). Unpatched has none of this — the closest thing, `platform_role`, is dead weight today.
 2. **`create_organization` violates the stated product rule** that a researcher account alone should not be sufficient to create and own an organization. Live-proven across all four authenticated identity types tested; only anonymity is rejected.
 3. **No program-discovery surface exists** for researchers (no public/registered/application visibility tier, despite `DOMAIN.md` prose suggesting otherwise) — a substantial gap against all three competitors' core acquisition mechanism.
-4. **No retest mechanism exists** — present on all three competitor platforms, absent from Sentinel's report lifecycle entirely (terminal states have no exit transition by design).
+4. **No retest mechanism exists** — present on all three competitor platforms, absent from Unpatched's report lifecycle entirely (terminal states have no exit transition by design).
 5. **`billing_admin` is a real enum value with zero implemented capability** — worth deciding whether to build it out or remove it, since its current state (a selectable role that visibly does nothing) could itself read as a broken promise to an organization configuring its team.
-6. **Program-level roles are far coarser than every competitor's model** — Sentinel has exactly one (`manager`); Bugcrowd/Intigriti both have three-to-four-tier program RBAC (Administrator/Analyst/Viewer; Admin/Editor/Member/Reader).
+6. **Program-level roles are far coarser than every competitor's model** — Unpatched has exactly one (`manager`); Bugcrowd/Intigriti both have three-to-four-tier program RBAC (Administrator/Analyst/Viewer; Admin/Editor/Member/Reader).
 7. **No platform-side payment custody** — organizations pay researchers directly (manual, operator-confirmed), unlike all three competitors, where the platform itself handles researcher identity verification, tax collection, and payout disbursement.
 
 No implementation work has been done in this slice. This document is the audit; the next step is an explicit product decision on which of the above gaps to close, and in what order.

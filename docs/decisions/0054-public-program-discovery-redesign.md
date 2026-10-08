@@ -7,7 +7,7 @@ Related: [[0038-researcher-discovery-product-model]], [[0041-public-program-disc
 
 A HackerOne "Opportunity Discovery" screenshot was given as a benchmark ("don't be
 generic"), with the explicit standing rule this whole project has enforced from the start:
-never fabricate a statistic. HackerOne's own page leans on numbers Sentinel has no
+never fabricate a statistic. HackerOne's own page leans on numbers Unpatched has no
 real equivalent for (aggregate "447 opportunities," "196 hackers," "94% response rate" --
 platform-wide vanity metrics with no disclosed derivation). The redesign benchmarks
 HackerOne's *information architecture* -- a curated top section plus a rich, filterable
@@ -74,12 +74,12 @@ interests, a program's own tags, and this filter all speak the identical vocabul
   that complexity. A real sort control remains a reasonable, separable follow-up if
   real usage shows the recency-only default list isn't enough.
 - Any platform-wide aggregate stat ("N opportunities available," "N% response rate") --
-  HackerOne shows these; Sentinel has no honest, real basis for a response-rate metric at
+  HackerOne shows these; Unpatched has no honest, real basis for a response-rate metric at
   all (no SLA/response-time tracking exists anywhere in this schema), and a bare program
   count is exactly the kind of vanity number this project has repeatedly rejected
   elsewhere (0016, 0042, 0043).
 - An "educational content" filler section (HackerOne's "New to hacking? Hacker101") --
-  Sentinel has no equivalent course/resource to link to; fabricating one, or linking
+  Unpatched has no equivalent course/resource to link to; fabricating one, or linking
   Mailpit-style placeholder content, would violate the same honesty standard applied
   everywhere else this session.
 

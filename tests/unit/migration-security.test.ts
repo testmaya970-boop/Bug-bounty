@@ -1319,7 +1319,7 @@ describe("migration source: a check constraint enforces exactly one shape per ev
 });
 
 describe("migration source: the evidence bucket is private, with a storage-layer size backstop", () => {
-  it("adds no storage.objects RLS policy for authenticated or anon -- every access goes through the service-role client only, after Sentinel's own authorization", () => {
+  it("adds no storage.objects RLS policy for authenticated or anon -- every access goes through the service-role client only, after Unpatched's own authorization", () => {
     expect(binarySql).not.toMatch(/create policy[^;]*on storage\.objects/);
   });
 });

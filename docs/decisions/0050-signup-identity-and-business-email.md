@@ -6,7 +6,7 @@ Related: [[0035-authentication-experience-visual-design]], [[0049-researcher-ide
 
 Three attached screenshots: HackerOne's real researcher sign-up card (Name/Username/
 Email/Password), a different app's organization sign-up card (Company name/Work email/
-Password), and Sentinel's own `/settings` page. The ask: make Sentinel's researcher and
+Password), and Unpatched's own `/settings` page. The ask: make Unpatched's researcher and
 organization sign-up cards look like the references, restrict organization signup to
 business email, and investigate a reported "bug in researcher settings, organisation
 creation."

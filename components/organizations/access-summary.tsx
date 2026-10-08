@@ -4,7 +4,7 @@ import type { OrganizationRole } from "../../types/auth";
 import { Badge } from "../ui/badge";
 
 /**
- * Sentinel's "role is not the same as access" differentiator: every place a role is
+ * Unpatched's "role is not the same as access" differentiator: every place a role is
  * shown, this renders what it actually grants and denies, computed from the same
  * capability model the server enforces (services/authorization.ts) -- never
  * hand-written per-screen copy that could drift from what the database allows.

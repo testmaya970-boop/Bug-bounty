@@ -132,13 +132,13 @@ describe("ReputationProgramContext: real, unfabricated per-program totals", () =
           { programId: "p1", count: 1 },
           { programId: "p2", count: 3 },
         ]}
-        programNames={new Map([["p1", "SentinelPay"], ["p2", "CloudVault"]])}
+        programNames={new Map([["p1", "AcmePay"], ["p2", "CloudVault"]])}
       />,
     );
     const cloudVaultIndex = html.indexOf("CloudVault");
-    const sentinelPayIndex = html.indexOf("SentinelPay");
+    const acmePayIndex = html.indexOf("AcmePay");
     expect(cloudVaultIndex).toBeGreaterThan(-1);
-    expect(cloudVaultIndex).toBeLessThan(sentinelPayIndex);
+    expect(cloudVaultIndex).toBeLessThan(acmePayIndex);
     expect(html).toContain("3 verified outcomes");
     expect(html).toContain("1 verified outcome<");
   });

@@ -12,7 +12,7 @@ import { getCurrentUser } from "../../../lib/auth/current-user";
  * The "Community" sub-section under the Researchers nav dropdown -- deliberately light,
  * per product decision: a single real figure (verified-outcome counts, the same
  * `get_my_reputation_summary` RPC the full Reputation section on the dashboard uses),
- * never a synthesized "reputation score." Sentinel's reputation model has no score or
+ * never a synthesized "reputation score." Unpatched's reputation model has no score or
  * ranking by design (docs/decisions/0016) -- this page stays honest to that rule even
  * though the surrounding dashboard build uses mock data elsewhere.
  */

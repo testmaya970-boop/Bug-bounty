@@ -104,7 +104,7 @@ const PHILOSOPHY_STAGES = [
  * The real public entry point. Previously an anonymous visit to "/" rendered the full
  * authenticated AppShell chrome around one line of text -- not a landing page, an empty
  * authenticated state wearing the wrong layout (see docs/decisions/0030). 0031-0036 then
- * built this into a dark/light "security instrument" page from Sentinel's own domain
+ * built this into a dark/light "security instrument" page from Unpatched's own domain
  * vocabulary; 0056 reversed that into a warm, light, rounded "marketing SaaS" layout and
  * rhythm, originally scoped to this component alone. 0062 promoted that palette to
  * app/globals.css's actual `:root` theme, so this page now simply inherits the same

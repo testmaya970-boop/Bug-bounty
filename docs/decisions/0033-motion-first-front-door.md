@@ -8,7 +8,7 @@ Related: [[0031-public-front-door-visual-thesis]], [[0032-public-front-door-visu
 read as a document describing a product, not as a product itself. The directive for this
 slice was explicit -- borrow HackerOne's *principle* (the product should feel alive before
 the visitor reads about it), not its layout, colors, or copy, and rebuild the experience
-around real Sentinel UI in motion rather than static information blocks. The previous
+around real Unpatched UI in motion rather than static information blocks. The previous
 composition was allowed to be, and was, completely replaced.
 
 ## What changed
@@ -102,7 +102,7 @@ Every animated artifact is labelled "Simulated for demonstration" in real, visib
 text on the hero panel, and the program discovery note still discloses the invite-only
 truth in plain language. No researcher count, bounty total, response time, or fabricated
 statistic was added. The word "live" was deliberately kept out of all visible copy
-("Sentinel workflow," not "live Sentinel workflow") specifically so the motion reads as
+("Unpatched workflow," not "live Unpatched workflow") specifically so the motion reads as
 "this product feels alive" rather than as a factual claim about real production activity.
 
 ## Authorization boundary

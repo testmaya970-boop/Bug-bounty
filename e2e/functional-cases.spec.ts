@@ -61,7 +61,7 @@ test("api token: a generated token authenticates the API, and stops the moment i
   await page.getByLabel("Token name").fill(name);
   await page.getByRole("button", { name: "Generate token" }).click();
   await expect(page.getByText("Save this token now")).toBeVisible();
-  const token = (await page.getByText(/^sentinel_pat_/).innerText()).trim();
+  const token = (await page.getByText(/^unpatched_pat_/).innerText()).trim();
 
   const api = (t: string) => request.get("/api/v1/reports", { headers: { Authorization: `Bearer ${t}` } });
   expect((await api(token)).status()).toBe(200);

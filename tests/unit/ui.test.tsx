@@ -26,7 +26,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh:
 const ONE_ORG: OrganizationSummary[] = [{ id: "org-1", slug: "acme-security", name: "Acme Security", role: "owner", status: "active" }];
 const NO_ORGS: OrganizationSummary[] = [];
 
-describe("Sentinel UI foundation", () => {
+describe("Unpatched UI foundation", () => {
   it("renders semantic button state and pending feedback", () => { const html = renderToStaticMarkup(<Button pending>Save changes</Button>); expect(html).toContain("disabled"); expect(html).toContain("Save changes"); expect(html).toContain("bg-action"); });
   it("renders distinct text status and severity badges", () => { const html = renderToStaticMarkup(<><StatusBadge status="needs_information" /><SeverityBadge severity="critical" /></>); expect(html).toContain("Needs Information"); expect(html).toContain("Critical"); expect(html).toContain("text-warning"); expect(html).toContain("text-severity-critical"); });
   it("never reuses report severity/status colors for CTF difficulty -- a practice challenge is not a real security signal", () => {

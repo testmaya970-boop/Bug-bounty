@@ -1,6 +1,6 @@
 # 0057 — Bold, animated reskin authorized app-wide; DESIGN.md/AGENTS.md rewritten
 
-Related: [[0033-motion-first-front-door]], [[0035-sentinel-visual-identity-system]],
+Related: [[0033-motion-first-front-door]], [[0035-unpatched-visual-identity-system]],
 [[0043-researcher-visual-identity-pass]], [[0056-public-homepage-visual-reskin-override]],
 [[0058-dashboard-command-center-recomposition]], [[0059-sidebar-nav-restructure-and-dedup-fix]],
 [[0060-security-ops-typography-system]].
@@ -64,7 +64,7 @@ Confirmed directly with the user before any doc or code changed:
   legitimate inspiration when a task explicitly directs it (as Jasper.ai
   was here and in 0056); literal verbatim reuse of another brand's exact
   palette, iconography, or layout stays prohibited — extract the
-  underlying pattern and rebuild it in Sentinel's own tokens, exactly as
+  underlying pattern and rebuild it in Unpatched's own tokens, exactly as
   0056 already modeled.
 - Typography (§3) keeps the operational type scale exactly as documented
   (per decision 2 above) while permitting much larger display sizes for

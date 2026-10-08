@@ -9,7 +9,7 @@ export async function hashPassword(plain: string): Promise<string> {
 }
 
 /** Never throws on a malformed/foreign hash (e.g. a migrated account's forced-reset
- * sentinel) -- returns false, identical to a genuine mismatch, so a caller never needs a
+ * placeholder) -- returns false, identical to a genuine mismatch, so a caller never needs a
  * separate try/catch to distinguish "wrong password" from "unexpected hash format." */
 export async function verifyPassword(hash: string, plain: string): Promise<boolean> {
   try {

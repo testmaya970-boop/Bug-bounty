@@ -18,7 +18,7 @@ import { OrganizationServiceError, listMyReports, listReportsForActor } from "@/
  *
  * Authentication accepts EITHER a cookie session (identical to every Server
  * Component/Action, for the app's own client-side calls) OR a real
- * `Authorization: Bearer sentinel_pat_...` personal access token (0055, wired end to end
+ * `Authorization: Bearer unpatched_pat_...` personal access token (0055, wired end to end
  * as of 0059) -- an `Authorization` header takes precedence when both are somehow present,
  * since a request presenting a bearer token is unambiguously an external API caller, not
  * the app's own browser session. A bearer-authenticated actor is served through

@@ -1,7 +1,7 @@
 # 0036 — Live security environment: Concept C, "Permanent Record" (implemented)
 
 Related: [[0032-public-front-door-visual-execution]], [[0033-motion-first-front-door]],
-[[0034-public-front-door-product-stage]], [[0035-sentinel-visual-identity-system]].
+[[0034-public-front-door-product-stage]], [[0035-unpatched-visual-identity-system]].
 
 Concept C ("Permanent Record," built as foreground artifact density -- never an ambient
 canvas/particle background) was approved and implemented. This document originally
@@ -117,7 +117,7 @@ the brief's own section 7 calls a cliché ("if it could be used on a crypto land
 ... it is not sufficiently specific"). A canvas signal-field, however tastefully
 restrained, risks being exactly that.
 
-## 2. Current Sentinel weaknesses (0035 screenshots)
+## 2. Current Unpatched weaknesses (0035 screenshots)
 
 Confirmed from the actual shipped screenshots, not assumption: the environment (`bg-ink`
 flat fields) is genuinely inert between animated components -- true, and worth fixing.
@@ -152,16 +152,16 @@ quiet (representing the noise: other, lower-priority reports sitting in the inbo
 visibly active and progressing through its lifecycle (the existing choreography), which
 on completion **files into a compact, permanent, already-decided list** beneath it (the
 audit record), while the periphery keeps a couple of faint, static rows to suggest an
-inbox that has other real activity in it -- all real Sentinel data shapes
+inbox that has other real activity in it -- all real Unpatched data shapes
 (`ReportInboxTable`'s exact row/badge grammar, already reused in `RealProductFragment`),
 never an invented visualization. This directly satisfies "noise -> signal -> record" as a
 literal, honest visual mechanism, using only real product primitives, and it is the same
 underlying move (one large, dense, real-feeling interface) that demonstrably works for
 Linear/Cursor/Attio -- not an unproven background technique.
 
-## 5. Why this is Sentinel-specific
+## 5. Why this is Unpatched-specific
 
-Every element is a real Sentinel noun (program, scope, report, evidence, triage,
+Every element is a real Unpatched noun (program, scope, report, evidence, triage,
 decision, audit) rendered through real badge/table components already used elsewhere in
 this project. Remove the wordmark and what remains is: several report rows with severity/
 status badges, one actively changing state, one list of decided/audited entries. That is

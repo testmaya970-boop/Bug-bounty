@@ -1,6 +1,6 @@
 // Phase 1 data migration: auth.users -> public.users reconciliation. GoTrue's password
 // hashes are never exposed via any API/export, so there is no way to carry them over --
-// every migrated user gets a sentinel password_hash that can never successfully verify,
+// every migrated user gets a placeholder password_hash that can never successfully verify,
 // forcing a real password-reset flow on first native-stack sign-in. This is a disclosed,
 // unavoidable consequence (see the migration plan), not a defect.
 import pg from "pg";

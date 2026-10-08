@@ -1,6 +1,6 @@
 # 0043 — Researcher experience visual overhaul (design-only)
 
-Related: [[0035-sentinel-visual-identity-system]], [[0036-live-security-environment]],
+Related: [[0035-unpatched-visual-identity-system]], [[0036-live-security-environment]],
 [[0042-researcher-product-completion]].
 
 Presentation and interaction design only. Every backend contract, RPC, migration, RLS
@@ -31,7 +31,7 @@ screen (Stripe dashboards, Vercel): a single high-contrast panel, not a button c
 with five other links of equal visual weight. No color for its own sake (GitHub): the
 existing dot-based status system was already correct and was left alone.
 
-## C. Sentinel visual thesis
+## C. Unpatched visual thesis
 
 **Surface architecture**: canvas (page) -> chrome (nav, unchanged) -> primary surface
 (mostly borderless, divider-driven) -> the one raised/dark panel per page reserved for the

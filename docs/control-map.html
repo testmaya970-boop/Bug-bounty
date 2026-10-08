@@ -1,11 +1,11 @@
-<title>Sentinel Control Map</title>
-<meta name="description" content="The real, repository-verified state of Sentinel's researcher, organization, and platform systems — what's built, what's broken, what's next.">
+<title>Unpatched Control Map</title>
+<meta name="description" content="The real, repository-verified state of Unpatched's researcher, organization, and platform systems — what's built, what's broken, what's next.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   /* ============================= TOKENS ============================= */
   /* Deliberately single-theme (dark security-operations console) -- the
-     same posture Sentinel's own account-security surfaces and real ops
+     same posture Unpatched's own account-security surfaces and real ops
      tools (a SOC console, GitHub Security Lab) commit to. Every color is
      painted explicitly regardless of viewer theme, per artifact-design's
      "deliberate single visual world" allowance. */
@@ -337,7 +337,7 @@
 
   <aside class="rail" id="rail" aria-label="Section navigation">
     <div class="rail-brand">
-      <div class="mark"><span class="dot" aria-hidden="true"></span><span class="name">SENTINEL</span></div>
+      <div class="mark"><span class="dot" aria-hidden="true"></span><span class="name">UNPATCHED</span></div>
       <span class="sub">Product Control Map</span>
     </div>
 
@@ -374,7 +374,7 @@
     <!-- ============================= 01 OVERVIEW ============================= -->
     <section id="overview">
       <div class="hero">
-        <p class="eyebrow">Sentinel · Security research platform</p>
+        <p class="eyebrow">Unpatched · Security research platform</p>
         <h1>Product Control Map</h1>
         <p class="tagline">A researcher-to-organization vulnerability disclosure platform: programs, scope, reports, triage, bounty decisions, and reputation, built end to end on Supabase/Postgres with a Next.js App Router frontend. This map is reconciled against the actual repository — migrations, RLS, RPCs, services, actions, tests, and every decision document — not against prior status claims.</p>
 
@@ -533,7 +533,7 @@
     </section>
 
     <footer class="foot">
-      <span>Sentinel Product Control Map · reconciled against the repository, not prior reports</span>
+      <span>Unpatched Product Control Map · reconciled against the repository, not prior reports</span>
       <span id="footStamp"></span>
     </footer>
   </main>
@@ -589,7 +589,7 @@ const FEATURES = [
    note:"Interests/focus-areas double as the real signal for program recommendations — see RES-010."},
   {id:"RES-007",name:"Public researcher profile / directory",area:"RESEARCHER",status:"REJECTED",priority:"—",
    fe:[],svc:[],act:[],rpc:[],db:[],rls:"—",tests:false,browser:false,decisions:["0038","0039","0049"],deps:[],
-   note:"Deliberately rejected three times over. A stranger browsing every researcher is a privacy posture Sentinel has not chosen."},
+   note:"Deliberately rejected three times over. A stranger browsing every researcher is a privacy posture Unpatched has not chosen."},
   {id:"RES-008",name:"KYC (Aadhaar / PAN / passport, manual review)",area:"RESEARCHER",status:"VERIFIED",priority:"P2",
    fe:["components/settings/kyc-settings.tsx"],svc:["services/researcher-profiles.ts"],act:["actions/researcher-profiles.ts"],
    rpc:["upsert_my_kyc","get_my_kyc_status"],db:["researcher_kyc (pgcrypto-encrypted fields)"],rls:"Self-write; no automated verification — an admin marks each field verified/rejected manually.",
@@ -853,7 +853,7 @@ const DECISIONS = [
   {id:"0028",t:"Report evidence attachment at submission",why:"Evidence can be attached in the same transaction as the initial report, not only after.",tags:["researcher"]},
   {id:"0030",t:"Public entry and two-sided authentication",why:"intent (researcher/organization) picks a landing destination only — it never grants or changes a capability.",tags:["public","foundation"]},
   {id:"0034",t:"Public front door product stage",why:"The anonymous landing experience treated as a real product surface, not a placeholder.",tags:["public"]},
-  {id:"0035",t:"Sentinel visual identity system",why:"The editorial/security-operations visual language every later slice (including this map) inherits.",tags:["design"]},
+  {id:"0035",t:"Unpatched visual identity system",why:"The editorial/security-operations visual language every later slice (including this map) inherits.",tags:["design"]},
   {id:"0037",t:"Program discovery access model",why:"Active status does not automatically mean public — visibility is a distinct, deliberate axis from lifecycle status.",tags:["organization","security"]},
   {id:"0038",t:"Researcher discovery product model",why:"First explicit rejection of a public researcher directory/marketplace.",tags:["researcher","rejected"]},
   {id:"0039",t:"Trust-based researcher discovery strategy",why:"A narrow, org-scoped signal only — reaffirmed the 0038 rejection with new reasoning, not a reopening.",tags:["researcher","rejected"]},
@@ -1310,7 +1310,7 @@ function renderNext(){
 }
 function buildPrompt(t){
   return [
-    "SENTINEL — "+t.id+": "+t.name,
+    "UNPATCHED — "+t.id+": "+t.name,
     "",
     "OBJECTIVE",
     "Implement report retesting: a resolved report can be reopened for verification, with a real state transition, audit trail, and reputation-ledger event.",

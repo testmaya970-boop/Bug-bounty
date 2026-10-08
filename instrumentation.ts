@@ -34,6 +34,6 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
     digest: typeof error === "object" && error !== null && "digest" in error ? String((error as { digest: unknown }).digest) : null,
     requestId: header("x-request-id"),
     // Set by proxy.ts only after real session validation (any client copy is stripped).
-    userId: header("x-sentinel-verified-user-id"),
+    userId: header("x-unpatched-verified-user-id"),
   });
 };

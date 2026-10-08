@@ -1,12 +1,12 @@
 # 0038 — Researcher discovery: product model audit (research only, no implementation)
 
 Related: [[0016-reputation-ledger-foundation]], [[0007-researcher-access]],
-[[0026-sentinel-product-strategy-and-10x-gap-analysis]],
+[[0026-unpatched-product-strategy-and-10x-gap-analysis]],
 [[0037-program-discovery-access-model]].
 
 Per the explicit stop condition: no schema, RLS, RPC, or UI was written this pass.
 
-## 1. Exact current Sentinel researcher model
+## 1. Exact current Unpatched researcher model
 
 `public.users` (`202608250001_initial_identity_rbac.sql:7-15`): `id, username,
 display_name, platform_role, is_suspended, created_at, updated_at`, plus `email`
@@ -48,21 +48,21 @@ per-program-roster policy.
 |---|---|---|---|
 | HackerOne | Public profile per hacker | **Signal/Impact** (percentile-ranked validity/severity), verified **"Hacker Skills"** (earned by submitting relevant reports, HackerOne-verified, not self-declared) | Skills feed directly into **targeted private-program invitation matching** -- "programs are matched to hackers with the right skills" |
 | Bugcrowd | Public profile + optional resume | Self-rated skills (1-5 scale), interests, resume (experience/education/certs) | **CrowdMatch**: programs specify required skills; researchers "sub-segmented" by demonstrated proficiency in that specific target area; explicit trust gates (identity verification, geography) layered on top |
-| Intigriti | Public profile | Achievement badges, reputation points (earned from accepted/duplicate submissions by severity) | **AI-matching**: learns an org's asset/weakness patterns and matches researchers "that have delivered similar contributions to other programs" -- i.e., matched on *outcome history*, closest of the five to Sentinel's own reputation-ledger philosophy |
+| Intigriti | Public profile | Achievement badges, reputation points (earned from accepted/duplicate submissions by severity) | **AI-matching**: learns an org's asset/weakness patterns and matches researchers "that have delivered similar contributions to other programs" -- i.e., matched on *outcome history*, closest of the five to Unpatched's own reputation-ledger philosophy |
 | YesWeHack | Profile, **researcher-optional to make public** | Skills (free-text keywords, max 5), languages, achievement badges, write-up track record | Mixed: algorithmic reputation-gated eligibility **plus a human Customer Success Manager** who assembles a shortlist from experience with the community and knowledge of the org's scope |
 | Immunefi | Public profile | Bounties earned (amounts), badges, leaderboard rank, NFT "Hall of Fame" | Selection is Immunefi-curated for Invite-Only engagements, matched to "each project's technical requirements" |
 
 **Pattern across all five**: every one of them exposes *some* public profile with
 earned/verified signal, and every one of them ties selection to that signal --
 never a blind directory search of an undifferentiated user list. The two philosophically
-closest to Sentinel's own reputation ledger are HackerOne's *verified* (not self-declared)
+closest to Unpatched's own reputation ledger are HackerOne's *verified* (not self-declared)
 skills and Intigriti's outcome-history matching; the two furthest are Immunefi's public
 earnings/leaderboard and Bugcrowd's self-rated skill scale, both of which DOMAIN.md's own
 "no score/rank" decision already rules out replicating.
 
 ## 5. Privacy comparison
 
-Sentinel's `public.users` has no legal name, location, or KYC field at all (confirmed by
+Unpatched's `public.users` has no legal name, location, or KYC field at all (confirmed by
 grep, zero matches) -- meaningfully less personal data than any of the five researched
 platforms even collect for a profile. This is a real constraint on what any discovery
 model could expose even if one were built: there is no "identity" beyond
@@ -81,17 +81,17 @@ actually exists today:
 The core privacy principle this audit lands on: **a researcher should not become
 findable by an organization they have never worked with, merely because that
 organization wants to recruit them.** Every one of the five competitors' public-profile
-models violates this by default (that's *why* they're public profiles) -- Sentinel does
+models violates this by default (that's *why* they're public profiles) -- Unpatched does
 not have to accept that trade-off, and given its current zero-directory state, adopting
 it would be a regression in privacy posture relative to today, not a neutral feature add.
 
-## 6. Three candidate Sentinel models
+## 6. Three candidate Unpatched models
 
 **A. Email-only (current).** Researcher experience: passive, invisible until invited.
 Org experience: must already personally know the researcher. Privacy: strongest possible
 -- zero discoverability surface. Abuse: none possible (no discovery vector exists).
 Security: nothing to secure. Cost: zero (already built). Marketplace implication: none.
-Sentinel fit: correct for orgs who already know who they want, which is presumably most
+Unpatched fit: correct for orgs who already know who they want, which is presumably most
 orgs today, but does nothing for the "I don't know any researchers yet" case -- the
 actual gap this task opened with.
 
@@ -101,8 +101,8 @@ self-serve search/filter. Privacy: real regression from today (§5). Abuse: high
 scraping, spam invitations, harassment, competitive intelligence (a competitor org
 enumerating who works with whom). Security: needs rate limiting, a report/block
 mechanism, existence-leak-proofing for any future private-program linkage. Cost: high
-(index, search UI, opt-in/visibility settings, abuse tooling, moderation queue). Sentinel
-fit: **not now** -- Sentinel has no skill-tagging concept and no verified signal beyond
+(index, search UI, opt-in/visibility settings, abuse tooling, moderation queue). Unpatched
+fit: **not now** -- Unpatched has no skill-tagging concept and no verified signal beyond
 the ledger's own org-scoped facts, so a directory today would either show nothing useful
 or would need new self-declared fields (skills, bio) that reintroduce the
 unverified-vanity-data problem 0016 already rejected once (reputation score).
@@ -111,9 +111,9 @@ unverified-vanity-data problem 0016 already rejected once (reputation score).
 experience: browse and apply. Org experience: review/approve applications. Privacy:
 requires the program itself to be listed publicly or semi-publicly -- this is the
 `0037` marketplace question, not a researcher-discovery question, and `0037` already
-concluded Sentinel isn't ready for it (no reputation-gating mechanism to make public
+concluded Unpatched isn't ready for it (no reputation-gating mechanism to make public
 listing safe). Cost: highest of the three (needs both a public/eligible listing surface
-*and* an application-review workflow). Sentinel fit: **not now**, for the same reason
+*and* an application-review workflow). Unpatched fit: **not now**, for the same reason
 `0037` gave -- this is a program-marketplace decision wearing a researcher-discovery
 costume.
 
@@ -125,20 +125,20 @@ still gains a *bounded* way to find researchers to invite: specifically, its own
 collaborators. That requires zero public/marketplace surface at all. This is the basis
 for the recommendation in §13.
 
-## 8. Sentinel's differentiator, evaluated
+## 8. Unpatched's differentiator, evaluated
 
 The task's proposed philosophy -- match on "organization-confirmed outcomes," not
 popularity -- is real and buildable *in principle*, because the reputation ledger already
 is exactly that: a fact log of organization-confirmed terminal outcomes, never a
 popularity score. But **program-scope-to-researcher-specialty matching cannot be built
-honestly today**, because Sentinel has no specialty/skill concept at all (§6 of the
+honestly today**, because Unpatched has no specialty/skill concept at all (§6 of the
 prior audit; reconfirmed here) -- the ledger records *that* a researcher resolved a
 critical finding for Org X, never *what kind* of finding (web app / API / infra). Building
 "match on relevant, verified outcomes" would require inventing a new skill/specialty
 taxonomy first (see 0037's own caution against inventing capability-shaped columns ahead
 of their prerequisites) -- exactly the trap HackerOne avoided by making Skills
 *report-verified*, not self-declared, and exactly the corner Bugcrowd cut by allowing
-self-rated skills (a real, industry-acknowledged weaker signal). Sentinel should not
+self-rated skills (a real, industry-acknowledged weaker signal). Unpatched should not
 rush to either version yet.
 
 ## 9. Program-context matching
@@ -180,7 +180,7 @@ see who searched for them, because no search of them ever occurs under this mode
 
 ## 13. Most important product decision
 
-**Sentinel should not become "find the right researcher platform-wide" yet, and should
+**Unpatched should not become "find the right researcher platform-wide" yet, and should
 not become "publish and let researchers apply" at all in the near term** (that's `0037`'s
 marketplace question, separately answered no). The correct next increment is narrower
 than all three candidate models as originally framed: **let an organization invite from

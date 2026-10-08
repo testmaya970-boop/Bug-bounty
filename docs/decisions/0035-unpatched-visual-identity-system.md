@@ -1,4 +1,4 @@
-# 0035 — Sentinel visual identity system
+# 0035 — Unpatched visual identity system
 
 Related: [[0031-public-front-door-visual-thesis]], [[0032-public-front-door-visual-execution]],
 [[0033-motion-first-front-door]], [[0034-public-front-door-product-stage]].
@@ -7,7 +7,7 @@ Related: [[0031-public-front-door-visual-thesis]], [[0032-public-front-door-visu
 
 0034 already live-fetched HackerOne/Bugcrowd/Intigriti/YesWeHack/Immunefi and found their
 "alive" feeling comes from real video/logos/ratings/individual profiles/aggregate stats --
-categories Sentinel cannot use. This pass asked a different question of that same data
+categories Unpatched cannot use. This pass asked a different question of that same data
 plus new research into 2025-2026 product design broadly, searched live: **why does a
 visitor perceive a product as mature and recognizable, independent of what the product
 demonstrates?**
@@ -15,7 +15,7 @@ demonstrates?**
 FACT (from this pass's live search): 2026 SaaS design has split into two dominant,
 opposite aesthetics -- **techno-futurist** (dark mode, bento grids, the product itself as
 the hero, exemplified by Linear/Cursor/Attio putting a live product view directly in the
-hero) and **editorial** (cream, serif, whitespace). INFERENCE: Sentinel's prior slices
+hero) and **editorial** (cream, serif, whitespace). INFERENCE: Unpatched's prior slices
 (0032's serif-led pass, 0034's dark-hero-but-still-cautious pass) sat *between* these two
 committed aesthetics rather than fully inside either one -- which is itself a plausible,
 concrete reason it reads as "tasteful" rather than "category-defining": it never fully
@@ -24,11 +24,11 @@ toward.
 
 FACT: the same research names "the product is the demo" as the specific mechanism
 separating Linear/Cursor/Attio's hero energy from a generic hero -- a live, real interface
-view in the hero, not an illustration of one. Sentinel's 0034 hero already does this in
+view in the hero, not an illustration of one. Unpatched's 0034 hero already does this in
 substance (a real component-built artifact, not an illustration) but the research also
 names *recognizability* as a distinct, separate axis from product demonstration: a
 repeated, consistent graphic device is what makes a visual language "brand," not just
-"good design." Sentinel has never had one of these across the whole site.
+"good design." Unpatched has never had one of these across the whole site.
 
 ## 2. Brutal audit of the 0034 screenshots
 
@@ -55,7 +55,7 @@ implementation report's self-assessment.
 
 1. **No repeated graphic signature.** Every section is well-composed in isolation, but
    nothing visually recurs across sections the way a brand mark does -- there is no
-   "if you saw this fragment alone, you'd know it was Sentinel" object.
+   "if you saw this fragment alone, you'd know it was Unpatched" object.
 2. **The animated pieces don't read as one system.** The hero, the lifecycle stepper, and
    the two mini-sequences are each real and each correct, but they run on independent
    timers with no shared visual thread -- the page feels like several small demos, not

@@ -10,7 +10,7 @@ import { OrganizationServiceError, getReport, getReportForActor } from "@/servic
  * The second real `/api/v1/*` endpoint -- GET /api/v1/reports/:id, the natural next one
  * after the list endpoint (see app/api/v1/reports/route.ts's own comment: "Nineteen more
  * endpoints are explicitly NOT built"). Same dual-authentication shape as the list
- * endpoint exactly (cookie session OR `Authorization: Bearer sentinel_pat_...`), same
+ * endpoint exactly (cookie session OR `Authorization: Bearer unpatched_pat_...`), same
  * stable envelope, same request-id/error-mapping discipline. Scoped identically to the
  * list endpoint too: this is the caller's OWN report only, researcher-side, never an
  * org-facing report lookup -- an org's own triage view already has its own, separately-

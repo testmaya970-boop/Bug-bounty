@@ -7,7 +7,7 @@ Status: Accepted
 
 `DOMAIN.md` already states the invariant this slice exists to satisfy: *"Bounty decision, financial transaction, researcher balance, and payout remain separate concepts, never one mutable browser-controlled value."* A bounty is not a property of a report (`reports.bounty_amount` was never on the table) — it is the output of evaluating a report's frozen facts (severity, classification/status) against a program's bounty policy, which itself can change over time without altering decisions already made under an earlier version. This slice builds exactly that evaluation boundary and stops: no payment provider, no payout, no reputation, no negotiation infrastructure beyond the report communication system that already exists.
 
-## Competitor research and what Sentinel adopts
+## Competitor research and what Unpatched adopts
 
 Public program documentation from HackerOne, Bugcrowd, and YesWeHack converges on the same underlying mechanics, independent of each platform's own UI:
 

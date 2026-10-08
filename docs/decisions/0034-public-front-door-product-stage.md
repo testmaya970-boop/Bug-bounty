@@ -8,27 +8,27 @@ motion-first rebuild this document supersedes.
 ## 1. Competitor research (live-fetched, not recalled from training)
 
 Tagged FACT (directly observed in the fetched page), INFERENCE (my reasoning from it), or
-GAP (Sentinel cannot use this).
+GAP (Unpatched cannot use this).
 
 **HackerOne** — FACT: hero headline "Not every vulnerability matters. Fix the ones that
 do," with a Wistia **video embed directly in the hero** (not CSS animation), a customer
 logo carousel (Anthropic, Coinbase, Uber...), and a statistics banner ($4M+ ROI/critical
 finding, 600k+ bugs found, 1,300+ companies). INFERENCE: HackerOne's "feels alive"
 comes substantially from **real video + real customer proof density**, not from a clever
-CSS choreography. GAP: Sentinel has no video asset and no real customers to name.
+CSS choreography. GAP: Unpatched has no video asset and no real customers to name.
 
 **Bugcrowd** — FACT: hero "Join forces with hackers and reduce risk," a 4.9/5 rating
 badge, named customer logos (Atlassian, Mastercard, NASA...), and an explicit two-path
 navigation split (Security Buyers vs. Hackers) starting at the very top of the page.
 INFERENCE: their "feels alive" is instant self-sorting (two big buttons for two
 audiences, first thing you see) plus proof-by-logo. GAP: same as HackerOne — no real
-logos or ratings exist for Sentinel.
+logos or ratings exist for Unpatched.
 
 **Intigriti** — FACT: headline built around "trusted by the world's leading
 organizations," a "640+ bug bounty programs analyzed" bounty calculator, G2 trust badges,
 and — notably — **individual researcher profile cards** (50+, real handles/avatars) as a
 major homepage section, not prose. INFERENCE: showing real *people*, not just a product
-diagram, is a distinct trust mechanism from HackerOne/Bugcrowd's logo walls. GAP: Sentinel
+diagram, is a distinct trust mechanism from HackerOne/Bugcrowd's logo walls. GAP: Unpatched
 has no public researcher directory or reputation-leaderboard feature to show honestly.
 
 **YesWeHack** — FACT: headline "Find what's exposed / Fix what's exploitable," clearly
@@ -44,12 +44,12 @@ there is no visible product UI at all in what was fetched.
 
 **The load-bearing finding**: none of the five make their homepage "feel alive" primarily
 through abstract CSS motion. They do it with **real video, real logos, real ratings, real
-individual people, or real aggregate numbers** — categories Sentinel is correctly
+individual people, or real aggregate numbers** — categories Unpatched is correctly
 forbidden from fabricating (section 10 of the brief, and every prior slice in this
 project). This means directly imitating "why HackerOne feels alive" is not available to
 us. What *is* available, and what none of the five foreground as their primary
 mechanism, is: **making the actual product interface the hero**, moving in a way that
-demonstrates a real causal sequence. That has to be Sentinel's entire answer, because it
+demonstrates a real causal sequence. That has to be Unpatched's entire answer, because it
 is the only lever left once fabricated trust signals are correctly ruled out.
 
 Motion/interaction principles for high-quality product companies (Linear, Vercel, Stripe,
@@ -64,7 +64,7 @@ during 0033's live verification.
 
 | Dimension | Score | Why |
 |---|---|---|
-| Brand (wordmark removed, still recognizable?) | 4/10 | The badge/mono/ghost-number system is real and distinct once you study it, but the *first viewport* is a light-beige page with a serif headline — the dominant first impression is generic-editorial, not Sentinel-specific. |
+| Brand (wordmark removed, still recognizable?) | 4/10 | The badge/mono/ghost-number system is real and distinct once you study it, but the *first viewport* is a light-beige page with a serif headline — the dominant first impression is generic-editorial, not Unpatched-specific. |
 | Product communication | 5/10 | The hero artifact does show real product concepts, but it sits beside the headline as a supporting card, not as the headline's equal — a skimming visitor can miss that it's the product, not an illustration. |
 | Motion | 5/10 | Genuinely real, semantic, causal motion exists (a real achievement over 0032) — but it lives inside two components, not across the page, and the first viewport doesn't read as different from a static page until a visitor waits and watches. |
 | Visual impact (first viewport) | 3/10 | Still light/beige/headline-left-card-right — a familiar SaaS shape, nowhere near HackerOne's video hero or Immunefi's stat wall for sheer immediate impact. |
@@ -75,14 +75,14 @@ during 0033's live verification.
 | **Overall** | **4/10** | Real technical and ethical craftsmanship (honest data, working motion, accessible), but not yet an experience that makes a visitor believe "there is a serious platform here" in the first five seconds. |
 
 Answering the four direct questions:
-- **Wordmark removed, still unmistakably Sentinel?** No. The visual system is real but not yet dominant enough to survive that test.
+- **Wordmark removed, still unmistakably Unpatched?** No. The visual system is real but not yet dominant enough to survive that test.
 - **Copy removed, understand the product?** Partially — the hero artifact alone, watched through a full cycle, communicates the report lifecycle. But most visitors won't wait for a cycle on first glance.
 - **First viewport demonstrates or merely describes?** Mostly describes. The artifact is present but visually subordinate to the headline.
 - **Does the color system create energy?** No — it creates calm. That was 0032's explicit goal at the time; it is no longer the right goal.
 
 ## 3. New visual thesis
 
-**Sentinel turns security noise into a recorded signal.** This is the visual system, not
+**Unpatched turns security noise into a recorded signal.** This is the visual system, not
 a tagline: PROGRAM → SCOPE → FINDING → EVIDENCE → TRIAGE → RESEARCHER RESPONSE → DECISION
 → AUDIT RECORD is the one shape the whole page teaches, repeatedly, in different forms
 (the hero's live choreography, the two-sided relationship diagram, the "why it matters"
@@ -167,7 +167,7 @@ Reused unchanged: `MetadataPair`, `SectionLabel`, `StatusBadge`, `SeverityBadge`
 `ScopeStateBadge`, `ProgramStatusBadge`, `LifecycleStepper`, `WorkflowDiagram`. New in
 this slice: a real-fragment presentation for section 05 built from the same badge/pair
 components arranged to resemble an actual report workspace row (not a new invented
-dashboard) with a mono route label (`sentinel.app/organizations/.../reports/...`)
+dashboard) with a mono route label (`unpatched.app/organizations/.../reports/...`)
 instead of a generic device-frame mockup.
 
 Everything shown remains illustrative and is labelled so in real visible text

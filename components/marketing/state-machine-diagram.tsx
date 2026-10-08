@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "../../lib/motion";
 
 /**
- * A literal graph of Sentinel's real report-triage state machine (see
+ * A literal graph of Unpatched's real report-triage state machine (see
  * docs/decisions/0009-report-triage-state-machine.md) -- not an invented illustration.
  * Every node is a real ReportStatus; every edge is a real legal transition from that
  * doc's transition table. NEEDS_INFORMATION -> TRIAGING is drawn as a real back-edge
@@ -93,7 +93,7 @@ export function StateMachineDiagram() {
 
   return (
     <div ref={containerRef} className="overflow-x-auto">
-      <svg viewBox="0 0 620 300" className="mx-auto h-auto w-full max-w-2xl" role="img" aria-label="Diagram of Sentinel's real report triage state machine: new reports move through triaging, may loop through needs-information, and end at accepted-then-resolved, duplicate, informative, not applicable, or rejected.">
+      <svg viewBox="0 0 620 300" className="mx-auto h-auto w-full max-w-2xl" role="img" aria-label="Diagram of Unpatched's real report triage state machine: new reports move through triaging, may loop through needs-information, and end at accepted-then-resolved, duplicate, informative, not applicable, or rejected.">
         {DIM_EDGES.map(([from, to]) => (
           <path key={`${from}-${to}`} d={edgePath(from, to)} fill="none" className="stroke-border-strong" strokeWidth={1.5} strokeDasharray="3 4" />
         ))}
@@ -127,7 +127,7 @@ export function StateMachineDiagram() {
           );
         })}
       </svg>
-      <p className="mt-2 text-center text-xs text-ink-muted">This is the same state machine that governs every report in Sentinel — nothing here is simplified for the demo.</p>
+      <p className="mt-2 text-center text-xs text-ink-muted">This is the same state machine that governs every report in Unpatched — nothing here is simplified for the demo.</p>
     </div>
   );
 }

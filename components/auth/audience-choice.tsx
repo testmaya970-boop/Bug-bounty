@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 
 /**
- * The one first-authentication decision Sentinel actually needs: which real product
+ * The one first-authentication decision Unpatched actually needs: which real product
  * journey a new visitor is entering, encoded in which link they choose -- never a
  * generic "Sign up" button, and never an interstitial "what's your role?" question
  * after the fact (the route itself already represents the intent). Shared by the public

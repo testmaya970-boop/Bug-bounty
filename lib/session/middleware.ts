@@ -57,8 +57,8 @@ export function extractOrganizationIdFromPath(pathname: string): string | null {
  * ever runs its own check -- see the strip step below), so a client can never forge it;
  * it is purely a same-request cache of a check middleware itself just performed for real.
  */
-export const VERIFIED_USER_ID_HEADER = "x-sentinel-verified-user-id";
-export const VERIFIED_SESSION_ID_HEADER = "x-sentinel-verified-session-id";
+export const VERIFIED_USER_ID_HEADER = "x-unpatched-verified-user-id";
+export const VERIFIED_SESSION_ID_HEADER = "x-unpatched-verified-session-id";
 
 /** Turn 8c forensics: minted once per request, forwarded on the request headers (so every
  * downstream perfTimed() call -- Server Components, Server Actions, route handlers -- can

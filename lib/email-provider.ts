@@ -23,7 +23,7 @@ import nodemailer, { type Transporter } from "nodemailer";
  * string-based arithmetic), the error-classification table, and exactly what was and was
  * not live-tested.
  *
- * Idempotency: every send is given a Sentinel-generated idempotencyKey (the delivery
+ * Idempotency: every send is given a Unpatched-generated idempotencyKey (the delivery
  * row's own id, minted durably before any provider call), passed through as Resend's own
  * `Idempotency-Key` header -- identical reasoning to lib/payment-provider.ts's
  * `idempotencyKey` parameter. This is also why an ambiguous provider response below is

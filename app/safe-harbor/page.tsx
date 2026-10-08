@@ -11,9 +11,9 @@ import { getCurrentUser } from "../../lib/auth/current-user";
  * only after signing in). Both HackerOne and Bugcrowd treat this as foundational trust
  * infrastructure, not a nice-to-have (see docs/decisions/0075's Part 2 -- this was a
  * confirmed, zero-schema-cost gap: no "safe harbor"/"code of conduct" text existed
- * anywhere in this app prior to this page). Content describes Sentinel's actual current
+ * anywhere in this app prior to this page). Content describes Unpatched's actual current
  * mechanics only -- it does not claim protections the platform doesn't structurally back
- * (e.g. no claim of legal indemnification Sentinel itself can't provide; scope enforcement
+ * (e.g. no claim of legal indemnification Unpatched itself can't provide; scope enforcement
  * described here is the real, server-verified scope-matching this app already performs at
  * report submission, per docs/decisions/0008).
  */

@@ -21,19 +21,19 @@ to what was genuinely missing, rather than rebuilding what already worked.
 (0010), evidence attached at submission (0028), a fact-based reputation ledger with no
 score (0016), a real notification center (0017), the researcher/organization auth split.
 
-**ADAPT**: HackerOne's filterable opportunity/program grid → Sentinel's editorial registry
+**ADAPT**: HackerOne's filterable opportunity/program grid → Unpatched's editorial registry
 list (search + status filter, keyset-paginated), matching this product's existing list
 grammar rather than a card wall. HackerOne's "Report Assistant" structured composer →
 restructured `CreateReportForm` sections (Target / Finding / Reproduction & impact /
 Evidence / Attachments / Review) over the *existing* `submit_report` contract — no new
-field invented. HackerOne's empty-state screens → Sentinel's existing `EmptyState`
+field invented. HackerOne's empty-state screens → Unpatched's existing `EmptyState`
 component, reused, not recreated.
 
 **REJECTED outright (explicit product decisions, not oversights)**: leaderboard, hacker
 rank/percentile, follower counts, badges/certifications, a skills taxonomy, fabricated
 response-time/earnings/success-rate statistics, a citizenship/ID-verification flow, a
 multi-step onboarding wizard collecting availability/asset-type/vulnerability-category
-preferences. None of these have a backing data model in Sentinel, and inventing one to
+preferences. None of these have a backing data model in Unpatched, and inventing one to
 match the benchmark would be exactly the "fabricated numbers" the task explicitly
 forbade.
 

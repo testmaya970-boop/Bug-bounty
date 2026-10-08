@@ -75,7 +75,7 @@ function NavGroup({ label, items, path }: { label: string; items: { href: Route;
 }
 
 /** The full HackerOne-style settings navigation, on explicit user instruction -- see
- * docs/decisions/0055. "Hacker" renamed to "Researcher" to match Sentinel's own
+ * docs/decisions/0055. "Hacker" renamed to "Researcher" to match Unpatched's own
  * established vocabulary everywhere else in the product; the section order and contents
  * otherwise match what was requested. */
 export function SettingsNav({ accountType }: { accountType: AccountType }) {

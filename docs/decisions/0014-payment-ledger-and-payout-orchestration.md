@@ -12,7 +12,7 @@ Status: Accepted
 HackerOne/Bugcrowd/YesWeHack documentation and general payment-system references converge on a small set of mechanics:
 
 - **A payout decision and a payout transaction are different records.** The decision (what is owed) rarely changes once made; the transaction (whether it was actually paid) has its own lifecycle, retries, and failure modes. Adopted directly as `payment_obligations` (the decision-derived snapshot) vs. `payment_attempts` (the transaction history).
-- **Idempotent payment creation is two separate problems**, not one: (1) never create two internal records for the same source event, and (2) never cause a payment provider to move money twice for what Sentinel considers one attempt. Adopted as two independently-enforced mechanisms — see "Idempotency" below.
+- **Idempotent payment creation is two separate problems**, not one: (1) never create two internal records for the same source event, and (2) never cause a payment provider to move money twice for what Unpatched considers one attempt. Adopted as two independently-enforced mechanisms — see "Idempotency" below.
 - **Payment state machines keep "terminal" states genuinely terminal** (a succeeded charge is never un-succeeded without a distinct refund/reversal domain) but keep failure **retryable** by default, since most real payout failures (wrong account details, temporary provider outage) are correctable, not permanent. Adopted: `succeeded`/`cancelled` are the only truly terminal obligation states; `failed` is a resting state a new attempt can retry.
 - **Provider webhooks are asynchronous and must be idempotent**, resolved via a provider-supplied reference id mapped back to an internal record, never trusted at face value without signature verification. Documented as a future extension point (§ "Webhook boundary" below); not implemented, since no real provider exists to send one.
 - **Reconciliation exists because a database transaction cannot atomically span an external provider.** Documented as a disclosed, deferred gap (§ "Reconciliation" below) rather than pretended away.
@@ -90,8 +90,8 @@ Committing to a payment obligation, and especially initiating a real payout atte
 
 ## Idempotency — two separate problems, solved at two separate layers
 
-1. **Sentinel payment-obligation idempotency**: at most one obligation per finalized bounty decision (`unique(bounty_decision_id)` plus a pre-check performed under a row lock on the decision), and at most one in-flight attempt per obligation (`initiate_manual_payment_attempt` rejects with `PAYMENT_ALREADY_PROCESSING` while `status = 'processing'`). Both are real database guarantees, proven under genuine concurrency below — not "the button is disabled."
-2. **Provider-operation idempotency**: a real provider's `createPayment` call, if retried by a flaky network or a service restart, must not create two provider-side charges. `lib/payment-provider.ts`'s `PaymentProvider.createPayment` accepts an `idempotencyKey` — the Sentinel-generated `payment_obligations.id` — that a real adapter must forward to the provider's own idempotency mechanism (every provider surveyed supports one). The manual provider has no external system to call and therefore no real exposure to this problem, but the interface signature already carries the key so a future real adapter's signature never has to change.
+1. **Unpatched payment-obligation idempotency**: at most one obligation per finalized bounty decision (`unique(bounty_decision_id)` plus a pre-check performed under a row lock on the decision), and at most one in-flight attempt per obligation (`initiate_manual_payment_attempt` rejects with `PAYMENT_ALREADY_PROCESSING` while `status = 'processing'`). Both are real database guarantees, proven under genuine concurrency below — not "the button is disabled."
+2. **Provider-operation idempotency**: a real provider's `createPayment` call, if retried by a flaky network or a service restart, must not create two provider-side charges. `lib/payment-provider.ts`'s `PaymentProvider.createPayment` accepts an `idempotencyKey` — the Unpatched-generated `payment_obligations.id` — that a real adapter must forward to the provider's own idempotency mechanism (every provider surveyed supports one). The manual provider has no external system to call and therefore no real exposure to this problem, but the interface signature already carries the key so a future real adapter's signature never has to change.
 
 ## Concurrency
 
@@ -113,7 +113,7 @@ A researcher sees their own obligation's safe aggregate status — "Payment pend
 
 ```text
 provider webhook → authenticate provider signature → resolve provider_reference_id to a
-Sentinel payment_attempts row → verify the attempt is still requires_operator_action (or
+Unpatched payment_attempts row → verify the attempt is still requires_operator_action (or
 its future async equivalent) → transition → audit
 ```
 
@@ -121,7 +121,7 @@ No route or verification code exists in this slice — there is no real provider
 
 ## Reconciliation
 
-Sentinel's database and a payment provider are two separate systems; no transaction spans both. `payment_obligations.status = 'processing'` while the provider's own record says something else (succeeded, failed, or doesn't exist) is a real, disclosed possible divergence this slice does not resolve automatically. For the manual provider this gap is inherent and acceptable — there is no external system to diverge from; the human who performs the transfer is also the one who calls `record_manual_payment_result`. A real async provider would need either scheduled reconciliation (poll `getPaymentStatus` for any attempt stuck in an in-flight state past a timeout) or, more robustly, the webhook path above. No reconciliation table or job exists yet; this is a named deferral, not a silent gap.
+Unpatched's database and a payment provider are two separate systems; no transaction spans both. `payment_obligations.status = 'processing'` while the provider's own record says something else (succeeded, failed, or doesn't exist) is a real, disclosed possible divergence this slice does not resolve automatically. For the manual provider this gap is inherent and acceptable — there is no external system to diverge from; the human who performs the transfer is also the one who calls `record_manual_payment_result`. A real async provider would need either scheduled reconciliation (poll `getPaymentStatus` for any attempt stuck in an in-flight state past a timeout) or, more robustly, the webhook path above. No reconciliation table or job exists yet; this is a named deferral, not a silent gap.
 
 ## Deferred, explicitly
 

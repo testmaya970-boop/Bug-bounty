@@ -3,7 +3,7 @@ import { DEV_KYC_ENCRYPTION_KEY, findConfigurationProblems, findKycEncryptionKey
 
 const VALID = {
   APP_ORIGIN: "https://app.example.test",
-  DATABASE_URL: "postgres://app:s3cret@db:5432/sentinel",
+  DATABASE_URL: "postgres://app:s3cret@db:5432/unpatched",
   SESSION_COOKIE_SECRET: "a".repeat(64),
   S3_ENDPOINT: "http://minio:9000",
   S3_REGION: "us-east-1",

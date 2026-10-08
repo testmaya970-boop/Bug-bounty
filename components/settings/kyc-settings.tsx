@@ -12,7 +12,7 @@ import type { KycStatusSummary } from "../../types/researcher-identity";
 
 /**
  * Real KYC fields, reviewed manually by a platform admin -- deliberately NOT a "Verify via
- * DigiLocker"/"Verify PAN" button. Sentinel has no real government-ID-verification
+ * DigiLocker"/"Verify PAN" button. Unpatched has no real government-ID-verification
  * provider integration; a button claiming to verify identity with nothing real behind it
  * is fabricated security theater. See docs/decisions/0051 and app/platform/kyc (the real
  * review surface) for the other half of this.

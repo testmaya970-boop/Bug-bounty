@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context
 
-`DOMAIN.md`'s conceptual path is `Researcher → Report → Program → Organization → Assets`, and its "Actors and relationships" section already names Researcher as a first-class actor, distinct from Organization Member. Every Sentinel account already defaults to `platform_role = 'researcher'` at signup (`202608250001`'s `public.users` default) — "researcher" is the ordinary baseline identity of any Sentinel user, not a special account type someone opts into. What has never existed until now is a way for a specific researcher to become *authorized to participate in a specific program*, and for the system to answer that question reliably for future report authorization to depend on.
+`DOMAIN.md`'s conceptual path is `Researcher → Report → Program → Organization → Assets`, and its "Actors and relationships" section already names Researcher as a first-class actor, distinct from Organization Member. Every Unpatched account already defaults to `platform_role = 'researcher'` at signup (`202608250001`'s `public.users` default) — "researcher" is the ordinary baseline identity of any Unpatched user, not a special account type someone opts into. What has never existed until now is a way for a specific researcher to become *authorized to participate in a specific program*, and for the system to answer that question reliably for future report authorization to depend on.
 
 ## Three distinct authorization domains, never merged
 

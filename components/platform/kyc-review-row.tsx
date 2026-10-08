@@ -12,7 +12,7 @@ const PENDING_FIELDS: KycField[] = ["phone", "aadhaar", "pan", "passport"];
  * One pending KYC field, one decision -- verify or reject, with an optional note. No
  * "Verify via DigiLocker" call: a platform admin makes this decision after their own
  * out-of-band review (see docs/decisions/0051 and the migration's own comment on why
- * Sentinel has no real government-ID-verification provider integration).
+ * Unpatched has no real government-ID-verification provider integration).
  */
 export function KycReviewRow({ userId, displayName, email, statuses }: { userId: string; displayName: string; email: string | null; statuses: Record<KycField, KycStatus> }) {
   const pendingFields = PENDING_FIELDS.filter((field) => statuses[field] === "pending");

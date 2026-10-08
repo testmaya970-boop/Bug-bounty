@@ -2,7 +2,7 @@
 
 Related: [[0030-public-entry-and-two-sided-authentication]], [[0031-public-front-door-visual-thesis]],
 [[0032-public-front-door-visual-execution]], [[0033-motion-first-front-door]],
-[[0034-public-front-door-product-stage]], [[0035-sentinel-visual-identity-system]],
+[[0034-public-front-door-product-stage]], [[0035-unpatched-visual-identity-system]],
 [[0036-live-security-environment]].
 
 ## The request and the deliberate reversal
@@ -17,7 +17,7 @@ benefit sections, and a closing FAQ accordion before a dark final CTA band.
 
 This is a **direct, explicit override**, not an accidental drift: `DESIGN.md` states
 "Do not copy another company's branded components, copy, icons, palette, or layout" and
-"Sentinel deliberately does not adopt any cataloged company's brand system, palette."
+"Unpatched deliberately does not adopt any cataloged company's brand system, palette."
 `AGENTS.md`'s authority order puts the current task's requirements above `DESIGN.md`
 itself, and per its own conflict-handling rule ("stop implementation, identify the
 conflict and its impact, and request or document a resolution — do not silently choose a
@@ -33,7 +33,7 @@ authenticated dashboard (`HomePage`), `AppShell`, every shared token in
 `FeatureCard`, `Eyebrow`, `StatTile`, and `FaqItem` are new, page-local components defined
 in `app/page.tsx` itself, not registered anywhere shared.
 
-**Palette: rebuilt from Sentinel's own semantic tokens, never Jasper's literal colors.**
+**Palette: rebuilt from Unpatched's own semantic tokens, never Jasper's literal colors.**
 `PUBLIC_HOME_THEME_VARS` is a plain object of CSS custom properties (`--canvas`,
 `--surface`, `--action`, `--info`, `--warning`, ...) applied via inline `style` on
 `PublicHome`'s own root `<div>` — the same override mechanism `app/globals.css` already
@@ -80,5 +80,5 @@ and the FAQ `<details>` accordion opens/closes without JS. Per standing instruct
 
 This override applies to the public homepage only. It does not reopen DESIGN.md's
 anti-copying rule for any other screen, and does not retroactively bless recreating any
-other reference product's UI elsewhere in Sentinel without the same explicit,
+other reference product's UI elsewhere in Unpatched without the same explicit,
 documented conflict-and-override step this slice went through.

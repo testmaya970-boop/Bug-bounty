@@ -8,12 +8,12 @@ import "server-only";
  * See docs/decisions/0014-payment-ledger-and-payout-orchestration.md.
  *
  * Two separate idempotency problems, solved at two separate layers:
- * 1. Sentinel payment-obligation idempotency (at most one obligation per finalized bounty
+ * 1. Unpatched payment-obligation idempotency (at most one obligation per finalized bounty
  *    decision, at most one in-flight attempt per obligation) is a real database unique
  *    constraint and row lock -- see the migration, not this file.
  * 2. Provider-operation idempotency (the same createPayment call retried by a flaky
  *    network must not create two provider-side charges/payouts) is this interface's job:
- *    every call is given a Sentinel-generated idempotencyKey (the payment_attempts row's
+ *    every call is given a Unpatched-generated idempotencyKey (the payment_attempts row's
  *    own id, minted durably before the provider is ever called) that a real adapter must
  *    pass through to the provider's own idempotency-key mechanism (every provider
  *    surveyed -- Stripe, Razorpay -- supports one). The manual provider has no external
@@ -23,7 +23,7 @@ import "server-only";
 export type PaymentProviderResult = {
   /** The provider's own transaction/reference id, or null if none exists yet (the manual
    * provider never has one, since nothing external was called). Metadata only -- never
-   * the authoritative Sentinel identifier. */
+   * the authoritative Unpatched identifier. */
   providerReferenceId: string | null;
   /** requires_operator_action: the manual provider's honest answer -- a human must act.
    * succeeded/failed: only ever returned by a provider capable of confirming a payout
@@ -51,7 +51,7 @@ export type PaymentProvider = {
  * Exists only to prove the abstraction end to end without moving real money. Explicitly
  * represents "requires operator action" rather than faking success -- an authorized
  * finance actor must separately call record_manual_payment_result after actually
- * completing the payout themselves (e.g. a real wire transfer outside Sentinel).
+ * completing the payout themselves (e.g. a real wire transfer outside Unpatched).
  */
 export const manualPaymentProvider: PaymentProvider = {
   name: "manual",

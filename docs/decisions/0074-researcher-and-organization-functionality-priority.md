@@ -5,7 +5,7 @@ Status: **Reference inventory. No code, migration, RPC, or UI was changed in thi
 
 ## Purpose
 
-A single, current, verified list of what exists for each of Sentinel's two active
+A single, current, verified list of what exists for each of Unpatched's two active
 perspectives — researcher and organization — ordered by priority. This supersedes the
 feature inventory in `0026`'s Sections E/F/I where they disagree: several items `0026`
 listed as gaps have since shipped (report collaboration, severity on report-list cards,

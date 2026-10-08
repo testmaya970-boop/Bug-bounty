@@ -22,7 +22,7 @@
 //     and a single canonical timeline is less ambiguous than each viewer's own local time
 //     when researchers and organizations sit in different real-world timezones. This is a
 //     deliberate, disclosed policy decision (see docs/decisions -- this fix's own entry),
-//     not a silent one: every previously browser-local-converted timestamp on Sentinel now
+//     not a silent one: every previously browser-local-converted timestamp on Unpatched now
 //     reads as UTC for every viewer, not their own local time.
 //   - hour12: true, so the 12-hour "9:26 PM" style (already what most viewers were
 //     actually seeing post-hydration) is the format everyone sees, deterministically.

@@ -1,4 +1,4 @@
-# 0026: Sentinel product strategy and 10× gap analysis
+# 0026: Unpatched product strategy and 10× gap analysis
 
 Date: 2026-08-31
 Status: **Strategy research only. No code, migration, RPC, or UI was changed in this slice.**
@@ -9,13 +9,13 @@ This document builds on `docs/decisions/0024-three-perspective-product-model.md`
 
 ## A. Executive conclusion
 
-Sentinel is a genuinely well-built **two-party workflow application** (researcher ↔ organization) with unusually strong authorization discipline — every domain audited across three prior slices enforces its rules at the RLS/RPC layer, not in application code, and the audit trail is real everywhere it exists. It is **not yet a platform**, because the third party — Sentinel itself, as an operating authority distinct from any one organization — does not exist in any enforceable form. The `platform_role` enum and `requirePlatformAdmin()` guard are confirmed dead scaffolding (re-verified again this slice, zero call sites, nothing ever sets the value).
+Unpatched is a genuinely well-built **two-party workflow application** (researcher ↔ organization) with unusually strong authorization discipline — every domain audited across three prior slices enforces its rules at the RLS/RPC layer, not in application code, and the audit trail is real everywhere it exists. It is **not yet a platform**, because the third party — Unpatched itself, as an operating authority distinct from any one organization — does not exist in any enforceable form. The `platform_role` enum and `requirePlatformAdmin()` guard are confirmed dead scaffolding (re-verified again this slice, zero call sites, nothing ever sets the value).
 
-The strategic conclusion is not "build the platform-admin dashboard next." It is: **Sentinel's real 10× opportunity is not matching HackerOne/Bugcrowd/Intigriti's platform-operations feature set — it is exploiting the structural rigor Sentinel already has (immutable policy versions, append-only reputation, hardcoded state-machine transitions, real RLS-enforced privacy) to make the platform *legible* in a way no competitor's opaque, score-driven model is.** The one next slice (Section S) is chosen because it is the cheapest possible step that makes that legibility real for the first time, not because it is the most obviously "platform" feature.
+The strategic conclusion is not "build the platform-admin dashboard next." It is: **Unpatched's real 10× opportunity is not matching HackerOne/Bugcrowd/Intigriti's platform-operations feature set — it is exploiting the structural rigor Unpatched already has (immutable policy versions, append-only reputation, hardcoded state-machine transitions, real RLS-enforced privacy) to make the platform *legible* in a way no competitor's opaque, score-driven model is.** The one next slice (Section S) is chosen because it is the cheapest possible step that makes that legibility real for the first time, not because it is the most obviously "platform" feature.
 
 ---
 
-## B. What Sentinel is today
+## B. What Unpatched is today
 
 A single-organization-scoped, invite-only security-report workflow tool with: real organization/program/researcher-access authorization domains (deliberately never collapsed into one role field); a rigorous report triage state machine with no generic status setter; evidence and communication with a researcher-visible/internal RLS split; a versioned, immutable bounty-policy engine where a later policy change can never retroactively rewrite an already-calculated decision; a payment ledger with a manual-only provider that never claims success without an explicit operator confirmation; a transactional outbox powering reputation and notification fan-out; a real (Resend) email provider behind a swappable seam; database-backed rate limiting on the sign-in/report-submission/organization-creation/invitation/evidence-upload boundaries; keyset pagination on every genuinely unbounded collection; and a consistent, deliberately unglamorous visual system (no vanity metrics, no fake security theater, honest empty states). All of this is real, live-tested, not aspirational — this document does not relitigate that.
 
@@ -25,49 +25,49 @@ What it is missing entirely: any operational actor above "an organization's own 
 
 ## C. What HackerOne/Bugcrowd/Intigriti actually optimize for (causal reasoning, not a feature list)
 
-For each mechanism: the problem it solves, why it matters, what happens without it, and whether Sentinel could solve the same problem differently/better.
+For each mechanism: the problem it solves, why it matters, what happens without it, and whether Unpatched could solve the same problem differently/better.
 
 **Program launch approval / activity thresholds (HackerOne: ≥10 reports, ≥100 invited hackers before public launch)**
 - *Problem*: an organization that hasn't yet proven it can respond to reports competently would burn researcher goodwill (and platform trust) the moment it's exposed publicly — a slow, dismissive, or non-paying new program poisons the researcher's opinion of the *platform*, not just that one org.
 - *Why it matters*: the platform's own reputation is a shared resource across every organization on it; one bad actor damages everyone's trust in the marketplace.
 - *Without it*: researchers learn (via word of mouth, public write-ups, Twitter) that the platform tolerates unresponsive programs, and stop trusting *any* new program on it — a classic marketplace cold-start/lemon problem.
-- *Could Sentinel solve it better?* Sentinel doesn't need HackerOne's exact numeric threshold (that's calibrated to HackerOne's own researcher volume). But the underlying mechanism — "prove responsiveness privately before being exposed publicly" — is the right shape. Sentinel's own `DRAFT → REVIEW → ACTIVE` lifecycle already has a natural seam for this (`submit_program_for_review`/`activate_program` already exist as distinct RPCs, per `0021`) — the review step exists in the state machine today but is currently *self-approved by the same organization*, which defeats the purpose entirely.
+- *Could Unpatched solve it better?* Unpatched doesn't need HackerOne's exact numeric threshold (that's calibrated to HackerOne's own researcher volume). But the underlying mechanism — "prove responsiveness privately before being exposed publicly" — is the right shape. Unpatched's own `DRAFT → REVIEW → ACTIVE` lifecycle already has a natural seam for this (`submit_program_for_review`/`activate_program` already exist as distinct RPCs, per `0021`) — the review step exists in the state machine today but is currently *self-approved by the same organization*, which defeats the purpose entirely.
 
 **Managed/first-pass triage (all three: HackerOne security analysts, Bugcrowd ASEs, Intigriti's Triage team)**
 - *Problem*: raw researcher submissions are noisy — duplicates, out-of-scope, low-effort, or simply wrong — and making an organization's own (often smaller, less security-specialized) team wade through all of it before seeing a real signal is exhausting and slows down genuine findings.
 - *Why it matters*: it's the platform monetizing its own accumulated pattern-recognition (across every customer) as a service, and it protects researcher goodwill too — a report closed instantly as "duplicate" by a specialist reads as fair; the same closure from an overwhelmed, inexperienced org team reads as dismissive.
 - *Without it*: organizations either hire their own triage staff (expensive, slow to reach competence) or researchers get inconsistent, slow first responses that erode trust in the specific program.
-- *Could Sentinel solve it better?* This is a genuine, expensive, staffing-dependent capability — not something to fake with a UI. Sentinel should **not** build a fake "managed triage" toggle with no real staff behind it (that would be exactly the kind of theater `DOMAIN.md`'s "10× principle" and this session's own established convention explicitly reject). This stays deferred until Sentinel has an actual reason and actual capacity to staff it.
+- *Could Unpatched solve it better?* This is a genuine, expensive, staffing-dependent capability — not something to fake with a UI. Unpatched should **not** build a fake "managed triage" toggle with no real staff behind it (that would be exactly the kind of theater `DOMAIN.md`'s "10× principle" and this session's own established convention explicitly reject). This stays deferred until Unpatched has an actual reason and actual capacity to staff it.
 
 **Reputation/Signal/Impact as an access-gating mechanism**
 - *Problem*: private-program invitations need *some* signal to select researchers by, beyond "who applied first" — quality-blind invitation produces noise and burns organization trust in the invitation mechanism itself.
 - *Why it matters*: it's the platform's answer to "how do we let a good researcher's history unlock more opportunity" without a human curator manually vetting every invitation.
 - *Without it*: invitations are either fully manual (doesn't scale past a handful of programs) or fully random (bad researcher-organization matches, wasted researcher time on programs unsuited to their skill).
-- *Could Sentinel solve it better?* Sentinel's `reputation_ledger` is *already architecturally superior* to a black-box percentile score for this exact purpose — it's append-only, self-explaining (every fact traces to a real report), and deliberately has no invented scoring formula (`0016`). The opportunity is not to copy HackerOne's opaque score, but to use Sentinel's already-more-transparent ledger as an *explainable* input to invitation-worthiness once program discovery exists — a genuine structural advantage, not a hypothetical one.
+- *Could Unpatched solve it better?* Unpatched's `reputation_ledger` is *already architecturally superior* to a black-box percentile score for this exact purpose — it's append-only, self-explaining (every fact traces to a real report), and deliberately has no invented scoring formula (`0016`). The opportunity is not to copy HackerOne's opaque score, but to use Unpatched's already-more-transparent ledger as an *explainable* input to invitation-worthiness once program discovery exists — a genuine structural advantage, not a hypothetical one.
 
 **Platform-wide researcher sanctions (escalation-gated, not automatic — corrected in `0025`)**
 - *Problem*: a researcher acting in bad faith on one program (extortion attempts, scope violations, harassment) is a risk to every other organization on the platform, not just the one that caught it.
 - *Why it matters*: without a cross-program mechanism, the same bad actor simply moves to the next unsuspecting organization — the platform's own safety is the thing at stake, not any one org's.
 - *Without it*: every organization independently re-discovers the same bad actor, at real cost, with zero shared learning.
-- *Could Sentinel solve it better?* No — this is a case where Sentinel should build the *equivalent* mechanism (a genuine escalation path, evidence-gated, not automatic), not a better one. There's no clever alternative architecture here; the gap is simply real and structural.
+- *Could Unpatched solve it better?* No — this is a case where Unpatched should build the *equivalent* mechanism (a genuine escalation path, evidence-gated, not automatic), not a better one. There's no clever alternative architecture here; the gap is simply real and structural.
 
 **Payment custody by the platform, not the organization**
 - *Problem*: identity verification, tax compliance, and cross-border payout logistics are a genuinely specialized, regulated capability an individual organization shouldn't have to rebuild.
 - *Why it matters*: it's also a trust mechanism — a researcher trusts the *platform's* payment infrastructure more than trusting 500 individual organizations' own ad hoc payment processes.
-- *Without it*: payment reliability is only as good as each organization's own operational diligence — exactly Sentinel's situation today (manual, operator-confirmed, per-org).
-- *Could Sentinel solve it better?* Not architecturally — this is genuinely expensive infrastructure (compliance, banking relationships) that's a real business decision, not a product-design one. Section M addresses sequencing, not whether to eventually build it.
+- *Without it*: payment reliability is only as good as each organization's own operational diligence — exactly Unpatched's situation today (manual, operator-confirmed, per-org).
+- *Could Unpatched solve it better?* Not architecturally — this is genuinely expensive infrastructure (compliance, banking relationships) that's a real business decision, not a product-design one. Section M addresses sequencing, not whether to eventually build it.
 
 ---
 
-## D. Three-party Sentinel model
+## D. Three-party Unpatched model
 
 ### A. Researcher — Find → Understand → Test → Report → Collaborate → Retest → Earn
-Confirmed as the right loop. Sentinel currently implements Test → Report → Collaborate → Earn solidly. Find (discovery) and Retest are structural gaps, not UI gaps — no schema supports either today.
+Confirmed as the right loop. Unpatched currently implements Test → Report → Collaborate → Earn solidly. Find (discovery) and Retest are structural gaps, not UI gaps — no schema supports either today.
 
 ### B. Organization — Create → Define → Launch → Receive → Triage → Decide → Reward → Improve
-Confirmed as the right loop, and the one Sentinel implements most completely of the three. "Launch" today is self-certifying (no platform gate) — see Section H.
+Confirmed as the right loop, and the one Unpatched implements most completely of the three. "Launch" today is self-certifying (no platform gate) — see Section H.
 
-### C. Sentinel Platform — evaluated, not assumed
+### C. Unpatched Platform — evaluated, not assumed
 The prompt's proposed loop (**Approve → Protect → Observe → Intervene → Resolve**) is close but wrong in one important way: it's phrased as linear/one-shot, like the researcher/organization loops. The platform's job is structurally different — it's a **continuous background loop with triggered branches**, not a per-transaction sequence. The corrected model:
 
 ```
@@ -97,7 +97,7 @@ What the platform **uniquely owns**, evaluated against the "does this actually n
 
 ## E. Researcher product loop
 
-| Stage | Sentinel state | Gap |
+| Stage | Unpatched state | Gap |
 |---|---|---|
 | Find | **Missing entirely** | No program-visibility column, no discovery query, no public listing |
 | Understand | Partial | Scope is real and visible once invited; no upfront reward-range/bounty-table visibility before committing time |
@@ -109,7 +109,7 @@ What the platform **uniquely owns**, evaluated against the "does this actually n
 
 ## F. Organization product loop
 
-| Stage | Sentinel state | Gap |
+| Stage | Unpatched state | Gap |
 |---|---|---|
 | Create | Real | `create_organization` works, but with the trust-model gap (Section 9-equivalent, carried from `0024`) |
 | Define | Real | Scope, bounty policy, program creation all solid |
@@ -122,7 +122,7 @@ What the platform **uniquely owns**, evaluated against the "does this actually n
 
 ## G. Platform product loop
 
-| Stage | Sentinel state |
+| Stage | Unpatched state |
 |---|---|
 | Establish trust | **Missing** — no onboarding gate, no program-review consumer |
 | Observe | **Missing** — no cross-org visibility of anything, including data that already exists (dead letters, failed deliveries) |
@@ -162,7 +162,7 @@ Organization                          REAL          create_organization works (t
 
 ## I. Critical missing capabilities (audit table)
 
-| Capability | Current Sentinel state | Competitor precedent | Why it matters | Severity | Strategic priority | Recommended action |
+| Capability | Current Unpatched state | Competitor precedent | Why it matters | Severity | Strategic priority | Recommended action |
 |---|---|---|---|---|---|---|
 | Program visibility | No column exists | Multi-tier (public/registered/application/private), all 3 | Structural prerequisite for any researcher acquisition beyond manual invitation | Critical | P0 | New column + RLS-safe discovery query (smallest viable: two states) |
 | Platform review of program launch | Self-certified only | HackerOne: explicit approval + activity threshold | Marketplace trust — an unvetted program damages the whole platform's reputation, not just its own | Critical | P0 | Requires platform-admin actor to exist first (Section L) |
@@ -170,20 +170,20 @@ Organization                          REAL          create_organization works (t
 | Cross-program researcher suspension | Per-program only | Escalation-gated platform-wide sanction, all 3 | A bad actor removed from one program is free everywhere else | High | P0 | Requires platform-admin actor to exist first |
 | Payment custody/failure visibility | Org-scoped only; platform-wide invisible | Platform is the processor, all 3 | No one can see a systemic payment problem across organizations | High | P1 | Read-only cross-org visibility first (not custody) |
 | Dispute mechanism | Absent for both sides | HackerOne/Bugcrowd named mediation function | Neither side has recourse when they believe an outcome was unfair | Medium | P1 | Needs a platform actor to adjudicate; can start as a simple flagged-report queue |
-| Organization onboarding/verification | None — instant, self-serve, unrestricted | Sales-assisted (HackerOne/Bugcrowd) or CSM-reviewed launch checklist (Intigriti) | Sentinel currently trusts every organization identically regardless of track record | Medium | P1 | Section 9-equivalent decision already made in `0024`: gate the *program going live*, not the org shell |
+| Organization onboarding/verification | None — instant, self-serve, unrestricted | Sales-assisted (HackerOne/Bugcrowd) or CSM-reviewed launch checklist (Intigriti) | Unpatched currently trusts every organization identically regardless of track record | Medium | P1 | Section 9-equivalent decision already made in `0024`: gate the *program going live*, not the org shell |
 | Program health/quality signal | Absent | Not directly competitor-documented, but implied by response-time/reward tables | Organizations can't see if their own program is actually working | Low-Medium | P2 | Real, derivable from existing data (time-to-first-response, resolution rate) — no new domain needed |
 | Abuse/fraud signal foundation | Absent | Documented posture (HackerOne), no tooling internals disclosed by any | Duplicate accounts, collusion, mass-low-quality submission have zero detection | Medium | P2 | Start with a simple velocity/duplicate-account heuristic, not ML |
-| System health visibility | stdout-only | All 3 publish public status pages | No one, including Sentinel's own operators, has a persisted view of worker/provider health | Low | P2 | Cheap — persist what's already logged |
+| System health visibility | stdout-only | All 3 publish public status pages | No one, including Unpatched's own operators, has a persisted view of worker/provider health | Low | P2 | Cheap — persist what's already logged |
 
 ### Decision matrix (the specific 15-area scoring this audit requires)
 
 Evidence-based, not arbitrary — each score is backed by the specific finding it references (`0024`/`0025`/this document's own sections).
 
-| Area | Sentinel today | Competitor baseline | Sentinel opportunity | Priority |
+| Area | Unpatched today | Competitor baseline | Unpatched opportunity | Priority |
 |---|---|---|---|---|
 | Researcher discovery | Missing — no `program_visibility` column exists at all (Section H) | Multi-tier public/registered/application/private, all 3 | Genuine acquisition unlock, but only once the review gate (below) exists to make public exposure safe | P0 |
 | Program trust | Self-certified only — `submit_program_for_review`/`activate_program` both callable by the same org (Section H) | Platform-approved launch (HackerOne explicit; Intigriti CSM-reviewed checklist) | The single highest-leverage joint in the whole chain (Section H) | P0 |
-| Reporting | Real — submission, evidence, frozen scope snapshot, all live-tested across prior slices | Structured forms, custom fields (HackerOne) | Sentinel already matches or exceeds on rigor; no gap | — |
+| Reporting | Real — submission, evidence, frozen scope snapshot, all live-tested across prior slices | Structured forms, custom fields (HackerOne) | Unpatched already matches or exceeds on rigor; no gap | — |
 | Triage | Real — hardcoded-target-status RPCs, row-locked, concurrency-proven | Managed (staffed) first-pass triage, all 3 | Legibility (Section K.2) over managed-triage-as-a-service (P3, staffing-dependent) | — |
 | Retesting | Missing entirely — no exit transition from any terminal state | Universal across all 3 | Real, bounded gap — narrow state-machine addition, no new domain | P1 |
 | Reputation | Real, append-only, self-only, non-scored (`0016`) | Opaque percentile scoring, all 3 | Already structurally superior — make it a stated product claim (Section K.1), don't copy the opacity | Differentiator, not a gap |
@@ -199,32 +199,32 @@ Evidence-based, not arbitrary — each score is backed by the specific finding i
 
 ---
 
-## J. Competitor features Sentinel should NOT copy (and why)
+## J. Competitor features Unpatched should NOT copy (and why)
 
-- **A configurable permission-group builder (HackerOne's Groups system)** — this is the most complex end of any competitor's RBAC model. Sentinel doesn't yet have enough program-level role granularity to justify it (still one role: `manager`) — building a permission IDE before there's a second or third role to combine would be pure premature complexity, confirmed by `0024`'s own RBAC analysis.
-- **Percentile-ranked, opaque reputation scoring** — directly contrary to Sentinel's own established design principle (`0016`: "no score, ranking, badge, or leaderboard... not from a mutable score column"). Sentinel's append-only, explainable ledger is a deliberate, already-made-correctly decision; competing on "our score is more sophisticated" would be racing in the wrong direction. See Section K.
+- **A configurable permission-group builder (HackerOne's Groups system)** — this is the most complex end of any competitor's RBAC model. Unpatched doesn't yet have enough program-level role granularity to justify it (still one role: `manager`) — building a permission IDE before there's a second or third role to combine would be pure premature complexity, confirmed by `0024`'s own RBAC analysis.
+- **Percentile-ranked, opaque reputation scoring** — directly contrary to Unpatched's own established design principle (`0016`: "no score, ranking, badge, or leaderboard... not from a mutable score column"). Unpatched's append-only, explainable ledger is a deliberate, already-made-correctly decision; competing on "our score is more sophisticated" would be racing in the wrong direction. See Section K.
 - **Automatic, non-escalated platform-wide bans** — the corrected finding from `0025`: even HackerOne's bans are program-specific by default. Building automatic cross-program sanctions from a single incident report would be *more aggressive* than the actual competitor precedent, not merely matching it — a real fairness risk to avoid.
 - **Elaborate marketplace ranking/leaderboards** — same reasoning as reputation scoring; would require inventing a scoring formula `0016` explicitly declined to invent, purely for a competitive-feature-parity reason with no evidence it improves researcher retention over an honest, evidence-linked ledger.
 - **Dozens of notification channels (Slack/Teams/SMS/push/digest)** — already correctly deferred (`0017`); a real email provider now works. Adding channels before there's a real usage signal that email alone is insufficient would be speculative surface area.
-- **Complex integrations (bi-directional Jira, generic webhooks)** — genuinely useful once Sentinel has real enterprise customers who need them, but zero evidence yet that this is a blocker for anyone using Sentinel today. P3, not now.
-- **Device fingerprinting / IP-based fraud scoring** — none of the three competitors document this even existing; building it now would be inventing infrastructure with no documented precedent and real privacy/complexity cost, for a threat model not yet observed in Sentinel's own data.
-- **Huge analytics dashboards / vanity KPI grids** — directly contrary to Sentinel's own visual-system principle (already established: no generic SaaS KPI grids). The platform-ops surface (Section N) should be operational queues, not a metrics wall — this is not a competitor feature to avoid copying so much as a temptation to actively resist when building Section S.
+- **Complex integrations (bi-directional Jira, generic webhooks)** — genuinely useful once Unpatched has real enterprise customers who need them, but zero evidence yet that this is a blocker for anyone using Unpatched today. P3, not now.
+- **Device fingerprinting / IP-based fraud scoring** — none of the three competitors document this even existing; building it now would be inventing infrastructure with no documented precedent and real privacy/complexity cost, for a threat model not yet observed in Unpatched's own data.
+- **Huge analytics dashboards / vanity KPI grids** — directly contrary to Unpatched's own visual-system principle (already established: no generic SaaS KPI grids). The platform-ops surface (Section N) should be operational queues, not a metrics wall — this is not a competitor feature to avoid copying so much as a temptation to actively resist when building Section S.
 
 ---
 
-## K. Sentinel's 10× opportunities (specific, not "better UI")
+## K. Unpatched's 10× opportunities (specific, not "better UI")
 
-**1. Explainable, evidence-linked reputation instead of an opaque score.** Every competitor's reputation mechanism (HackerOne's Signal/Impact percentile, Bugcrowd's trust score) is a black box the researcher cannot fully audit. Sentinel's `reputation_ledger` is *already* structurally superior for this purpose — append-only, provenance-checked against the real report row, no invented formula. The 10× move is to make this a first-class, visible *product* claim ("every reputation fact you have traces to a real report you can open — never a mysterious number"), not just a database property no one sees.
+**1. Explainable, evidence-linked reputation instead of an opaque score.** Every competitor's reputation mechanism (HackerOne's Signal/Impact percentile, Bugcrowd's trust score) is a black box the researcher cannot fully audit. Unpatched's `reputation_ledger` is *already* structurally superior for this purpose — append-only, provenance-checked against the real report row, no invented formula. The 10× move is to make this a first-class, visible *product* claim ("every reputation fact you have traces to a real report you can open — never a mysterious number"), not just a database property no one sees.
 
-**2. A report state that is never ambiguous.** Sentinel's hardcoded-target-status-per-RPC pattern (no generic status setter, ever) means a report's state is always exactly one of a small enumerable set, with an explicit event/audit record for every transition. Competitors' more organic close-reason taxonomies (HackerOne's 5+ closed states, Bugcrowd's OPEN/ACCEPTED/REJECTED categories layered over sub-states) are more flexible but less legible. The 10× move: make "what happens next, and when" always answerable directly from the state itself in the UI — no report should ever require the researcher to guess or ask.
+**2. A report state that is never ambiguous.** Unpatched's hardcoded-target-status-per-RPC pattern (no generic status setter, ever) means a report's state is always exactly one of a small enumerable set, with an explicit event/audit record for every transition. Competitors' more organic close-reason taxonomies (HackerOne's 5+ closed states, Bugcrowd's OPEN/ACCEPTED/REJECTED categories layered over sub-states) are more flexible but less legible. The 10× move: make "what happens next, and when" always answerable directly from the state itself in the UI — no report should ever require the researcher to guess or ask.
 
-**3. A fully auditable bounty-policy history, exposed as a real feature.** Because policy versions are immutable and every decision links to the exact version used at calculation time, Sentinel can show a researcher (or a new organization employee auditing past decisions) an honest, reconstructable answer to "why was this bounty this amount" — tied to the actual policy in effect, not a negotiated or discretionary figure. No competitor's documentation claims this level of after-the-fact auditability for their own bounty tables.
+**3. A fully auditable bounty-policy history, exposed as a real feature.** Because policy versions are immutable and every decision links to the exact version used at calculation time, Unpatched can show a researcher (or a new organization employee auditing past decisions) an honest, reconstructable answer to "why was this bounty this amount" — tied to the actual policy in effect, not a negotiated or discretionary figure. No competitor's documentation claims this level of after-the-fact auditability for their own bounty tables.
 
-**4. Radical authorization transparency as the platform's trust pitch.** Because Sentinel's authorization is genuinely enforced at the RLS layer (not application-layer convention), it is possible to make a *verifiable*, not marketing, claim: "here is exactly what a platform admin can and cannot see about your organization's data" — and have that claim be checkable against real policy definitions, not a privacy-policy PDF. This is the natural product expression of the same rigor that's already made every one of this session's own live-verification passes possible.
+**4. Radical authorization transparency as the platform's trust pitch.** Because Unpatched's authorization is genuinely enforced at the RLS layer (not application-layer convention), it is possible to make a *verifiable*, not marketing, claim: "here is exactly what a platform admin can and cannot see about your organization's data" — and have that claim be checkable against real policy definitions, not a privacy-policy PDF. This is the natural product expression of the same rigor that's already made every one of this session's own live-verification passes possible.
 
-**5. Honest, non-gamified operational surfaces for every actor.** Sentinel's own established convention (proven repeatedly this session: no fake security badges, no vanity metrics, real empty states with real explanations) is a genuine point of difference from competitors, who lean into gamification (percentile ranks, streaks, leaderboards) to drive engagement. The 10× move is committing to this as an explicit, stated product principle for the organization and platform surfaces too, not just the researcher-facing reputation page it currently lives on — "every number in Sentinel is real, or we tell you why it isn't yet," applied uniformly.
+**5. Honest, non-gamified operational surfaces for every actor.** Unpatched's own established convention (proven repeatedly this session: no fake security badges, no vanity metrics, real empty states with real explanations) is a genuine point of difference from competitors, who lean into gamification (percentile ranks, streaks, leaderboards) to drive engagement. The 10× move is committing to this as an explicit, stated product principle for the organization and platform surfaces too, not just the researcher-facing reputation page it currently lives on — "every number in Unpatched is real, or we tell you why it isn't yet," applied uniformly.
 
-All five are grounded in architecture Sentinel already has, not features to build from nothing — the opportunity is making existing structural rigor *visible and legible* as a product advantage, rather than building the same opaque mechanisms competitors already have.
+All five are grounded in architecture Unpatched already has, not features to build from nothing — the opportunity is making existing structural rigor *visible and legible* as a product advantage, rather than building the same opaque mechanisms competitors already have.
 
 ---
 
@@ -254,7 +254,7 @@ All five are grounded in architecture Sentinel already has, not features to buil
 
 ## M. Payment strategy
 
-**What Sentinel should own vs. delegate**: Sentinel should permanently own the **ledger and state machine** (`payment_obligations`/`payment_attempts`, the finalized-decision-to-obligation snapshot, the attempt history) — this is domain logic, not payment-processing logic, and is already correctly modeled as provider-independent (`lib/payment-provider.ts`). What Sentinel should eventually **delegate** to a real provider is the actual movement of money, identity verification, and tax handling — exactly the specialized, regulated capability Section C's causal analysis identified as genuinely not worth rebuilding.
+**What Unpatched should own vs. delegate**: Unpatched should permanently own the **ledger and state machine** (`payment_obligations`/`payment_attempts`, the finalized-decision-to-obligation snapshot, the attempt history) — this is domain logic, not payment-processing logic, and is already correctly modeled as provider-independent (`lib/payment-provider.ts`). What Unpatched should eventually **delegate** to a real provider is the actual movement of money, identity verification, and tax handling — exactly the specialized, regulated capability Section C's causal analysis identified as genuinely not worth rebuilding.
 
 **Implications for payment state, retries, and visibility**: the manual provider today conflates "the org confirms it happened" with "it actually happened" — there is no independent verification. This is an acceptable, disclosed limitation for a small, trusted beta (per `docs/decisions/0014`'s own framing) but is not a foundation to build a real provider integration on top of *as-is* — the platform-level visibility gap (Section I) must close first, because integrating a real provider without any cross-org failure visibility just moves the same blind spot into a higher-stakes system where real money is actually moving.
 
@@ -268,7 +268,7 @@ All five are grounded in architecture Sentinel already has, not features to buil
 
 **Organization — 5–8 destinations** (largely already real): Organizations home; Program management (scope, policy, lifecycle — already unified); Report inbox/triage; Members & roles; Payments (currently folded into report detail, not a standalone view); Settings; Audit activity.
 
-**Sentinel Platform — 5–8 operational destinations, explicitly NOT a metrics wall**:
+**Unpatched Platform — 5–8 operational destinations, explicitly NOT a metrics wall**:
 - **Needs Review** — programs awaiting a real platform review before going live (does not exist yet; the queue itself is the product of Section H's fix).
 - **Needs Intervention** — flagged organizations, researchers with pending suspension escalations.
 - **Needs Investigation** — open disputes, abuse signals surfaced.
@@ -314,7 +314,7 @@ Unchanged from `0025`'s nine-axis breakdown (Researcher 55%, Organization 75%, P
 
 **Slice: Platform Operations Foundation — the "Needs Recovery" queue, read-only, on data that already exists.**
 
-**Why this, why now, why Sentinel**: Section H's chain analysis shows the marketplace is broken at one specific joint (program review → platform approval → publish → discovery), and closing that joint *requires* a real platform-admin actor to exist first (Section L) — there is no one to approve a program without it. But building the platform-admin authority in the abstract, or jumping straight to the review-gate feature, risks becoming exactly the "generic platform dashboard" this document was explicitly told to avoid. The cheapest, most concretely justified first step is the one piece of Section L's authority that requires **zero new domain modeling**: `outbox_events` in `dead_letter`, `notification_deliveries` in `permanent_failure`, and `payment_attempts` in `failed` **already exist as real rows today** — they simply have no reader. Exposing them, read-only, to a real (if minimal) platform-admin role is the smallest possible slice that makes the platform tier *real* for the first time, on data that is already correct, rather than inventing new domain concepts (program visibility, retest, disputes) before there's any authority to act on what they'd surface.
+**Why this, why now, why Unpatched**: Section H's chain analysis shows the marketplace is broken at one specific joint (program review → platform approval → publish → discovery), and closing that joint *requires* a real platform-admin actor to exist first (Section L) — there is no one to approve a program without it. But building the platform-admin authority in the abstract, or jumping straight to the review-gate feature, risks becoming exactly the "generic platform dashboard" this document was explicitly told to avoid. The cheapest, most concretely justified first step is the one piece of Section L's authority that requires **zero new domain modeling**: `outbox_events` in `dead_letter`, `notification_deliveries` in `permanent_failure`, and `payment_attempts` in `failed` **already exist as real rows today** — they simply have no reader. Exposing them, read-only, to a real (if minimal) platform-admin role is the smallest possible slice that makes the platform tier *real* for the first time, on data that is already correct, rather than inventing new domain concepts (program visibility, retest, disputes) before there's any authority to act on what they'd surface.
 
 **What important product loop does it unlock**: it is the prerequisite for every other P0 item (Section P) — the program-review gate, cross-program researcher suspension, and payment-failure escalation all require a real platform-admin actor to exist and be audited correctly *before* they can be built safely. This slice proves that actor's authority model (Section L) on the lowest-stakes, already-correct data before extending it to higher-stakes actions (suspending an org, banning a researcher).
 

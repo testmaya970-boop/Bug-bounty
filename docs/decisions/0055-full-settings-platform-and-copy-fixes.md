@@ -8,7 +8,7 @@ Related: [[0049-researcher-identity-audit]], [[0051-researcher-extended-identity
 On explicit, repeated user instruction ("no excuse, no drama, just pure implementation"),
 this slice reopens 0038/0039/0049's rejection of skills/interests/external-handle-style
 profile fields and mirrors HackerOne's full settings navigation structure -- two nav
-groups (Account / Researcher, "Hacker" renamed to match Sentinel's own vocabulary), 19
+groups (Account / Researcher, "Hacker" renamed to match Unpatched's own vocabulary), 19
 subsections total. This is a deliberate, explicit reopening of a prior decision, not an
 accidental drift back toward it -- and the honesty boundary that motivated the original
 rejection (never present an unverifiable claim as a trust signal) is preserved a different
@@ -34,7 +34,7 @@ history. Disclosed directly in the Deactivate & Delete page, not silently omitte
 
 **Navigation**: `app/settings/layout.tsx` + `components/settings/settings-nav.tsx` (a real
 two-level rail) with 19 real subpages under `app/settings/*`. Five pages (Swag, Calendar,
-Subscriptions, Collaboration, Digital Agreements) have no real Sentinel equivalent --
+Subscriptions, Collaboration, Digital Agreements) have no real Unpatched equivalent --
 `NotApplicableSettings` renders a real, honest disclosure instead of fabricated data.
 Rewards & Payments is real (`listMyPaymentObligations`, RLS already scoped
 `researcher_id = auth.uid()` since 0014, no new RPC needed). Reputation and Notifications
@@ -57,7 +57,7 @@ reuse the existing real pages/components rather than duplicating them.
    flipping to the real theme. Root-caused, not guessed: found by reading the actual
    provider code, confirmed the flash's mechanism, and fixed with a synchronous inline
    `<script>` in `app/layout.tsx`'s `<head>` that resolves and applies the identical
-   `sentinel-theme` logic before `<body>` is ever parsed. Verified live: the script is
+   `unpatched-theme` logic before `<body>` is ever parsed. Verified live: the script is
    confirmed present in the raw HTML response before the `<body>` tag, not just "probably
    works."
 3. **Settings CRUD interactions waited on a full server round-trip (`router.refresh()`)
@@ -76,7 +76,7 @@ reuse the existing real pages/components rather than duplicating them.
 
 `npm run typecheck`, `npm run lint`, `npm test` (1096/1096, 68 files) all pass. Live,
 against a real reset database: all 19 settings subpages render with zero JS errors: real
-API-token generation (real `sentinel_pat_...` prefix)/list/revoke; real external-handle
+API-token generation (real `unpatched_pat_...` prefix)/list/revoke; real external-handle
 persistence across a reload; real feedback submission; real report-template create/list/
 delete -- each verified with a proper wait condition (`waitForSelector`/
 `waitForFunction`), not an arbitrary timeout, after arbitrary-timeout assertions produced

@@ -3,7 +3,7 @@
 // researcher, one organization owner -- so they're both immediately usable with a known
 // password and have a small amount of real mock data. Does NOT create new accounts:
 // demo.researcher@sentinel.demo and demo.org.northwind@sentinel.demo already exist from
-// earlier work (their password_hash is an unusable, never-verifiable sentinel value with
+// earlier work (their password_hash is an unusable, never-verifiable placeholder value with
 // must_reset_password = true, matching the convention scripts/migrate-users-data.mjs
 // applies to every migrated account -- see services/auth.ts's own comment on that
 // convention).
@@ -113,7 +113,7 @@ async function resetPasswordAndVerify(userId) {
   );
 }
 
-console.log("Preparing Sentinel demo accounts on the native Postgres stack...\n");
+console.log("Preparing Unpatched demo accounts on the native Postgres stack...\n");
 
 const researcher = await findUser(DEMO_RESEARCHER_EMAIL);
 const orgUser = await findUser(DEMO_ORG_EMAIL);

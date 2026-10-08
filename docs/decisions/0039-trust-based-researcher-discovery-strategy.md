@@ -6,7 +6,7 @@ Related: [[0016-reputation-ledger-foundation]], [[0037-program-discovery-access-
 Per the explicit stop condition: no schema, RLS, RPC, or UI was written this pass. This
 document was explicitly asked to try to disprove its own thesis -- §3 and §12 do.
 
-## 1. Brutal assessment of Sentinel's current researcher acquisition
+## 1. Brutal assessment of Unpatched's current researcher acquisition
 
 It has exactly one working mechanism: an organization must already know a researcher's
 exact email. `0038`'s recommended MVP ("researchers I've worked with") fixes the
@@ -37,7 +37,7 @@ inflate over time and cannot be disputed. Weakest option, though every competito
 *at least partially* -- notably, even Bugcrowd's most sophisticated system still does.
 
 **B. Organization-applied controlled taxonomy at confirmation time** -- not yet
-considered in `0038`, and the strongest option found this pass. Sentinel already has an
+considered in `0038`, and the strongest option found this pass. Unpatched already has an
 organization perform an audited, SECURITY DEFINER-gated confirmation action at the exact
 moment a report resolves (the triage/decision RPCs). Extending that *already-trusted,
 already-attributed* moment to also capture a controlled-vocabulary category (e.g.,
@@ -64,9 +64,9 @@ claim and not an opaque inference.
 result. Bugcrowd's own CrowdMatch, the most mature real system researched, still blends
 self-declared data *because pure verified-outcome signal is too sparse to bootstrap*: a
 brand-new researcher with zero organization-confirmed facts is invisible under a
-verified-only model, exactly as they are under Sentinel's current invite-only model.
+verified-only model, exactly as they are under Unpatched's current invite-only model.
 **Verified-only outcomes cannot solve the cold-start problem** -- they can only make
-matching trustworthy *once a researcher has some track record*. Any Sentinel strategy
+matching trustworthy *once a researcher has some track record*. Any Unpatched strategy
 that claims verified-outcomes-only fully replaces the need for some lower-trust signal
 (even just "categories of interest," self-declared) for brand-new researchers is not
 supported by the strongest competitor evidence found. The correct claim is narrower:
@@ -81,13 +81,13 @@ model, unchanged, exactly as it is today.
 SELF-DECLARED (e.g., "interested in API security")
     -- weakest; used by every competitor for cold-start bootstrapping only
 ORGANIZATION-CONFIRMED (e.g., a controlled-category tag applied when a report resolves)
-    -- strongest available signal Sentinel can produce today; attributed, audited, disputable
+    -- strongest available signal Unpatched can produce today; attributed, audited, disputable
 PLATFORM-VERIFIED (e.g., HackerOne's ID/background check)
-    -- a distinct, heavier tier for sensitive engagements; Sentinel has no such mechanism
+    -- a distinct, heavier tier for sensitive engagements; Unpatched has no such mechanism
        and none is proposed here -- named only because HackerOne's evidence shows it is a
        *separate* axis from skill-matching, not a replacement for it
 ```
-Sentinel should trust organization-confirmed category facts for matching; self-declared
+Unpatched should trust organization-confirmed category facts for matching; self-declared
 signals should be visually and structurally distinguished (per DESIGN.md's own severity
 convention: never blur an unconfirmed claim into a confirmed fact's presentation) if ever
 shown at all; platform-verified identity is out of scope for this document entirely.
@@ -186,21 +186,21 @@ path.
 just incremental?** Incremental. Stated plainly, as instructed: it makes an existing,
 narrow workflow (re-inviting a past collaborator) slightly easier. It does not touch the
 actual strategic question this document was asked to answer, and would not, by itself,
-change how a new organization with no researcher relationships experiences Sentinel at
+change how a new organization with no researcher relationships experiences Unpatched at
 all.
 
-**What would make Sentinel's researcher discovery genuinely 10x better than a generic
-directory** -- based on Sentinel's actual existing architecture, not invented features:
-Sentinel is the only platform researched whose entire report lifecycle already produces
+**What would make Unpatched's researcher discovery genuinely 10x better than a generic
+directory** -- based on Unpatched's actual existing architecture, not invented features:
+Unpatched is the only platform researched whose entire report lifecycle already produces
 attributed, audited, disputable facts as a side effect of normal operation (triage,
 decision, bounty, audit_logs). Competitors' skill/trust signals are bolted onto their
 platforms as separate systems (self-assessment forms, ML knowledge graphs, manual CSM
-curation). Sentinel's differentiator is that a genuinely trustworthy matching signal
+curation). Unpatched's differentiator is that a genuinely trustworthy matching signal
 (§3, Option B) can be produced with **zero new trust infrastructure** -- it reuses the
 exact SECURITY DEFINER confirmation moment that already exists for an unrelated reason
 (closing out a report). That is a structural advantage no competitor's architecture
 naturally has, because none of them built triage-as-an-attributed-event-log first and
-skill-matching second -- they built matching as its own bolted-on product. Sentinel could
+skill-matching second -- they built matching as its own bolted-on product. Unpatched could
 build the trustworthy version first, cheaply, because the audit trail was there for a
 different reason. This is real, not aspirational -- but it only pays off once enough
 organization-confirmed, categorized outcomes accumulate (§3's cold-start caveat), so the
@@ -217,7 +217,7 @@ product."
 | D. Verified-outcome matching | Highest long-run | Highest (needs §3 tags accumulated at scale, opt-in, matching logic) | Lowest of the discovery options (fact-based, not self-declared) | Lowest of the discovery options | Needs real accumulated ledger category data -- does not exist yet | **Highest** -- this is §12's actual differentiator | Slowest -- gated on data that doesn't exist yet |
 | E. Hybrid (phased A→B→C→D) | Builds real value at each phase | Incremental | Managed incrementally | Managed incrementally | Grows incrementally | Reaches D eventually | Realistic |
 
-## 14. Recommended strategy -- phased, only what Sentinel can actually support
+## 14. Recommended strategy -- phased, only what Unpatched can actually support
 
 **Phase 1 (now): MVP A only**, explicitly labeled internally as a usability fix, not a
 strategic discovery launch. **Phase 2 (backend-only, no new exposure): add §3's
@@ -232,7 +232,7 @@ organization, consistent with `0016` for the life of this product.
 
 ## 15. Why this could be 10x better (restated concisely)
 
-Because the trust signal is a byproduct of Sentinel's existing, already-audited
+Because the trust signal is a byproduct of Unpatched's existing, already-audited
 triage/decision architecture, not a bolted-on skill marketplace -- see §12.
 
 ## 16. What NOT to build

@@ -522,7 +522,7 @@ async function renderProgramControlCenterPage({
         )}
 
         {/* Public programs have no invitation gate at all -- join_public_program lets any
-            active, non-suspended Sentinel account self-enroll (202608310002). Access
+            active, non-suspended Unpatched account self-enroll (202608310002). Access
             instructions/files exist for the invitation-only trust model 0007 describes;
             showing them to a self-enrolled researcher on a public program would hand a
             VPN config or internal contact to literally anyone who clicks "Join", not to

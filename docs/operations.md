@@ -34,10 +34,10 @@ migrating (next section).
 ## Restore the database
 
 ```
-npm run db:restore -- backups/<file>.dump sentinel_restored   # always a NEW database
+npm run db:restore -- backups/<file>.dump unpatched_restored   # always a NEW database
 ```
 
-Check it, then point `DATABASE_URL` / `MIGRATION_DATABASE_URL` at `sentinel_restored` and
+Check it, then point `DATABASE_URL` / `MIGRATION_DATABASE_URL` at `unpatched_restored` and
 restart `start:prod` and the worker. The script refuses to restore over an existing
 database -- recovery never overwrites data in place.
 

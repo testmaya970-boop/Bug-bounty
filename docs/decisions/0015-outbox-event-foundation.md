@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context and the boundary this slice draws
 
-Every domain built so far (reports, triage, bounty, payments) is entirely synchronous: a mutation and everything it implies commit together in one Postgres transaction, or none of it does. That is correct and has been deliberately preserved everywhere — but it means nothing in Sentinel can yet trigger work that must happen *outside* that transaction (a notification, a scan, a real payment-provider call) without either blocking the request on an external call inside the transaction (fragile: a slow or down dependency now fails the domain mutation itself) or accepting an unsafe dual-write (the DB commits but the external call is silently never made, or vice versa). This slice builds the smallest durable mechanism that lets a future domain schedule such work safely: write a durable, transactional *fact* that something happened, and let an independent worker process react to that fact, with retries, on its own time.
+Every domain built so far (reports, triage, bounty, payments) is entirely synchronous: a mutation and everything it implies commit together in one Postgres transaction, or none of it does. That is correct and has been deliberately preserved everywhere — but it means nothing in Unpatched can yet trigger work that must happen *outside* that transaction (a notification, a scan, a real payment-provider call) without either blocking the request on an external call inside the transaction (fragile: a slow or down dependency now fails the domain mutation itself) or accepting an unsafe dual-write (the DB commits but the external call is silently never made, or vice versa). This slice builds the smallest durable mechanism that lets a future domain schedule such work safely: write a durable, transactional *fact* that something happened, and let an independent worker process react to that fact, with retries, on its own time.
 
 This is infrastructure, not a product feature. No Reputation, Notifications, Analytics, Stripe/Razorpay, or Kafka/Redis/microservices are introduced. Exactly one existing RPC (`submit_report`) is instrumented as the reference integration.
 
@@ -42,7 +42,7 @@ complete_outbox_event() records the outcome
 
 `outbox_events` columns *are* the envelope — no separate wrapper type. Minimum fields, chosen deliberately (not the task's own example shape copied blindly):
 
-`id` (also the envelope's `event_id`), `event_type`, `schema_version`, `aggregate_type`, `aggregate_id`, `organization_id` (tenant isolation, always populated — every event in Sentinel is tenant-scoped), `payload` (jsonb), `occurred_at`, `available_at` (when it next becomes claimable — supports scheduled retry), `attempts`/`max_attempts`, `status`, `locked_at`/`locked_by` (the lease), `processed_at`, `last_error`, `created_at`/`updated_at`. No `schema_version`-less design was considered: a future `report.created` v2 must be a distinct, explicitly-versioned registry entry (`report.created:2`), never a silent reinterpretation of v1's payload shape — see `workers/outbox/registry.ts`.
+`id` (also the envelope's `event_id`), `event_type`, `schema_version`, `aggregate_type`, `aggregate_id`, `organization_id` (tenant isolation, always populated — every event in Unpatched is tenant-scoped), `payload` (jsonb), `occurred_at`, `available_at` (when it next becomes claimable — supports scheduled retry), `attempts`/`max_attempts`, `status`, `locked_at`/`locked_by` (the lease), `processed_at`, `last_error`, `created_at`/`updated_at`. No `schema_version`-less design was considered: a future `report.created` v2 must be a distinct, explicitly-versioned registry entry (`report.created:2`), never a silent reinterpretation of v1's payload shape — see `workers/outbox/registry.ts`.
 
 ## Database schema
 
@@ -96,7 +96,7 @@ Both tables have RLS enabled with **zero permissive policies** for `authenticate
 
 ## 10× assessment
 
-- **Cheaper**: runs entirely on the Postgres instance Sentinel already pays for; no Kafka, Redis, or managed queue service to provision, operate, or pay for separately.
+- **Cheaper**: runs entirely on the Postgres instance Unpatched already pays for; no Kafka, Redis, or managed queue service to provision, operate, or pay for separately.
 - **Safer**: a crashed worker never loses an event (lease expiry makes it reclaimable) and never silently duplicates a side effect (the receipts table). A poison message reaches a genuine terminal `dead_letter` state instead of looping forever or vanishing.
 - **Simpler**: the entire mechanism is inspectable with `SELECT * FROM outbox_events` — no separate broker UI, no separate operational surface. A new engineer can read the four-state diagram above and the two SQL functions and understand the whole system.
 - **Scalable**: any number of worker processes can run `claim_outbox_events` concurrently with zero coordination between them; proven live with 6 concurrent workers against 120+ events with zero double-claims and zero lost events.

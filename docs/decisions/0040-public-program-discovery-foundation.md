@@ -33,7 +33,7 @@ detail/participation). This is the strongest real-world confirmation that "publi
 listed" and "immediately able to submit" are not the same thing and should not be
 modeled as one flag.
 
-## 3. Sentinel's current program authorization model (confirmed exact)
+## 3. Unpatched's current program authorization model (confirmed exact)
 
 `programs` SELECT (`202608260004...sql:112-117`): `has_org_role(organization_id,
 ['owner','security_admin']) or is_program_member(id)`. `program_scope_entries` SELECT
@@ -92,7 +92,7 @@ for anonymous vs. authenticated visitors.
 Can discover public programs: yes, `active`/`paused`/`closed` + `visibility='public'`
 only. Can open the detail page: yes, same set. Can see scope: yes (scope entries carry
 no PII -- confirmed in §9). Can submit a report: **no** -- submission requires an
-account, always (matches every competitor researched; Sentinel's own `submit_report`
+account, always (matches every competitor researched; Unpatched's own `submit_report`
 already requires `auth.uid()`). Can apply: not in the MVP (§12). Can sign up: yes,
 unchanged, existing flow.
 
@@ -117,7 +117,7 @@ beyond what any anonymous/researcher visitor would see for that org's `public` p
 | Program name | Yes (`programs.name`) | Yes | Yes (new RPC path, see §11) | No | Already exists, already validated (1-160 chars) |
 | Organization name/slug | Yes (`organizations.name`/`slug`) | Yes, if column-projected explicitly (never `select *` -- the row also carries `created_by`, `idempotency_key`) | Yes | No | Confirmed safe; no PII on these two columns |
 | Program status | Yes | Yes | Yes | No | Needed to render paused/closed states honestly |
-| **Program description / policy text** | **No** | N/A yet | N/A | **Yes -- genuine gap** | No field exists anywhere for org-authored narrative (company overview, submission instructions, out-of-scope rules) -- every competitor researched has this and Sentinel has nothing equivalent |
+| **Program description / policy text** | **No** | N/A yet | N/A | **Yes -- genuine gap** | No field exists anywhere for org-authored narrative (company overview, submission instructions, out-of-scope rules) -- every competitor researched has this and Unpatched has nothing equivalent |
 | Scope (in-scope/out-of-scope targets) | Yes (`program_scope_entries`) | Yes, `status='active'` rows only | Yes | No | This *is* the thing a public program must disclose; no PII on the table (confirmed: only free text is a 500-char org-authored `description` per entry, not contact/researcher info) |
 | Scope entry `description` | Yes | Yes (org-authored, same trust level as the targets themselves) | Yes | No | |
 | Program access model (open/invite) | Derivable from `visibility` | Yes | Yes | No new field -- `visibility` alone implies it per §12's MVP scope | |
@@ -254,7 +254,7 @@ migration, RLS change, RPC, or UI was written this pass.
 
 ## Marketplace strategy -- brutal answer, challenging the stated assumption
 
-Is a public program marketplace *core*? **Yes, but "core to Sentinel's eventual identity"
+Is a public program marketplace *core*? **Yes, but "core to Unpatched's eventual identity"
 is not the same claim as "must ship immediately," and the honest sequencing matters more
 than the yes/no.** The liquidity argument is real and not just competitor-mimicry: an
 invite-only-forever platform has a genuine two-sided cold-start problem --

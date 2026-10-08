@@ -3,7 +3,7 @@
 Date: 2026-08-31
 Status: **Research only. No code, migration, or UI changes were made in this slice, per explicit instruction.**
 
-This document builds directly on `docs/decisions/0024-three-perspective-product-model.md`, which established that Sentinel behaves as `Researcher ↔ Organization` while serious bug-bounty platforms operate as `Researcher ↔ Organization ↔ Platform`. This slice goes deeper specifically on the missing third tier: what a **platform operations team** — the company running Sentinel, not a customer, not a researcher — actually needs to see, control, investigate, and recover from, researched against current HackerOne/Bugcrowd/Intigriti product mechanics and audited directly against Sentinel's real schema and code. Every Sentinel claim below was verified against the actual migration/RLS/RPC/route, not inferred from progress reports or prior summaries.
+This document builds directly on `docs/decisions/0024-three-perspective-product-model.md`, which established that Unpatched behaves as `Researcher ↔ Organization` while serious bug-bounty platforms operate as `Researcher ↔ Organization ↔ Platform`. This slice goes deeper specifically on the missing third tier: what a **platform operations team** — the company running Unpatched, not a customer, not a researcher — actually needs to see, control, investigate, and recover from, researched against current HackerOne/Bugcrowd/Intigriti product mechanics and audited directly against Unpatched's real schema and code. Every Unpatched claim below was verified against the actual migration/RLS/RPC/route, not inferred from progress reports or prior summaries.
 
 ---
 
@@ -18,7 +18,7 @@ All three competitors draw this three-way line explicitly:
 - **Bugcrowd**: Organization (Owner / User Admin / Member) strictly layered on Program (Administrator / Analyst / Viewer) — Organization User Admin is deliberately walled off from *all* report/submission data, a clean org-vs-program separation with no report-level sub-permission beyond the program role.
 - **Intigriti**: Company (Admin / Member) vs. Program (Admin / Editor / Member / Reader) — four program-level tiers, more granular than Bugcrowd's three, still no distinct report-level permission beyond the program role.
 
-**Sentinel today**: has exactly the same three conceptual layers (organization role, program-level `program_members.role`, and report visibility derived from both) but only **one** program-level role (`manager`) and **no report-level permission distinct from program membership** — a report is visible to any `program_members` row for that program, full stop; there is no "Viewer"/"Reader"-equivalent restricted role at either the program or report layer. This confirms `0024`'s RBAC finding and sharpens it: Sentinel's program-role granularity is coarser than all three competitors, not just Bugcrowd/Intigriti.
+**Unpatched today**: has exactly the same three conceptual layers (organization role, program-level `program_members.role`, and report visibility derived from both) but only **one** program-level role (`manager`) and **no report-level permission distinct from program membership** — a report is visible to any `program_members` row for that program, full stop; there is no "Viewer"/"Reader"-equivalent restricted role at either the program or report layer. This confirms `0024`'s RBAC finding and sharpens it: Unpatched's program-role granularity is coarser than all three competitors, not just Bugcrowd/Intigriti.
 
 ### Deeper platform-operations findings (FACT / VENDOR CAPABILITY / INFERENCE)
 
@@ -44,11 +44,11 @@ A dedicated follow-up research pass (official docs only, same three platforms) t
 
 **Operational queues**: HackerOne documents the most concrete internal queueing concept — an "Agentic Validation" auto-triage layer that either auto-routes or **queues a report for manual intake review by a human analyst** (FACT), plus a "program inbox queue" concept tied to the Pending-Program-Review state. Intigriti's managed-triage workflow is queue-shaped (validate reproducibility → check duplicates → confirm scope → assign severity) with internal-only notes distinct from researcher-facing messages (FACT). **No documentation of an internal staff dashboard/queue (e.g. "programs pending launch review") was found for Bugcrowd.**
 
-**Correction to carry forward from `0024`**: that document's framing of "platform-wide bans" as the default competitor behavior is too strong per this deeper pass — HackerOne explicitly documents that bans are **program-specific by default**, with platform-wide action being a possible escalation for repeated/severe misconduct, not the standard consequence. This nuance matters for Section 14/Slice 2 below: Sentinel's gap is real (no cross-program suspension mechanism exists *at all*, not even as an escalation path), but the target model to aim for is "a platform-wide escalation path exists for severe/repeated cases," not "every suspension is automatically platform-wide."
+**Correction to carry forward from `0024`**: that document's framing of "platform-wide bans" as the default competitor behavior is too strong per this deeper pass — HackerOne explicitly documents that bans are **program-specific by default**, with platform-wide action being a possible escalation for repeated/severe misconduct, not the standard consequence. This nuance matters for Section 14/Slice 2 below: Unpatched's gap is real (no cross-program suspension mechanism exists *at all*, not even as an escalation path), but the target model to aim for is "a platform-wide escalation path exists for severe/repeated cases," not "every suspension is automatically platform-wide."
 
 ---
 
-## 2. Sentinel re-audited directly (not trusting prior progress claims)
+## 2. Unpatched re-audited directly (not trusting prior progress claims)
 
 Every item below was re-verified this slice against the actual migration file, RLS policy, or grant statement — not carried over from a summary.
 
@@ -61,7 +61,7 @@ Every item below was re-verified this slice against the actual migration file, R
 | A payment attempt fails (`payment_attempts.state = 'failed'`) | **The owning organization's own owner/security_admin only** — real RLS read access exists here, unlike the two rows above — but this is strictly organization-scoped. Nothing is visible platform-wide across all organizations' failed payments. | `202608290001_payment_ledger_and_payout_orchestration.sql` |
 | A rate limit is being hit hard (`private.rate_limit_counters`) | **No one** — table lives in the `private` schema, never exposed via any RPC, no read policy of any kind exists for it. | `202608290005_production_hardening_foundation.sql` |
 
-This establishes a clean severity ordering: **event-processing and email-delivery failures are invisible to literally everyone**; **payment failures are visible only within the one affected organization**; **abuse/rate-limit signals are invisible to everyone**. Nothing in Sentinel today is visible *across* organizations to anyone except a raw database connection.
+This establishes a clean severity ordering: **event-processing and email-delivery failures are invisible to literally everyone**; **payment failures are visible only within the one affected organization**; **abuse/rate-limit signals are invisible to everyone**. Nothing in Unpatched today is visible *across* organizations to anyone except a raw database connection.
 
 ### Re-confirmed from `0024` (not re-derived, cited for completeness)
 - `platform_role` enum exists (`researcher`/`organization_owner`/`program_manager`/`triager`/`platform_admin`, default `researcher`); **nothing in any migration ever sets it to anything but the default**; `requirePlatformAdmin()` has zero call sites outside its own definition and unit test.
@@ -77,7 +77,7 @@ This establishes a clean severity ordering: **event-processing and email-deliver
 
 `DONE` = fully implemented and enforced server-side. `PARTIAL` = exists but materially incomplete or scoped narrower than the capability implies. `MISSING` = no implementation. `N/A` = not a meaningful capability for that perspective.
 
-| Capability | Researcher | Organization | Platform | Sentinel today | Competitor precedent | Gap severity |
+| Capability | Researcher | Organization | Platform | Unpatched today | Competitor precedent | Gap severity |
 |---|---|---|---|---|---|---|
 | Program discovery (public/registered/private) | Consumes | N/A | Would configure/moderate visibility | **MISSING** | All 3 (multi-tier visibility) | **P0** |
 | Program creation/lifecycle | N/A | DONE | Would approve/gate launch | Org: DONE. Platform: MISSING | HackerOne gates launch explicitly | P1 |
@@ -105,7 +105,7 @@ This establishes a clean severity ordering: **event-processing and email-deliver
 
 ## 4. The critical platform question
 
-> "If Sentinel had 10,000 researchers and 500 organizations tomorrow, what would the Sentinel platform team be unable to SEE, CONTROL, INVESTIGATE, or RECOVER from?"
+> "If Unpatched had 10,000 researchers and 500 organizations tomorrow, what would the Unpatched platform team be unable to SEE, CONTROL, INVESTIGATE, or RECOVER from?"
 
 ### SEE — invisible operational information
 - **Every dead-lettered outbox event, across every organization.** No product surface shows this; only a raw `service_role` DB query can.
@@ -134,9 +134,9 @@ This establishes a clean severity ordering: **event-processing and email-deliver
 
 ## 5. Platform admin dashboard — conceptual research, not a design
 
-The question the first screen must answer: **"What requires Sentinel's intervention right now?"** — not a generic SaaS metrics wall. Every proposed item below is checked against a real Sentinel data source; anything without one is marked `DATA GAP` explicitly, per instruction, rather than invented.
+The question the first screen must answer: **"What requires Unpatched's intervention right now?"** — not a generic SaaS metrics wall. Every proposed item below is checked against a real Unpatched data source; anything without one is marked `DATA GAP` explicitly, per instruction, rather than invented.
 
-| Category | Proposed signal | Real Sentinel data source today | Status |
+| Category | Proposed signal | Real Unpatched data source today | Status |
 |---|---|---|---|
 | Operational queues | Dead-lettered outbox events (count, by type, age) | `outbox_events where status = 'dead_letter'` — the rows exist and are queryable by `service_role` today | **Real, just not exposed to any product surface** |
 | Failed deliveries | Permanently-failed notification count | `notification_deliveries where state = 'permanent_failure'` — rows exist, `service_role`-only | **Real, not exposed** |
@@ -149,13 +149,13 @@ The question the first screen must answer: **"What requires Sentinel's intervent
 | System health | Outbox worker liveness, API error rates, rate-limit pressure | Worker logs to stdout only (no persisted health record); `private.rate_limit_counters` exists but is unexposed | **Partially real (worker heartbeat could be derived), mostly DATA GAP** |
 | Provider failures | Email provider failures (Resend 401/429/5xx) | Classified and recorded per-delivery in `notification_deliveries.last_error`/`state`, but — see above — that table itself is invisible to any product surface | **Real, not exposed** |
 
-**Honest framing**: roughly half of a genuinely useful platform-ops first screen is data Sentinel *already has* and simply never surfaces (dead letters, failed deliveries, failed payments); the other half (program approval queue, abuse signals, dispute/mediation queue, researcher risk scoring) requires new domain capability that does not exist in any form yet, not just a new page.
+**Honest framing**: roughly half of a genuinely useful platform-ops first screen is data Unpatched *already has* and simply never surfaces (dead letters, failed deliveries, failed payments); the other half (program approval queue, abuse signals, dispute/mediation queue, researcher risk scoring) requires new domain capability that does not exist in any form yet, not just a new page.
 
 ---
 
 ## 6. Researcher ecosystem — mapped to real schema
 
-| Dimension | Real Sentinel source | Status |
+| Dimension | Real Unpatched source | Status |
 |---|---|---|
 | Total researchers (any) | `public.users` count | Real, trivial |
 | Newly registered (time-windowed) | `public.users.created_at` | Real |
@@ -171,7 +171,7 @@ The question the first screen must answer: **"What requires Sentinel's intervent
 
 ## 7. Organization ecosystem — mapped to real schema
 
-| Dimension | Real Sentinel source | Status |
+| Dimension | Real Unpatched source | Status |
 |---|---|---|
 | Onboarding (recently created) | `organizations.created_at` | Real |
 | Active vs. inactive | — | **DATA GAP** — `organizations.status` is `'active'` for every org unconditionally (`DOMAIN.md`: `SUSPENDED`/`ARCHIVED` "anticipated but not implemented"); no activity-derived signal (e.g. "no report in 90 days") exists either |
@@ -189,12 +189,12 @@ The question the first screen must answer: **"What requires Sentinel's intervent
 
 Re-confirmed directly (not merely re-cited from `0024`): `public.programs` (`202608260004_program_foundation.sql`) has exactly these columns — `id, organization_id, name, status, created_by, idempotency_key, created_at, updated_at`. **No visibility/confidentiality column of any kind exists.** Every researcher-facing program list (`app/programs/page.tsx`) is driven entirely by `program_researchers` participation rows — there is no query path, RPC, or page that lists programs a researcher has *not* yet been invited to.
 
-**Can Sentinel launch a public researcher marketplace today? NO.**
+**Can Unpatched launch a public researcher marketplace today? NO.**
 
 Precisely because:
 1. There is no schema representation of program visibility (public/registered/application/private) to gate on — adding a page that lists "all programs" would either leak every organization's private program to every researcher, or require a new column, a new RLS predicate, and a new researcher-facing query, none of which exist.
 2. There is no program-approval/moderation gate an organization would need to pass before a program could safely be shown publicly (Section 4/CONTROL).
-3. There is no abuse/spam protection for a public researcher-facing surface (Section 6's DATA GAP items) — a public marketplace is the single highest-exposure surface for exactly the abuse patterns Sentinel currently has zero tooling for.
+3. There is no abuse/spam protection for a public researcher-facing surface (Section 6's DATA GAP items) — a public marketplace is the single highest-exposure surface for exactly the abuse patterns Unpatched currently has zero tooling for.
 
 ---
 
@@ -210,7 +210,7 @@ Three viable product models, drawn from the competitor research pattern (none of
 
 **Model C — Distinguish "researcher account" from "organization operator" as a first-class identity choice at signup**, independent of `platform_role` (which is inert today) — e.g., a signup-time choice ("I'm here to find vulnerabilities" vs. "I represent an organization") that does not itself grant or deny any capability, but is a real, stored signal a future platform-admin view or approval flow can act on, and that product surfaces (nav, onboarding copy) can react to. This is the smallest change of the three and does not require the platform-admin layer to exist first, but it is also the weakest enforcement — nothing stops a "researcher" identity from clicking "create organization" anyway.
 
-**Recommendation: Model B**, as the immediately viable step, with Model A as the natural next step once a real platform-admin layer exists. Model B requires no new authorization primitive to invent from scratch (it reuses the exact "gate is the sensitive act, not the shell" pattern Sentinel already applies everywhere else — e.g. organization creation is unrestricted but *program creation within it* is owner/security_admin-only, and *program activation* is a separate, further-gated transition per `docs/decisions/0021`). Model A is strictly better long-term but is blocked on Section 10/11's platform-role gap being closed first — recommending it now would just be inventing a second unenforceable role, the exact mistake `platform_role` already made once.
+**Recommendation: Model B**, as the immediately viable step, with Model A as the natural next step once a real platform-admin layer exists. Model B requires no new authorization primitive to invent from scratch (it reuses the exact "gate is the sensitive act, not the shell" pattern Unpatched already applies everywhere else — e.g. organization creation is unrestricted but *program creation within it* is owner/security_admin-only, and *program activation* is a separate, further-gated transition per `docs/decisions/0021`). Model A is strictly better long-term but is blocked on Section 10/11's platform-role gap being closed first — recommending it now would just be inventing a second unenforceable role, the exact mistake `platform_role` already made once.
 
 ---
 
@@ -231,17 +231,17 @@ Three viable product models, drawn from the competitor research pattern (none of
 
 ## 11. RBAC comparison
 
-**Where Sentinel is too coarse:**
+**Where Unpatched is too coarse:**
 - Exactly one program-level role (`manager`) vs. competitors' 3–4 tiers. A read-only "Viewer"/"Reader" equivalent is a real, missing capability — e.g. an organization wanting to give a junior analyst or an auditor read access to a program without triage/reward authority cannot do so today.
 - No report-level permission distinct from program membership at all (every `program_members` row sees every report in that program identically).
 
-**Where Sentinel is already reasonably right-sized (do not blindly add complexity to match competitors):**
+**Where Unpatched is already reasonably right-sized (do not blindly add complexity to match competitors):**
 - The five organization roles map cleanly to real, distinct responsibilities (identity/membership, security operations, program assignment, triage-only, and a reserved-but-honest billing placeholder) — this is comparable in shape to Bugcrowd's Owner/User Admin/Member, and better than inventing Intigriti's exact four-tier program model wholesale, which would be premature complexity for a platform that doesn't yet have report-level permission differentiation to justify it.
 - `billing_admin` should **not** be deleted reflexively just because it's a no-op today — the honest move is either to implement real billing-scoped capability behind it (viewing payment obligations/attempts without triage access) or to explicitly document it as reserved-for-future rather than quietly removing a role an organization may already have assigned to someone.
 
 **Roles that should NOT be added just to match competitors:**
-- A Bugcrowd-style separate "Team" grouping concept — premature; Sentinel doesn't yet have enough program-level role granularity to make team-based bulk role assignment meaningful.
-- A HackerOne-style fully custom/configurable permission-group builder — this is the most complex end of any competitor's model and is almost certainly over-engineering for Sentinel's current program count; a fixed, small set of program-level roles (adding one or two, not a builder) is the smallest model that closes the real gap (report-level read-only access) without building a permissions IDE nobody asked for.
+- A Bugcrowd-style separate "Team" grouping concept — premature; Unpatched doesn't yet have enough program-level role granularity to make team-based bulk role assignment meaningful.
+- A HackerOne-style fully custom/configurable permission-group builder — this is the most complex end of any competitor's model and is almost certainly over-engineering for Unpatched's current program count; a fixed, small set of program-level roles (adding one or two, not a builder) is the smallest model that closes the real gap (report-level read-only access) without building a permissions IDE nobody asked for.
 
 **Smallest model that supports a serious 10× product**: keep the five organization roles as-is; add exactly one new program-level role (a read-only "Viewer" equivalent) to close the starkest, most concretely-justified gap; do not add report-level permissions, teams, or a permission builder until a real customer need surfaces one.
 
@@ -266,7 +266,7 @@ Three viable product models, drawn from the competitor research pattern (none of
 | Stage | Classification | Why |
 |---|---|---|
 | A. Private internal demo | **READY** | Everything needed already works end-to-end for a controlled, known set of users |
-| B. Invite-only beta | **READY** | Invite-only is Sentinel's *only* mode today — this is not a stretch, it's the native shape of the current product |
+| B. Invite-only beta | **READY** | Invite-only is Unpatched's *only* mode today — this is not a stretch, it's the native shape of the current product |
 | C. Controlled organization/researcher beta | **BETA READY** | Works, but any real failure (a dead-lettered event, a failed payment, an abusive researcher) has no operational recovery path — acceptable for a small, closely-watched cohort, not for scale |
 | D. Public researcher onboarding | **NOT READY** | No abuse/fraud tooling, no platform-wide researcher suspension, no support/dispute channel |
 | E. Public program marketplace | **NOT READY** | Confirmed structurally impossible today (Section 8) — this is not a configuration gap, it's a missing schema/domain capability |
@@ -304,7 +304,7 @@ Three viable product models, drawn from the competitor research pattern (none of
 
 ### 1. Platform Operations Foundation (the real platform-admin layer)
 - **Why now**: every other gap in this audit (P0 items especially) is downstream of this not existing. Building anything else in the platform tier before this exists means building on the same dead scaffolding `platform_role` already demonstrated doesn't work.
-- **Research-backed reason**: all three competitors treat the platform-as-company as an active third authorization tier with real operational authority (Section 1); Sentinel has the enum but none of the machinery.
+- **Research-backed reason**: all three competitors treat the platform-as-company as an active third authorization tier with real operational authority (Section 1); Unpatched has the enum but none of the machinery.
 - **Backend/domain changes required**: a real, `service_role`-gated path to grant platform-admin (never through the public app); RLS policies/RPCs giving a platform admin genuine, audited read access to the already-existing data Section 4/SEE identified (dead-lettered events, failed notification deliveries, failed payments, aggregate counts) — read-only first, no destructive/mutating platform-admin capability yet.
 - **Frontend changes required**: none yet, or at most a minimal internal-only route gated by the new role — the dashboard itself (Slice 3) comes after the data access exists.
 - **What it unlocks**: every other P0/P1 item becomes buildable on a real foundation instead of invented ad hoc.
@@ -312,7 +312,7 @@ Three viable product models, drawn from the competitor research pattern (none of
 
 ### 2. Platform-wide researcher standing (cross-program suspension)
 - **Why now**: the single starkest CONTROL gap (Section 4) — a researcher removed from one program for cause has zero friction repeating the same behavior on 499 others.
-- **Research-backed reason**: HackerOne explicitly documents that bans are program-specific *by default*, with a platform-wide escalation reserved for severe/repeated misconduct — Sentinel's gap is that no cross-program mechanism exists at all, not even as an escalation path, so the target is "a real escalation path exists," not "every suspension becomes platform-wide."
+- **Research-backed reason**: HackerOne explicitly documents that bans are program-specific *by default*, with a platform-wide escalation reserved for severe/repeated misconduct — Unpatched's gap is that no cross-program mechanism exists at all, not even as an escalation path, so the target is "a real escalation path exists," not "every suspension becomes platform-wide."
 - **Backend/domain changes required**: a new, genuinely platform-wide researcher status (distinct from `program_researchers.status`, which stays per-program), enforced by RLS server-side, not a client-side flag.
 - **Frontend changes required**: a platform-admin-only action (depends on Slice 1's role existing); a researcher-facing state (their account is platform-restricted) needs honest, non-punitive-sounding UI, matching this codebase's own established "no fake security theater" convention.
 - **What it unlocks**: a real, enforceable response to the single most obvious abuse vector before any public-facing expansion.
@@ -320,7 +320,7 @@ Three viable product models, drawn from the competitor research pattern (none of
 
 ### 3. Program visibility model (the marketplace prerequisite)
 - **Why now**: this is the one schema change that everything in Section 8 depends on, and it's a small, additive column plus RLS predicate change, not a rewrite.
-- **Research-backed reason**: every competitor's researcher-acquisition model depends on some form of this; Sentinel has literally zero representation of it today.
+- **Research-backed reason**: every competitor's researcher-acquisition model depends on some form of this; Unpatched has literally zero representation of it today.
 - **Backend/domain changes required**: a `program_visibility` (or similarly named) column on `programs` with at minimum two real states (`invite_only` — today's actual behavior, made explicit rather than implicit; `public` — genuinely listable); a new RLS-safe researcher-facing query for public programs; scope/eligibility rules for what a non-invited researcher may see before participating (mirroring competitors' "full scope visible, submission gated" pattern).
 - **Frontend changes required**: a real "Browse programs" page (the `/researchers` page's existing link already promises this and currently lies) showing public programs to any authenticated researcher.
 - **What it unlocks**: the actual prerequisite for stage E (public marketplace) — still not sufficient alone (abuse tooling, Slice 2, and moderation are also required), but the first concrete unlock.
@@ -328,7 +328,7 @@ Three viable product models, drawn from the competitor research pattern (none of
 
 ### 4. Retest mechanism
 - **Why now**: the most concrete, narrowly-scoped researcher-experience gap with a clear precedent on all three competitors and a bounded implementation surface (it's a report-lifecycle addition, not a new domain).
-- **Research-backed reason**: universal across HackerOne/Bugcrowd/Intigriti; absent entirely from Sentinel's report state machine (`DOMAIN.md`'s own "terminal outcomes have no exit transition" statement blocks it structurally today).
+- **Research-backed reason**: universal across HackerOne/Bugcrowd/Intigriti; absent entirely from Unpatched's report state machine (`DOMAIN.md`'s own "terminal outcomes have no exit transition" statement blocks it structurally today).
 - **Backend/domain changes required**: a new, narrowly-scoped transition (e.g. `RESOLVED → RETEST_REQUESTED → RETEST_CONFIRMED/RETEST_FAILED`) that does not reopen the full triage state machine, reusing the exact "hardcoded target status per RPC" pattern `0009` already established.
 - **Frontend changes required**: a real action on a resolved report, and a researcher-facing retest queue (mirroring competitors' own dashboard concept).
 - **What it unlocks**: a genuine researcher-experience parity item, independent of the platform-tier work above — can proceed in parallel with Slices 1–3.
@@ -336,7 +336,7 @@ Three viable product models, drawn from the competitor research pattern (none of
 
 ### 5. Payment-failure cross-organization visibility (platform ops, payments-specific)
 - **Why now**: the one P0/P1 item that's almost entirely a *read-access* change on data that already exists correctly (`payment_attempts`), making it the cheapest possible win once Slice 1's platform-admin role exists.
-- **Research-backed reason**: all three competitors are the payments processor, not a passive observer — Sentinel doesn't need to go that far immediately, but "the platform can at least see every organization's stuck payment" is the minimum viable step toward that model.
+- **Research-backed reason**: all three competitors are the payments processor, not a passive observer — Unpatched doesn't need to go that far immediately, but "the platform can at least see every organization's stuck payment" is the minimum viable step toward that model.
 - **Backend/domain changes required**: a platform-admin-scoped RPC/read policy over `payment_obligations`/`payment_attempts` across all organizations (depends on Slice 1).
 - **Frontend changes required**: a real, minimal "payments requiring attention" list — the first genuinely useful screen answering Section 5's stated question, using entirely real data.
 - **What it unlocks**: the first concrete, demonstrable platform-ops screen, built on real data rather than invented metrics.
@@ -357,7 +357,7 @@ Frontend                  [██████████████░░░�
 Overall product            — intentionally not collapsed to one number —
 ```
 
-**What each percentage actually means**: these are independent axes, not components of one weighted average — a high "Organization product" score does not offset a near-zero "Platform product" score, because they measure different, non-substitutable capabilities. A single blended "overall" number would misrepresent a platform that is genuinely strong for one user and genuinely unbuilt for another. The honest overall statement is qualitative, not a percentage: **Sentinel is a well-built two-party product (researcher ↔ organization) that currently cannot safely operate as a three-party platform at any scale beyond a small, closely-watched invite-only beta.**
+**What each percentage actually means**: these are independent axes, not components of one weighted average — a high "Organization product" score does not offset a near-zero "Platform product" score, because they measure different, non-substitutable capabilities. A single blended "overall" number would misrepresent a platform that is genuinely strong for one user and genuinely unbuilt for another. The honest overall statement is qualitative, not a percentage: **Unpatched is a well-built two-party product (researcher ↔ organization) that currently cannot safely operate as a three-party platform at any scale beyond a small, closely-watched invite-only beta.**
 
 ---
 

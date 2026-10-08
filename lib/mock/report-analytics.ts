@@ -2,7 +2,7 @@
  * Mock/preview data for the Reports page's analytics surface (app/reports/page.tsx).
  * Entirely fictional -- structured to mirror what a real query would return so it can be
  * swapped for a live one later without touching any component in
- * components/reports/analytics/*. Same deliberate, labeled exception to Sentinel's normal
+ * components/reports/analytics/*. Same deliberate, labeled exception to Unpatched's normal
  * "never fabricate data" rule as lib/mock/researcher-dashboard.ts -- the real status
  * distribution (getMyReportStatusCounts) and the real report list stay real; everything
  * derived here has no backing query yet.

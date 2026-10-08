@@ -14,7 +14,7 @@ import { mapRpcError as mapError } from "@/services/rpc-error";
 
 export type ApiToken = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
 
-const TOKEN_PREFIX = "sentinel_pat_";
+const TOKEN_PREFIX = "unpatched_pat_";
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
