@@ -45,6 +45,11 @@ silently-broken feature.
 | `RESEND_API_KEY` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
 | `EMAIL_FROM` | `lib/email-provider.ts` | — | Required only when `EMAIL_PROVIDER=resend`. |
 | `CTF_FLAG_SECRET` | `lib/ctf-flags.ts` (build scripts and E2E only, never the app) | — | Derives every CTF flag. All environments must share the value the committed `public/ctf-artifacts/` and flag-hash migrations were generated with; CI reads it from the `CTF_FLAG_SECRET` repo secret. Rotating it means regenerating artifacts (`npm run ctf:artifacts:verify`) and a new flag-hash migration. |
+| `ALIAS_EMAIL_DOMAIN` | `lib/mailgun.ts` | — (feature off) | Researcher email aliases (`username@<this domain>`), e.g. `alias.netras.ai`. A subdomain whose MX records point at Mailgun; also the Mailgun sending domain. The feature is off until this, `MAILGUN_API_KEY` and `MAILGUN_WEBHOOK_SIGNING_KEY` are all set. See docs/decisions/0086. |
+| `MAILGUN_API_KEY` | `lib/mailgun.ts` | — | Mailgun private API key, used to send the forwarded copies. Secret. |
+| `MAILGUN_WEBHOOK_SIGNING_KEY` | `lib/mailgun.ts` | — | Mailgun's HTTP webhook signing key; `/api/inbound/email` refuses any delivery whose signature doesn't verify against it. Secret. |
+| `MAILGUN_API_BASE` | `lib/mailgun.ts` | `https://api.mailgun.net` | `https://api.eu.mailgun.net` if the Mailgun domain is in the EU region. |
+| `ALIAS_EMAIL_BRAND` | `lib/mailgun.ts` | `Netras` | Shown in a forwarded email's sender name ("noreply@shop.com via Netras"). |
 | `PERF_TRACE` | `lib/perf-trace.ts` | disabled (no tracing) | Set to `1` to enable temporary server-side latency instrumentation (middleware → auth → DB → render). Diagnostic only, safe to leave unset. |
 | `NODE_ENV` | `services/auth.ts`, `components/auth/confirm-email-pending.tsx` | set by the Next.js/Node toolchain itself, not user-configured | Gates `secure` cookie flag and a dev-only "confirm email" shortcut. Never set manually — `next build`/`next start` set this correctly. |
 
