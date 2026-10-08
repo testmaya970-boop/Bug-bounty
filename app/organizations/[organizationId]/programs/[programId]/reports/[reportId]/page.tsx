@@ -28,6 +28,7 @@ import { SectionLabel, MetadataPair } from "../../../../../../../components/ui/s
 import { Markdown } from "../../../../../../../components/ui/markdown";
 import { getReport, getReportAuditActivity, listReportCollaborators, listReportEvidence, listReportMediations, listReportMessages, listReportRetests } from "../../../../../../../services/reports";
 import { getReportBountyDecision } from "../../../../../../../services/bounty";
+import { getReportJiraLink } from "../../../../../../../services/jira";
 import { getReportDisclosure } from "../../../../../../../services/report-disclosures";
 import { getPaymentObligation, listPaymentAttempts } from "../../../../../../../services/payments";
 import { getMyKycStatus } from "../../../../../../../services/researcher-profiles";
@@ -93,7 +94,7 @@ export default async function ReportDetailPage({
   // (they can't open report contents). Never program managers or triagers.
   const canManagePaymentsHere = isOrgAdmin;
 
-  const [auditEvents, messages, evidence, bountyDecision, paymentObligation, researcherBiography, disclosure, collaborators, retests, mediations] = await Promise.all([
+  const [auditEvents, messages, evidence, bountyDecision, paymentObligation, researcherBiography, disclosure, collaborators, retests, mediations, jiraLink] = await Promise.all([
     canTriage ? getReportAuditActivity(reportId) : Promise.resolve([]),
     listReportMessages(reportId),
     listReportEvidence(reportId),
@@ -104,6 +105,9 @@ export default async function ReportDetailPage({
     listReportCollaborators(reportId),
     listReportRetests(reportId),
     listReportMediations(reportId),
+    // The org's internal tracker: triage staff only, never the researcher (the RPC applies
+    // the same predicate and returns nothing otherwise).
+    canTriage ? getReportJiraLink(reportId) : Promise.resolve(null),
   ]);
   // Attempt-level detail (failure code/message, provider reference) is manager-only and
   // is only ever needed while a payout is actually in flight -- fetched sequentially,
@@ -356,6 +360,21 @@ export default async function ReportDetailPage({
               <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
                 {program && <MetadataPair label="Program" value={program.name} />}
                 {!isFinal && <MetadataPair label="Next action" value={canTriage ? reportNextActionLabel(report.status) : researcherNextActionLabel(report.status)} />}
+                {jiraLink && (
+                  <MetadataPair
+                    label="Jira issue"
+                    value={
+                      <a
+                        href={jiraLink.issueUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                      >
+                        View in Jira: {jiraLink.issueKey} →
+                      </a>
+                    }
+                  />
+                )}
               </div>
 
               {report.resolutionSummary && (

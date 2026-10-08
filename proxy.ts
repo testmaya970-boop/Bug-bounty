@@ -41,5 +41,12 @@ export const config = {
   // etc.) to skip the gate for "probably safe" traffic, which AGENTS.md forbids; it simply
   // declines to run session validation on public asset paths, exactly as the existing
   // exclusions already do.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|ctf-artifacts|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  //
+  // `api/webhooks/jira/` is excluded because Jira's server-to-server deliveries carry no
+  // Unpatched session for this proxy to validate -- running it would only cost a session
+  // lookup per delivery and attach a CSP to a JSON endpoint. The route is NOT ungated: it
+  // authenticates every request itself by recomputing an HMAC over the body with the
+  // organization's server-held secret (see that route's header). Again a fixed-PATH
+  // exclusion; no request header decides whether any gate runs.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$|api/webhooks/jira/|ctf-artifacts|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

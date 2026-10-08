@@ -3,6 +3,7 @@ import { handleReportCreatedV1 } from "./report-created-v1";
 import { createReportOutcomeHandler } from "./reputation/report-outcome";
 import { handleBountyFinalizedV1 } from "./reputation/bounty-finalized-v1";
 import { createNotificationHandler, createPlatformNotificationHandler } from "./notifications/notification-handler";
+import { handleJiraSync, JIRA_SYNC_EVENT_TYPES } from "./jira/jira-sync-handler";
 
 /** The complete handler registry for this slice. Importing this module (a side effect
  * import, `import "./handlers"`) is what makes each event_type:schema_version
@@ -55,3 +56,7 @@ registerHandler("program.suspended", 1, createPlatformNotificationHandler("progr
 registerHandler("program.reinstated", 1, createPlatformNotificationHandler("program_reinstated"));
 registerHandler("organization.suspended", 1, createPlatformNotificationHandler("organization_suspended"));
 registerHandler("organization.reinstated", 1, createPlatformNotificationHandler("organization_reinstated"));
+
+// Jira outbound sync (db/migrations/202610010001_jira_integration.sql): one handler for
+// every report event Jira should see -- a no-op for an org without a Jira connection.
+for (const eventType of JIRA_SYNC_EVENT_TYPES) registerHandler(eventType, 1, handleJiraSync);

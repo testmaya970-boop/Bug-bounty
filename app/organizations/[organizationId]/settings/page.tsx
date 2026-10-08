@@ -8,7 +8,9 @@ import { PermissionDenied } from "../../../../components/ui/feedback";
 import { MetadataPair, SectionLabel } from "../../../../components/ui/security-primitives";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
 import { OrganizationDescriptionForm } from "../../../../components/organizations/organization-description-form";
-import { canManageMembers } from "../../../../services/authorization";
+import { JiraConnectionSettings } from "../../../../components/organizations/jira-connection-settings";
+import { canManageIntegrations, canManageMembers } from "../../../../services/authorization";
+import { getJiraConnection, jiraWebhookUrl } from "../../../../services/jira";
 import { getActorMembership, listOrganizationMembers, listPendingInvitations } from "../../../../services/organization-members";
 import { getOrganizationDescription, listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listProgramsForOrganization } from "../../../../services/programs";
@@ -38,6 +40,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
   }
 
   const canManage = canManageMembers(actor.role);
+  const canIntegrate = canManageIntegrations(actor.role);
 
   // Member roster is readable by any org member (RLS: "members read organization roster"),
   // so active/suspended counts are safe for every role. Pending invitations and audit
@@ -46,12 +49,15 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
   // member would silently come back empty, which would misrepresent "0" as a real count
   // rather than "you aren't authorized to see this." So that fetch only happens at all
   // when `canManage` is true.
-  const [organizations, members, programs, invitations, description] = await Promise.all([
+  const [organizations, members, programs, invitations, description, jiraConnection] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listOrganizationMembers(organizationId),
     listProgramsForOrganization(organizationId),
     canManage ? listPendingInvitations(organizationId) : Promise.resolve(null),
     getOrganizationDescription(organizationId),
+    // Owner/security_admin only (get_jira_connection_for_org raises FORBIDDEN otherwise),
+    // so only fetched for them -- same reasoning as invitations above.
+    canIntegrate ? getJiraConnection(organizationId) : Promise.resolve(null),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
@@ -69,7 +75,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
 
         <div>
           <p className="text-sm text-ink-muted">
-            Organization-level administration governs membership and roles. Program-level administration, managers, researchers, reports, and scope, is configured within each program.
+            Organization-level administration governs membership, roles, and integrations. Program-level administration, managers, researchers, reports, and scope, is configured within each program.
           </p>
         </div>
 
@@ -125,6 +131,18 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
           >
             View programs →
           </Link>
+        </div>
+
+        <div className="border-t border-border pt-6" id="integrations">
+          <SectionLabel>Integrations</SectionLabel>
+          <h3 className="mt-3 text-base font-semibold text-ink">Jira Cloud</h3>
+          {canIntegrate ? (
+            <div className="mt-3">
+              <JiraConnectionSettings organizationId={organizationId} connection={jiraConnection} webhookUrl={jiraWebhookUrl(organizationId)} />
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-ink-muted">Only an owner or security admin can connect or manage integrations.</p>
+          )}
         </div>
       </div>
     </AppShell>
