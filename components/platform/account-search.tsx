@@ -3,33 +3,44 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { searchAccountsAction } from "../../actions/platform-operations";
-import type { AdminAccountMatch } from "../../services/platform-operations";
+import { searchAccountsAction, searchOrganizationsAction } from "../../actions/platform-operations";
+import type { AdminAccountMatch, AdminOrganizationMatch } from "../../services/platform-operations";
+
+type SearchResult<T> = { ok: true; data: T[] } | { ok: false; message: string };
 
 /**
- * Search-as-you-type researcher picker for the platform-admin forms: type part of a
- * username, name or email, pick from the dropdown (mouse or keyboard), and the form acts on
- * exactly that account -- no more typing a username from memory. ARIA 1.2 combobox:
- * arrow keys move, Enter picks, Escape closes.
+ * Search-as-you-type picker for the platform-admin forms: type part of a name, pick from
+ * the dropdown (mouse or keyboard), and the form acts on exactly that record -- no more
+ * typing a username or slug from memory. ARIA 1.2 combobox: arrow keys move, Enter picks,
+ * Escape closes. Researchers and organizations share it (AccountSearch /
+ * OrganizationSearch below).
  */
-export function AccountSearch({
+function SearchPicker<T extends { id: string }>({
   label,
   selected,
   onSelect,
-  onlyDeactivated = false,
+  search,
+  renderItem,
+  placeholder,
+  noMatch,
   error,
 }: {
   label: string;
-  selected: AdminAccountMatch | null;
-  onSelect: (account: AdminAccountMatch | null) => void;
-  onlyDeactivated?: boolean;
+  selected: T | null;
+  onSelect: (item: T | null) => void;
+  search: (query: string) => Promise<SearchResult<T>>;
+  renderItem: (item: T) => React.ReactNode;
+  placeholder: string;
+  noMatch: (query: string) => React.ReactNode;
   error?: string;
 }) {
   const id = useId();
   const listId = `${id}-list`;
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef(search);
+  searchRef.current = search;
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<AdminAccountMatch[]>([]);
+  const [results, setResults] = useState<T[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -45,7 +56,7 @@ export function AccountSearch({
     setLoading(true);
     let cancelled = false;
     const timer = setTimeout(async () => {
-      const result = await searchAccountsAction({ query: q, onlyDeactivated });
+      const result = await searchRef.current(q);
       if (cancelled) return;
       setLoading(false);
       if (!result.ok) {
@@ -61,10 +72,10 @@ export function AccountSearch({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query, onlyDeactivated]);
+  }, [query]);
 
-  function pick(account: AdminAccountMatch) {
-    onSelect(account);
+  function pick(item: T) {
+    onSelect(item);
     setOpen(false);
     setQuery("");
   }
@@ -85,12 +96,18 @@ export function AccountSearch({
     }
   }
 
+  const errorNote = error && (
+    <p role="alert" className="mt-1 text-xs font-medium text-danger">
+      {error}
+    </p>
+  );
+
   if (selected) {
     return (
       <div>
         <p className="mb-1.5 text-sm font-medium text-ink">{label}</p>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border-strong bg-surface-muted px-3 py-2">
-          <AccountSummary account={selected} />
+          {renderItem(selected)}
           <Button
             type="button"
             variant="quiet"
@@ -102,11 +119,7 @@ export function AccountSearch({
             Change
           </Button>
         </div>
-        {error && (
-          <p role="alert" className="mt-1 text-xs font-medium text-danger">
-            {error}
-          </p>
-        )}
+        {errorNote}
       </div>
     );
   }
@@ -129,7 +142,7 @@ export function AccountSearch({
         aria-activedescendant={showList && results[active] ? `${listId}-${results[active].id}` : undefined}
         aria-invalid={Boolean(error)}
         autoComplete="off"
-        placeholder="Search by username, name or email"
+        placeholder={placeholder}
         value={query}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -145,34 +158,72 @@ export function AccountSearch({
         <ul id={listId} role="listbox" aria-label={`${label} results`} className="absolute inset-x-0 top-[4.75rem] z-20 max-h-80 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg">
           {loading && <li className="px-3 py-2 text-sm text-ink-muted">Searching…</li>}
           {!loading && searchError && <li className="px-3 py-2 text-sm text-danger">{searchError}</li>}
-          {!loading && !searchError && results.length === 0 && (
-            <li className="px-3 py-2 text-sm text-ink-muted">
-              No {onlyDeactivated ? "deactivated researcher" : "researcher"} matches &ldquo;{query.trim()}&rdquo;. Try part of their username, name or email.
-            </li>
-          )}
+          {!loading && !searchError && results.length === 0 && <li className="px-3 py-2 text-sm text-ink-muted">{noMatch(query.trim())}</li>}
           {!loading &&
-            results.map((account, index) => (
+            results.map((item, index) => (
               <li
-                key={account.id}
-                id={`${listId}-${account.id}`}
+                key={item.id}
+                id={`${listId}-${item.id}`}
                 role="option"
                 aria-selected={index === active}
                 onMouseDown={(event) => event.preventDefault()} // keep focus so the click lands
-                onClick={() => pick(account)}
+                onClick={() => pick(item)}
                 onMouseEnter={() => setActive(index)}
                 className={`cursor-pointer px-3 py-2 ${index === active ? "bg-surface-muted" : ""}`}
               >
-                <AccountSummary account={account} />
+                {renderItem(item)}
               </li>
             ))}
         </ul>
       )}
-      {error && (
-        <p role="alert" className="mt-1 text-xs font-medium text-danger">
-          {error}
-        </p>
-      )}
+      {errorNote}
     </div>
+  );
+}
+
+export function AccountSearch({
+  label,
+  selected,
+  onSelect,
+  onlyDeactivated = false,
+  error,
+}: {
+  label: string;
+  selected: AdminAccountMatch | null;
+  onSelect: (account: AdminAccountMatch | null) => void;
+  onlyDeactivated?: boolean;
+  error?: string;
+}) {
+  return (
+    <SearchPicker
+      label={label}
+      selected={selected}
+      onSelect={onSelect}
+      error={error}
+      placeholder="Search by username, name or email"
+      search={(query) => searchAccountsAction({ query, onlyDeactivated })}
+      renderItem={(account) => <AccountSummary account={account} />}
+      noMatch={(query) => (
+        <>
+          No {onlyDeactivated ? "deactivated researcher" : "researcher"} matches &ldquo;{query}&rdquo;. Try part of their username, name or email.
+        </>
+      )}
+    />
+  );
+}
+
+export function OrganizationSearch({ label, selected, onSelect, error }: { label: string; selected: AdminOrganizationMatch | null; onSelect: (organization: AdminOrganizationMatch | null) => void; error?: string }) {
+  return (
+    <SearchPicker
+      label={label}
+      selected={selected}
+      onSelect={onSelect}
+      error={error}
+      placeholder="Search by name, slug or owner's email"
+      search={(query) => searchOrganizationsAction({ query })}
+      renderItem={(organization) => <OrganizationSummary organization={organization} />}
+      noMatch={(query) => <>No organization matches &ldquo;{query}&rdquo;. Try part of its name, its slug, or the owner&apos;s email.</>}
+    />
   );
 }
 
@@ -192,6 +243,27 @@ function AccountSummary({ account }: { account: AdminAccountMatch }) {
       <p className="truncate font-mono text-xs text-ink-muted">
         @{account.username}
         {account.email ? ` · ${account.email}` : ""}
+      </p>
+    </div>
+  );
+}
+
+function OrganizationSummary({ organization }: { organization: AdminOrganizationMatch }) {
+  return (
+    <div className="min-w-0">
+      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
+        <span className="truncate">{organization.name}</span>
+        {organization.status === "suspended" ? (
+          <Badge className="text-danger" dotClassName="bg-danger">Suspended</Badge>
+        ) : organization.status === "created" ? (
+          <Badge className="text-ink-muted" dotClassName="bg-ink-muted">Setting up</Badge>
+        ) : (
+          <Badge className="text-success" dotClassName="bg-success">Active</Badge>
+        )}
+      </p>
+      <p className="truncate font-mono text-xs text-ink-muted">
+        {organization.slug}
+        {organization.ownerEmail ? ` · owner ${organization.ownerEmail}` : ""} · {organization.memberCount} {organization.memberCount === 1 ? "member" : "members"}
       </p>
     </div>
   );

@@ -15,7 +15,9 @@ import {
   reinstateResearcherPlatformWide,
   reactivateAccountPlatformWide,
   searchAccountsForAdmin,
+  searchOrganizationsForAdmin,
   type AdminAccountMatch,
+  type AdminOrganizationMatch,
   replayDeadLetteredOutboxEvent,
   suspendOrganization,
   suspendProgram,
@@ -280,6 +282,19 @@ export async function searchAccountsAction(input: { query: string; onlyDeactivat
   if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: "Check the search and try again." };
   try {
     return { ok: true as const, data: (await searchAccountsForAdmin(parsed.data.query, parsed.data.onlyDeactivated ?? false)) as AdminAccountMatch[] };
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
+    throw error;
+  }
+}
+
+/** Feeds the organization suspend form's search dropdown; authorization lives in the
+ * database (search_organizations_for_admin checks private.is_platform_admin()). */
+export async function searchOrganizationsAction(input: { query: string }) {
+  const parsed = searchSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: "Check the search and try again." };
+  try {
+    return { ok: true as const, data: (await searchOrganizationsForAdmin(parsed.data.query)) as AdminOrganizationMatch[] };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
     throw error;

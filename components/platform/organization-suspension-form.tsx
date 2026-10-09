@@ -3,15 +3,17 @@
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
-import { Input, Textarea } from "../ui/form";
+import { Textarea } from "../ui/form";
 import { reinstateOrganizationAction, suspendOrganizationAction } from "../../actions/platform-operations";
+import type { AdminOrganizationMatch } from "../../services/platform-operations";
+import { OrganizationSearch } from "./account-search";
 
 /** Suspend-by-slug -- same shape as researcher-suspension-form.tsx's SuspendResearcherForm,
  * just keyed by organization slug instead of researcher username (organizations have no
  * public username-equivalent; slug is the one stable, human-typeable identifier). */
 export function SuspendOrganizationForm() {
   const router = useRouter();
-  const [slug, setSlug] = useState("");
+  const [organization, setOrganization] = useState<AdminOrganizationMatch | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -20,13 +22,17 @@ export function SuspendOrganizationForm() {
     event.preventDefault();
     if (pending) return;
     setError(null);
+    if (!organization) {
+      setError("Search for and select the organization to suspend.");
+      return;
+    }
     startTransition(async () => {
-      const result = await suspendOrganizationAction({ slug, reason });
+      const result = await suspendOrganizationAction({ slug: organization.slug, reason });
       if (!result.ok) {
         setError(result.message);
         return;
       }
-      setSlug("");
+      setOrganization(null);
       setReason("");
       router.refresh();
     });
@@ -34,7 +40,7 @@ export function SuspendOrganizationForm() {
 
   return (
     <form className="space-y-3 rounded-lg border border-border bg-surface p-4" onSubmit={handleSubmit} noValidate>
-      <Input label="Organization's slug" placeholder="acme-corp" required value={slug} onChange={(event) => setSlug(event.target.value)} />
+      <OrganizationSearch label="Organization" selected={organization} onSelect={setOrganization} />
       <Textarea label="Explain why this organization is being suspended" required value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} />
       <div className="flex justify-end">
         <Button type="submit" variant="destructive" pending={pending}>

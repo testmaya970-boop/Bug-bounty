@@ -308,6 +308,21 @@ export async function searchAccountsForAdmin(query: string, onlyDeactivated = fa
   return rows.map((row) => ({ id: row.id, username: row.username, displayName: row.display_name, email: row.email, isSuspended: row.is_suspended, deactivatedAt: row.deactivated_at }));
 }
 
+export type AdminOrganizationMatch = { id: string; slug: string; name: string; status: string; ownerEmail: string | null; memberCount: number };
+
+/** Organizations matching a name / slug / owner-email fragment, for the admin suspend
+ * form's search box (db/migrations/202610090003_admin_organization_search.sql). */
+export async function searchOrganizationsForAdmin(query: string): Promise<AdminOrganizationMatch[]> {
+  const actor = await getCurrentUser();
+  let rows: { id: string; slug: string; name: string; status: string; owner_email: string | null; member_count: number }[];
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.search_organizations_for_admin", [query]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({ id: row.id, slug: row.slug, name: row.name, status: row.status, ownerEmail: row.owner_email, memberCount: row.member_count }));
+}
+
 /** Undoes a self-service deactivation (deactivate_my_account) -- the "contact support"
  * path the deactivation page promises. Refused for an account a platform admin deleted
  * (see db/migrations/202610090001_reactivate_account.sql). */
