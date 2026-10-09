@@ -12,7 +12,7 @@ import { MarkdownTextarea } from "../ui/markdown-textarea";
 import { SectionLabel } from "../ui/security-primitives";
 import { submitReportAction, addResearcherEvidenceAction, deleteReportDraftAction, saveReportDraftAction } from "../../actions/reports";
 import { uploadResearcherFileEvidenceAction } from "../../actions/report-file-evidence";
-import { EVIDENCE_TYPE_LABELS, EVIDENCE_TYPES, FileField, MAX_FILE_SIZE_BYTES, type TextualEvidenceType } from "./report-evidence";
+import { EVIDENCE_TYPE_LABELS, EVIDENCE_TYPES, FileField, fileProblem, type TextualEvidenceType } from "./report-evidence";
 import { assetTypeLabel } from "../../lib/scope-labels";
 import { WEAKNESS_TYPE_ORDER, weaknessTypeLabel } from "../../lib/report-weakness-labels";
 import { getReportTemplate } from "../../lib/report-templates";
@@ -73,7 +73,7 @@ const RESEARCHER_SEVERITY_OPTIONS: { value: ReportSeverity | ""; label: string }
  * the wrong field). Never a raw SQLSTATE/Postgres detail reaches this component --
  * services/rpc-error.ts's mapRpcError already guarantees that upstream.
  */
-export type SubmitFailure = { banner?: string; titleError?: string; descriptionError?: string; targetError?: string; weaknessTypeError?: string; impactError?: string; policyError?: string };
+export type SubmitFailure = { banner?: string; titleError?: string; descriptionError?: string; targetError?: string; weaknessTypeError?: string; impactError?: string; policyError?: string; evidenceError?: string; attachmentError?: string };
 
 type FieldErrors = Omit<SubmitFailure, "banner">;
 
@@ -84,12 +84,14 @@ const FIELD_NAMES: Record<keyof FieldErrors, string> = {
   descriptionError: "Description",
   impactError: "Impact",
   policyError: "Program policy",
+  evidenceError: "Evidence",
+  attachmentError: "Attachments",
 };
 
 /** Every required field checked at once, before anything is sent -- the same rules the
  * server enforces (actions/reports.ts's submitSchema), so a researcher sees every gap in
  * one pass instead of fixing them one server round trip at a time. */
-export function validateReport(fields: { target: string; title: string; weaknessType: string; description: string; impact: string; policyRequired: boolean; policyAccepted: boolean }): FieldErrors {
+export function validateReport(fields: { target: string; title: string; weaknessType: string; description: string; impact: string; policyRequired: boolean; policyAccepted: boolean; unaddedEvidence?: string; unaddedFileName?: string | null }): FieldErrors {
   const errors: FieldErrors = {};
   if (!fields.target.trim()) errors.targetError = "Enter the target where you found the issue.";
   if (!fields.title.trim()) errors.titleError = "Enter a short title for the report.";
@@ -97,6 +99,9 @@ export function validateReport(fields: { target: string; title: string; weakness
   if (!fields.description.trim()) errors.descriptionError = "Describe how to reproduce the issue.";
   if (!fields.impact.trim()) errors.impactError = "Explain the impact: what an attacker could achieve.";
   if (fields.policyRequired && !fields.policyAccepted) errors.policyError = "Read and accept the program policy before submitting.";
+  // Picked but never added: submitting would silently leave it out of the report.
+  if (fields.unaddedEvidence?.trim()) errors.evidenceError = "You typed evidence but didn't add it. Press Add evidence, or clear the box to submit without it.";
+  if (fields.unaddedFileName) errors.attachmentError = `You chose "${fields.unaddedFileName}" but didn't add it. Press Add attachment, or Clear to submit without it.`;
   return errors;
 }
 
@@ -334,8 +339,9 @@ export function CreateReportForm({
       setFileError("Choose a file to add.");
       return;
     }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setFileError("File must be 10 MB or smaller.");
+    const problem = fileProblem(file);
+    if (problem) {
+      setFileError(problem);
       return;
     }
     setStagedFiles((current) => [...current, { localId: crypto.randomUUID(), file }]);
@@ -372,7 +378,7 @@ export function CreateReportForm({
   }
 
   function fieldErrorsNow(): FieldErrors {
-    return validateReport({ target, title, weaknessType, description, impact, policyRequired: Boolean(policy), policyAccepted });
+    return validateReport({ target, title, weaknessType, description, impact, policyRequired: Boolean(policy), policyAccepted, unaddedEvidence: draftEvidenceContent, unaddedFileName: selectedFileName });
   }
   const clientErrors = validationAttempted ? fieldErrorsNow() : {};
   // A client-side gap wins over a stale server message for the same field.
@@ -423,9 +429,15 @@ export function CreateReportForm({
       // Each staged item is an independent attach-to-already-created-report mutation --
       // none depends on another's outcome, so they all go out together instead of one
       // round trip at a time.
+      // One automatic retry each: a dropped upload on a flaky (phone) connection shouldn't
+      // leave the report without its evidence when a second try would have worked.
+      const withRetry = async <T extends { ok: boolean }>(attempt: () => Promise<T>) => {
+        const first = await attempt().catch(() => ({ ok: false }) as T);
+        return first.ok ? first : attempt().catch(() => ({ ok: false }) as T);
+      };
       const attachResults = await Promise.all([
-        ...stagedEvidence.map((item) => addResearcherEvidenceAction({ organizationId, programId, reportId, evidenceType: item.evidenceType, content: item.content })),
-        ...stagedFiles.map((item) => uploadResearcherFileEvidenceAction({ organizationId, programId, reportId, file: item.file })),
+        ...stagedEvidence.map((item) => withRetry(() => addResearcherEvidenceAction({ organizationId, programId, reportId, evidenceType: item.evidenceType, content: item.content }))),
+        ...stagedFiles.map((item) => withRetry(() => uploadResearcherFileEvidenceAction({ organizationId, programId, reportId, file: item.file }))),
       ]);
       const unattached = attachResults.filter((attachResult) => !attachResult.ok).length;
 
@@ -619,7 +631,7 @@ export function CreateReportForm({
               onChange={(event) => setDraftEvidenceContent(event.target.value)}
               maxLength={20000}
               className="[&_textarea]:font-mono"
-              error={evidenceError ?? undefined}
+              error={errors.evidenceError ?? evidenceError ?? undefined}
             />
             <div className="flex justify-end">
               <Button type="button" variant="secondary" onClick={addStagedEvidence}>
@@ -652,7 +664,7 @@ export function CreateReportForm({
           )}
 
           <div className="mt-3 space-y-3 rounded-lg border border-dashed border-border-strong p-3">
-            <FileField inputRef={fileInputRef} error={fileError ?? undefined} selectedName={selectedFileName} onClear={clearSelectedFile} onFileChange={(name) => setSelectedFileName(name)} />
+            <FileField inputRef={fileInputRef} error={errors.attachmentError ?? fileError ?? undefined} selectedName={selectedFileName} onClear={clearSelectedFile} onFileChange={(name) => setSelectedFileName(name)} />
             <div className="flex justify-end">
               <Button type="button" variant="secondary" onClick={addStagedFile}>
                 Add attachment

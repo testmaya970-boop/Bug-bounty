@@ -15,6 +15,15 @@ type ReportRef = { organizationId: string; programId: string; reportId: string }
 export const EVIDENCE_TYPE_LABELS: Record<ReportEvidenceType, string> = { text: "Text", code: "Code", url: "URL", log: "Log", file: "File" };
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
+/** The same checks the server applies to an upload (services/report-file-evidence.ts), run
+ * before anything is sent so a bad file is caught while the researcher can still fix it. */
+export function fileProblem(file: File): string | null {
+  if (file.size === 0) return "The selected file is empty.";
+  if (file.size > MAX_FILE_SIZE_BYTES) return "File must be 10 MB or smaller.";
+  if (file.name.trim().length > 255) return "File name must be 255 characters or fewer.";
+  return null;
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -247,6 +256,7 @@ export function FileField({
           id={id}
           type="file"
           required
+          aria-invalid={Boolean(error)}
           onChange={(event) => onFileChange?.(event.target.files?.[0]?.name ?? null)}
           className="block min-w-0 flex-1 text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-muted"
         />

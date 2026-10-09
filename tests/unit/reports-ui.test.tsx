@@ -208,3 +208,23 @@ describe("validateReport: every missing required field is reported at once, befo
     expect(classifyFailure("INVALID_INPUT", "Enter a target.").banner).toBe("Enter a target.");
   });
 });
+
+describe("unadded evidence and files block submission instead of being silently dropped", () => {
+  const complete = { target: "app.example.com", title: "XSS", weaknessType: "xss", description: "steps", impact: "session theft", policyRequired: false, policyAccepted: false };
+
+  it("flags a chosen-but-not-added file and typed-but-not-added evidence", async () => {
+    const { validateReport } = await import("../../components/reports/create-report-form");
+    const errors = validateReport({ ...complete, unaddedFileName: "poc.png", unaddedEvidence: "curl ..." });
+    expect(errors.attachmentError).toContain("poc.png");
+    expect(errors.evidenceError).toBeTruthy();
+    expect(validateReport({ ...complete, unaddedFileName: null, unaddedEvidence: "  " })).toEqual({});
+  });
+
+  it("fileProblem mirrors the server's upload checks", async () => {
+    const { fileProblem } = await import("../../components/reports/report-evidence");
+    expect(fileProblem(new File([], "empty.png"))).toBe("The selected file is empty.");
+    expect(fileProblem(new File([new Uint8Array(10 * 1024 * 1024 + 1)], "big.png"))).toBe("File must be 10 MB or smaller.");
+    expect(fileProblem(new File(["x"], `${"a".repeat(252)}.png`))).toBe("File name must be 255 characters or fewer.");
+    expect(fileProblem(new File(["x"], "ok.png"))).toBeNull();
+  });
+});
