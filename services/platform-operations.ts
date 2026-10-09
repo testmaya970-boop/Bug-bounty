@@ -293,6 +293,18 @@ export async function reinstateResearcherPlatformWide(userId: string, reason: st
   }
 }
 
+/** Undoes a self-service deactivation (deactivate_my_account) -- the "contact support"
+ * path the deactivation page promises. Refused for an account a platform admin deleted
+ * (see db/migrations/202610090001_reactivate_account.sql). */
+export async function reactivateAccountPlatformWide(email: string, reason: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.reactivate_account_platform_wide", [email, reason]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
 /** Irreversible: scrubs the account's PII and blocks sign-in forever (reuses
  * users.deactivated_at, the same column a self-service deactivation sets -- see
  * db/migrations/202610010001_delete_researcher_and_audit_log_viewer.sql for why a real row

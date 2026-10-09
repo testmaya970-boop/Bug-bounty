@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/form";
-import { deleteResearcherAction, reinstateResearcherAction, suspendResearcherAction } from "../../actions/platform-operations";
+import { deleteResearcherAction, reactivateAccountAction, reinstateResearcherAction, suspendResearcherAction } from "../../actions/platform-operations";
 
 /** The "suspend by username" form -- a researcher who is not yet suspended has no other
  * list this page could show them in, so this takes a username directly (same input pattern
@@ -129,6 +129,58 @@ export function ReinstateResearcherForm({ userId }: { userId: string }) {
           Reinstate
         </Button>
       </div>
+    </form>
+  );
+}
+
+/** Undoes a user's own deactivation -- the "contact support" path the deactivation page
+ * promises. Keyed by email (what a person writing to support gives), any account type.
+ * Accounts deleted by a platform admin are refused by the database. */
+export function ReactivateAccountForm() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (pending) return;
+    setError(null);
+    setDone(null);
+    startTransition(async () => {
+      const result = await reactivateAccountAction({ email, reason });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setDone(`${email.trim()} can sign in again.`);
+      setEmail("");
+      setReason("");
+      router.refresh();
+    });
+  }
+
+  return (
+    <form className="space-y-3 rounded-lg border border-border bg-surface p-4" onSubmit={handleSubmit} noValidate>
+      <div>
+        <p className="text-sm font-semibold text-ink">Reactivate a deactivated account</p>
+        <p className="mt-1 text-sm text-ink-muted">For someone who deactivated their own account and asked to come back. Accounts deleted by a platform admin can't be reactivated.</p>
+      </div>
+      <Input label="Account email" type="email" placeholder="name@example.com" required value={email} onChange={(event) => setEmail(event.target.value)} />
+      <Textarea label="Explain why this account is being reactivated" required value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} />
+      <div className="flex justify-end">
+        <Button type="submit" pending={pending}>
+          Reactivate
+        </Button>
+      </div>
+      {done && <p className="text-xs font-medium text-success">{done}</p>}
+      {error && (
+        <p role="alert" className="text-xs font-medium text-danger">
+          {error}
+        </p>
+      )}
     </form>
   );
 }

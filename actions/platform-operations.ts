@@ -13,6 +13,7 @@ import {
   reinstateOrganization,
   reinstateProgram,
   reinstateResearcherPlatformWide,
+  reactivateAccountPlatformWide,
   replayDeadLetteredOutboxEvent,
   suspendOrganization,
   suspendProgram,
@@ -259,6 +260,31 @@ export async function deleteResearcherAction(input: { username: string; reason: 
       revalidatePath("/platform/researchers");
       return { ok: true as const };
     });
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
+    throw error;
+  }
+}
+
+const reactivateAccountSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter the account's email address."),
+  reason: z.string().trim().min(1, "Explain why this account is being reactivated.").max(2000, "Use 2000 characters or fewer."),
+});
+
+/** Authorization and the email lookup both happen inside the database
+ * (reactivate_account_platform_wide checks private.is_platform_admin() itself), so -- like
+ * reinstateResearcherAction -- no service-role lookup or extra admin check is needed here. */
+export async function reactivateAccountAction(input: { email: string; reason: string }) {
+  const parsed = reactivateAccountSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the request and try again." };
+
+  const user = await getCurrentUser();
+  if (!user) return { ok: false as const, code: "AUTH_REQUIRED", message: "Your session has expired. Sign in again to continue." };
+
+  try {
+    await withRequestLogging("platform.account.reactivate", { actorId: user.id }, () => reactivateAccountPlatformWide(parsed.data.email, parsed.data.reason));
+    revalidatePath("/platform/researchers");
+    return { ok: true as const };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
     throw error;
