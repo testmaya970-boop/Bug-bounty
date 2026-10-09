@@ -90,7 +90,7 @@ export function AuthLayout({
           same light surface-muted/border tokens as the rest of the app, with a left rule
           in the variant's accent color as the one visual distinguishing mark (instead of
           a dot-grid texture + color inversion). */}
-      <div className="relative overflow-hidden border-b border-border bg-surface-muted px-4 py-8 lg:flex lg:w-[26rem] lg:shrink-0 lg:flex-col lg:justify-between lg:border-b-0 lg:border-r lg:py-12 lg:px-6">
+      <div className="relative overflow-hidden border-b border-border bg-surface-muted px-4 py-8 lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[26rem] lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r lg:py-12 lg:px-6">
         <div aria-hidden="true" className={cn("absolute inset-y-0 left-0 w-1", isAccent2 ? "bg-accent-2" : "bg-action")} />
         <div className="relative flex items-center gap-3">
           <Link
@@ -104,11 +104,11 @@ export function AuthLayout({
           </Link>
           <span className="hidden border-l border-border pl-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted sm:inline">Security operations</span>
         </div>
-        <p className="relative mt-6 flex max-w-sm items-center gap-2 text-lg font-semibold tracking-tight text-ink lg:mt-0">
+        <p className="relative mt-6 flex max-w-sm items-center gap-2 text-lg font-semibold tracking-tight text-ink lg:mt-16">
           <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full motion-safe:animate-[signal-pulse-once_900ms_ease-out_1]", isAccent2 ? "bg-accent-2" : "bg-action")} />
           {identity.tagline}
         </p>
-        <div className="relative mt-8 hidden lg:block">
+        <div className="relative mt-10 hidden lg:block">
           <WorkflowDiagram stages={identity.stages} tone="default" />
         </div>
       </div>
