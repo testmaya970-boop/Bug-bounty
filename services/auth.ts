@@ -171,8 +171,11 @@ export async function signInWithPassword(email: string, password: string): Promi
     if (!user.email_verified_at) {
       throw new AuthServiceError("Confirm your email address before signing in.", "EMAIL_NOT_CONFIRMED");
     }
+    // The password was already proven correct above, so naming the real reason reveals
+    // nothing an attacker could use -- "Incorrect email or password" here sent people who
+    // had just reset their password round in circles.
     if (user.deactivated_at) {
-      throw new AuthServiceError("Incorrect email or password.", "INVALID_CREDENTIALS");
+      throw new AuthServiceError("This account has been deactivated. Contact support to reactivate it.", "ACCOUNT_DEACTIVATED");
     }
 
     const { userAgent, ip } = await currentUserAgentAndIp();
@@ -270,10 +273,11 @@ export async function requestPasswordReset(email: string): Promise<void> {
   const origin = getNativeEnv().APP_ORIGIN;
 
   await withServiceRoleTransaction(async (client) => {
-    // Confirmed accounts only: a sign-up whose code was never entered is not a registered
-    // account, so it gets no reset email (signing up again re-sends its code). The caller
+    // Confirmed, active accounts only: a sign-up whose code was never entered is not a
+    // registered account (signing up again re-sends its code), and a deactivated one can't
+    // sign in whatever its password -- a reset would only mislead. The caller
     // shows the same neutral message either way, so this reveals nothing.
-    const { rows } = await client.query<{ id: string }>("select id from public.users where email = $1 and email_verified_at is not null", [normalizedEmail]);
+    const { rows } = await client.query<{ id: string }>("select id from public.users where email = $1 and email_verified_at is not null and deactivated_at is null", [normalizedEmail]);
     const user = rows[0];
     if (!user) return;
 
@@ -376,7 +380,11 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
 
   const userId = await withServiceRoleTransaction(async (client) => {
     const result = await consumePasswordResetToken(client, token);
-    if (!result) {
+    // A link issued before the account was deactivated must not "succeed" either.
+    const { rows: active } = result
+      ? await client.query("select 1 from public.users where id = $1 and deactivated_at is null", [result.userId])
+      : { rows: [] };
+    if (!result || active.length === 0) {
       throw new AuthServiceError("This link has expired or was already used. Request a new one.", "SESSION_EXPIRED");
     }
     // Using the emailed link proves inbox ownership, so it also verifies the email --

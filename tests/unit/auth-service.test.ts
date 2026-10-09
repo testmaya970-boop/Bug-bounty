@@ -245,6 +245,7 @@ describe("auth service: confirmPasswordReset requires a valid, unconsumed reset 
     fakeClient.query.mockImplementation(async (sql: string) => {
       queries.push(sql);
       if (sql.includes("update public.password_reset_tokens")) return queryReturning([{ user_id: "user-1" }]);
+      if (sql.includes("deactivated_at is null")) return queryReturning([{ "?column?": 1 }]); // an active account
       return queryReturning([]);
     });
     const { confirmPasswordReset } = await import("../../services/auth");
@@ -253,6 +254,49 @@ describe("auth service: confirmPasswordReset requires a valid, unconsumed reset 
 
     expect(queries.some((q) => q.includes("update public.users set password_hash"))).toBe(true);
     expect(queries.some((q) => q.includes("delete from public.sessions where user_id"))).toBe(true);
+  });
+
+  it("refuses a still-valid link for a DEACTIVATED account -- no fake 'password updated'", async () => {
+    const queries: string[] = [];
+    fakeClient.query.mockImplementation(async (sql: string) => {
+      queries.push(sql);
+      if (sql.includes("update public.password_reset_tokens")) return queryReturning([{ user_id: "user-1" }]);
+      return queryReturning([]); // the active-account check finds nothing
+    });
+    const { confirmPasswordReset } = await import("../../services/auth");
+
+    await expect(confirmPasswordReset("good-token", "a-new-strong-password")).rejects.toMatchObject({ code: "SESSION_EXPIRED" });
+    expect(queries.some((q) => q.includes("update public.users set password_hash"))).toBe(false);
+  });
+});
+
+describe("auth service: a deactivated account", () => {
+  it("is told it is deactivated (after a correct password), not 'Incorrect email or password'", async () => {
+    const { hashPassword } = await import("../../lib/auth/password");
+    const passwordHash = await hashPassword("the-right-password-1!");
+    fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ check_sign_in_rate_limit: true }]);
+      if (sql.includes("from public.users where email")) return queryReturning([{ id: "user-1", password_hash: passwordHash, email_verified_at: "2026-10-01T00:00:00Z", deactivated_at: "2026-10-05T00:00:00Z" }]);
+      return queryReturning([]);
+    });
+    const { signInWithPassword } = await import("../../services/auth");
+
+    await expect(signInWithPassword("gone@example.test", "the-right-password-1!")).rejects.toMatchObject({ code: "ACCOUNT_DEACTIVATED" });
+    // A wrong password still gets the generic answer, revealing nothing.
+    await expect(signInWithPassword("gone@example.test", "wrong-password-1!")).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
+  });
+
+  it("gets no reset email", async () => {
+    let lookupSql = "";
+    fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("from public.users where email")) lookupSql = sql;
+      return queryReturning([]);
+    });
+    const { requestPasswordReset } = await import("../../services/auth");
+
+    await requestPasswordReset("gone@example.test");
+
+    expect(lookupSql).toContain("deactivated_at is null");
   });
 });
 
