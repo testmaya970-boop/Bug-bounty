@@ -16,7 +16,7 @@ export default async function EmailAndPasswordSettingsPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-ink">Password</h2>
-        <ChangePasswordForm />
+        <ChangePasswordForm email={user.email ?? ""} />
       </section>
 
       <section className="space-y-3 border-t border-border pt-6">

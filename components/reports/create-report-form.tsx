@@ -73,7 +73,32 @@ const RESEARCHER_SEVERITY_OPTIONS: { value: ReportSeverity | ""; label: string }
  * the wrong field). Never a raw SQLSTATE/Postgres detail reaches this component --
  * services/rpc-error.ts's mapRpcError already guarantees that upstream.
  */
-export type SubmitFailure = { banner?: string; titleError?: string; descriptionError?: string; targetError?: string; weaknessTypeError?: string; impactError?: string };
+export type SubmitFailure = { banner?: string; titleError?: string; descriptionError?: string; targetError?: string; weaknessTypeError?: string; impactError?: string; policyError?: string };
+
+type FieldErrors = Omit<SubmitFailure, "banner">;
+
+const FIELD_NAMES: Record<keyof FieldErrors, string> = {
+  targetError: "Target",
+  titleError: "Title",
+  weaknessTypeError: "Weakness type",
+  descriptionError: "Description",
+  impactError: "Impact",
+  policyError: "Program policy",
+};
+
+/** Every required field checked at once, before anything is sent -- the same rules the
+ * server enforces (actions/reports.ts's submitSchema), so a researcher sees every gap in
+ * one pass instead of fixing them one server round trip at a time. */
+export function validateReport(fields: { target: string; title: string; weaknessType: string; description: string; impact: string; policyRequired: boolean; policyAccepted: boolean }): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!fields.target.trim()) errors.targetError = "Enter the target where you found the issue.";
+  if (!fields.title.trim()) errors.titleError = "Enter a short title for the report.";
+  if (!fields.weaknessType) errors.weaknessTypeError = "Select the type of weakness you found.";
+  if (!fields.description.trim()) errors.descriptionError = "Describe how to reproduce the issue.";
+  if (!fields.impact.trim()) errors.impactError = "Explain the impact: what an attacker could achieve.";
+  if (fields.policyRequired && !fields.policyAccepted) errors.policyError = "Read and accept the program policy before submitting.";
+  return errors;
+}
 
 export function classifyFailure(code: string, message: string): SubmitFailure {
   switch (code) {
@@ -111,6 +136,11 @@ export function classifyFailure(code: string, message: string): SubmitFailure {
       return { weaknessTypeError: "Select the type of weakness you found." };
     case "INVALID_IMPACT":
       return { impactError: message };
+    case "POLICY_NOT_ACKNOWLEDGED":
+      return { policyError: "The program policy changed. Read and accept the current version before submitting." };
+    case "INVALID_INPUT":
+      // The server's own validation message (actions/reports.ts) -- specific and safe.
+      return { banner: message };
     default:
       return { banner: "The request could not be completed. Try again in a moment." };
   }
@@ -201,6 +231,10 @@ export function CreateReportForm({
   const [impactPrompt, setImpactPrompt] = useState<string | null>(null);
   const [researcherSeverity, setResearcherSeverity] = useState<ReportSeverity | "">("");
   const [failure, setFailure] = useState<SubmitFailure | null>(null);
+  // After the first submit attempt, required-field errors are recomputed on every render,
+  // so each message disappears the moment its field is fixed.
+  const [validationAttempted, setValidationAttempted] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
 
   // Real published in-scope targets for the currently-selected asset type, offered as
@@ -337,10 +371,28 @@ export function CreateReportForm({
     if (description.trim().length === 0) setDescription(template.descriptionScaffold);
   }
 
+  function fieldErrorsNow(): FieldErrors {
+    return validateReport({ target, title, weaknessType, description, impact, policyRequired: Boolean(policy), policyAccepted });
+  }
+  const clientErrors = validationAttempted ? fieldErrorsNow() : {};
+  // A client-side gap wins over a stale server message for the same field.
+  const errors: FieldErrors = { ...failure, ...clientErrors };
+  const missing = (Object.keys(clientErrors) as (keyof FieldErrors)[]).map((key) => FIELD_NAMES[key]);
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (pending) return;
     setFailure(null);
+    setValidationAttempted(true);
+    if (Object.keys(fieldErrorsNow()).length > 0) {
+      // Jump to the first problem; the messages stay live and clear as each is fixed.
+      requestAnimationFrame(() => {
+        const first = formRef.current?.querySelector<HTMLElement>("[aria-invalid='true']");
+        first?.scrollIntoView({ behavior: "smooth", block: "center" });
+        first?.focus({ preventScroll: true });
+      });
+      return;
+    }
     startTransition(async () => {
       const result = await submitReportAction({
         organizationId,
@@ -388,7 +440,7 @@ export function CreateReportForm({
 
   return (
     <Card className="p-5 sm:p-6">
-      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+      <form ref={formRef} className="space-y-5" onSubmit={handleSubmit} noValidate>
         <p className="text-sm text-ink-muted">
           Reporting to <span className="font-medium text-ink">{programName}</span>. Your target must be inside this program&apos;s current scope. The server makes the final
           scope decision, not this form.
@@ -439,7 +491,7 @@ export function CreateReportForm({
               helperText={TARGET_HELPER_TEXT[assetType]}
               className="[&_input]:font-mono"
               maxLength={2048}
-              error={failure?.targetError}
+              error={errors.targetError}
               list={matchingScopeTargets.length > 0 ? "in-scope-targets" : undefined}
             />
             {matchingScopeTargets.length > 0 && (
@@ -464,7 +516,7 @@ export function CreateReportForm({
               onChange={(event) => setTitle(event.target.value)}
               maxLength={200}
               placeholder="Short, specific summary of the vulnerability"
-              error={failure?.titleError}
+              error={errors.titleError}
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
@@ -472,7 +524,7 @@ export function CreateReportForm({
                 required
                 value={weaknessType}
                 onChange={(event) => handleWeaknessTypeChange(event.target.value as ReportWeaknessType)}
-                error={failure?.weaknessTypeError}
+                error={errors.weaknessTypeError}
               >
                 <option value="" disabled>
                   Select…
@@ -511,7 +563,7 @@ export function CreateReportForm({
               onChange={setDescription}
               maxLength={20000}
               rows={12}
-              error={failure?.descriptionError}
+              error={errors.descriptionError}
             />
           </div>
         </div>
@@ -528,7 +580,7 @@ export function CreateReportForm({
               onChange={setImpact}
               maxLength={20000}
               rows={8}
-              error={failure?.impactError}
+              error={errors.impactError}
             />
           </div>
         </div>
@@ -644,11 +696,23 @@ export function CreateReportForm({
               required
               checked={policyAccepted}
               onChange={(event) => setPolicyAccepted(event.target.checked)}
+              aria-invalid={Boolean(errors.policyError)}
+              aria-describedby={errors.policyError ? "policy-error" : undefined}
             />
+            {errors.policyError && (
+              <p id="policy-error" role="alert" className="text-sm font-medium text-danger">
+                {errors.policyError}
+              </p>
+            )}
           </div>
         )}
 
-        {failure?.banner && <Alert tone="danger" title={failure.banner} />}
+        {missing.length > 0 && (
+          <Alert tone="danger" title={`Complete ${missing.length === 1 ? "1 required field" : `${missing.length} required fields`} before submitting`}>
+            {missing.join(", ")}.
+          </Alert>
+        )}
+        {missing.length === 0 && failure?.banner && <Alert tone="danger" title={failure.banner} />}
 
         <div className="flex justify-end gap-2">
           <Button type="submit" pending={pending}>

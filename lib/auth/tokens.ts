@@ -54,13 +54,16 @@ export async function consumePasswordResetToken(client: PoolClient, token: strin
  * showing the "choose a new password" form, so merely loading that page never burns the
  * token (confirmPasswordResetToken below re-checks and consumes atomically once the new
  * password is actually submitted). */
-export async function peekPasswordResetToken(client: PoolClient, token: string): Promise<TokenLookupResult> {
-  const { rows } = await client.query<{ user_id: string }>(
-    `select user_id from public.password_reset_tokens where token_hash = $1 and consumed_at is null and expires_at > now()`,
+export async function peekPasswordResetToken(client: PoolClient, token: string): Promise<{ userId: string; email: string } | null> {
+  // The email lets the reset page name the account (and gives password managers the
+  // username to save the new password against).
+  const { rows } = await client.query<{ user_id: string; email: string }>(
+    `select t.user_id, u.email from public.password_reset_tokens t join public.users u on u.id = t.user_id
+     where t.token_hash = $1 and t.consumed_at is null and t.expires_at > now()`,
     [hashToken(token)],
   );
   const row = rows[0];
-  return row ? { userId: row.user_id } : null;
+  return row ? { userId: row.user_id, email: row.email } : null;
 }
 
 /** Not used for token verification (the UPDATE...RETURNING lookup by hash above is

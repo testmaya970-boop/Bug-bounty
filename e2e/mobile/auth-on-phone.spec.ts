@@ -53,7 +53,8 @@ async function signUp(page: Page, intent: "researcher" | "organization", email: 
   if (intent === "organization") await page.getByLabel("Organization name").fill("Phone Test Org");
   else await page.getByLabel("Your name").fill("Phone Tester");
   await page.getByLabel("Email").fill(email);
-  await page.getByRole("textbox", { name: "Password" }).fill(password);
+  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
+  await page.getByRole("textbox", { name: "Confirm password" }).fill(password);
   await page.getByRole("button", { name: "Create account" }).tap();
   await expect(page.getByLabel("Verification code")).toBeVisible();
 }
@@ -62,7 +63,9 @@ async function enterCode(page: Page, email: string) {
   await plantSignupCode(email, "246810");
   await page.getByLabel("Verification code").fill("246810");
   await page.getByRole("button", { name: "Verify" }).tap();
-  await page.waitForURL((url) => !/sign-up|sign-in/.test(url.pathname));
+  // Poll where the page ends up, not one navigation event: WebKit sometimes reports the
+  // hard navigation as "interrupted" by a follow-up redirect even though it lands fine.
+  await expect(page).toHaveURL((url) => !/sign-up|sign-in/.test(url.pathname));
 }
 
 async function signIn(page: Page, email: string, password: string) {
@@ -160,6 +163,8 @@ test("password reset from the emailed link works end to end on the phone", async
   // Redirected to the app's own origin, never to a localhost the phone can't reach.
   expect(new URL(page.url()).origin).toBe(new URL(baseURL!).origin);
   await expect(page).toHaveURL(/\/reset-password\?token=/);
+  // The page names the account -- also the username a password manager saves against.
+  await expect(page.getByRole("textbox", { name: "Account" })).toHaveValue(email);
 
   // A typo in the confirmation is caught before anything is submitted.
   await page.getByRole("textbox", { name: "New password", exact: true }).fill(SECOND_PASSWORD);
@@ -172,8 +177,13 @@ test("password reset from the emailed link works end to end on the phone", async
   await page.getByRole("button", { name: "Update password" }).tap();
   await page.waitForURL(/\/sign-in\?reset=success/);
 
+  // The old password stops working; the new one signs in to a signed-in-only page.
+  await signIn(page, email, FIRST_PASSWORD);
+  await expect(page.getByText("Incorrect email or password.")).toBeVisible();
   await signIn(page, email, SECOND_PASSWORD);
   await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
+  await page.goto("/settings/password");
+  await expect(page).toHaveURL(/\/settings\/password/);
 
   // The link is single-use.
   await context.clearCookies();

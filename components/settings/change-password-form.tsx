@@ -10,7 +10,7 @@ import { changeMyPasswordAction } from "../../actions/account";
 /** In-session password change -- a real, distinct path from the forgot-password recovery
  * flow (which requires a fresh recovery-email session instead). See
  * docs/decisions/0055. */
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ email }: { email: string }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -43,6 +43,9 @@ export function ChangePasswordForm() {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+      {/* Hidden username for the browser's password manager, so it saves the new password
+          against this account (see reset-password-form.tsx). */}
+      <input type="email" name="username" autoComplete="username" value={email} readOnly hidden aria-hidden="true" />
       <PasswordInput label="Current password" autoComplete="current-password" required value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); setSaved(false); }} />
       <PasswordInput
         label="New password"

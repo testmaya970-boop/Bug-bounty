@@ -35,7 +35,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
 
   return (
     <AuthLayout eyebrow="Unpatched" title="Choose a new password" description="Set a new password for your Unpatched account.">
-      <ResetPasswordForm token={token} />
+      <ResetPasswordForm token={token} email={valid.email} />
     </AuthLayout>
   );
 }

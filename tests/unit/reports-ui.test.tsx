@@ -183,3 +183,28 @@ describe("StatusBadge (report status)", () => {
     }
   });
 });
+
+describe("validateReport: every missing required field is reported at once, before submitting", () => {
+  const complete = { target: "app.example.com", title: "XSS", weaknessType: "xss", description: "steps", impact: "session theft", policyRequired: true, policyAccepted: true };
+
+  it("returns nothing for a complete report", async () => {
+    const { validateReport } = await import("../../components/reports/create-report-form");
+    expect(validateReport(complete)).toEqual({});
+  });
+
+  it("flags every empty field together, treating whitespace as empty", async () => {
+    const { validateReport } = await import("../../components/reports/create-report-form");
+    const errors = validateReport({ target: " ", title: "", weaknessType: "", description: "\n", impact: "", policyRequired: true, policyAccepted: false });
+    expect(Object.keys(errors).sort()).toEqual(["descriptionError", "impactError", "policyError", "targetError", "titleError", "weaknessTypeError"]);
+  });
+
+  it("only asks for the policy when the program has one", async () => {
+    const { validateReport } = await import("../../components/reports/create-report-form");
+    expect(validateReport({ ...complete, policyRequired: false, policyAccepted: false })).toEqual({});
+  });
+
+  it("maps a stale policy version to the policy field, not the generic banner", () => {
+    expect(classifyFailure("POLICY_NOT_ACKNOWLEDGED", "x").policyError).toBeTruthy();
+    expect(classifyFailure("INVALID_INPUT", "Enter a target.").banner).toBe("Enter a target.");
+  });
+});

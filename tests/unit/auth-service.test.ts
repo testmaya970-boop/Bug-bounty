@@ -188,6 +188,26 @@ describe("auth service: requestPasswordReset is neutral to account existence", (
     expect(activeEmailProvider.send).toHaveBeenCalledWith(expect.objectContaining({ to: "real@example.test", subject: expect.stringContaining("Reset") }));
   });
 
+  it("only looks up CONFIRMED accounts, so an abandoned sign-up gets no reset email", async () => {
+    const { activeEmailProvider } = await import("../../lib/email-provider");
+    const sendMock = activeEmailProvider.send as ReturnType<typeof vi.fn>;
+    sendMock.mockClear();
+    let lookupSql = "";
+    fakeClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("from public.users where email")) {
+        lookupSql = sql;
+        return queryReturning([]); // what the verified-only lookup returns for an unconfirmed sign-up
+      }
+      return queryReturning([]);
+    });
+    const { requestPasswordReset } = await import("../../services/auth");
+
+    await expect(requestPasswordReset("abandoned@example.test")).resolves.toBeUndefined();
+
+    expect(lookupSql).toContain("email_verified_at is not null");
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
   it("emails a link on the configured public origin, so it opens on a phone -- never localhost or the request's Host", async () => {
     const { activeEmailProvider } = await import("../../lib/email-provider");
     const sendMock = activeEmailProvider.send as ReturnType<typeof vi.fn>;

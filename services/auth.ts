@@ -270,7 +270,10 @@ export async function requestPasswordReset(email: string): Promise<void> {
   const origin = getNativeEnv().APP_ORIGIN;
 
   await withServiceRoleTransaction(async (client) => {
-    const { rows } = await client.query<{ id: string }>("select id from public.users where email = $1", [normalizedEmail]);
+    // Confirmed accounts only: a sign-up whose code was never entered is not a registered
+    // account, so it gets no reset email (signing up again re-sends its code). The caller
+    // shows the same neutral message either way, so this reveals nothing.
+    const { rows } = await client.query<{ id: string }>("select id from public.users where email = $1 and email_verified_at is not null", [normalizedEmail]);
     const user = rows[0];
     if (!user) return;
 
@@ -342,7 +345,7 @@ export async function verifySignupCode(email: string, code: string): Promise<{ u
  * viewed but not used (e.g. the reset page loaded but the form never submitted) is not
  * burned by merely checking it exists. This function is read-only: it never mutates
  * consumed_at, matching that intent. */
-export async function peekPasswordResetToken(token: string): Promise<{ userId: string } | null> {
+export async function peekPasswordResetToken(token: string): Promise<{ userId: string; email: string } | null> {
   return withServiceRoleTransaction((client) => peekPasswordResetTokenLib(client, token));
 }
 

@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { PasswordInput, passwordStrengthLabel, passwordStrengthLevel } from "./password-input";
 import { PASSWORD_RULE_TEXT, passwordProblem } from "../../lib/auth/password-policy";
 import { Button } from "../ui/button";
+import { Input } from "../ui/form";
 import { resetPasswordAction } from "../../actions/auth";
 
-export function ResetPasswordForm({ token }: { token: string }) {
+export function ResetPasswordForm({ token, email }: { token: string; email: string }) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,6 +38,10 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+      {/* Names the account being reset -- and gives the browser's password manager the
+          username, so it updates THIS account's saved password. Without it, Chrome kept
+          autofilling the old password on sign-in ("Incorrect email or password"). */}
+      <Input label="Account" type="email" name="username" autoComplete="username" value={email} readOnly />
       <PasswordInput
         label="New password"
         autoComplete="new-password"
