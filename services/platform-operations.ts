@@ -293,6 +293,21 @@ export async function reinstateResearcherPlatformWide(userId: string, reason: st
   }
 }
 
+export type AdminAccountMatch = { id: string; username: string; displayName: string; email: string | null; isSuspended: boolean; deactivatedAt: string | null };
+
+/** Researchers matching a username / name / email fragment, for the admin forms' search
+ * box (db/migrations/202610090002_admin_account_search.sql). Platform admins only. */
+export async function searchAccountsForAdmin(query: string, onlyDeactivated = false): Promise<AdminAccountMatch[]> {
+  const actor = await getCurrentUser();
+  let rows: { id: string; username: string; display_name: string; email: string | null; is_suspended: boolean; deactivated_at: string | null }[];
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.search_accounts_for_admin", [query, onlyDeactivated]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({ id: row.id, username: row.username, displayName: row.display_name, email: row.email, isSuspended: row.is_suspended, deactivatedAt: row.deactivated_at }));
+}
+
 /** Undoes a self-service deactivation (deactivate_my_account) -- the "contact support"
  * path the deactivation page promises. Refused for an account a platform admin deleted
  * (see db/migrations/202610090001_reactivate_account.sql). */

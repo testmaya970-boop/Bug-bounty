@@ -71,7 +71,8 @@ async function reactivateAsAdmin(page: Page, email: string) {
   await signIn(page, "e2e.platform-admin@unpatched.demo", "E2ESeed!2026");
   await expect(page).toHaveURL((url) => !url.pathname.startsWith("/sign-in"));
   await page.goto("/platform/researchers");
-  await page.getByLabel("Account email").fill(email);
+  await page.getByRole("combobox", { name: "Deactivated account" }).fill(email);
+  await page.getByRole("option").filter({ hasText: email }).click();
   await page.getByLabel("Explain why this account is being reactivated").fill("E2E: user asked to come back");
   await page.getByRole("button", { name: "Reactivate" }).click();
 }
@@ -113,8 +114,69 @@ test("an account deleted by a platform admin can't be reactivated", async ({ pag
   // What delete_researcher_platform_wide leaves behind (deactivated + this audit entry).
   await asServiceRole((db) => db.query("insert into public.audit_logs (actor_id, organization_id, action, entity_type, entity_id, metadata) values (null, null, 'platform.researcher_deleted', 'user', $1, '{}')", [userId]));
 
-  await reactivateAsAdmin(page, email);
-  await expect(page.getByRole("alert").filter({ hasText: "deleted by a platform admin" })).toBeVisible();
+  // The admin search doesn't even offer it...
+  await page.context().clearCookies();
+  await signIn(page, "e2e.platform-admin@unpatched.demo", "E2ESeed!2026");
+  await expect(page).toHaveURL((url) => !url.pathname.startsWith("/sign-in"));
+  await page.goto("/platform/researchers");
+  await page.getByRole("combobox", { name: "Deactivated account" }).fill(email);
+  await expect(page.getByText(/No deactivated researcher matches/)).toBeVisible();
+
+  // ...and the database refuses it even if asked directly, as a platform admin.
+  const adminId = await asServiceRole(async (db) => (await db.query("select id from public.users where email = 'e2e.platform-admin@unpatched.demo'")).rows[0].id);
+  const client = new pg.Client({ connectionString: databaseUrl() });
+  await client.connect();
+  try {
+    await client.query("begin");
+    await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: adminId, role: "authenticated" })]);
+    await client.query("set local role authenticated");
+    await expect(client.query("select public.reactivate_account_platform_wide($1, 'try')", [email])).rejects.toThrow(/ACCOUNT_DELETED/);
+  } finally {
+    await client.query("rollback").catch(() => {});
+    await client.end();
+  }
   const still = await asServiceRole(async (db) => (await db.query("select deactivated_at from public.users where id = $1", [userId])).rows[0].deactivated_at);
   expect(still).not.toBeNull();
+});
+
+test("admin finds a researcher by part of their email, suspends, then deletes them from the dropdown", async ({ page }) => {
+  const email = freshEmail("search");
+  await signUpVerified(page, email);
+
+  await page.context().clearCookies();
+  await signIn(page, "e2e.platform-admin@unpatched.demo", "E2ESeed!2026");
+  await expect(page).toHaveURL((url) => !url.pathname.startsWith("/sign-in"));
+  await page.goto("/platform/researchers");
+
+  const suspendForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Suspend" }) });
+  const fragment = email.split("@")[0].slice(-10); // a piece of the address, not the whole thing
+  await suspendForm.getByRole("combobox", { name: "Researcher" }).fill(fragment);
+  const option = suspendForm.getByRole("option").filter({ hasText: email });
+  await expect(option).toContainText("Active");
+  await suspendForm.getByRole("combobox", { name: "Researcher" }).press("ArrowDown");
+  await option.click();
+  await expect(suspendForm.getByText(email)).toBeVisible(); // selected account shown
+  await suspendForm.getByLabel("Explain why this account is being suspended").fill("E2E: search suspend");
+  await suspendForm.getByRole("button", { name: "Suspend" }).click();
+  await expect(page.getByText(email).first()).toBeVisible(); // now listed under Currently suspended
+
+  // Nothing matches: a helpful message, not a blank list.
+  await suspendForm.getByRole("combobox", { name: "Researcher" }).fill("zz-no-such-researcher-zz");
+  await expect(suspendForm.getByText(/No researcher matches/)).toBeVisible();
+
+  const deleteForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Delete account" }) });
+  await deleteForm.getByRole("combobox", { name: "Researcher" }).fill(fragment);
+  await expect(deleteForm.getByRole("option").filter({ hasText: email })).toContainText("Suspended");
+  await deleteForm.getByRole("option").filter({ hasText: email }).click();
+  await deleteForm.getByLabel("Explain why this account is being deleted").fill("E2E: search delete");
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain(email); // the confirm names exactly who is deleted
+    void dialog.accept();
+  });
+  await deleteForm.getByRole("button", { name: "Delete account" }).click();
+  await expect(deleteForm.getByRole("combobox", { name: "Researcher" })).toBeVisible(); // form reset
+
+  // Deleted accounts drop out of search.
+  await deleteForm.getByRole("combobox", { name: "Researcher" }).fill(fragment);
+  await expect(deleteForm.getByText(/No researcher matches/)).toBeVisible();
 });

@@ -14,6 +14,8 @@ import {
   reinstateProgram,
   reinstateResearcherPlatformWide,
   reactivateAccountPlatformWide,
+  searchAccountsForAdmin,
+  type AdminAccountMatch,
   replayDeadLetteredOutboxEvent,
   suspendOrganization,
   suspendProgram,
@@ -162,7 +164,10 @@ export async function rejectProgramLaunchAction(input: { programId: string; reas
 // hyphens-only regex rejected every username this system can actually produce, so no real
 // account could ever be suspended or deleted through these forms. Found live via Playwright
 // verification of the delete form below.
-const USERNAME_REGEX = /^[a-z0-9_]{1,32}$/;
+// Matches users.username's own check (^[a-zA-Z0-9_]{3,32}$) -- this used to be
+// lowercase-only, so an account with a capital in its username could never be suspended or
+// deleted from the admin forms.
+const USERNAME_REGEX = /^[a-zA-Z0-9_]{1,32}$/;
 
 const suspendResearcherSchema = z.object({
   username: z
@@ -170,7 +175,7 @@ const suspendResearcherSchema = z.object({
     .trim()
     .min(1, "Enter a username.")
     .max(32, "Use 32 characters or fewer.")
-    .regex(USERNAME_REGEX, "Use lowercase letters, numbers, and underscores only."),
+    .regex(USERNAME_REGEX, "Use letters, numbers, and underscores only."),
   reason: z.string().trim().min(1, "Explain why this account is being suspended.").max(2000, "Use 2000 characters or fewer."),
 });
 
@@ -238,7 +243,7 @@ const deleteResearcherSchema = z.object({
     .trim()
     .min(1, "Enter a username.")
     .max(32, "Use 32 characters or fewer.")
-    .regex(USERNAME_REGEX, "Use lowercase letters, numbers, and underscores only."),
+    .regex(USERNAME_REGEX, "Use letters, numbers, and underscores only."),
   reason: z.string().trim().min(1, "Explain why this account is being deleted.").max(2000, "Use 2000 characters or fewer."),
 });
 
@@ -260,6 +265,21 @@ export async function deleteResearcherAction(input: { username: string; reason: 
       revalidatePath("/platform/researchers");
       return { ok: true as const };
     });
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
+    throw error;
+  }
+}
+
+const searchSchema = z.object({ query: z.string().trim().max(100), onlyDeactivated: z.boolean().optional() });
+
+/** Feeds the admin forms' search dropdown. Authorization lives in the database
+ * (search_accounts_for_admin checks private.is_platform_admin()). */
+export async function searchAccountsAction(input: { query: string; onlyDeactivated?: boolean }) {
+  const parsed = searchSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: "Check the search and try again." };
+  try {
+    return { ok: true as const, data: (await searchAccountsForAdmin(parsed.data.query, parsed.data.onlyDeactivated ?? false)) as AdminAccountMatch[] };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
     throw error;
