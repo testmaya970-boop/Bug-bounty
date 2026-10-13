@@ -70,9 +70,9 @@ function personaProvider(): IdentityProvider | null {
       // Persona-Signature: "t=<unix>,v1=<hex>" (two space-separated sets during rotation).
       const header = headers.get("persona-signature") ?? "";
       const sets = header.split(" ").map((part) => Object.fromEntries(part.split(",").map((kv) => kv.split("=") as [string, string])));
-      const valid = sets.some((s) => s.t && s.v1 && safeEqual(hmacSha256Hex(env.PERSONA_WEBHOOK_SECRET, `${s.t}.${rawBody}`), s.v1));
+      const valid = sets.find((s) => s.t && s.v1 && safeEqual(hmacSha256Hex(env.PERSONA_WEBHOOK_SECRET, `${s.t}.${rawBody}`), s.v1));
       if (!valid) throw new Error("invalid Persona signature");
-      assertFresh(Number(sets[0]?.t));
+      assertFresh(Number(valid.t));
       const event = JSON.parse(rawBody) as { data?: { attributes?: { name?: string; payload?: { data?: { id?: string } } } } };
       const name = event.data?.attributes?.name;
       const reference = event.data?.attributes?.payload?.data?.id;

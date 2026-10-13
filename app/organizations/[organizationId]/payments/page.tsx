@@ -15,6 +15,8 @@ import { listPaymentAttempts, listPaymentLedgerForBilling, type BillingLedgerRow
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 import { minorUnitsToDecimalString } from "../../../../lib/money";
 import { LocalTime } from "../../../../components/ui/local-time";
+import { HowPayingWorks } from "../../../../components/organizations/how-paying-works";
+import { getIntegrationStatuses } from "../../../../services/integrations";
 
 /** One figure per currency, summed as integers -- never blended across currencies. */
 function totalsByCurrency(rows: BillingLedgerRow[], pick: (row: BillingLedgerRow) => number): string {
@@ -49,7 +51,12 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
   const inFlight = await Promise.all(ledger.filter((row) => row.status === "processing").map(async (row) => [row.obligationId, (await listPaymentAttempts(row.obligationId))[0] ?? null] as const));
   const latestAttempt = new Map(inFlight);
 
-  const outstanding = ledger.filter((row) => row.status === "pending" || row.status === "processing" || row.status === "failed");
+  // Live and sandbox providers send the money themselves; manual (or not yet set up) needs a person.
+  const payoutRoutes = getIntegrationStatuses()
+    .filter((s) => s.module === "payments")
+    .map((s) => ({ label: s.route, automated: s.mode === "live" || s.mode === "sandbox" }));
+
+  const outstanding =ledger.filter((row) => row.status === "pending" || row.status === "processing" || row.status === "failed");
   const paid = ledger.filter((row) => row.status === "succeeded");
 
   return (
@@ -57,10 +64,10 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
         <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
-        <p className="text-sm text-ink-muted">
-          Every bounty is paid to the researcher in full. The platform fee is billed to your organization on top of it. Payouts happen outside Unpatched; record each
-          result here.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="max-w-2xl text-sm text-ink-muted">Every bounty is paid to the researcher in full. The platform fee is billed to your organization on top of it.</p>
+          <HowPayingWorks routes={payoutRoutes} />
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg border border-border bg-surface p-4">
