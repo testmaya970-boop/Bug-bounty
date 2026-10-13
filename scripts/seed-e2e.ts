@@ -851,6 +851,15 @@ async function main() {
   await withServiceRole((client) =>
     client.query("delete from public.bounty_acceptances a using public.reports r where r.id = a.report_id and r.program_id = $1 and r.title = $2", [publicProgram.id, resolvedTitle]),
   );
+  // Awards draw on the prepaid balance (202610140004): one confirmed deposit, large enough for
+  // every run's awards. Idempotent -- the reference can be claimed once.
+  await withServiceRole((client) =>
+    client.query(
+      `insert into public.organization_deposits (organization_id, currency, amount_minor_units, method, payer_reference, status, requested_by, reviewed_by, reviewed_at)
+       values ($1, 'USD', 100000000, 'wire', 'E2E-SEED-FUNDING', 'confirmed', $2, $3, now()) on conflict do nothing`,
+      [org.id, admin.id, platformAdmin.id],
+    ),
+  );
   await tryStep(
     withActor(admin.id, (client) => client.query("select public.create_payment_obligation((select id from public.reports where program_id = $1 and title = $2))", [publicProgram.id, resolvedTitle])),
     "create_payment_obligation (veteran report)",

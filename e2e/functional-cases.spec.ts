@@ -222,32 +222,6 @@ test("owner: organization description saves and survives a reload", async ({ pag
   await expect(page.getByText("Description updated.")).toBeVisible();
 });
 
-test("billing admin pays a bounty end to end: initiate, record success, ledger shows Paid", async ({ page }) => {
-  const { organizationId } = await fixture();
-  await signIn(page, "e2e.billing-admin@unpatched.demo");
-  await page.goto(`/organizations/${organizationId}/payments`);
-  const row = page.getByRole("row").filter({ hasText: "E2E seed: resolved report with finalized bounty" });
-  await expect(row.getByText("Pending")).toBeVisible(); // seed:e2e recreates it every run
-
-  await row.getByRole("button", { name: "Initiate manual payout" }).click();
-  const confirm = page.getByRole("dialog", { name: "Initiate a manual payout?" });
-  await expect(confirm.getByText("USD 1500.00")).toBeVisible(); // researcher gets the full bounty; the fee is billed separately
-  await confirm.getByRole("button", { name: "Initiate payout" }).click();
-  await expect(row.getByText("Processing")).toBeVisible();
-
-  await row.getByRole("button", { name: "Record payout result" }).click();
-  const record = page.getByRole("dialog", { name: "Record the outcome of this payout attempt" });
-  await record.getByLabel("Outcome").selectOption("succeeded");
-  await record.getByLabel("Transfer reference").fill("WIRE-E2E-001");
-  await record.getByRole("button", { name: "Continue" }).click();
-  await record.getByRole("button", { name: "Confirm" }).click();
-  await expect(row.getByText("Paid")).toBeVisible();
-
-  await page.reload();
-  await expect(page.getByRole("row").filter({ hasText: "E2E seed: resolved report with finalized bounty" }).getByText("Paid")).toBeVisible();
-  await expect(page.getByText("USD 1500.00").first()).toBeVisible(); // "Paid to researchers" total
-});
-
 test("ctf: an empty or wrong flag is refused with a clear message", async ({ page }) => {
   await signIn(page);
   await page.goto("/ctf");

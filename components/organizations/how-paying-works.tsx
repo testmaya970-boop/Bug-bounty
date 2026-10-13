@@ -22,31 +22,32 @@ export function HowPayingWorks({ routes }: { routes: PayoutRoute[] }) {
       </Button>
       <Dialog open={open} title="How paying works" onClose={() => setOpen(false)}>
         <ol className="space-y-5 text-sm text-ink-muted">
-          <Step n={1} title="You award a bounty">
-            Finalizing a bounty creates a payment: the bounty plus a {PLATFORM_FEE_PERCENT}% platform fee. The researcher gets the full bounty; the fee is billed to you on top and is
-            never deducted from them.
+          <Step n={1} title="You add funds">
+            Send money to Unpatched by UPI, IMPS, NEFT or RTGS in rupees, or by wire or ACH in US dollars, with your organization&apos;s code in the remarks. Then report the transfer
+            under <span className="font-medium text-ink">Add funds</span>. It becomes available to award once we see it arrive in our account.
           </Step>
-          <Step n={2} title="Unpatched checks the researcher can be paid">
+          <Step n={2} title="You award a bounty">
+            Awarding takes the bounty plus a {PLATFORM_FEE_PERCENT}% platform fee from your balance straight away, so the money is set aside. If the balance can&apos;t cover it, the
+            award waits until you add funds. The researcher always gets the full bounty.
+          </Step>
+          <Step n={3} title="Unpatched checks the researcher can be paid">
             Before any money moves, the researcher needs a verified identity, an approved tax form and a payout method. You see only whether each is ready. Identity documents, tax
             IDs and bank or PayPal details stay with Unpatched and are never shown to your organization.
           </Step>
-          <Step n={3} title="You start the payout">
+          <Step n={4} title="You press Pay researcher, Unpatched sends it">
             <ul className="mt-2 space-y-2">
               {routes.map((route) => (
                 <li key={route.label} className="rounded-md border border-border bg-surface-muted px-3 py-2">
                   <p className="font-medium text-ink">{route.label}</p>
                   <p className="mt-0.5">
                     {route.automated
-                      ? "Unpatched sends the money through its payout partner. The status changes to Paid or Failed on its own."
-                      : "Your finance team makes the transfer outside Unpatched, then records the result here with the transfer reference."}
+                      ? "Sent through our payout partner. The status changes to Paid or Failed on its own."
+                      : "Sent by Unpatched's payments team by bank or PayPal transfer. The status changes to Paid once it's done."}
                   </p>
                 </li>
               ))}
             </ul>
-          </Step>
-          <Step n={4} title="You settle what you owe">
-            <span className="font-medium text-ink">Outstanding</span> at the top of this page is every unpaid bounty plus its fee. Totals stay in each payment&apos;s own currency and
-            are never converted. A failed payout can be retried; a payout that hasn&apos;t started can be cancelled.
+            <p className="mt-2">A failed payout can be retried. An award not yet paid can be cancelled, and its money goes back to your available balance.</p>
           </Step>
         </ol>
         <p className="mt-6 border-t border-border pt-4 text-xs text-ink-muted">

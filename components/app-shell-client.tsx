@@ -112,6 +112,7 @@ const PLATFORM_NAV: NavItem[] = [
   { href: "/platform/researchers" as Route, label: "Researchers", icon: UsersThree },
   { href: "/platform/ctf-events" as Route, label: "CTF events", icon: Flag },
   { href: "/platform/kyc" as Route, label: "KYC", icon: IdentificationCard },
+  { href: "/platform/payouts" as Route, label: "Payouts", icon: Wallet },
   { href: "/platform/mediations" as Route, label: "Mediations", icon: Scales },
   { href: "/platform/retests" as Route, label: "Retests", icon: ArrowsClockwise },
   { href: "/platform/needs-recovery" as Route, label: "Needs recovery", icon: Lifebuoy },

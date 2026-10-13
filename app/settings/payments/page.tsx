@@ -8,7 +8,7 @@ import { KycSettings } from "../../../components/settings/kyc-settings";
 import { Alert } from "../../../components/ui/feedback";
 import { listMyPaymentObligations } from "../../../services/payments";
 import { getMyKycStatus, getMyPayoutDetails } from "../../../services/researcher-profiles";
-import { getCurrentUser } from "../../../lib/auth/current-user";
+import { getCurrentUser } from "../../../lib/auth/current-user";
 import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
 /** Real payment_obligations rows the researcher's own reports earned (RLS-scoped,
@@ -52,8 +52,8 @@ export default async function PaymentsSettingsPage() {
 
       <BountyTrackRecord obligations={obligations} />
 
-      <Alert tone="info" title="Payouts are processed off-platform by your program contact.">
-        The details below are stored for your record and for a platform operator to use when arranging a payout. They aren't yet connected to an automated payment processor.
+      <Alert tone="info" title="Unpatched pays you, not the organization.">
+        Unpatched uses the details below to send your bounties. Organizations never see them.
       </Alert>
 
       <PayoutDetailsSettings initial={payoutDetails} />

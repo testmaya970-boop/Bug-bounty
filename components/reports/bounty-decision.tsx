@@ -119,12 +119,9 @@ export function FinalizeBountyDialog({ organizationId, programId, reportId, curr
             <p className="text-sm text-ink-muted">
               This finalizes the bounty at <span className="font-mono font-semibold text-ink">{currency} {amount !== null ? minorUnitsToDecimalString(amount) : amountInput}</span>. Once finalized, only an explicit adjustment (with a recorded reason) can change it.
             </p>
-            {/* v0.1.0: no in-product payout processor exists yet (see docs/decisions/
-                0063-real-payment-processing-scope.md) -- finalizing records the decision,
-                it does not move money. Said plainly here, at the one moment an org admin
-                is about to commit to a number, so nobody assumes this button pays the
-                researcher. */}
-            <p className="text-sm text-ink-muted">Payouts are processed off-platform by your program contact.</p>
+            {/* Finalizing records the decision; paying it draws on the prepaid balance
+                (202610140004). Said here, at the moment an org admin commits to a number. */}
+            <p className="text-sm text-ink-muted">Paying it takes the bounty plus the platform fee from your organization&apos;s balance. Unpatched sends it to the researcher.</p>
             {error && (
               <p role="alert" className="text-sm font-medium text-danger">
                 {error}
@@ -308,7 +305,7 @@ export function BountyDecisionSection({
           Adjust dialog below, not this whole section) -- the researcher is the one most
           likely to read "Final bounty: $X" and wonder when it arrives. See
           docs/decisions/0063-real-payment-processing-scope.md. */}
-      <p className="text-xs text-ink-muted">Payouts are processed off-platform by your program contact.</p>
+      <p className="text-xs text-ink-muted">Unpatched sends the payout to the researcher.</p>
       {canFinalize && decision.currency && decision.finalAmountMinorUnits !== null && (
         <AdjustBountyDialog organizationId={organizationId} programId={programId} reportId={reportId} currency={decision.currency} currentAmountMinorUnits={decision.finalAmountMinorUnits} />
       )}

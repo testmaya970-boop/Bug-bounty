@@ -131,25 +131,23 @@ export function InitiateManualPayoutButton({
   if (blocked) {
     return (
       <Button variant="primary" disabled title="This researcher cannot be paid until the requirements above are met.">
-        {isRetry ? "Retry payout" : "Initiate manual payout"}
+        {isRetry ? "Retry payout" : "Pay researcher"}
       </Button>
     );
   }
   return (
     <ConfirmDialog
-      triggerLabel={isRetry ? "Retry payout" : "Initiate manual payout"}
-      title={isRetry ? "Retry this payout?" : "Initiate a manual payout?"}
+      triggerLabel={isRetry ? "Retry payout" : "Pay researcher"}
+      title={isRetry ? "Retry this payout?" : "Pay this researcher?"}
       description={
         <p>
-          This starts a manual payout attempt. Transfer the full <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span>{" "}
-          bounty to the researcher.
-          {platformFeeMinorUnits > 0 && (
-            <> The {currency} {minorUnitsToDecimalString(platformFeeMinorUnits)} platform fee is billed to your organization separately and is not deducted from it.</>
-          )}
-          Unpatched does not transfer funds itself. An authorized operator must complete the transfer outside Unpatched (e.g. a wire transfer), then record the result here.
+          Unpatched sends the full <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span> bounty to the researcher
+          from your balance, where it is already set aside.
+          {platformFeeMinorUnits > 0 && <> The {currency} {minorUnitsToDecimalString(platformFeeMinorUnits)} platform fee is not deducted from it.</>} You never need the
+          researcher&apos;s bank details.
         </p>
       }
-      confirmLabel={isRetry ? "Retry payout" : "Initiate payout"}
+      confirmLabel={isRetry ? "Retry payout" : "Pay researcher"}
       onConfirm={() => initiateManualPaymentAttemptAction({ organizationId, programId, reportId, obligationId })}
     />
   );
@@ -159,7 +157,7 @@ export function InitiateManualPayoutButton({
  * a plain-language confirmation -- the same DESIGN.md pattern every consequential action
  * in this codebase already follows. This is the ONLY path to succeeded/failed; it is never
  * a side effect of initiating a payout. */
-export function RecordPaymentResultDialog({ organizationId, programId, reportId, attempt }: ReportRef & { attempt: PaymentAttempt }) {
+export function RecordPaymentResultDialog({ organizationId, programId, reportId, attemptId }: ReportRef & { attemptId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"edit" | "confirm">("edit");
@@ -201,7 +199,7 @@ export function RecordPaymentResultDialog({ organizationId, programId, reportId,
         organizationId,
         programId,
         reportId,
-        attemptId: attempt.id,
+        attemptId,
         outcome,
         providerReferenceId: providerReferenceId.trim() || undefined,
         failureCode: outcome === "failed" ? failureCode.trim() : undefined,
@@ -468,7 +466,7 @@ export function PaymentStatusSection({
                 {/* The fee is the organization's charge (202609250010): managers only. */}
                 {canManage && obligation.platformFeeMinorUnits > 0 && (
                   <p className="text-xs text-ink-muted">
-                    Paid to the researcher in full. Platform fee billed to your organization: {obligation.currency} {minorUnitsToDecimalString(obligation.platformFeeMinorUnits)} -- total due{" "}
+                    Paid to the researcher in full. Platform fee from your balance: {obligation.currency} {minorUnitsToDecimalString(obligation.platformFeeMinorUnits)} -- total{" "}
                     {obligation.currency} {minorUnitsToDecimalString(obligation.amountMinorUnits + obligation.platformFeeMinorUnits)}.
                   </p>
                 )}
@@ -489,7 +487,7 @@ export function PaymentStatusSection({
                     <CancelPaymentObligationDialog {...ref} obligationId={obligation.id} />
                   </div>
                 )}
-                {canManage && obligation.status === "processing" && attempt && <RecordPaymentResultDialog {...ref} attempt={attempt} />}
+                {canManage && obligation.status === "processing" && attempt && <p className="text-xs text-ink-muted">Unpatched is sending this payout.</p>}
               </li>
             );
           })}

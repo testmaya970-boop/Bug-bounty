@@ -65,7 +65,7 @@ describe("PaymentStatusSection: separates 'no obligation yet' from every real st
     );
     expect(authorized).toContain("Payment pending");
     expect(authorized).toContain("600.00");
-    expect(authorized).toContain("Initiate manual payout");
+    expect(authorized).toContain("Pay researcher");
     expect(authorized).toContain("Cancel payment obligation");
     // The fee is billed to the organization ON TOP (202609250010): PENDING_OBLIGATION is a
     // 600.00 bounty with a 120.00 fee, so the org's total due is 720.00 -- and nothing is
@@ -84,15 +84,16 @@ describe("PaymentStatusSection: separates 'no obligation yet' from every real st
     expect(researcher).not.toMatch(/fee/i);
     expect(researcher).not.toContain("480.00");
     expect(researcher).not.toContain("720.00");
-    expect(researcher).not.toContain("Initiate manual payout");
+    expect(researcher).not.toContain("Pay researcher");
     expect(researcher).not.toContain("Cancel payment obligation");
   });
 
-  it("processing: shows a Record payout result control only when authorized and a latest attempt is known", () => {
+  it("processing: the organization is told Unpatched is sending it -- it never records the result itself", () => {
     const processing: PaymentObligation = { ...PENDING_OBLIGATION, status: "processing" };
     const authorized = renderToStaticMarkup(<PaymentStatusSection obligations={[processing]} latestAttempts={{ [processing.id]: ATTEMPT }} readiness={[]} acceptance={null} isOwnReport={false} canManage={true} bountyCurrency="USD" bountyAmountMinorUnits={60000} {...REF} />);
     expect(authorized).toContain("Payment processing");
-    expect(authorized).toContain("Record payout result");
+    expect(authorized).toContain("Unpatched is sending this payout.");
+    expect(authorized).not.toContain("Record payout result");
 
     const noAttemptYet = renderToStaticMarkup(<PaymentStatusSection obligations={[processing]} latestAttempts={{}} readiness={[]} acceptance={null} isOwnReport={false} canManage={true} bountyCurrency="USD" bountyAmountMinorUnits={60000} {...REF} />);
     expect(noAttemptYet).not.toContain("Record payout result");
@@ -128,12 +129,12 @@ describe("dialogs default to closed and only show their trigger, never the confi
 
   it("InitiateManualPayoutButton", () => {
     const html = renderToStaticMarkup(<InitiateManualPayoutButton {...REF} obligationId="obligation-1" currency="USD" amountMinorUnits={60000} platformFeeMinorUnits={12000} isRetry={false} />);
-    expect(html).toContain("Initiate manual payout");
+    expect(html).toContain("Pay researcher");
     expect(html).not.toContain("Unpatched does not transfer funds itself");
   });
 
   it("RecordPaymentResultDialog", () => {
-    const html = renderToStaticMarkup(<RecordPaymentResultDialog {...REF} attempt={ATTEMPT} />);
+    const html = renderToStaticMarkup(<RecordPaymentResultDialog {...REF} attemptId={ATTEMPT.id} />);
     expect(html).toContain("Record payout result");
     expect(html).not.toContain("Failure code");
   });
@@ -165,7 +166,7 @@ describe("PaymentStatusSection: payout gate, recipients and the researcher's con
     expect(html).toContain("Rae Kestrel");
     expect(html).toContain("Ivo Marsh");
     expect(html).toContain("Tax form not yet verified");
-    expect(html).toMatch(/<button[^>]*disabled[^>]*>Initiate manual payout/);
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>Pay researcher/);
   });
 
   it("the researcher sees their own blockers with a link to fix them, and can confirm the award", () => {

@@ -255,7 +255,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // Outside the policy range, so a reason is required (202610120001).
   await page.getByLabel("Note").fill("Agreed with the researcher for this E2E finding.");
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByText("Payouts are processed off-platform by your program contact.")).toBeVisible();
+  await expect(page.getByText(/Paying it takes the bounty plus the platform fee/)).toBeVisible();
   await page.getByRole("button", { name: "Confirm finalization" }).click();
   // .first(): once the outbox worker creates the payment obligation, the payment-status
   // panel shows the amount too.
@@ -397,7 +397,7 @@ test("org journey: researcher accepts an invitation, sees the finalized amount, 
   await page.goto("/reports");
   await page.getByRole("link", { name: TRIAGE_WALK_REPORT_TITLE }).click();
   await expect(page.getByText(/USD 500\.00/).first()).toBeVisible(); // bounty + payment panels
-  await expect(page.getByText("Payouts are processed off-platform by your program contact.")).toBeVisible();
+  await expect(page.getByText("Unpatched sends the payout to the researcher.")).toBeVisible();
 
   // --- Researcher Reports: only real analytics (the sample "Preview" sections were removed) --
   await page.goto("/reports");
