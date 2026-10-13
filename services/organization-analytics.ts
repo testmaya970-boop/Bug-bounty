@@ -11,7 +11,6 @@ import type {
   OrganizationResolutionPerformance,
   OrganizationSeverityStatusCount,
   OrganizationWeeklyBountySpend,
-  OrganizationWeeklyReportVolume,
 } from "@/types/organization";
 
 /** Real organization-facing report analytics -- see
@@ -35,29 +34,6 @@ export async function getOrganizationSeverityStatusBreakdown(organizationId: str
     severity: row.severity as OrganizationSeverityStatusCount["severity"],
     status: row.status as OrganizationSeverityStatusCount["status"],
     count: Number(row.count),
-  }));
-}
-
-// week_start is a SQL `date` column. lib/db/type-parsers.ts's global fix makes `pg`
-// return it as a full ISO timestamp STRING (not a Date object) -- the type here stays
-// `string | Date` defensively (either shape is handled correctly), normalized via
-// toDateOnlyString below, which truncates either one to a real YYYY-MM-DD date-only
-// string. See that helper's own comment for the real bug this fixed.
-type WeeklyVolumeRow = { week_start: string | Date; submitted_count: number; resolved_count: number; other_closed_count: number };
-
-export async function getOrganizationWeeklyReportVolume(organizationId: string): Promise<OrganizationWeeklyReportVolume[]> {
-  const actor = await getCurrentUser();
-  let rows;
-  try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<WeeklyVolumeRow>(client, "public.get_organization_weekly_report_volume", [organizationId]));
-  } catch (error) {
-    mapError(error as { message: string });
-  }
-  return rows.map((row) => ({
-    weekStart: toDateOnlyString(row.week_start),
-    submittedCount: Number(row.submitted_count),
-    resolvedCount: Number(row.resolved_count),
-    otherClosedCount: Number(row.other_closed_count),
   }));
 }
 
@@ -232,39 +208,3 @@ export type OrganizationTopResearcher = {
   lastSubmittedAt: string;
 };
 
-/** Researcher performance for this organization (get_organization_top_researchers,
- * 202610060015): valid reports, severity, signal and money awarded vs actually paid. */
-export async function getOrganizationTopResearchers(organizationId: string, limit = 10): Promise<OrganizationTopResearcher[]> {
-  const actor = await getCurrentUser();
-  let rows;
-  try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) =>
-      callRpc<{
-        researcher_id: string;
-        display_name: string;
-        resolved_count: string;
-        high_or_critical_count: string;
-        invalid_count: string;
-        signal_percent: number | null;
-        currency: string | null;
-        awarded_minor_units: string;
-        paid_minor_units: string;
-        last_submitted_at: string;
-      }>(client, "public.get_organization_top_researchers", [organizationId, limit]),
-    );
-  } catch (error) {
-    mapError(error as { message: string });
-  }
-  return rows.map((row) => ({
-    researcherId: row.researcher_id,
-    displayName: row.display_name,
-    resolvedCount: Number(row.resolved_count),
-    highOrCriticalCount: Number(row.high_or_critical_count),
-    invalidCount: Number(row.invalid_count),
-    signalPercent: row.signal_percent,
-    currency: row.currency,
-    awardedMinorUnits: Number(row.awarded_minor_units),
-    paidMinorUnits: Number(row.paid_minor_units),
-    lastSubmittedAt: row.last_submitted_at,
-  }));
-}

@@ -68,7 +68,7 @@ beforeEach(() => {
 describe("auth service: signInWithPassword is rate-limited by the attempted email, in addition to real credential checking", () => {
   it("checks check_sign_in_rate_limit with the exact email before ever looking up the user", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ check_sign_in_rate_limit: true }]);
+      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ ok: true }]);
       if (sql.includes("from public.users")) return queryReturning([]);
       return queryReturning([]);
     });
@@ -84,7 +84,7 @@ describe("auth service: signInWithPassword is rate-limited by the attempted emai
 
   it("rejects with a RATE_LIMITED error and never looks up the user when the rate limit check returns false", async () => {
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ check_sign_in_rate_limit: false }]);
+      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ ok: false }]);
       throw new Error("should not query further once rate-limited");
     });
     const { signInWithPassword, AuthServiceError } = await import("../../services/auth");
@@ -100,7 +100,7 @@ describe("auth service: signInWithPassword is rate-limited by the attempted emai
     const passwordHash = await hashPassword("correct-horse-battery-staple");
 
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ check_sign_in_rate_limit: true }]);
+      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ ok: true }]);
       if (sql.includes("select id, password_hash")) return queryReturning([{ id: "user-1", password_hash: passwordHash, email_verified_at: "2026-01-01", deactivated_at: null }]);
       if (sql.includes("insert into public.sessions")) return queryReturning([{ id: "session-1", user_id: "user-1", aal: "aal1" }]);
       if (sql.includes("from public.mfa_factors")) return queryReturning([{ user_id: "user-1" }]);
@@ -116,7 +116,7 @@ describe("auth service: signInWithPassword is rate-limited by the attempted emai
     const passwordHash = await hashPassword("correct-horse-battery-staple");
 
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ check_sign_in_rate_limit: true }]);
+      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ ok: true }]);
       if (sql.includes("select id, password_hash")) return queryReturning([{ id: "user-1", password_hash: passwordHash, email_verified_at: "2026-01-01", deactivated_at: null }]);
       if (sql.includes("insert into public.sessions")) return queryReturning([{ id: "session-1", user_id: "user-1", aal: "aal1" }]);
       if (sql.includes("from public.mfa_factors")) return queryReturning([]);
@@ -132,7 +132,7 @@ describe("auth service: signInWithPassword is rate-limited by the attempted emai
     const passwordHash = await hashPassword("correct-horse-battery-staple");
 
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ check_sign_in_rate_limit: true }]);
+      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ ok: true }]);
       if (sql.includes("select id, password_hash")) return queryReturning([{ id: "user-1", password_hash: passwordHash, email_verified_at: null, deactivated_at: null }]);
       return queryReturning([]);
     });
@@ -149,7 +149,7 @@ describe("auth service: signInWithPassword is rate-limited by the attempted emai
     const passwordHash = await hashPassword("the-real-password");
 
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ check_sign_in_rate_limit: true }]);
+      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ ok: true }]);
       if (sql.includes("select id, password_hash")) return queryReturning([{ id: "user-1", password_hash: passwordHash, email_verified_at: "2026-01-01", deactivated_at: null }]);
       return queryReturning([]);
     });
@@ -275,7 +275,7 @@ describe("auth service: a deactivated account", () => {
     const { hashPassword } = await import("../../lib/auth/password");
     const passwordHash = await hashPassword("the-right-password-1!");
     fakeClient.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ check_sign_in_rate_limit: true }]);
+      if (sql.includes("check_sign_in_rate_limit")) return queryReturning([{ ok: true }]);
       if (sql.includes("from public.users where email")) return queryReturning([{ id: "user-1", password_hash: passwordHash, email_verified_at: "2026-10-01T00:00:00Z", deactivated_at: "2026-10-05T00:00:00Z" }]);
       return queryReturning([]);
     });

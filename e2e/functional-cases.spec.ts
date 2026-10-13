@@ -41,7 +41,7 @@ test("profile: display name and biography save and survive a reload; no public u
 test("api token: the page says coming soon, and a bearer token is not accepted yet", async ({ page, request }) => {
   await signIn(page);
   await page.goto("/settings/api-tokens");
-  await expect(page.getByText("Coming soon")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Coming soon" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate token" })).toHaveCount(0);
   expect((await request.get("/api/v1/reports", { headers: { Authorization: "Bearer unpatched_pat_anything" } })).status()).toBe(401);
 });

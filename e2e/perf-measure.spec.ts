@@ -2,7 +2,7 @@ import { test, expect, type Page, type Response } from "@playwright/test";
 
 // seed:e2e researcher -- the earlier demo.researcher account is created by no seed script,
 // so this spec could only pass on the one machine where it was hand-made.
-const EMAIL = "e2e.veteran@unpatched.demo";
+const EMAIL = "e2e.newcomer@unpatched.demo";
 const PASSWORD = "E2ESeed!2026";
 
 async function signIn(page: Page) {

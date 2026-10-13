@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { activePaymentProvider } from "@/lib/payment-provider";
+
 
 const fakeClient = { query: vi.fn() };
 
@@ -11,11 +11,9 @@ vi.mock("@/lib/db/pool", async () => {
   };
 });
 vi.mock("@/lib/auth/current-user", () => ({ getCurrentUser: vi.fn().mockResolvedValue({ id: "actor-1", platformRole: null, username: "actor", displayName: "Actor", email: null }) }));
-vi.mock("@/lib/payment-provider", () => ({
-  activePaymentProvider: { name: "manual", createPayment: vi.fn(), getPaymentStatus: vi.fn(), cancelPayment: vi.fn() },
-}));
-
-const mockedProvider = vi.mocked(activePaymentProvider, true);
+// The currency router hands back the manual provider (the default with no payout provider configured).
+const mockedProvider = vi.hoisted(() => ({ name: "manual", mode: "manual" as const, createPayment: vi.fn() }));
+vi.mock("@/lib/payment-provider", () => ({ selectPayoutProvider: () => mockedProvider, loadPayoutRecipient: vi.fn() }));
 
 function queryReturning(rows: unknown[]) {
   return { rows, rowCount: rows.length };
@@ -55,8 +53,6 @@ const ATTEMPT_ROW = {
 beforeEach(() => {
   fakeClient.query.mockReset();
   mockedProvider.createPayment.mockReset().mockResolvedValue({ providerReferenceId: null, outcome: "requires_operator_action" });
-  mockedProvider.getPaymentStatus.mockReset();
-  mockedProvider.cancelPayment.mockReset();
 });
 
 describe("payments service: listReportPaymentObligations", () => {
@@ -128,7 +124,7 @@ describe("payments service: createPaymentObligations calls the RPC with only the
 });
 
 describe("payments service: initiateManualPaymentAttempt records the attempt, then calls the provider abstraction keyed by it", () => {
-  it("calls the RPC with only the obligation id, then activePaymentProvider.createPayment with the attempt id as idempotency key", async () => {
+  it("calls the RPC with only the obligation id, then the selected provider's createPayment with the attempt id as idempotency key", async () => {
     const order: string[] = [];
     let capturedRpcArgs: unknown[] | undefined;
     fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {

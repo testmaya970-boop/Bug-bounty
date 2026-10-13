@@ -1,8 +1,8 @@
 import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { ShieldCheck } from "lucide-react";
-import { signOutAction } from "../actions/auth";
+import { ShieldCheck } from "@phosphor-icons/react/dist/ssr";
+import { SignOutForm } from "./auth/sign-out-form";
 
 type ShellUser = { id: string; displayName: string; email: string | null };
 
@@ -37,11 +37,7 @@ export function SimplePageShell({ title, children, user }: { title: string; chil
               {user ? "Back to workspace" : "Sign in"}
             </Link>
             {user && (
-              <form action={signOutAction}>
-                <button type="submit" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-                  Sign out
-                </button>
-              </form>
+              <SignOutForm buttonClassName="hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" />
             )}
           </nav>
         </div>

@@ -19,6 +19,8 @@
 import { chromium } from "@playwright/test";
 import { appendFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
+import pg from "pg";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:3100";
 const ONLY = process.argv[3]?.split(",");
@@ -61,6 +63,22 @@ async function signIn(context, email) {
   await page.getByRole("textbox", { name: "Password" }).fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL((u) => !u.pathname.startsWith("/sign-in"), { timeout: 90_000 });
+  // Platform admins must pass MFA (202610100001): same backup-code route as e2e/mfa-gate.ts.
+  if (new URL(page.url()).pathname.startsWith("/mfa/verify")) {
+    const code = randomBytes(5).toString("hex").toUpperCase();
+    try { process.loadEnvFile(".env.local"); } catch {}
+    const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
+    await db.connect();
+    await db.query("begin");
+    await db.query("set local role service_role");
+    await db.query("insert into public.mfa_backup_codes (user_id, code_hash) select id, $2 from public.users where email = $1", [email, createHash("sha256").update(code).digest("hex")]);
+    await db.query("commit");
+    await db.end();
+    await page.getByRole("button", { name: "Use a backup code instead" }).click();
+    await page.getByLabel("Backup code").fill(code);
+    await page.getByRole("button", { name: "Verify" }).click();
+    await page.waitForURL((u) => !u.pathname.startsWith("/mfa/verify"), { timeout: 90_000 });
+  }
   await page.close();
 }
 

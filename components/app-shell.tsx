@@ -1,12 +1,12 @@
 import React from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { AppShellClient } from "./app-shell-client";
 import { listCurrentUserOrganizations } from "../services/organizations";
 import { countMyUnreadNotifications } from "../services/notifications";
 import { listMyProgramParticipations } from "../services/program-researchers";
 import { isPlatformAdmin } from "../services/platform-operations";
 import { perfTimed } from "../lib/perf-trace";
-import { LAST_ORGANIZATION_COOKIE } from "../lib/session/middleware";
+import { LAST_ORGANIZATION_COOKIE, PLATFORM_ADMIN_NEEDS_MFA_HEADER } from "../lib/session/middleware";
 
 type ShellUser = { id: string; displayName: string; email: string | null };
 
@@ -82,6 +82,7 @@ export async function AppShell({
   );
 
   const resolvedOrganizationId = organizationId ?? (user ? resolveLastOrganizationId((await cookies()).get(LAST_ORGANIZATION_COOKIE)?.value, organizations) : undefined);
+  const platformAdminNeedsMfa = (await headers()).get(PLATFORM_ADMIN_NEEDS_MFA_HEADER) === "1";
 
   return (
     <AppShellClient
@@ -92,6 +93,7 @@ export async function AppShell({
       hasResearcherParticipation={hasResearcherParticipation}
       unreadNotificationCount={unreadNotificationCount}
       isPlatformAdmin={isAdmin}
+      platformAdminNeedsMfa={platformAdminNeedsMfa}
     >
       {children}
     </AppShellClient>

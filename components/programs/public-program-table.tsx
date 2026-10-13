@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowsDownUp } from "@phosphor-icons/react";
 import { Avatar } from "../ui/navigation";
 import { ProgramStatusBadge, ProgramTypeBadge } from "../ui/badge";
 import { formatBountyRange } from "../../lib/money";
@@ -78,7 +78,7 @@ export function PublicProgramTable({ programs }: { programs: PublicProgramSummar
                   aria-pressed={sortKey === column.key}
                 >
                   {column.label}
-                  <ArrowUpDown aria-hidden="true" className={`size-3 ${sortKey === column.key ? "text-ink" : "text-ink-muted/50"}`} />
+                  <ArrowsDownUp aria-hidden="true" className={`size-3 ${sortKey === column.key ? "text-ink" : "text-ink-muted/50"}`} />
                 </button>
               </th>
             ))}

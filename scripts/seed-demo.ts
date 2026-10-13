@@ -61,11 +61,23 @@ async function withServiceRole<T>(fn: (client: PoolClient) => Promise<T>): Promi
   }
 }
 
-async function withActor<T>(userId: string, fn: (client: PoolClient) => Promise<T>): Promise<T> {
+/** Platform-admin RPCs need an MFA-verified session (202610100001): a throwaway aal2
+ * session row for the duration of the call, removed afterwards. Seed-time only. */
+async function withPlatformActor<T>(userId: string, fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const sessionId = crypto.randomUUID();
+  await withServiceRole((client) => client.query("insert into public.sessions (id, user_id, token_hash, aal) values ($1, $2, $3, 'aal2')", [sessionId, userId, `seed-${sessionId}`]));
+  try {
+    return await withActor(userId, fn, sessionId);
+  } finally {
+    await withServiceRole((client) => client.query("delete from public.sessions where id = $1", [sessionId]));
+  }
+}
+
+async function withActor<T>(userId: string, fn: (client: PoolClient) => Promise<T>, sessionId?: string): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query("begin");
-    await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: userId, role: "authenticated" })]);
+    await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: userId, session_id: sessionId, role: "authenticated" })]);
     await client.query("set local role authenticated");
     const result = await fn(client);
     await client.query("commit");
@@ -164,7 +176,7 @@ async function ensureProgram(ownerId: string, orgId: string, name: string): Prom
  * keeps afterward. */
 async function activateProgram(ownerId: string, programId: string): Promise<void> {
   await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [ownerId]));
-  await tryStep(withActor(ownerId, (client) => client.query("select public.activate_program($1)", [programId])), "activate_program");
+  await tryStep(withPlatformActor(ownerId, (client) => client.query("select public.activate_program($1)", [programId])), "activate_program");
   await withServiceRole((client) => client.query("delete from public.platform_admins where user_id = $1", [ownerId]));
   await tryStep(withActor(ownerId, (client) => client.query("select public.set_program_visibility($1, $2)", [programId, "public"])), "set_program_visibility");
 }

@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
 import { AppShell } from "../components/app-shell";
 import { SectionLabel } from "../components/ui/security-primitives";
 import { HeroArt } from "../components/marketing/hero-art/hero-art";
@@ -18,6 +18,7 @@ import { listMyReports } from "../services/reports";
 import { hasAnyOrganizationMembership } from "../services/organizations";
 import { getMyReputationLedger, getMyReputationProgramCounts, getPublicLeaderboard, getResearcherReputationScore } from "../services/reputation";
 import { getMyHomeDashboardSummary } from "../services/home-dashboard";
+import { isPlatformAdmin } from "../services/platform-operations";
 import { listMyPaymentObligations } from "../services/payments";
 import { computeResearcherDashboardStatus } from "../lib/dashboard-status";
 import { MAX_PAGE_SIZE } from "../lib/pagination";
@@ -418,9 +419,13 @@ async function renderHomePage() {
   // rule exactly. Every other account -- researcher-only, both, or neither yet -- lands
   // here, including right after sign-in: HomePage is this app's real researcher
   // dashboard, not /programs (the public program registry).
-  const [participations, hasOrganization] = await perfTimed("HomePage gate batch (participations+hasOrg)", () =>
-    Promise.all([listMyProgramParticipations(), hasAnyOrganizationMembership(user.id)]),
+  const [participations, hasOrganization, admin] = await perfTimed("HomePage gate batch (participations+hasOrg+admin)", () =>
+    Promise.all([listMyProgramParticipations(), hasAnyOrganizationMembership(user.id), isPlatformAdmin()]),
   );
+  // Platform staff land on the platform overview (determineDefaultDestination's own first
+  // rule). Checked here too because sign-in can't know yet: admin power needs the MFA'd
+  // session (202610100001), and the MFA step sends everyone to "/" when it finishes.
+  if (admin) redirect("/platform" as Route);
   const hasResearcherParticipation = participations.length > 0;
   if (hasOrganization && !hasResearcherParticipation) redirect("/organizations" as Route);
 

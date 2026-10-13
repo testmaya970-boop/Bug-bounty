@@ -19,7 +19,7 @@ describe("payment provider independence: the domain service never imports a paym
   it("services/payments.ts contains no provider SDK reference and imports only the provider abstraction", () => {
     const source = read("services/payments.ts");
     expect(source).not.toMatch(PROVIDER_SDK_PATTERN);
-    expect(source).toContain('import { activePaymentProvider } from "@/lib/payment-provider"');
+    expect(source).toContain('import { loadPayoutRecipient, selectPayoutProvider } from "@/lib/payment-provider"');
     expect(source).not.toMatch(/from ["']stripe["']|from ["']razorpay["']/i);
   });
 
@@ -48,11 +48,11 @@ describe("payment provider independence: the domain service never imports a paym
 });
 
 describe("payment provider independence: exactly one file may define a PaymentProvider implementation", () => {
-  it("lib/payment-provider.ts is the only file exporting a PaymentProvider-shaped object in this slice", () => {
+  it("lib/payment-provider.ts defines the interface, the manual default and the currency router", () => {
     const source = read("lib/payment-provider.ts");
     expect(source).toContain("export type PaymentProvider = {");
     expect(source).toContain("export const manualPaymentProvider: PaymentProvider = {");
-    expect(source).toContain("export const activePaymentProvider: PaymentProvider = manualPaymentProvider");
+    expect(source).toContain("export function selectPayoutProvider(");
   });
 
   it("the manual provider never returns a terminal 'succeeded' outcome from createPayment -- only an operator action can", () => {

@@ -3,12 +3,12 @@
 import React, { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { Bell } from "lucide-react";
+import { Bell } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
 import { listNotificationPreviewAction, markNotificationReadAction } from "../../actions/notifications";
 import { notificationLink } from "../../lib/notification-links";
 import { emitNotificationRead, onNotificationRead } from "../../lib/notification-events";
-import type { Notification, NotificationType } from "../../types/notifications";
+import type { Notification, NotificationType } from "../../types/notifications";
 import { LocalTime } from "../ui/local-time";
 
 /** Same honest, content-free labels as components/notifications/notification-list.tsx's

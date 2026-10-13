@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { passMfaGate } from "./mfa-gate";
 
 // The strict, nonce-based Content-Security-Policy (proxy.ts, lib/security/csp.ts) must not
 // break any page. The browser fires `securitypolicyviolation` for everything it blocks;
@@ -34,7 +35,7 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByRole("textbox", { name: "Password" }).fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
+  await passMfaGate(page, email);
 }
 
 test("CSP: no violations and every page hydrates -- public, researcher, org, platform", async ({ page }) => {
@@ -43,7 +44,7 @@ test("CSP: no violations and every page hydrates -- public, researcher, org, pla
 
   for (const path of ["/", "/sign-in", "/programs", "/design-preview/vanguard-showcase"]) await expectHydratedWithCsp(page, path);
 
-  await signIn(page, "e2e.veteran@unpatched.demo");
+  await signIn(page, "e2e.newcomer@unpatched.demo");
   for (const path of ["/", "/programs", "/reports", "/ctf", "/notifications", "/settings/profile"]) await expectHydratedWithCsp(page, path);
   await page.getByRole("button", { name: "Account menu" }).click();
   await page.getByRole("button", { name: "Sign out" }).click();

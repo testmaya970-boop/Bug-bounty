@@ -170,7 +170,10 @@ describe("program-researchers service: researcher self-service reads", () => {
 });
 
 describe("program-researchers service: reads", () => {
-  it("maps a joined researcher row (profile embed) into the flat ProgramResearcherRecord shape", async () => {
+  it("maps a joined researcher row into the flat ProgramResearcherRecord shape -- with the alias, never the real email", async () => {
+    vi.stubEnv("ALIAS_EMAIL_DOMAIN", "alias.example");
+    vi.stubEnv("ALIAS_MAILBOX_USER", "catchall@alias.example");
+    vi.stubEnv("ALIAS_MAILBOX_PASSWORD", "x");
     const row = {
       program_id: "prog-1",
       organization_id: "org-1",
@@ -184,13 +187,15 @@ describe("program-researchers service: reads", () => {
       updated_at: "2026-08-01T00:00:00Z",
       username: "researcher1",
       display_name: "Researcher One",
-      email: "researcher1@example.com",
+      alias_local_part: "researcher1",
     };
     fakeClient.query.mockImplementation(async () => queryReturning([row]));
     const { listProgramResearchers } = await import("../../services/program-researchers");
 
     const [researcher] = await listProgramResearchers("prog-1");
-    expect(researcher).toMatchObject({ userId: "user-1", displayName: "Researcher One", email: "researcher1@example.com", status: "active" });
+    expect(researcher).toMatchObject({ userId: "user-1", displayName: "Researcher One", aliasEmail: "researcher1@alias.example", status: "active" });
+    expect(researcher).not.toHaveProperty("email");
+    vi.unstubAllEnvs();
   });
 
   it("returns null from getMyParticipation when no row exists for the given userId", async () => {

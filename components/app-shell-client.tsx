@@ -6,46 +6,50 @@ import type { Route } from "next";
 import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  LayoutDashboard,
+  SquaresFour,
   ShieldCheck,
+  Crosshair,
   Target,
-  FileWarning,
-  Award,
-  Trophy,
-  FolderKanban,
   Bug,
-  Swords,
-  BookOpen,
+  Briefcase,
+  UsersThree,
+  UserList,
+  Flag,
+  BookOpenText,
+  Coins,
   Bell,
-  HelpCircle,
-  Sparkles,
-  Wand2,
-  Activity,
-  Landmark,
-  LayoutList,
+  Question,
+  HourglassMedium,
+  ChatCircleDots,
+  Pulse,
+  ChartLineUp,
+  ClipboardText,
+  ListBullets,
   Wallet,
-  OctagonAlert,
-  Building2,
-  UserCog,
-  IdCard,
-  Scale,
-  RefreshCw,
-  LifeBuoy,
-  ScrollText,
-  Search,
-  Menu,
+  WarningOctagon,
+  Buildings,
+  IdentificationCard,
+  Scales,
+  ArrowsClockwise,
+  Lifebuoy,
+  Scroll,
+  MagnifyingGlass,
+  List,
   X,
-  ChevronsUpDown,
+  CaretUpDown,
   Check,
   Plus,
-} from "lucide-react";
+  Plug,
+  Gear,
+  type Icon as PhosphorIcon,
+} from "@phosphor-icons/react";
 import { Avatar, DropdownMenu } from "./ui/navigation";
 import { IconButton } from "./ui/button";
 import { Separator } from "./ui/feedback";
 import { NotificationBellDropdown } from "./notifications/notification-bell-dropdown";
 import { cn } from "../lib/cn";
 import { usePrefersReducedMotion } from "../lib/motion";
-import { signOutAction } from "../actions/auth";
+import { SignOutForm } from "./auth/sign-out-form";
 import { MOCK_CTF_CHALLENGES } from "../lib/mock/ctf";
 import { TRAINING_ARTICLES } from "../lib/training/content";
 import type { OrganizationSummary } from "../services/organizations";
@@ -60,7 +64,7 @@ import type { OrganizationRole } from "../types/auth";
 // stays unconditional with no header-based exception (a prior attempt at exactly that
 // was reverted -- Sec-Fetch-Mode is a client-controlled signal for any raw HTTP client,
 // which is precisely the threat the gate exists to catch).
-type NavItem = { href: Route; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string };
+type NavItem = { href: Route; label: string; icon: PhosphorIcon; badge?: string };
 
 // docs/decisions/0074 -- the security-operating-system nav grouping. Same real
 // destinations as before (no href changed, no route added/removed -- this is a visual/
@@ -78,18 +82,18 @@ type NavItem = { href: Route; label: string; icon: React.ComponentType<{ classNa
 // Deliberately no separate "Workspace" group: found live to duplicate this same set of
 // destinations under a second label (docs/decisions/0059) -- never reintroduced.
 const RESEARCH_NAV: NavItem[] = [
-  { href: "/" as Route, label: "Dashboard", icon: LayoutDashboard },
-  { href: "/programs" as Route, label: "Programs", icon: FolderKanban },
-  { href: "/reports" as Route, label: "Reports", icon: FileWarning },
-  { href: "/researchers" as Route, label: "Researchers", icon: Trophy },
+  { href: "/" as Route, label: "Dashboard", icon: SquaresFour },
+  { href: "/programs" as Route, label: "Programs", icon: Crosshair },
+  { href: "/reports" as Route, label: "Reports", icon: Bug },
+  { href: "/researchers" as Route, label: "Researchers", icon: UsersThree },
 ];
 
 const PRACTICE_NAV: NavItem[] = [
-  { href: "/ctf" as Route, label: "CTF", icon: Swords, badge: MOCK_CTF_CHALLENGES.length.toString() },
-  { href: "/learn" as Route, label: "Learn", icon: BookOpen, badge: TRAINING_ARTICLES.length.toString() },
+  { href: "/ctf" as Route, label: "CTF", icon: Flag, badge: MOCK_CTF_CHALLENGES.length.toString() },
+  { href: "/learn" as Route, label: "Learn", icon: BookOpenText, badge: TRAINING_ARTICLES.length.toString() },
 ];
 
-const RECORD_NAV: NavItem[] = [{ href: "/bounties" as Route, label: "Bounties", icon: Award }];
+const RECORD_NAV: NavItem[] = [{ href: "/bounties" as Route, label: "Bounties", icon: Coins }];
 
 // Platform-admin nav -- all seven app/platform/* destinations, which otherwise have zero
 // nav visibility anywhere (confirmed live: platform_admins membership was granted directly
@@ -101,17 +105,19 @@ const RECORD_NAV: NavItem[] = [{ href: "/bounties" as Route, label: "Bounties", 
 // AppShell's sidebar like every other authenticated page -- flagged live as a real
 // inconsistency and reverted; this group is the one, real, shared nav for all seven now.
 const PLATFORM_NAV: NavItem[] = [
-  { href: "/platform/all-programs" as Route, label: "All programs", icon: LayoutList },
-  { href: "/platform/programs" as Route, label: "Program launches", icon: Landmark },
-  { href: "/platform/organizations" as Route, label: "Organizations", icon: Building2 },
-  { href: "/platform/researchers" as Route, label: "Researchers", icon: UserCog },
-  { href: "/platform/ctf-events" as Route, label: "CTF events", icon: Swords },
-  { href: "/platform/kyc" as Route, label: "KYC", icon: IdCard },
-  { href: "/platform/mediations" as Route, label: "Mediations", icon: Scale },
-  { href: "/platform/retests" as Route, label: "Retests", icon: RefreshCw },
-  { href: "/platform/needs-recovery" as Route, label: "Needs recovery", icon: LifeBuoy },
-  { href: "/platform/errors" as Route, label: "Errors", icon: OctagonAlert },
-  { href: "/platform/audit-log" as Route, label: "Audit log", icon: ScrollText },
+  { href: "/platform" as Route, label: "Overview", icon: SquaresFour },
+  { href: "/platform/all-programs" as Route, label: "All programs", icon: ListBullets },
+  { href: "/platform/programs" as Route, label: "Program launches", icon: ClipboardText },
+  { href: "/platform/organizations" as Route, label: "Organizations", icon: Buildings },
+  { href: "/platform/researchers" as Route, label: "Researchers", icon: UsersThree },
+  { href: "/platform/ctf-events" as Route, label: "CTF events", icon: Flag },
+  { href: "/platform/kyc" as Route, label: "KYC", icon: IdentificationCard },
+  { href: "/platform/mediations" as Route, label: "Mediations", icon: Scales },
+  { href: "/platform/retests" as Route, label: "Retests", icon: ArrowsClockwise },
+  { href: "/platform/needs-recovery" as Route, label: "Needs recovery", icon: Lifebuoy },
+  { href: "/platform/errors" as Route, label: "Errors", icon: WarningOctagon },
+  { href: "/platform/integrations" as Route, label: "Integrations", icon: Plug },
+  { href: "/platform/audit-log" as Route, label: "Audit log", icon: Scroll },
 ];
 
 const SYSTEM_NAV: NavItem[] = [
@@ -120,11 +126,11 @@ const SYSTEM_NAV: NavItem[] = [
   // app/coming-soon/page.tsx's own comment for why this exists as a real destination
   // rather than a dead link (matches HackerOne's own reference nav, which documents
   // "Coming Soon" as its own destination).
-  { href: "/coming-soon" as Route, label: "Coming Soon", icon: Sparkles },
+  { href: "/coming-soon" as Route, label: "Coming Soon", icon: HourglassMedium },
   // Item 15 of the 15-point nav map (Turn 6, phase/9-ia) -- same honest-stub posture as
   // Coming Soon above: no chat, no model, just what's real (a waitlist signup). See
   // app/hai/page.tsx's own comment.
-  { href: "/assistant" as Route, label: "Assistant", icon: Wand2 },
+  { href: "/assistant" as Route, label: "Assistant", icon: ChatCircleDots },
 ];
 
 // A platform-admin-only account (isPlatformAdminOnly below) has no researcher/org context
@@ -133,6 +139,7 @@ const SYSTEM_NAV: NavItem[] = [
 // stays (platform-admin actions -- approvals, rejections -- generate real notifications
 // too), just narrowed to the one real destination for this context.
 const PLATFORM_SYSTEM_NAV: NavItem[] = [{ href: "/notifications" as Route, label: "Notifications", icon: Bell }];
+const PLATFORM_MFA_SETUP_NAV: NavItem[] = [{ href: "/settings/security" as Route, label: "Set up two-factor", icon: ShieldCheck }];
 
 // Item 14 of the 15-point nav map (Turn 6, phase/9-ia): previously Settings + Sign out
 // only. Profile (the real, existing /settings/profile route) and Help/Docs (the same
@@ -158,7 +165,7 @@ const ACCOUNT_MENU_LINKS: { href: Route; label: string }[] = [
 // missing from the org header's own nine, only from this second, now-deleted nav.
 // roles: who the section is for (docs: services/authorization.ts's ACCESS_SUMMARIES). A
 // convenience only -- every page and the database enforce access on their own.
-type OrgNavItem = { href: (organizationId: string) => Route; label: string; icon: React.ComponentType<{ className?: string }>; matchesPath: (path: string, href: string) => boolean; roles?: readonly OrganizationRole[] };
+type OrgNavItem = { href: (organizationId: string) => Route; label: string; icon: PhosphorIcon; matchesPath: (path: string, href: string) => boolean; roles?: readonly OrganizationRole[] };
 
 const ORG_ADMINS: readonly OrganizationRole[] = ["owner", "security_admin"];
 const REPORT_WORKERS: readonly OrganizationRole[] = ["owner", "security_admin", "program_manager", "triager"];
@@ -175,12 +182,12 @@ function prefixMatch(path: string, href: string): boolean {
   return path === href || path.startsWith(`${href}/`);
 }
 
-const ORG_OVERVIEW_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}` as Route, label: "Home", icon: LayoutDashboard, matchesPath: exactMatch }];
+const ORG_OVERVIEW_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}` as Route, label: "Home", icon: SquaresFour, matchesPath: exactMatch }];
 const ORG_SECURITY_NAV: OrgNavItem[] = [
   // Route unchanged (/organizations/{id}/programs) -- only the label changed to
   // "Engagements" to match the page's real HackerOne-style category-tab identity
   // (docs/decisions/0076). Same programs, same URLs, same permissions.
-  { href: (id) => `/organizations/${id}/programs` as Route, label: "Engagements", icon: FolderKanban, matchesPath: prefixMatch, roles: REPORT_WORKERS },
+  { href: (id) => `/organizations/${id}/programs` as Route, label: "Engagements", icon: Briefcase, matchesPath: prefixMatch, roles: REPORT_WORKERS },
   // Findings: the flat, cross-program report list (services/reports.ts's
   // listReportsForOrganization) -- distinct from the per-program triage inbox at
   // .../programs/{id}/reports, which still owns triage actions/bulk operations.
@@ -190,18 +197,18 @@ const ORG_SECURITY_NAV: OrgNavItem[] = [
   // editing still happens per-engagement (scope mutation is only legal while that
   // program is in draft), this is the read-only cross-program view.
   { href: (id) => `/organizations/${id}/assets` as Route, label: "Assets", icon: Target, matchesPath: prefixMatch, roles: REPORT_WORKERS },
-  { href: (id) => `/organizations/${id}/researchers` as Route, label: "Researchers", icon: Trophy, matchesPath: prefixMatch, roles: ["owner", "security_admin", "program_manager"] },
+  { href: (id) => `/organizations/${id}/researchers` as Route, label: "Researchers", icon: UsersThree, matchesPath: prefixMatch, roles: ["owner", "security_admin", "program_manager"] },
   // Activity: the org's full, chronological audit event feed (services/organization-
   // members.ts's getOrganizationAuditActivity) -- owner/security_admin only, matching
   // audit_logs' own read policy.
-  { href: (id) => `/organizations/${id}/activity` as Route, label: "Activity", icon: Activity, matchesPath: prefixMatch, roles: ORG_ADMINS },
+  { href: (id) => `/organizations/${id}/activity` as Route, label: "Activity", icon: Pulse, matchesPath: prefixMatch, roles: ORG_ADMINS },
 ];
-const ORG_INSIGHTS_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}/analytics` as Route, label: "Analytics", icon: FileWarning, matchesPath: prefixMatch, roles: ORG_ADMINS }];
+const ORG_INSIGHTS_NAV: OrgNavItem[] = [{ href: (id) => `/organizations/${id}/analytics` as Route, label: "Analytics", icon: ChartLineUp, matchesPath: prefixMatch, roles: ORG_ADMINS }];
 const ORG_ORGANIZATION_NAV: OrgNavItem[] = [
   // Payments (202609250012): the payment ledger with report titles only -- billing admins' page.
   { href: (id) => `/organizations/${id}/payments` as Route, label: "Payments", icon: Wallet, matchesPath: prefixMatch, roles: ["owner", "security_admin", "billing_admin"] },
-  { href: (id) => `/organizations/${id}/members` as Route, label: "Members", icon: Award, matchesPath: prefixMatch, roles: ORG_ADMINS },
-  { href: (id) => `/organizations/${id}/settings` as Route, label: "Settings", icon: ShieldCheck, matchesPath: prefixMatch, roles: ORG_ADMINS },
+  { href: (id) => `/organizations/${id}/members` as Route, label: "Members", icon: UserList, matchesPath: prefixMatch, roles: ORG_ADMINS },
+  { href: (id) => `/organizations/${id}/settings` as Route, label: "Settings", icon: Gear, matchesPath: prefixMatch, roles: ORG_ADMINS },
 ];
 
 type ShellUser = { displayName: string; email: string | null };
@@ -233,11 +240,7 @@ function AccountMenu({ user }: { user: ShellUser }) {
         </Link>
       ))}
       <Separator className="my-1" />
-      <form action={signOutAction}>
-        <button type="submit" className="block min-h-11 w-full rounded px-3 text-left text-sm text-ink hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus">
-          Sign out
-        </button>
-      </form>
+      <SignOutForm buttonClassName="block min-h-11 w-full rounded px-3 text-left text-sm text-ink hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus" />
     </DropdownMenu>
   );
 }
@@ -273,7 +276,7 @@ function GlobalSearch() {
 
   return (
     <form onSubmit={handleSubmit} className="relative hidden w-full max-w-md sm:block">
-      <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
+      <MagnifyingGlass aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
       <input
         ref={inputRef}
         type="search"
@@ -307,7 +310,7 @@ function HelpLink() {
       title="Help"
       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-muted transition-colors duration-150 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
-      <HelpCircle aria-hidden="true" className="size-5" />
+      <Question aria-hidden="true" className="size-5" />
     </Link>
   );
 }
@@ -341,7 +344,7 @@ function NavLink({ item, active, onClick }: { item: NavItem; active: boolean; on
       aria-current={active ? "page" : undefined}
       className={cn(NAV_LINK_BASE, active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE)}
     >
-      <Icon aria-hidden="true" className={cn("size-4 shrink-0", active ? "text-ink" : "text-ink-muted")} />
+      <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-4 shrink-0", active ? "text-ink" : "text-ink-muted")} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.badge && <span className={cn("shrink-0 font-mono text-[10px] font-semibold tabular-nums", active ? "text-ink" : "text-ink-muted/70")}>{item.badge}</span>}
     </Link>
@@ -363,7 +366,7 @@ function NavGroup({ label, items, path, onNavigate }: { label: string; items: Na
           // parent lit (e.g. /platform/ctf-events/<id> keeps "CTF events" active), the same
           // exactMatch/prefixMatch split OrgNavGroup already uses -- AGENTS.md's "you are
           // here must never go dark on a sub-route" rule.
-          <NavLink key={`${item.href}-${item.label}`} item={item} active={item.href === "/" ? path === item.href : path === item.href || path.startsWith(`${item.href}/`)} onClick={onNavigate} />
+          <NavLink key={`${item.href}-${item.label}`} item={item} active={item.href === "/" || item.href === "/platform" ? path === item.href : path === item.href || path.startsWith(`${item.href}/`)} onClick={onNavigate} />
         ))}
       </div>
     </div>
@@ -393,7 +396,7 @@ function OrgNavGroup({ label, items: allItems, organizationId, role, path, onNav
               aria-current={active ? "page" : undefined}
               className={cn(NAV_LINK_BASE, active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE)}
             >
-              <Icon aria-hidden="true" className={cn("size-4 shrink-0", active ? "text-ink" : "text-ink-muted")} />
+              <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-4 shrink-0", active ? "text-ink" : "text-ink-muted")} />
               <span className="min-w-0 flex-1 truncate">{item.label}</span>
             </Link>
           );
@@ -447,7 +450,7 @@ function OrganizationSwitcher({ organizations, currentOrganizationId }: { organi
           <span className="block truncate text-sm font-semibold text-ink">{current.name}</span>
           <span className="block truncate font-mono text-[10px] text-ink-muted">@{current.slug}</span>
         </span>
-        <ChevronsUpDown aria-hidden="true" className="size-3.5 shrink-0 text-ink-muted" />
+        <CaretUpDown aria-hidden="true" className="size-3.5 shrink-0 text-ink-muted" />
       </button>
 
       {open && (
@@ -487,7 +490,7 @@ function SidebarBrand() {
     <Link href="/" prefetch={false} className="flex items-center gap-2 px-1 focus-visible:outline-2 focus-visible:outline-focus">
       {/* shadow-[...var(--glow-action)] removed -- --glow-action no longer exists, see app/globals.css */}
       <span aria-hidden="true" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-action text-on-action">
-        <ShieldCheck className="size-4" />
+        <ShieldCheck weight="fill" className="size-4" />
       </span>
       <span className="truncate font-[family-name:var(--font-display)] text-base font-semibold tracking-tight text-ink">Unpatched</span>
     </Link>
@@ -524,6 +527,7 @@ function SidebarNav({
   currentOrganizationId,
   hasResearcherParticipation,
   isPlatformAdmin,
+  platformAdminNeedsMfa,
   onNavigate,
 }: {
   path: string;
@@ -531,8 +535,19 @@ function SidebarNav({
   currentOrganizationId?: string;
   hasResearcherParticipation: boolean;
   isPlatformAdmin: boolean;
+  platformAdminNeedsMfa: boolean;
   onNavigate: () => void;
 }) {
+  // A platform admin without MFA has no admin power yet (202610100001) and every other page
+  // redirects to setup, so the only real destination is the setup step itself.
+  if (platformAdminNeedsMfa) {
+    return (
+      <nav aria-label="Primary navigation" className="space-y-5">
+        <NavGroup label="Platform admin" items={PLATFORM_MFA_SETUP_NAV} path={path} onNavigate={onNavigate} />
+      </nav>
+    );
+  }
+
   const hasOrganization = organizations.length > 0;
   const isOrganizationOnly = hasOrganization && !hasResearcherParticipation;
   // Only fall back to a guessed org when there is exactly one -- nothing ambiguous to
@@ -545,16 +560,11 @@ function SidebarNav({
   // `undefined` for 2+ orgs, matching this function's own doc comment above (the org zone
   // links simply don't render without a real current org).
   const resolvedOrgId = currentOrganizationId ?? (isOrganizationOnly && organizations.length === 1 ? organizations[0]?.id : undefined);
-  // A platform admin with no real organization membership and no real researcher
-  // participation used to fall through to the "brand-new signup" case below (Research/
-  // Practice/Record render whenever !isOrganizationOnly, and hasOrganization=false makes
-  // that true regardless of admin status) -- confirmed live: an admin-only account saw
-  // Dashboard/Programs/Reports/CTF/Learn/Bounties, none of it real or relevant to what
-  // this account can actually do. Hidden specifically for that case (admin AND no real
-  // researcher standing) -- an account that is BOTH a platform admin AND a real
-  // researcher keeps its real researcher zones; admin status alone never erases a real
-  // relationship this account actually has.
-  const isPlatformAdminOnly = isPlatformAdmin && !hasResearcherParticipation;
+  // A platform admin is platform staff: the platform-admin nav only, never the researcher
+  // zones (Dashboard/Programs/Reports/CTF/Learn/Bounties) -- even if the account once took
+  // part in a program. Same strict separation as researcher vs organization accounts; the
+  // home page and settings follow the same rule (app/page.tsx, lib/auth/account-type.ts).
+  const isPlatformAdminOnly = isPlatformAdmin;
   const resolvedOrgRole = organizations.find((org) => org.id === resolvedOrgId)?.role;
   const showResearcherZones = !isOrganizationOnly && !isPlatformAdminOnly;
 
@@ -588,7 +598,6 @@ function SidebarNav({
       ) : (
         <>
           <NavGroup label="System" items={SYSTEM_NAV} path={path} onNavigate={onNavigate} />
-          {isPlatformAdmin && <NavGroup label="Platform admin" items={PLATFORM_NAV} path={path} onNavigate={onNavigate} />}
         </>
       )}
     </nav>
@@ -604,6 +613,7 @@ export function AppShellClient({
   hasResearcherParticipation,
   unreadNotificationCount,
   isPlatformAdmin,
+  platformAdminNeedsMfa = false,
 }: {
   title: string;
   children: React.ReactNode;
@@ -613,6 +623,7 @@ export function AppShellClient({
   hasResearcherParticipation: boolean;
   unreadNotificationCount: number;
   isPlatformAdmin: boolean;
+  platformAdminNeedsMfa?: boolean;
 }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
@@ -648,7 +659,7 @@ export function AppShellClient({
           gradient stays faintly visible as content scrolls beneath it. */}
       <header className="glass-surface sticky top-0 z-20 flex h-16 items-center gap-3 rounded-none border-x-0 border-t-0 px-4 lg:px-6">
         <IconButton label="Open navigation" variant="quiet" className="shrink-0 lg:hidden" onClick={() => setOpen(true)}>
-          <Menu aria-hidden="true" className="size-5" />
+          <List aria-hidden="true" className="size-5" />
         </IconButton>
         <div className="lg:hidden">
           <SidebarBrand />
@@ -669,7 +680,7 @@ export function AppShellClient({
             the top on desktop, not duplicated in the top bar. */}
         <aside className="glass-surface hidden min-h-[calc(100dvh-4rem)] flex-col gap-6 rounded-none border-y-0 border-l-0 p-3 lg:flex">
           <SidebarBrand />
-          <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} onNavigate={close} />
+          <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} platformAdminNeedsMfa={platformAdminNeedsMfa} onNavigate={close} />
         </aside>
 
         <AnimatePresence>
@@ -697,7 +708,7 @@ export function AppShellClient({
                     <X aria-hidden="true" className="size-5" />
                   </IconButton>
                 </div>
-                <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} onNavigate={close} />
+                <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} platformAdminNeedsMfa={platformAdminNeedsMfa} onNavigate={close} />
               </motion.aside>
             </motion.div>
           )}

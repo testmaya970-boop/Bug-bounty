@@ -61,11 +61,23 @@ async function withServiceRole(fn) {
   }
 }
 
-async function withActor(userId, fn) {
+/** Platform-admin RPCs need an MFA-verified session (202610100001): a throwaway aal2
+ * session row for the duration of the call, removed afterwards. Seed-time only. */
+async function withPlatformActor(userId, fn) {
+  const sessionId = crypto.randomUUID();
+  await withServiceRole((client) => client.query("insert into public.sessions (id, user_id, token_hash, aal) values ($1, $2, $3, 'aal2')", [sessionId, userId, `seed-${sessionId}`]));
+  try {
+    return await withActor(userId, fn, sessionId);
+  } finally {
+    await withServiceRole((client) => client.query("delete from public.sessions where id = $1", [sessionId]));
+  }
+}
+
+async function withActor(userId, fn, sessionId) {
   const client = await pool.connect();
   try {
     await client.query("begin");
-    await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: userId, role: "authenticated" })]);
+    await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: userId, session_id: sessionId, role: "authenticated" })]);
     await client.query("set local role authenticated");
     const result = await fn(client);
     await client.query("commit");
@@ -164,7 +176,7 @@ if (org) {
     // then removes the row -- a seed-time convenience, not a capability the org owner
     // actually keeps.
     await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [orgUser.id]));
-    await tryStep(withActor(orgUser.id, (client) => client.query("select public.activate_program($1)", [program.id])), "activate_program");
+    await tryStep(withPlatformActor(orgUser.id, (client) => client.query("select public.activate_program($1)", [program.id])), "activate_program");
     await withServiceRole((client) => client.query("delete from public.platform_admins where user_id = $1", [orgUser.id]));
     await tryStep(withActor(orgUser.id, (client) => client.query("select public.set_program_visibility($1, $2)", [program.id, "public"])), "set_program_visibility");
     await tryStep(

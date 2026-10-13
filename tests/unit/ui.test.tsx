@@ -103,10 +103,10 @@ describe("Unpatched UI foundation", () => {
     expect(html).not.toMatch(/>CTF<|>Learn<|>Bounties</);
     expect(html).toContain("Platform admin");
   });
-  it("still shows Research/Practice/Record for an account that is BOTH a platform admin AND a real researcher -- admin status alone must never erase a real relationship this account actually has", () => {
+  it("shows only the platform-admin nav to a platform admin, even one with researcher history -- staff accounts never get the researcher zones", () => {
     const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={NO_ORGS} hasResearcherParticipation={true} unreadNotificationCount={0} isPlatformAdmin={true}><p>Content</p></AppShellClient>);
-    expect(html).toContain(">Research<");
-    expect(html).toContain(">Practice<");
+    expect(html).not.toContain(">Research<");
+    expect(html).not.toContain(">Practice<");
     expect(html).toContain("Platform admin");
   });
 });

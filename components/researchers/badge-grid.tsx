@@ -1,5 +1,5 @@
 import React from "react";
-import { Award } from "lucide-react";
+import { Medal } from "@phosphor-icons/react/dist/ssr";
 import { SectionLabel } from "../ui/security-primitives";
 import { cn } from "../../lib/cn";
 import { badgeDescription, badgeName, tierLabel } from "../../lib/badge-labels";
@@ -33,7 +33,7 @@ export function BadgeGrid({ badges }: { badges: ResearcherBadge[] }) {
       <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
         {badges.map((badge) => (
           <div key={badge.badgeKey} className="flex items-start gap-2.5 rounded-lg border border-border bg-surface p-3">
-            <Award aria-hidden="true" className={cn("mt-0.5 size-5 shrink-0", TIER_TONE[badge.tier])} />
+            <Medal aria-hidden="true" className={cn("mt-0.5 size-5 shrink-0", TIER_TONE[badge.tier])} />
             <div className="min-w-0">
               <p className="text-sm font-medium text-ink">
                 {badgeName(badge.badgeKey)} <span className={cn("font-semibold", TIER_TONE[badge.tier])}>{tierLabel(badge.tier)}</span>

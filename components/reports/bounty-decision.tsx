@@ -7,7 +7,7 @@ import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/form";
 import { adjustBountyAction, calculateBountyRecommendationAction, finalizeBountyAction } from "../../actions/bounty";
 import { minorUnitsToDecimalString, parseDecimalToMinorUnits } from "../../lib/money";
-import type { ReportBountyDecision } from "../../types/bounty";
+import type { ReportBountyDecision } from "../../types/bounty";
 import { LocalTime } from "../ui/local-time";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
@@ -99,7 +99,7 @@ export function FinalizeBountyDialog({ organizationId, programId, reportId, curr
         {step === "edit" ? (
           <div className="space-y-4">
             <Input label={`Amount (${currency})`} required autoFocus value={amountInput} onChange={(event) => setAmountInput(event.target.value)} placeholder="0.00" className="max-w-40" />
-            <Textarea label="Note (optional)" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} />
+            <Textarea label="Note" helperText="Required if the amount is outside the policy range." value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} />
             {error && (
               <p role="alert" className="text-sm font-medium text-danger">
                 {error}

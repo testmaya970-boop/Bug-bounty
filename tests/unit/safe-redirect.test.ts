@@ -14,6 +14,16 @@ describe("isSafeRedirect: the one open-redirect guard, now consolidated to a sin
     expect(isSafeRedirect("https://evil.test/phish")).toBe(false);
   });
 
+  it("rejects backslash and control-character tricks that browsers turn into //evil.test", () => {
+    for (const path of ["/\\evil.test", "/\\\\evil.test", "/\t/evil.test", "/\n/evil.test", "/\r//evil.test"]) {
+      expect(isSafeRedirect(path), JSON.stringify(path)).toBe(false);
+    }
+  });
+
+  it("keeps query strings and fragments on our own paths", () => {
+    expect(isSafeRedirect("/reports?status=new#top")).toBe(true);
+  });
+
   it("rejects a path that does not start with /", () => {
     expect(isSafeRedirect("organizations")).toBe(false);
   });

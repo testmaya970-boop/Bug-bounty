@@ -22,7 +22,7 @@ export class AuthServiceError extends Error {
 
 const SESSION_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
-async function setSessionCookie(cookieValue: string): Promise<void> {
+export async function setSessionCookie(cookieValue: string): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, cookieValue, {
     httpOnly: true,
@@ -41,6 +41,16 @@ async function clearSessionCookie(): Promise<void> {
 async function currentUserAgentAndIp(): Promise<{ userAgent: string | null; ip: string | null }> {
   const h = await headers();
   return { userAgent: h.get("user-agent"), ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null };
+}
+
+/**
+ * Consumes one attempt from a rate-limit check (`select ... as ok`) in its OWN committed
+ * transaction. It used to share the attempt's transaction, so a failing attempt (a wrong
+ * password) rolled back its own increment: failed sign-ins never counted toward the limit.
+ */
+async function consumeRateLimit(sql: string, params: unknown[], message: string): Promise<void> {
+  const ok = await withServiceRoleTransaction(async (client) => (await client.query<{ ok: boolean }>(sql, params)).rows[0]?.ok);
+  if (ok === false) throw new AuthServiceError(message, "RATE_LIMITED");
 }
 
 // Always "confirm_email" now -- unlike Supabase, where a project with email confirmation
@@ -68,6 +78,9 @@ export async function signUpWithPassword(
   metadata?: { displayName?: string; username?: string; intent?: "researcher" | "organization"; companyName?: string },
 ): Promise<SignUpResult> {
   const normalizedEmail = email.trim().toLowerCase();
+  // ponytail: per-client key is the first x-forwarded-for hop, which a client can set
+  // itself; the per-email limit still holds. Trust only the TLS proxy's hop once one exists.
+  await consumeRateLimit("select public.check_sign_up_rate_limit($1, $2) as ok", [normalizedEmail, (await currentUserAgentAndIp()).ip], "Too many sign-up attempts. Try again in an hour.");
   const passwordHash = await hashPassword(password);
   const { code, codeHash, ttlSeconds } = generateSignupOtpChallenge();
 
@@ -136,49 +149,49 @@ export async function signUpWithPassword(
 export async function signInWithPassword(email: string, password: string): Promise<{ mfaRequired: boolean; userId: string }> {
   const normalizedEmail = email.trim().toLowerCase();
 
-  return withServiceRoleTransaction(async (client) => {
-    const { rows: rateLimitRows } = await client.query<{ check_sign_in_rate_limit: boolean }>(
-      "select public.check_sign_in_rate_limit($1)",
-      [normalizedEmail],
-    );
-    if (rateLimitRows[0]?.check_sign_in_rate_limit === false) {
-      throw new AuthServiceError("Too many sign-in attempts. Wait a moment and try again.", "RATE_LIMITED");
-    }
+  await consumeRateLimit("select public.check_sign_in_rate_limit($1) as ok", [normalizedEmail], "Too many sign-in attempts. Wait a moment and try again.");
 
-    // must_reset_password accounts (migrated from Supabase Auth, see
-    // scripts/migrate-users-data.mjs) carry an unguessable, never-verifiable
-    // password_hash -- verifyPassword below always returns false for them, so they
-    // correctly cannot sign in with any password, same as a wrong-password attempt.
-    // Deliberately NOT distinguished from INVALID_CREDENTIALS here: revealing
-    // "this account requires a reset" before a correct password is known would be a
-    // new account-enumeration side channel, which this codebase's existing
-    // enumeration-safety convention (see mapAuthError's own history) treats as a real
-    // security property, not a UX nicety to trade away. A migrated user's real path in
-    // is the password-reset flow, reachable the same way any user reaches it.
-    const { rows: userRows } = await client.query<{ id: string; password_hash: string; email_verified_at: string | null; deactivated_at: string | null }>(
+  // must_reset_password accounts (migrated from Supabase Auth, see
+  // scripts/migrate-users-data.mjs) carry an unguessable, never-verifiable
+  // password_hash -- verifyPassword below always returns false for them, so they
+  // correctly cannot sign in with any password, same as a wrong-password attempt.
+  // Deliberately NOT distinguished from INVALID_CREDENTIALS here: revealing
+  // "this account requires a reset" before a correct password is known would be a
+  // new account-enumeration side channel, which this codebase's existing
+  // enumeration-safety convention (see mapAuthError's own history) treats as a real
+  // security property, not a UX nicety to trade away. A migrated user's real path in
+  // is the password-reset flow, reachable the same way any user reaches it.
+  // The lookup and the session write are two short transactions; the slow argon2 check runs
+  // between them holding no pool connection. Inside one transaction it parked a connection
+  // "idle in transaction" for seconds per sign-in, and a few parallel sign-ins drained the
+  // 5-connection pool so every other request stalled (seen as 100s page-load hangs).
+  const user = await withServiceRoleTransaction(async (client) => {
+    const { rows } = await client.query<{ id: string; password_hash: string; email_verified_at: string | null; deactivated_at: string | null }>(
       "select id, password_hash, email_verified_at, deactivated_at from public.users where email = $1",
       [normalizedEmail],
     );
-    const user = userRows[0];
-    // Constant-shape failure regardless of whether the account exists -- verifyPassword
-    // against a fixed dummy hash keeps the timing profile of "no such account" close to
-    // "wrong password" rather than short-circuiting immediately, the same enumeration
-    // caution the original Supabase-backed mapAuthError already documented.
-    const passwordOk = user ? await verifyPassword(user.password_hash, password) : await verifyPassword(DUMMY_HASH_FOR_TIMING, password);
-    if (!user || !passwordOk) {
-      throw new AuthServiceError("Incorrect email or password.", "INVALID_CREDENTIALS");
-    }
-    if (!user.email_verified_at) {
-      throw new AuthServiceError("Confirm your email address before signing in.", "EMAIL_NOT_CONFIRMED");
-    }
-    // The password was already proven correct above, so naming the real reason reveals
-    // nothing an attacker could use -- "Incorrect email or password" here sent people who
-    // had just reset their password round in circles.
-    if (user.deactivated_at) {
-      throw new AuthServiceError("This account has been deactivated. Contact support to reactivate it.", "ACCOUNT_DEACTIVATED");
-    }
+    return rows[0];
+  });
+  // Constant-shape failure regardless of whether the account exists -- verifyPassword
+  // against a fixed dummy hash keeps the timing profile of "no such account" close to
+  // "wrong password" rather than short-circuiting immediately, the same enumeration
+  // caution the original Supabase-backed mapAuthError already documented.
+  const passwordOk = user ? await verifyPassword(user.password_hash, password) : await verifyPassword(DUMMY_HASH_FOR_TIMING, password);
+  if (!user || !passwordOk) {
+    throw new AuthServiceError("Incorrect email or password.", "INVALID_CREDENTIALS");
+  }
+  if (!user.email_verified_at) {
+    throw new AuthServiceError("Confirm your email address before signing in.", "EMAIL_NOT_CONFIRMED");
+  }
+  // The password was already proven correct above, so naming the real reason reveals
+  // nothing an attacker could use -- "Incorrect email or password" here sent people who
+  // had just reset their password round in circles.
+  if (user.deactivated_at) {
+    throw new AuthServiceError("This account has been deactivated. Contact support to reactivate it.", "ACCOUNT_DEACTIVATED");
+  }
 
-    const { userAgent, ip } = await currentUserAgentAndIp();
+  const { userAgent, ip } = await currentUserAgentAndIp();
+  return withServiceRoleTransaction(async (client) => {
     const { cookieValue } = await createSession(client, { userId: user.id, userAgent, ip });
     await setSessionCookie(cookieValue);
 
@@ -271,6 +284,8 @@ export async function requestPasswordReset(email: string): Promise<void> {
   // Configured origin only: a client-supplied Host header must never decide where the
   // emailed reset link (and its token) points.
   const origin = getNativeEnv().APP_ORIGIN;
+  // Before the account lookup, so hitting the limit reveals nothing about the account.
+  await consumeRateLimit("select public.check_password_reset_rate_limit($1, $2) as ok", [normalizedEmail, (await currentUserAgentAndIp()).ip], "Too many reset requests. Try again in an hour.");
 
   await withServiceRoleTransaction(async (client) => {
     // Confirmed, active accounts only: a sign-up whose code was never entered is not a

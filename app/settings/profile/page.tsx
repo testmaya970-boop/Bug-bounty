@@ -6,28 +6,31 @@ import { ProfileSettings } from "../../../components/settings/profile-settings";
 import { listCurrentUserOrganizations } from "../../../services/organizations";
 import { getMyBiography } from "../../../services/researcher-profiles";
 import { getCurrentUser } from "../../../lib/auth/current-user";
+import { getSettingsAudience } from "../../../lib/auth/account-type";
 
 export default async function PublicProfileSettingsPage() {
   const user = await getCurrentUser();
   if (!user) return null; // layout already redirects; this satisfies the type only.
 
-  // An organization account has no biography or public researcher profile: nothing to load.
-  const isOrganization = user.accountType === "organization";
+  // Organization accounts and platform admins have no biography or public researcher profile.
+  const audience = await getSettingsAudience();
+  const isOrganization = audience === "organization";
+  const isResearcher = audience === "researcher";
   const [biography, organizations] = await Promise.all([
-    isOrganization ? null : getMyBiography(user.id),
+    isResearcher ? getMyBiography(user.id) : null,
     listCurrentUserOrganizations(user.id),
   ]);
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{isOrganization ? "Profile" : "Public Profile"}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{isResearcher ? "Public Profile" : "Profile"}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {isOrganization ? "How you appear to your team and to the researchers you work with." : "Shown on your reports and to organizations you research for."}
+          {isOrganization ? "How you appear to your team and to the researchers you work with." : isResearcher ? "Shown on your reports and to organizations you research for." : "How you appear to other platform staff and in audit records."}
         </p>
       </div>
 
-      <ProfileSettings initialDisplayName={user.displayName} initialBiography={biography ?? ""} researcherFields={!isOrganization} />
+      <ProfileSettings initialDisplayName={user.displayName} initialBiography={biography ?? ""} researcherFields={isResearcher} />
 
       {organizations.length > 0 && (
         <div className="border-t border-border pt-6">

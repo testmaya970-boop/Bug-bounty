@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { LayoutGrid, List } from "lucide-react";
+import { SquaresFour, Rows } from "@phosphor-icons/react";
 import { ErrorState, Skeleton } from "../ui/feedback";
 import { Button, IconButton } from "../ui/button";
 import { listPublicProgramsPageAction } from "../../actions/programs";
@@ -62,7 +62,7 @@ export function PublicProgramList({
             onClick={() => setView("grid")}
             className="min-h-9 min-w-9"
           >
-            <LayoutGrid aria-hidden="true" className="size-4" />
+            <SquaresFour aria-hidden="true" className="size-4" />
           </IconButton>
           <IconButton
             label="Table view"
@@ -71,7 +71,7 @@ export function PublicProgramList({
             onClick={() => setView("table")}
             className="min-h-9 min-w-9"
           >
-            <List aria-hidden="true" className="size-4" />
+            <Rows aria-hidden="true" className="size-4" />
           </IconButton>
         </div>
       </div>

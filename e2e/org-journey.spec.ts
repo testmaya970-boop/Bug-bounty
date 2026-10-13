@@ -252,6 +252,8 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // --- Finalize bounty: assert the payout wording is visible in the confirm step -------
   await page.getByRole("button", { name: "Finalize bounty" }).click();
   await page.getByLabel(/Amount/).fill("500.00");
+  // Outside the policy range, so a reason is required (202610120001).
+  await page.getByLabel("Note").fill("Agreed with the researcher for this E2E finding.");
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("Payouts are processed off-platform by your program contact.")).toBeVisible();
   await page.getByRole("button", { name: "Confirm finalization" }).click();

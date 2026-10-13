@@ -27,10 +27,11 @@
 
 import { Pool, type PoolClient, types as pgTypes } from "pg";
 import argon2 from "argon2";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ctfFlag } from "../lib/ctf-flags";
+import { totpCode } from "../lib/auth/totp";
 
 for (const oid of [1082, 1114, 1184]) pgTypes.setTypeParser(oid, (value: string) => new Date(value).toISOString());
 
@@ -53,6 +54,9 @@ export const E2E_PASSWORD_CASE_EMAIL = "e2e.password@unpatched.demo";
 // e2e/program-launch-journey.spec.ts: a standing platform admin (approves the launch review
 // through /platform/programs, the real UI path) and a researcher used only by that spec.
 export const E2E_PLATFORM_ADMIN_EMAIL = "e2e.platform-admin@unpatched.demo";
+// A second platform admin (account-reactivation, admin-organization-search) so neither
+// admin signs in more than the sign-in limit's 10 times per 15 minutes in one run.
+export const E2E_PLATFORM_ADMIN_2_EMAIL = "e2e.platform-admin-2@unpatched.demo";
 export const E2E_HUNTER_EMAIL = "e2e.hunter@unpatched.demo";
 // Those specs (and scope-import-hackerone.spec.ts) create a program -- and a report -- on
 // every run. Their own org keeps that data out of E2E Journey Org, whose Home action queue
@@ -115,11 +119,23 @@ async function withServiceRole<T>(fn: (client: PoolClient) => Promise<T>): Promi
   }
 }
 
-async function withActor<T>(userId: string, fn: (client: PoolClient) => Promise<T>): Promise<T> {
+/** Platform-admin RPCs need an MFA-verified session (202610100001): a throwaway aal2
+ * session row for the duration of the call, removed afterwards. Seed-time only. */
+async function withPlatformActor<T>(userId: string, fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const sessionId = randomUUID();
+  await withServiceRole((client) => client.query("insert into public.sessions (id, user_id, token_hash, aal) values ($1, $2, $3, 'aal2')", [sessionId, userId, `seed-${sessionId}`]));
+  try {
+    return await withActor(userId, fn, sessionId);
+  } finally {
+    await withServiceRole((client) => client.query("delete from public.sessions where id = $1", [sessionId]));
+  }
+}
+
+async function withActor<T>(userId: string, fn: (client: PoolClient) => Promise<T>, sessionId?: string): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query("begin");
-    await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: userId, role: "authenticated" })]);
+    await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: userId, session_id: sessionId, role: "authenticated" })]);
     await client.query("set local role authenticated");
     const result = await fn(client);
     await client.query("commit");
@@ -200,6 +216,19 @@ async function submitReportAcknowledgingPolicy(client: PoolClient, args: unknown
   return callRpc<{ id: string }>(client, "public.submit_report", args);
 }
 
+/** Platform admins must have MFA (202610100001). Enrolled through the real RPCs with a
+ * random authenticator secret; specs pass the sign-in gate with a backup code
+ * (e2e/mfa-gate.ts), so the secret is never needed again. */
+async function ensurePlatformAdmin(email: string, displayName: string, username: string): Promise<UserRow> {
+  const user = await ensureUser(email, displayName, username);
+  await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [user.id]));
+  const totpSecret = randomBytes(20);
+  await withActor(user.id, (client) => client.query("select public.begin_my_totp_enrollment($1)", [totpSecret.toString("hex")]));
+  const enrolled = await withActor(user.id, (client) => callRpc<{ verify_my_totp_code: string }>(client, "public.verify_my_totp_code", [totpCode(totpSecret, Math.floor(Date.now() / 30_000))]));
+  if (enrolled.verify_my_totp_code !== "enroll") throw new Error(`${email}: MFA enrollment failed (${enrolled.verify_my_totp_code})`);
+  return user;
+}
+
 async function ensureUser(email: string, displayName: string, username: string): Promise<UserRow> {
   const existing = await findUserByEmail(email);
   if (existing) {
@@ -265,7 +294,7 @@ async function ensureProgram(ownerId: string, orgId: string, name: string): Prom
  * untouched (private, the schema default) for the private one. */
 async function activateProgram(ownerId: string, programId: string, visibility: "public" | "private"): Promise<void> {
   await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [ownerId]));
-  await tryStep(withActor(ownerId, (client) => client.query("select public.activate_program($1)", [programId])), "activate_program");
+  await tryStep(withPlatformActor(ownerId, (client) => client.query("select public.activate_program($1)", [programId])), "activate_program");
   await withServiceRole((client) => client.query("delete from public.platform_admins where user_id = $1", [ownerId]));
   if (visibility === "public") {
     await tryStep(withActor(ownerId, (client) => client.query("select public.set_program_visibility($1, $2)", [programId, "public"])), "set_program_visibility");
@@ -570,17 +599,17 @@ async function seedCtfEvents(adminId: string, veteranId: string, newcomerId: str
       // A not-yet-ended event's set is re-applied so a retired challenge drops out of it;
       // an ended event keeps the set its final leaderboard was earned on.
       if (status !== "ended") {
-        await tryStep(withActor(adminId, (client) => client.query("select public.set_ctf_event_challenges($1, $2)", [existing.id, challengeIds])), `set_ctf_event_challenges (${slug})`);
+        await tryStep(withPlatformActor(adminId, (client) => client.query("select public.set_ctf_event_challenges($1, $2)", [existing.id, challengeIds])), `set_ctf_event_challenges (${slug})`);
       }
       console.log(`CTF event "${slug}" already exists.`);
       return existing.id;
     }
     const created = await tryStep(
-      withActor(adminId, (client) => callRpc<{ id: string }>(client, "public.create_ctf_event", [slug, name, description, startsAt, endsAt, status])),
+      withPlatformActor(adminId, (client) => callRpc<{ id: string }>(client, "public.create_ctf_event", [slug, name, description, startsAt, endsAt, status])),
       `create_ctf_event (${slug})`,
     );
     if (!created) return null;
-    await tryStep(withActor(adminId, (client) => client.query("select public.set_ctf_event_challenges($1, $2)", [created.id, challengeIds])), `set_ctf_event_challenges (${slug})`);
+    await tryStep(withPlatformActor(adminId, (client) => client.query("select public.set_ctf_event_challenges($1, $2)", [created.id, challengeIds])), `set_ctf_event_challenges (${slug})`);
     console.log(`Created CTF event "${slug}" (${status}) with ${challengeIds.length} challenges.`);
     return created.id;
   }
@@ -678,13 +707,27 @@ async function main() {
   if (process.env.MIGRATION_DATABASE_URL) {
     const owner = new Pool({ connectionString: process.env.MIGRATION_DATABASE_URL, max: 1 });
     const cleared = await owner.query("delete from private.rate_limit_counters where bucket_key like 'auth_sign_in:e2e.%@unpatched.demo'");
+    // Same for the sign-up/reset limits (202610100001): every spec signs up from this
+    // machine, so the loopback client buckets and the specs' own addresses are reset too.
+    await owner.query(
+      `delete from private.rate_limit_counters
+        where bucket_key ~ '^(sign_up|password_reset)_client:(::1|::ffff:127\\.0\\.0\\.1|127\\.0\\.0\\.1)$'
+           or bucket_key ~ '^(sign_up|password_reset):.*@(unpatched\\.demo|example\\.com)$'`,
+    );
     // Leftovers from before those specs moved to E2E Launch Org (see E2E_LAUNCH_ORG_NAME).
     // Programs only -- every dependent row (reports, scope, members...) cascades.
-    const removed = await owner.query(
-      `delete from public.programs p using public.organizations o
-        where o.id = p.organization_id and o.name = $1 and (p.name like 'Acme Payments Bug Bounty %' or p.name like 'H1 Import %')`,
-      [E2E_ORG_NAME],
-    );
+    // Also the two "E2E Live Public/Private <timestamp>" programs org-journey.spec.ts creates
+    // every run: ~200 had piled up, making the analytics program table 10,000px tall.
+    // Their append-only reputation rows go first (replica mode for that one statement only;
+    // it also disables FK cascades), then the programs cascade normally.
+    const strayPrograms = `select p.id from public.programs p join public.organizations o on o.id = p.organization_id
+      where o.name = $1 and (p.name like 'Acme Payments Bug Bounty %' or p.name like 'H1 Import %' or p.name ~ '^E2E Live (Public|Private) [0-9]+$')`;
+    await owner.query("begin");
+    await owner.query("set local session_replication_role = replica");
+    await owner.query(`delete from public.reputation_ledger where program_id in (${strayPrograms})`, [E2E_ORG_NAME]);
+    await owner.query("set local session_replication_role = origin");
+    const removed = await owner.query(`delete from public.programs where id in (${strayPrograms})`, [E2E_ORG_NAME]);
+    await owner.query("commit");
     // notifications.spec.ts proves cross-org isolation by asserting this account has NO
     // notifications at all -- anything it legitimately received (e.g. a manual
     // suspend/reinstate check of its own org) would break that proof, so start it clean.
@@ -699,6 +742,10 @@ async function main() {
   // fixture reports out of the program page's 5-report preview that journeys click through.
   const policyReports = await withServiceRole((client) => client.query("delete from public.reports where title like 'E2E policy-bound report %'"));
   if (policyReports.rowCount) console.log(`Removed ${policyReports.rowCount} report(s) left by the program-policy spec.`);
+  // e2e/report-validation.spec.ts does the same; they filled org Home's 8-slot action queue
+  // and pushed the triage-walk fixture out of it.
+  const attachmentReports = await withServiceRole((client) => client.query("delete from public.reports where title like 'E2E attachment report %'"));
+  if (attachmentReports.rowCount) console.log(`Removed ${attachmentReports.rowCount} report(s) left by the report-validation spec.`);
   // e2e/discovery.spec.ts saves a server-side draft every run.
   await withServiceRole((client) => client.query("delete from public.report_drafts d using public.users u where u.id = d.researcher_id and u.email like 'e2e.%'"));
   const admin = await ensureUser(E2E_ADMIN_EMAIL, "E2E Admin", "e2e_admin");
@@ -708,8 +755,8 @@ async function main() {
   await resetSettingsAccount(await ensureUser(E2E_SETTINGS_EMAIL, "E2E Settings Researcher", "e2e_settings"));
   await resetSettingsAccount(await ensureUser(E2E_PASSWORD_CASE_EMAIL, "E2E Settings Researcher", "e2e_password"));
   const hunter = await ensureUser(E2E_HUNTER_EMAIL, "E2E Hunter Researcher", "e2e_hunter");
-  const platformAdmin = await ensureUser(E2E_PLATFORM_ADMIN_EMAIL, "E2E Platform Admin", "e2e_platform_admin");
-  await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [platformAdmin.id]));
+  const platformAdmin = await ensurePlatformAdmin(E2E_PLATFORM_ADMIN_EMAIL, "E2E Platform Admin", "e2e_platform_admin");
+  await ensurePlatformAdmin(E2E_PLATFORM_ADMIN_2_EMAIL, "E2E Platform Admin 2", "e2e_platform_admin_2");
   const launchAdmin = await ensureUser(E2E_LAUNCH_ADMIN_EMAIL, "E2E Launch Admin", "e2e_launch_admin");
   await ensureOrganization(launchAdmin.id, E2E_LAUNCH_ORG_NAME);
   console.log("");
@@ -789,7 +836,7 @@ async function main() {
   if (veteranTax.rows[0]?.tax_form_status !== "verified") {
     await tryStep(withActor(veteran.id, (client) => client.query("select public.upsert_my_tax_form('w9', $1)", ["000-00-4821"])), "upsert_my_tax_form (veteran)");
     await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [platformAdmin.id]));
-    await tryStep(withActor(platformAdmin.id, (client) => client.query("select public.review_tax_form($1, 'verified', 'E2E seed')", [veteran.id])), "review_tax_form (veteran)");
+    await tryStep(withPlatformActor(platformAdmin.id, (client) => client.query("select public.review_tax_form($1, 'verified', 'E2E seed')", [veteran.id])), "review_tax_form (veteran)");
   }
   await withServiceRole((client) =>
     client.query("delete from public.payment_obligations o using public.reports r where r.id = o.report_id and r.program_id = $1 and r.title = $2", [publicProgram.id, resolvedTitle]),

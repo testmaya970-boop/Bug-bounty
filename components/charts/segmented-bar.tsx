@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { cn } from "../../lib/cn";
 import type { Tone } from "../ui/badge";
 
-export type SegmentedBarDatum = { label: string; value: number; tone: Tone };
+/** `color` (a chart identity color, lib/viz.ts) wins over `tone` (a badge tone). */
+export type SegmentedBarDatum = { label: string; value: number; tone?: Tone; color?: string };
 
 /**
  * A single proportional pipeline bar (GitHub's own language-breakdown bar is the closest
@@ -38,12 +39,12 @@ export function SegmentedBar({ data, className }: { data: SegmentedBarDatum[]; c
             key={d.label}
             onMouseEnter={() => setHovered(d.label)}
             className={cn(
-              d.tone.bg,
+              !d.color && d.tone?.bg,
               "h-full cursor-pointer motion-safe:animate-enter-fade motion-safe:transition-opacity motion-safe:duration-150",
               index < present.length - 1 && "border-r-2 border-canvas",
               hovered !== null && hovered !== d.label && "opacity-40",
             )}
-            style={{ width: `${(d.value / total) * 100}%` }}
+            style={{ width: `${(d.value / total) * 100}%`, background: d.color }}
           />
         ))}
       </div>
@@ -54,7 +55,7 @@ export function SegmentedBar({ data, className }: { data: SegmentedBarDatum[]; c
             onMouseEnter={() => setHovered(d.label)}
             className={cn("flex cursor-pointer items-center gap-2 rounded motion-safe:transition-opacity motion-safe:duration-150", hovered !== null && hovered !== d.label && "opacity-50")}
           >
-            <span aria-hidden="true" className={cn("size-2.5 shrink-0 rounded-full", d.tone.bg)} />
+            <span aria-hidden="true" className={cn("size-2.5 shrink-0 rounded-full", !d.color && d.tone?.bg)} style={{ background: d.color }} />
             <dt className="min-w-0 flex-1 truncate text-ink-muted">{d.label}</dt>
             <dd className="flex items-baseline gap-1.5 whitespace-nowrap">
               <span className="font-mono font-semibold text-ink">{d.value}</span>

@@ -95,6 +95,11 @@ export async function deliverNotificationEmails(event: OutboxEvent, notification
       anyRetryable = true;
       continue;
     }
+    // Another worker is sending this one right now (202610130002): check again on the retry.
+    if (prepared?.reason === "IN_PROGRESS") {
+      anyRetryable = true;
+      continue;
+    }
     if (!prepared || !prepared.deliverable) continue; // Already terminal, or no longer authorized -- prepare_notification_email already recorded why.
 
     const rendered = renderNotificationEmail({

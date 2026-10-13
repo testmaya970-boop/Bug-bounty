@@ -113,9 +113,9 @@ export async function listOrganizationMembers(organizationId: string): Promise<O
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
       client
         .query<MemberRow>(
-          `select m.organization_id, m.user_id, m.role, m.status, m.invited_by, m.joined_at, m.suspended_at, m.removed_at, m.updated_at, u.username, u.display_name, u.email
+          `select m.organization_id, m.user_id, m.role, m.status, m.invited_by, m.joined_at, m.suspended_at, m.removed_at, m.updated_at, u.username, u.display_name, public.visible_email(m.user_id) as email
            from public.organization_members m left join public.users u on u.id = m.user_id
-           where m.organization_id = $1 order by m.joined_at asc`,
+           where m.organization_id = $1 and (u.id is not null or m.status <> 'active') order by m.joined_at asc`,
           [organizationId],
         )
         .then((r) => r.rows),
@@ -132,7 +132,7 @@ export async function getActorMembership(userId: string, organizationId: string)
     rows = await withActorTransaction(userId, (client) =>
       client
         .query<MemberRow>(
-          `select m.organization_id, m.user_id, m.role, m.status, m.invited_by, m.joined_at, m.suspended_at, m.removed_at, m.updated_at, u.username, u.display_name, u.email
+          `select m.organization_id, m.user_id, m.role, m.status, m.invited_by, m.joined_at, m.suspended_at, m.removed_at, m.updated_at, u.username, u.display_name, public.visible_email(m.user_id) as email
            from public.organization_members m left join public.users u on u.id = m.user_id
            where m.organization_id = $1 and m.user_id = $2`,
           [organizationId, userId],

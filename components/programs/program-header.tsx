@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { ChevronsUpDown, Check } from "lucide-react";
+import { CaretUpDown, Check } from "@phosphor-icons/react";
 import { SectionLabel } from "../ui/security-primitives";
 import { ProgramStatusBadge } from "../ui/badge";
 import { Separator } from "../ui/feedback";
@@ -50,7 +50,7 @@ function ProgramSwitcher({ organizationId, programId, programName, siblingProgra
         aria-label="Switch program"
         className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border px-2.5 text-sm text-ink-muted transition-colors duration-150 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
       >
-        <ChevronsUpDown aria-hidden="true" className="size-3.5 shrink-0" />
+        <CaretUpDown aria-hidden="true" className="size-3.5 shrink-0" />
       </button>
 
       {open && (

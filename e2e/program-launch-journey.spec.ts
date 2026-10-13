@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { passMfaGate } from "./mfa-gate";
 
 // Full launch journey across three real sessions: org admin drafts a public bug bounty
 // engagement and submits it for review -> platform admin approves it at /platform/programs
@@ -18,7 +19,7 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByRole("textbox", { name: "Password" }).fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
+  await passMfaGate(page, email);
 }
 
 async function signOut(page: Page) {

@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { Swords } from "lucide-react";
+import { Flag } from "@phosphor-icons/react/dist/ssr";
 import { SectionLabel } from "../ui/security-primitives";
 import type { MockChallengeCategory } from "../../lib/mock/researcher-dashboard";
 
@@ -33,7 +33,7 @@ export function LearningSection({ categories }: { categories: MockChallengeCateg
           className="group relative flex min-h-40 flex-col justify-end overflow-hidden rounded-lg bg-ink p-6 text-canvas motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           <div aria-hidden="true" className="dot-grid pointer-events-none absolute inset-0 text-canvas" />
-          <Swords
+          <Flag
             aria-hidden="true"
             className="pointer-events-none absolute -right-6 -top-6 size-40 text-canvas/10 transition-transform duration-300 motion-reduce:transition-none group-hover:scale-110 group-hover:rotate-6"
           />

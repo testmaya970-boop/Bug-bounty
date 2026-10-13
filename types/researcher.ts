@@ -19,7 +19,8 @@ export type ProgramResearcherRecord = {
   updatedAt: string;
   username: string;
   displayName: string;
-  email: string | null;
+  /** The researcher's Unpatched email alias -- org staff never see the real address. */
+  aliasEmail: string | null;
 };
 
 export type ProgramInvitationRecord = {

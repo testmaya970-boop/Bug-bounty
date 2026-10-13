@@ -25,7 +25,17 @@ export type WorkerOptions = {
  * the whole event -- the retryable one might yet succeed, and the permanent one will
  * simply fail the same way again harmlessly (it already recorded why).
  */
-export async function processEvent(event: OutboxEvent, workerId: string): Promise<OutboxEvent> {
+/** A consumer that hangs (a stuck SMTP/HTTP call) must give up before the lease runs out,
+ * or another worker reclaims the event and this one's completion is refused. */
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`handler timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
+
+export async function processEvent(event: OutboxEvent, workerId: string, handlerTimeoutMs = 45_000): Promise<OutboxEvent> {
   const handlers = getHandlers(event.eventType, event.schemaVersion);
   if (handlers.length === 0) {
     // Retryable, not permanent: during a rolling deploy an old worker can claim an event type
@@ -39,7 +49,7 @@ export async function processEvent(event: OutboxEvent, workerId: string): Promis
     });
   }
 
-  const results = await Promise.allSettled(handlers.map((handler) => handler(event)));
+  const results = await Promise.allSettled(handlers.map((handler) => withTimeout(handler(event), handlerTimeoutMs)));
   const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
 
   if (failures.length === 0) {
@@ -56,8 +66,14 @@ export async function processEvent(event: OutboxEvent, workerId: string): Promis
  * Returns the number of events claimed, so a caller can decide whether to poll again
  * immediately (more work is likely waiting) or back off (queue looked empty). */
 export async function runBatch(options: WorkerOptions): Promise<number> {
-  const events = await claimOutboxEvents(options.workerId, options.batchSize ?? 10, options.leaseSeconds ?? 60);
-  await Promise.all(events.map((event) => processEvent(event, options.workerId)));
+  const leaseSeconds = options.leaseSeconds ?? 60;
+  const events = await claimOutboxEvents(options.workerId, options.batchSize ?? 10, leaseSeconds);
+  // One event's failure (e.g. LEASE_LOST after a reclaim) must not take the others -- or the
+  // worker -- down with it; an unfinished event is simply reclaimed when its lease expires.
+  const results = await Promise.allSettled(events.map((event) => processEvent(event, options.workerId, leaseSeconds * 750)));
+  for (const result of results) {
+    if (result.status === "rejected") console.error(`[outbox-worker] ${options.workerId} could not complete an event`, result.reason);
+  }
   return events.length;
 }
 
@@ -69,8 +85,19 @@ function sleep(ms: number): Promise<void> {
  * code (`app/`, `actions/`, `services/`) -- only `run.ts`'s CLI entrypoint calls this. */
 export async function runForever(options: WorkerOptions & { pollIntervalMs?: number; signal?: AbortSignal }): Promise<void> {
   const pollIntervalMs = options.pollIntervalMs ?? 2000;
+  let failures = 0;
   while (!options.signal?.aborted) {
-    const claimed = await runBatch(options);
-    if (claimed === 0) await sleep(pollIntervalMs);
+    try {
+      const claimed = await runBatch(options);
+      failures = 0;
+      if (claimed === 0) await sleep(pollIntervalMs);
+    } catch (error) {
+      // The database blipped (restart, network, pool): back off and keep going instead of
+      // exiting -- nothing restarts this process for us.
+      failures += 1;
+      const backoffMs = Math.min(pollIntervalMs * 2 ** failures, 60_000);
+      console.error(`[outbox-worker] ${options.workerId} batch failed (attempt ${failures}), retrying in ${backoffMs}ms`, error);
+      await sleep(backoffMs);
+    }
   }
 }

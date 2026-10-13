@@ -28,7 +28,7 @@ import { isPlatformAdmin } from "@/services/platform-operations";
  */
 export async function determineDefaultDestination(userId: string): Promise<Route> {
   const admin = await isPlatformAdmin();
-  if (admin) return "/platform/programs" as Route;
+  if (admin) return "/platform" as Route;
 
   const organizations = await listCurrentUserOrganizations(userId);
   const hasOrganization = organizations.length > 0;

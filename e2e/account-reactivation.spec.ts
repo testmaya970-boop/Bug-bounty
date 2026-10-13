@@ -1,8 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import pg from "pg";
+import { passMfaGate } from "./mfa-gate";
 
 // Deactivate -> clear message + no reset -> a platform admin reactivates -> sign in again.
 // And an account a platform admin DELETED can't be brought back this way.
@@ -68,7 +69,8 @@ async function deactivateSelf(page: Page) {
 
 async function reactivateAsAdmin(page: Page, email: string) {
   await page.context().clearCookies();
-  await signIn(page, "e2e.platform-admin@unpatched.demo", "E2ESeed!2026");
+  await signIn(page, "e2e.platform-admin-2@unpatched.demo", "E2ESeed!2026");
+  await passMfaGate(page, "e2e.platform-admin-2@unpatched.demo");
   await expect(page).toHaveURL((url) => !url.pathname.startsWith("/sign-in"));
   await page.goto("/platform/researchers");
   await page.getByRole("combobox", { name: "Deactivated account" }).fill(email);
@@ -116,24 +118,29 @@ test("an account deleted by a platform admin can't be reactivated", async ({ pag
 
   // The admin search doesn't even offer it...
   await page.context().clearCookies();
-  await signIn(page, "e2e.platform-admin@unpatched.demo", "E2ESeed!2026");
+  await signIn(page, "e2e.platform-admin-2@unpatched.demo", "E2ESeed!2026");
+  await passMfaGate(page, "e2e.platform-admin-2@unpatched.demo");
   await expect(page).toHaveURL((url) => !url.pathname.startsWith("/sign-in"));
   await page.goto("/platform/researchers");
   await page.getByRole("combobox", { name: "Deactivated account" }).fill(email);
   await expect(page.getByText(/No deactivated researcher matches/)).toBeVisible();
 
   // ...and the database refuses it even if asked directly, as a platform admin.
-  const adminId = await asServiceRole(async (db) => (await db.query("select id from public.users where email = 'e2e.platform-admin@unpatched.demo'")).rows[0].id);
+  const adminId = await asServiceRole(async (db) => (await db.query("select id from public.users where email = 'e2e.platform-admin-2@unpatched.demo'")).rows[0].id);
+  // Admin power needs an MFA-verified session (202610100001).
+  const sessionId = randomUUID();
+  await asServiceRole((db) => db.query("insert into public.sessions (id, user_id, token_hash, aal) values ($1, $2, $3, 'aal2')", [sessionId, adminId, `e2e-${sessionId}`]));
   const client = new pg.Client({ connectionString: databaseUrl() });
   await client.connect();
   try {
     await client.query("begin");
-    await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: adminId, role: "authenticated" })]);
+    await client.query("select set_config('app.current_claims', $1, true)", [JSON.stringify({ sub: adminId, session_id: sessionId, role: "authenticated" })]);
     await client.query("set local role authenticated");
     await expect(client.query("select public.reactivate_account_platform_wide($1, 'try')", [email])).rejects.toThrow(/ACCOUNT_DELETED/);
   } finally {
     await client.query("rollback").catch(() => {});
     await client.end();
+    await asServiceRole((db) => db.query("delete from public.sessions where id = $1", [sessionId]));
   }
   const still = await asServiceRole(async (db) => (await db.query("select deactivated_at from public.users where id = $1", [userId])).rows[0].deactivated_at);
   expect(still).not.toBeNull();
@@ -144,7 +151,8 @@ test("admin finds a researcher by part of their email, suspends, then deletes th
   await signUpVerified(page, email);
 
   await page.context().clearCookies();
-  await signIn(page, "e2e.platform-admin@unpatched.demo", "E2ESeed!2026");
+  await signIn(page, "e2e.platform-admin-2@unpatched.demo", "E2ESeed!2026");
+  await passMfaGate(page, "e2e.platform-admin-2@unpatched.demo");
   await expect(page).toHaveURL((url) => !url.pathname.startsWith("/sign-in"));
   await page.goto("/platform/researchers");
 

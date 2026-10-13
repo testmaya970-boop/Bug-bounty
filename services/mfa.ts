@@ -3,6 +3,7 @@ import { withActorTransaction, withServiceRoleTransaction, callRpc } from "@/lib
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
 import { getCurrentUser, getCurrentSessionId } from "@/lib/auth/current-user";
 import { elevateSessionToAal2 } from "@/lib/auth/session";
+import { setSessionCookie } from "@/services/auth";
 import { generateOtpChallenge, hashOtpCode } from "@/lib/auth/mfa-otp";
 import { activeEmailProvider } from "@/lib/email-provider";
 import { generateTotpSecret, totpUri } from "@/lib/auth/totp";
@@ -132,7 +133,13 @@ async function verifyTotpCode(code: string): Promise<void> {
   if (outcome === "rate_limited") throw new OrganizationServiceError("Too many wrong codes. Wait 15 minutes and try again.", "RATE_LIMITED");
   if (outcome === "invalid") throw new OrganizationServiceError("That code didn't match. Enter the current code from your authenticator app.", "INVALID_CODE");
   // Same as an emailed code: a real second factor elevates this session (see verifyChallengeCode).
-  if (sessionId) await withServiceRoleTransaction((client) => elevateSessionToAal2(client, sessionId));
+  if (sessionId) await elevateAndRotateSession(sessionId);
+}
+
+/** Elevates to aal2 under a NEW session id and cookie (lib/auth/session.ts). */
+async function elevateAndRotateSession(sessionId: string): Promise<void> {
+  const cookieValue = await withServiceRoleTransaction((client) => elevateSessionToAal2(client, sessionId));
+  if (cookieValue) await setSessionCookie(cookieValue);
 }
 
 async function verifyChallengeCode(code: string): Promise<void> {
@@ -181,9 +188,7 @@ async function verifyChallengeCode(code: string): Promise<void> {
   // ran (confirmed live). sessionId itself comes from getCurrentSessionId() above, which
   // already resolves it from this request's own validated cookie -- never a client-
   // supplied id -- so there is no new trust boundary crossed by using service_role here.
-  if (sessionId) {
-    await withServiceRoleTransaction((client) => elevateSessionToAal2(client, sessionId));
-  }
+  if (sessionId) await elevateAndRotateSession(sessionId);
 }
 
 // Email-OTP MFA has one factor per account, so the RPC needs no factor id.
@@ -270,6 +275,8 @@ export async function redeemBackupCode(code: string): Promise<void> {
   } catch (error) {
     mapError(error as { message: string });
   }
+  // A backup code is a real second factor too: same rotation.
+  if (sessionId) await elevateAndRotateSession(sessionId);
 }
 
 // ---------------------------------------------------------------------------

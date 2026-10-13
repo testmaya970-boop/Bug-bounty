@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import pg from "pg";
+import { passMfaGate } from "./mfa-gate";
 
 // Platform admin finds an organization by part of its name in the suspend form's search
 // dropdown, suspends it, then reinstates it. Uses a fresh organization of its own.
@@ -59,10 +60,10 @@ test("admin finds an organization by part of its name, suspends it, then reinsta
   // Admin: search, pick, suspend.
   await page.context().clearCookies();
   await page.goto("/sign-in");
-  await page.getByLabel("Email").fill("e2e.platform-admin@unpatched.demo");
+  await page.getByLabel("Email").fill("e2e.platform-admin-2@unpatched.demo");
   await page.getByRole("textbox", { name: "Password" }).fill("E2ESeed!2026");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL((url) => !url.pathname.startsWith("/sign-in"));
+  await passMfaGate(page, "e2e.platform-admin-2@unpatched.demo");
   await page.goto("/platform/organizations");
 
   const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Suspend" }) });

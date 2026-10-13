@@ -102,7 +102,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   try {
-    await withActorTransaction(credentials.created_by, (client) => callRpc(client, "public.resolve_report", [report.report_id, decision.summary]));
+    // This path skips the proxy, so no session header here is verified: pass none explicitly.
+    await withActorTransaction(credentials.created_by, (client) => callRpc(client, "public.resolve_report", [report.report_id, decision.summary]), { sessionId: "" });
     log("info", "report resolved from Jira");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

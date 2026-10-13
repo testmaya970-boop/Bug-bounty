@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { passMfaGate } from "./mfa-gate";
 import { ctfFlag } from "../lib/ctf-flags";
 
 // Real, browser-driven CTF coverage against a prod build (playwright.config.ts):
@@ -24,7 +25,7 @@ async function signIn(page: Page, email: string, password = PASSWORD) {
   await page.getByLabel("Email").fill(email);
   await page.getByRole("textbox", { name: "Password" }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
+  await passMfaGate(page, email);
 }
 
 // One live challenge per category that has any (web's were all retired).

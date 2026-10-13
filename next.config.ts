@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
   // server's .next.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
+  // Compression belongs to the TLS front (nginx/CDN). Node-side gzip stalled responses under
+  // load ("11 drain listeners added to [Gzip]", then 50-100s hung page loads in E2E).
+  compress: process.env.NEXT_COMPRESS === "1",
   typedRoutes: true,
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   // Evidence file uploads go through a Server Action (actions/report-file-evidence.ts).
@@ -34,6 +37,8 @@ const nextConfig: NextConfig = {
   // the check stays strict. Safe to list a local origin: a browser always sends the true
   // origin of the page making the request, so another site can't claim it.
   experimental: {
+    // Phosphor isn't on Next's default list; without this a named import loads all ~1,500 icons.
+    optimizePackageImports: ["@phosphor-icons/react"],
     serverActions: {
       bodySizeLimit: "12mb",
       allowedOrigins: (process.env.SERVER_ACTIONS_ALLOWED_ORIGINS ?? "")
@@ -46,7 +51,12 @@ const nextConfig: NextConfig = {
     // Applied to every response this Next.js app itself serves. Evidence downloads are
     // NOT affected: those are presigned S3/MinIO URLs served directly by the object
     // store, an entirely separate origin these headers never touch.
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The JSON API answers per user (session cookie or Bearer token); no browser or shared
+      // proxy may store it or serve it to someone else. Pages already get no-store as dynamic.
+      { source: "/api/v1/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "Vary", value: "Cookie, Authorization" }] },
+    ];
   },
 };
 

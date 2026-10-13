@@ -4,14 +4,16 @@ import type { Route } from "next";
 import { AppShell } from "../../components/app-shell";
 import { EmptyState } from "../../components/ui/feedback";
 import { MyReportsList } from "../../components/reports/my-reports-list";
-import { ReportsAnalytics } from "../../components/reports/analytics/reports-analytics";
+import { ResearcherDashboard } from "../../components/dashboards/researcher-dashboard";
+import { getMyResearcherDashboard } from "../../services/dashboards";
+import { rangeDays } from "../../lib/viz";
 import { getMyReportStatusCounts, listMyReportedPrograms, listMyReports } from "../../services/reports";
 import { getCurrentUser } from "../../lib/auth/current-user";
 import Link from "next/link";
 import { REPORT_SEVERITY_ORDER, REPORT_STATUS_ORDER, reportStatusLabel } from "../../lib/report-status";
 import type { ReportSeverity, ReportStatus } from "../../types/report";
 
-type ReportsSearchParams = { status?: string; programId?: string; severity?: string };
+type ReportsSearchParams = { status?: string; programId?: string; severity?: string; range?: string };
 
 function parseStatusParam(value: string | undefined): ReportStatus | undefined {
   return value && (REPORT_STATUS_ORDER as string[]).includes(value) ? (value as ReportStatus) : undefined;
@@ -34,10 +36,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const filters = { status, programId, severity };
 
   // Filtered in the database; the status tiles are true totals across every report.
-  const [{ items: reports, nextCursor }, statusCounts, programOptions] = await Promise.all([
+  const days = rangeDays(resolvedSearchParams.range);
+  const [{ items: reports, nextCursor }, statusCounts, programOptions, dashboard] = await Promise.all([
     listMyReports(user.id, undefined, undefined, filters),
     getMyReportStatusCounts(user.id),
     listMyReportedPrograms(user.id),
+    getMyResearcherDashboard(days),
   ]);
   const totalReports = statusCounts.reduce((sum, row) => sum + row.count, 0);
 
@@ -52,7 +56,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </EmptyState>
       ) : (
         <div className="space-y-8">
-          <ReportsAnalytics statusCounts={statusCounts} />
+          <ResearcherDashboard data={dashboard} days={days} />
           <div className="border-t border-border pt-6">
             <form method="get" className="flex flex-wrap gap-2 rounded-lg border border-border bg-surface-muted p-2">
               <label className="sr-only" htmlFor="my-reports-status">

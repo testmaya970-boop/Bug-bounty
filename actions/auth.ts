@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -189,9 +188,9 @@ export async function signInAction(input: { email: string; password: string; red
   return { ok: true, destination: destination as Route };
 }
 
+/** The caller (components/auth/sign-out-form.tsx) does a full page load to /sign-in. */
 export async function signOutAction(): Promise<void> {
   await signOut();
-  redirect("/sign-in" as Route);
 }
 
 const emailOnlySchema = z.object({ email: z.string().trim().toLowerCase().email("Enter a valid email address.") });

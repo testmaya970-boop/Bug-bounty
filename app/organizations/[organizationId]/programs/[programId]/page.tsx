@@ -420,7 +420,8 @@ async function renderProgramControlCenterPage({
   // Reaching this page as a manager already proves the identical authorization predicate
   // scope mutation uses, which the database independently re-enforces regardless of this
   // flag -- lifecycle status is no longer part of that check on either side.
-  const canManageScope = canManageProgram;
+  // Except during launch review (202610120001): what the platform admin approves must be what goes live.
+  const canManageScope = canManageProgram && program.status !== "review";
 
   const scopeFilter: "all" | ScopeState = scopeFilterParam === "in_scope" || scopeFilterParam === "out_of_scope" ? scopeFilterParam : "all";
   const filteredScopeEntries = scopeFilter === "all" ? scopeEntries : scopeEntries.filter((entry) => entry.scopeState === scopeFilter);

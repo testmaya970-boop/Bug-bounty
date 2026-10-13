@@ -18,7 +18,7 @@ export function ResearcherTable({ organizationId, programId, researchers }: { or
           <Avatar name={row.displayName} />
           <span>
             <span className="block font-medium text-ink">{row.displayName}</span>
-            <span className="block text-xs text-ink-muted">{row.email ?? `@${row.username}`}</span>
+            <span className="block text-xs text-ink-muted">{row.aliasEmail ?? `@${row.username}`}</span>
           </span>
         </span>
       ),

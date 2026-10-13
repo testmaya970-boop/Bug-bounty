@@ -5,12 +5,9 @@ import { SeverityStatusMatrix } from "../charts/severity-status-matrix";
 import { OrganizationWeeklyVolume } from "../organizations/organization-weekly-volume";
 import { OrganizationResolutionPerformanceTiles } from "../organizations/organization-resolution-performance";
 import { SectionLabel } from "../ui/security-primitives";
-import { statusTone } from "../ui/badge";
-import { reportStatusLabel } from "../../lib/report-status";
+import { reportStatusSegments } from "../../lib/viz";
 import type { OrganizationResolutionPerformance, OrganizationSeverityStatusCount, OrganizationWeeklyReportVolume } from "../../types/organization";
 import type { ReportSeverity, ReportStatus } from "../../types/report";
-
-const STATUS_ORDER: ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"];
 
 /**
  * Real per-program report analytics -- every number here comes from
@@ -37,11 +34,8 @@ export function ProgramHealthSection({
   const byStatus = new Map<ReportStatus, number>();
   for (const cell of severityStatusBreakdown) byStatus.set(cell.status, (byStatus.get(cell.status) ?? 0) + cell.count);
   const totalReports = severityStatusBreakdown.reduce((sum, cell) => sum + cell.count, 0);
-  const statusData: SegmentedBarDatum[] = STATUS_ORDER.map((status) => ({
-    label: reportStatusLabel(status),
-    value: byStatus.get(status) ?? 0,
-    tone: statusTone[status],
-  }));
+  // Chart identity colors, one per status (lib/viz.ts) -- badge tones made accepted and resolved the same green.
+  const statusData: SegmentedBarDatum[] = reportStatusSegments(byStatus);
 
   const matrixCells = severityStatusBreakdown.map((cell) => ({
     severity: (cell.severity ?? "none") as ReportSeverity,

@@ -146,3 +146,9 @@ export function describeOrganizationActivity(event: OrganizationAuditEventRecord
   }
   return { title, detail: "" };
 }
+
+/** "Changed a member's role" -- an action on its own, for breakdown charts and exports. */
+export function activityActionLabel(action: string): string {
+  const label = ACTION_LABELS[action] ?? action;
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}

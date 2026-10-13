@@ -55,7 +55,7 @@ beforeEach(async () => {
   mockedSend.mockResolvedValue({ success: true, providerReference: "dev-1" });
   (await mockedCurrentUser()).mockReset().mockResolvedValue(USER as never);
   (await mockedSessionId()).mockReset().mockResolvedValue("session-1");
-  (await mockedElevate()).mockReset().mockResolvedValue(undefined);
+  (await mockedElevate()).mockReset().mockResolvedValue(null);
 });
 
 describe("listMyMfaFactors: maps public.list_my_mfa_factors() rows -- never invented", () => {

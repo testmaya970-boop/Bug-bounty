@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { BarChart } from "../../components/charts/bar-chart";
 import { DonutChart } from "../../components/charts/donut-chart";
 import { SegmentedBar } from "../../components/charts/segmented-bar";
-import { ReportStatusChart } from "../../components/reports/report-status-chart";
+import { reportStatusSegments, REPORT_STATUS_SERIES } from "../../lib/viz";
+import type { ReportStatus } from "../../types/report";
 import { statusTone, severityTone } from "../../components/ui/badge";
 
 const GREEN = statusTone.resolved; // { text: "text-success", bg: "bg-success" }
@@ -72,26 +73,25 @@ describe("SegmentedBar: one proportional pipeline bar, not N independently-scale
   });
 });
 
-describe("ReportStatusChart: the researcher's own real current work mix", () => {
-  it("shows the real total report count and every nonzero status with its real count and percentage", () => {
-    const html = renderToStaticMarkup(
-      <ReportStatusChart
-        counts={[
-          { status: "new", count: 1 },
-          { status: "resolved", count: 3 },
-        ]}
-      />,
-    );
-    expect(html).toContain("4 reports");
+describe("reportStatusSegments: one identity color per report status", () => {
+  it("never paints two statuses the same color (accepted and resolved were both badge-green)", () => {
+    const colors = REPORT_STATUS_SERIES.map((s) => s.color);
+    expect(new Set(colors).size).toBe(colors.length);
+    const segments = reportStatusSegments(new Map<ReportStatus, number>([["accepted", 2], ["resolved", 3]]));
+    expect(segments.find((s) => s.label === "Accepted")?.color).not.toBe(segments.find((s) => s.label === "Resolved")?.color);
+  });
+
+  it("counts every status exactly once, folding not applicable and rejected into Not valid", () => {
+    const segments = reportStatusSegments(new Map<ReportStatus, number>([["new", 1], ["not_applicable", 2], ["rejected", 3]]));
+    expect(segments.find((s) => s.label === "Not valid")?.value).toBe(5);
+    expect(segments.reduce((sum, s) => sum + s.value, 0)).toBe(6);
+  });
+
+  it("renders through SegmentedBar with real counts and percentages", () => {
+    const html = renderToStaticMarkup(<SegmentedBar data={reportStatusSegments(new Map<ReportStatus, number>([["new", 1], ["resolved", 3]]))} />);
     expect(html).toContain("New");
     expect(html).toContain("Resolved");
     expect(html).toContain("25%");
     expect(html).toContain("75%");
-  });
-
-  it("uses singular phrasing for exactly one report", () => {
-    const html = renderToStaticMarkup(<ReportStatusChart counts={[{ status: "new", count: 1 }]} />);
-    expect(html).toContain("1 report");
-    expect(html).not.toContain("1 reports");
   });
 });

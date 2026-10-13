@@ -174,21 +174,21 @@ describe("signInAction: destination is the account's own real, server-derived co
     expect(mockedRedirect).not.toHaveBeenCalled();
   });
 
-  it("sends a platform admin to /platform/programs, never the researcher dashboard -- confirmed live as a real gap: a platform-admin-only test account (no organizations, no researcher participation) landed on the ordinary 'You haven't submitted any reports yet' researcher Home with nothing admin-shaped about it", async () => {
+  it("sends a platform admin to the /platform overview, never the researcher dashboard -- confirmed live as a real gap: a platform-admin-only test account (no organizations, no researcher participation) landed on the ordinary 'You haven't submitted any reports yet' researcher Home with nothing admin-shaped about it", async () => {
     mockedSignIn.mockResolvedValue({ mfaRequired: false, userId: "admin-1" });
     mockedIsPlatformAdmin.mockResolvedValue(true);
     const { signInAction } = await import("../../actions/auth");
 
     const result = await signInAction({ email: "admin@example.test", password: "a-real-password-1" });
 
-    expect(result).toEqual({ ok: true, destination: "/platform/programs" });
+    expect(result).toEqual({ ok: true, destination: "/platform" });
     // Platform-admin status is checked first and short-circuits the rest of the routing
     // decision -- an admin's org/researcher standing (if any) is irrelevant to where they land.
     expect(mockedListOrgs).not.toHaveBeenCalled();
     expect(mockedListParticipations).not.toHaveBeenCalled();
   });
 
-  it("still sends a platform admin to /platform/programs even when they ALSO have real organization and researcher standing -- platform-admin status takes priority over any other real context this account might have", async () => {
+  it("still sends a platform admin to /platform even when they ALSO have real organization and researcher standing -- platform-admin status takes priority over any other real context this account might have", async () => {
     mockedSignIn.mockResolvedValue({ mfaRequired: false, userId: "admin-2" });
     mockedIsPlatformAdmin.mockResolvedValue(true);
     mockedListOrgs.mockResolvedValue([{ id: "org-1", slug: "acme", name: "Acme", role: "owner", status: "active" }]);
@@ -197,7 +197,7 @@ describe("signInAction: destination is the account's own real, server-derived co
 
     const result = await signInAction({ email: "admin-both@example.test", password: "a-real-password-1" });
 
-    expect(result).toEqual({ ok: true, destination: "/platform/programs" });
+    expect(result).toEqual({ ok: true, destination: "/platform" });
   });
 });
 

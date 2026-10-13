@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { passMfaGate } from "./mfa-gate";
 
 // In-house error tracking end to end: an uncaught browser error is reported
 // (components/client-error-listener.tsx -> /api/client-errors -> app_errors) and shows up
@@ -12,7 +13,7 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByRole("textbox", { name: "Password" }).fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
+  await passMfaGate(page, email);
 }
 
 test("a browser error reaches /platform/errors; malformed ids are 404 not 500", async ({ page, request }) => {
@@ -27,7 +28,7 @@ test("a browser error reaches /platform/errors; malformed ids are 404 not 500", 
     expect(response.status(), path).toBe(404);
   }
 
-  await signIn(page, "e2e.veteran@unpatched.demo");
+  await signIn(page, "e2e.newcomer@unpatched.demo");
   await page.goto("/reports");
   // The listener attaches when React hydrates (a useEffect), which can land just after the
   // load event -- errors thrown before that are not captured.

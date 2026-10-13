@@ -125,13 +125,13 @@ describe("reports service: communication/evidence read mapping", () => {
     });
   });
 
-  it("listReportMessages falls back to 'Unknown' rather than rendering null when the author join is missing", async () => {
+  it("listReportMessages shows 'Deactivated account' rather than null when the author's row is hidden", async () => {
     const row = { ...MESSAGE_ROW, author_display_name: null };
     fakeClient.query.mockImplementation(async () => queryReturning([row]));
     const { listReportMessages } = await import("../../services/reports");
 
     const [message] = await listReportMessages("report-1");
-    expect(message.authorName).toBe("Unknown");
+    expect(message.authorName).toBe("Deactivated account");
   });
 
   it("listReportEvidence maps evidence_type and content verbatim, preserving whitespace", async () => {

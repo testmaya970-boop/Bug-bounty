@@ -1,4 +1,5 @@
 import "server-only";
+import { getAliasMailConfig } from "@/lib/alias-mail";
 import { withActorTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { generateInvitationToken, hashInvitationToken } from "@/services/invitations";
@@ -28,8 +29,15 @@ type ResearcherRow = {
   updated_at: string;
   username: string | null;
   display_name: string | null;
-  email: string | null;
+  alias_local_part: string | null;
 };
+
+/** Org staff see the alias, never the real email (202610130001). No alias yet, or the alias
+ * domain isn't configured: nothing, and the UI falls back to @username. */
+function aliasAddress(localPart: string | null): string | null {
+  const config = getAliasMailConfig();
+  return localPart && config ? `${localPart}@${config.domain}` : null;
+}
 
 function mapResearcherRow(row: ResearcherRow): ProgramResearcherRecord {
   return {
@@ -45,13 +53,13 @@ function mapResearcherRow(row: ResearcherRow): ProgramResearcherRecord {
     updatedAt: row.updated_at,
     username: row.username ?? "unknown",
     displayName: row.display_name ?? "Unknown researcher",
-    email: row.email ?? null,
+    aliasEmail: aliasAddress(row.alias_local_part),
   };
 }
 
-type ResearcherRpcRow = Omit<ResearcherRow, "username" | "display_name" | "email">;
+type ResearcherRpcRow = Omit<ResearcherRow, "username" | "display_name" | "alias_local_part">;
 function mapResearcherRpcRow(row: ResearcherRpcRow): ProgramResearcherRecord {
-  return mapResearcherRow({ ...row, username: null, display_name: null, email: null });
+  return mapResearcherRow({ ...row, username: null, display_name: null, alias_local_part: null });
 }
 
 type InvitationRow = {
@@ -91,9 +99,9 @@ export async function listProgramResearchers(programId: string): Promise<Program
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
       client
         .query<ResearcherRow>(
-          `select r.program_id, r.organization_id, r.user_id, r.status, r.source, r.invited_by, r.joined_at, r.suspended_at, r.revoked_at, r.updated_at, u.username, u.display_name, u.email
+          `select r.program_id, r.organization_id, r.user_id, r.status, r.source, r.invited_by, r.joined_at, r.suspended_at, r.revoked_at, r.updated_at, u.username, u.display_name, public.researcher_alias_local_part(r.user_id) as alias_local_part
            from public.program_researchers r left join public.users u on u.id = r.user_id
-           where r.program_id = $1 order by r.joined_at asc`,
+           where r.program_id = $1 and u.id is not null order by r.joined_at asc`,
           [programId],
         )
         .then((r) => r.rows),
@@ -112,7 +120,7 @@ export async function getMyParticipation(userId: string, programId: string): Pro
     rows = await withActorTransaction(userId, (client) =>
       client
         .query<ResearcherRow>(
-          `select r.program_id, r.organization_id, r.user_id, r.status, r.source, r.invited_by, r.joined_at, r.suspended_at, r.revoked_at, r.updated_at, u.username, u.display_name, u.email
+          `select r.program_id, r.organization_id, r.user_id, r.status, r.source, r.invited_by, r.joined_at, r.suspended_at, r.revoked_at, r.updated_at, u.username, u.display_name, public.researcher_alias_local_part(r.user_id) as alias_local_part
            from public.program_researchers r left join public.users u on u.id = r.user_id
            where r.program_id = $1 and r.user_id = $2`,
           [programId, userId],

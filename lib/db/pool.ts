@@ -17,7 +17,16 @@ let pool: Pool | null = null;
 async function getPool(): Promise<Pool> {
   if (!pool) {
     const env = getNativeEnv();
-    pool = new Pool({ connectionString: env.DATABASE_URL, max: 5 });
+    pool = new Pool({
+      connectionString: env.DATABASE_URL,
+      max: Number(process.env.DB_POOL_MAX ?? 10),
+      // Fail fast instead of hanging: a request that can't get a connection in 10s errors
+      // (and shows up in /platform/errors) rather than stalling the browser for minutes.
+      connectionTimeoutMillis: 10_000,
+      // Server-side backstops so one stuck query or abandoned transaction can't pin a
+      // connection forever.
+      options: "-c statement_timeout=30000 -c idle_in_transaction_session_timeout=30000",
+    });
   }
   // See lib/db/type-parsers.ts for why this is needed (pg does not auto-parse
   // enum/composite array columns) -- also called by workers/outbox/db-pool.ts, against
@@ -46,6 +55,22 @@ async function getPool(): Promise<Pool> {
  * Supabase's own bootstrap role might tempt you to assume.
  */
 const VALID_DB_ROLES = new Set(["authenticated", "anon", "service_role"]);
+
+/** The session id the proxy verified for this request (lib/session/middleware.ts sets this
+ * header only after a real session check, and strips any client-sent copy first). Carried
+ * into the claims so SQL can tell whether this session passed MFA -- private.is_platform_admin()
+ * requires it (202610100001). Absent outside a request (workers, scripts, unit tests); a
+ * missing session id only ever fails closed. */
+export const VERIFIED_SESSION_ID_HEADER = "x-unpatched-verified-session-id";
+
+async function requestVerifiedSessionId(): Promise<string | undefined> {
+  try {
+    const { headers } = await import("next/headers");
+    return (await headers()).get(VERIFIED_SESSION_ID_HEADER) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export async function setActorClaims(client: PoolClient, claims: { sub: string; sessionId?: string; aal?: "aal1" | "aal2"; role?: "authenticated" | "anon" | "service_role" }): Promise<void> {
   const role = claims.role ?? "authenticated";
@@ -100,8 +125,9 @@ export async function withActorTransaction<T>(
   fn: (client: PoolClient) => Promise<T>,
   options?: { sessionId?: string; aal?: "aal1" | "aal2" },
 ): Promise<T> {
+  const sessionId = options?.sessionId ?? (actorId ? await requestVerifiedSessionId() : undefined);
   return withTransaction(async (client) => {
-    await setActorClaims(client, { sub: actorId ?? "", sessionId: options?.sessionId, aal: options?.aal, role: "authenticated" });
+    await setActorClaims(client, { sub: actorId ?? "", sessionId, aal: options?.aal, role: "authenticated" });
     return fn(client);
   });
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Trash } from "@phosphor-icons/react";
 import { Button, IconButton } from "../ui/button";
 import { Dialog } from "../ui/navigation";
 import { deleteDraftProgramAction } from "../../actions/programs";
@@ -49,7 +49,7 @@ export function DeleteDraftProgramDialog({ organizationId, programId, programNam
           setOpen(true);
         }}
       >
-        <Trash2 aria-hidden="true" className="size-4" />
+        <Trash aria-hidden="true" className="size-4" />
       </IconButton>
       <Dialog open={open} title="Delete draft engagement?" onClose={close}>
         <div className="space-y-4">

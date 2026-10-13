@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
-import { withClient } from "@/lib/db/pool";
+import { withClient, VERIFIED_SESSION_ID_HEADER } from "@/lib/db/pool";
 import { validateSessionGate, SESSION_COOKIE_NAME } from "@/lib/auth/session";
 import { perfTimedWithId } from "@/lib/perf-trace";
 
@@ -14,6 +14,7 @@ const MFA_EXEMPT_PATHS = new Set(["/mfa/verify", "/sign-in", "/sign-out", "/forg
 function isMfaExempt(pathname: string): boolean {
   return MFA_EXEMPT_PATHS.has(pathname) || pathname.startsWith("/auth/");
 }
+const MFA_ENROLLMENT_PATH = "/settings/security";
 
 // A deactivated account (docs/decisions/0055) must not reach any authenticated page.
 // deactivate_my_account already deletes every public.sessions row for that user, so in
@@ -58,7 +59,11 @@ export function extractOrganizationIdFromPath(pathname: string): string | null {
  * it is purely a same-request cache of a check middleware itself just performed for real.
  */
 export const VERIFIED_USER_ID_HEADER = "x-unpatched-verified-user-id";
-export const VERIFIED_SESSION_ID_HEADER = "x-unpatched-verified-session-id";
+export { VERIFIED_SESSION_ID_HEADER };
+/** "1" for a platform admin with no MFA factor (202610100001): they have no admin power until
+ * they enroll, so the shell shows only the setup step instead of a researcher nav. Same
+ * strip-then-set rule as the verified headers above. Display only -- never authorization. */
+export const PLATFORM_ADMIN_NEEDS_MFA_HEADER = "x-unpatched-platform-admin-needs-mfa";
 
 /** Turn 8c forensics: minted once per request, forwarded on the request headers (so every
  * downstream perfTimed() call -- Server Components, Server Actions, route handlers -- can
@@ -81,6 +86,7 @@ async function updateSessionInner(request: NextRequest, requestId: string) {
   // either header can be set is the real assignment below, after real validation.
   request.headers.delete(VERIFIED_USER_ID_HEADER);
   request.headers.delete(VERIFIED_SESSION_ID_HEADER);
+  request.headers.delete(PLATFORM_ADMIN_NEEDS_MFA_HEADER);
 
   const cookieValue = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   // One statement returns the session and both gate facts (public.get_session_gate,
@@ -99,6 +105,7 @@ async function updateSessionInner(request: NextRequest, requestId: string) {
   if (session) {
     request.headers.set(VERIFIED_USER_ID_HEADER, session.userId);
     request.headers.set(VERIFIED_SESSION_ID_HEADER, session.id);
+    if (session.platformAdmin && !session.mfaEnrolled) request.headers.set(PLATFORM_ADMIN_NEEDS_MFA_HEADER, "1");
     response = NextResponse.next({ request });
   }
 
@@ -133,6 +140,15 @@ async function updateSessionInner(request: NextRequest, requestId: string) {
   if (session && session.mfaEnrolled && !session.mfaSessionVerified && !isMfaExempt(request.nextUrl.pathname)) {
     const redirectUrl = new URL("/mfa/verify", request.url);
     redirectUrl.searchParams.set("redirectTo", request.nextUrl.pathname + request.nextUrl.search);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // Platform admins must have MFA (202610100001). An admin with no factor has no admin
+  // power in the database until they enroll; this sends them to enroll instead of leaving
+  // them on pages that quietly show nothing.
+  if (session && session.platformAdmin && !session.mfaEnrolled && !isMfaExempt(request.nextUrl.pathname) && request.nextUrl.pathname !== MFA_ENROLLMENT_PATH) {
+    const redirectUrl = new URL(MFA_ENROLLMENT_PATH, request.url);
+    redirectUrl.searchParams.set("mfa", "required");
     return NextResponse.redirect(redirectUrl);
   }
 

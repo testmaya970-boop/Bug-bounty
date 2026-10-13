@@ -56,7 +56,7 @@ function secretMatches(storedTokenHash: string, secret: string): boolean {
 
 const TOUCH_AFTER_MS = 5 * 60 * 1000;
 
-export type SessionGate = SessionRow & { deactivated: boolean; mfaEnrolled: boolean; mfaSessionVerified: boolean };
+export type SessionGate = SessionRow & { deactivated: boolean; mfaEnrolled: boolean; mfaSessionVerified: boolean; platformAdmin: boolean };
 
 /**
  * The proxy's one-round-trip version of validateSessionCookie: the session row plus the
@@ -77,6 +77,7 @@ export async function validateSessionGate(client: PoolClient, cookieValue: strin
     deactivated: boolean;
     mfa_enrolled: boolean;
     mfa_session_verified: boolean;
+    platform_admin: boolean;
   }>("select * from public.get_session_gate($1)", [parsed.sessionId]);
   const row = rows[0];
   if (!row || !secretMatches(row.token_hash, parsed.secret)) return null;
@@ -91,6 +92,7 @@ export async function validateSessionGate(client: PoolClient, cookieValue: strin
     deactivated: row.deactivated,
     mfaEnrolled: row.mfa_enrolled,
     mfaSessionVerified: row.mfa_session_verified,
+    platformAdmin: row.platform_admin,
   };
 }
 
@@ -131,8 +133,20 @@ export async function validateSessionCookie(client: PoolClient, cookieValue: str
 /** Elevates a session to aal2 -- called only after a real, server-verified OTP check
  * (services/mfa.ts). Never callable from a password-only context, mirroring GoTrue's own
  * invariant that only mfa.verify() (never signInWithPassword alone) sets aal2. */
-export async function elevateSessionToAal2(client: PoolClient, sessionId: string): Promise<void> {
-  await client.query(`update public.sessions set aal = 'aal2', updated_at = now() where id = $1`, [sessionId]);
+export async function elevateSessionToAal2(client: PoolClient, sessionId: string): Promise<string | null> {
+  // Rotated, not upgraded in place: a cookie copied before the second factor must not
+  // become an aal2 session once the real user finishes MFA. The new row keeps created_at,
+  // so the 30-day absolute lifetime doesn't restart. Returns the new cookie value.
+  const secret = randomBytes(32).toString("base64url");
+  const { rows } = await client.query<{ id: string }>(
+    `insert into public.sessions (user_id, token_hash, created_at, user_agent, ip, aal)
+     select user_id, $2, created_at, user_agent, ip, 'aal2' from public.sessions where id = $1
+     returning id`,
+    [sessionId, signSecret(secret)],
+  );
+  if (!rows[0]) return null;
+  await client.query(`delete from public.sessions where id = $1`, [sessionId]);
+  return `${rows[0].id}.${secret}`;
 }
 
 export async function revokeSession(client: PoolClient, sessionId: string): Promise<void> {

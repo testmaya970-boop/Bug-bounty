@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { passMfaGate } from "./mfa-gate";
 
 // The payout lifecycle (db/migrations/202610060008) through the real UI: the researcher
 // confirms the award, the organization sees who is owed and that nothing blocks paying
@@ -14,7 +15,7 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByRole("textbox", { name: "Password" }).fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
+  await passMfaGate(page, email);
 }
 
 const fixture = async () => JSON.parse((await import("node:fs")).readFileSync("e2e/.seed-fixture.json", "utf-8")) as { organizationId: string; publicProgramId: string };

@@ -1,8 +1,6 @@
 import React from "react";
 import { OrganizationSla } from "../../../../components/organizations/organization-sla";
-import { OrganizationTopResearchers } from "../../../../components/organizations/organization-top-researchers";
 import { getOrganizationSlaSummary } from "../../../../services/program-policy";
-import { getOrganizationTopResearchers } from "../../../../services/organization-analytics";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
@@ -10,7 +8,10 @@ import { AppShell } from "../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../components/ui/navigation";
 import { EmptyState, PermissionDenied } from "../../../../components/ui/feedback";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
-import { OrganizationReportAnalytics } from "../../../../components/organizations/organization-report-analytics";
+import { OrganizationDashboard } from "../../../../components/dashboards/organization-dashboard";
+import { getOrganizationDashboard } from "../../../../services/dashboards";
+import { rangeDays } from "../../../../lib/viz";
+import type { ReportStatus } from "../../../../types/report";
 import { OrganizationBountySpend } from "../../../../components/organizations/organization-bounty-spend";
 import { ProgramHealthSection } from "../../../../components/programs/program-health-section";
 import { ProgramStatusBadge } from "../../../../components/ui/badge";
@@ -22,10 +23,8 @@ import { listProgramsForOrganization } from "../../../../services/programs";
 import {
   getOrganizationBountySpendSummary,
   getOrganizationProgramBountySpend,
-  getOrganizationResolutionPerformance,
   getOrganizationSeverityStatusBreakdown,
   getOrganizationWeeklyBountySpend,
-  getOrganizationWeeklyReportVolume,
 } from "../../../../services/organization-analytics";
 import { getProgramResolutionPerformance, getProgramSeverityStatusBreakdown, getProgramWeeklyReportVolume } from "../../../../services/program-analytics";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
@@ -84,10 +83,12 @@ export default async function OrganizationAnalyticsPage({
   searchParams,
 }: {
   params: Promise<{ organizationId: string }>;
-  searchParams: Promise<{ program?: string }>;
+  searchParams: Promise<{ program?: string; range?: string; programs?: string }>;
 }) {
   const { organizationId } = await params;
-  const { program: selectedProgramId } = await searchParams;
+  const { program: selectedProgramId, range, programs: programsParam } = await searchParams;
+  const showAllPrograms = programsParam === "all";
+  const days = rangeDays(range);
   const user = await getCurrentUser();
   if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/analytics` as Route);
 
@@ -107,18 +108,18 @@ export default async function OrganizationAnalyticsPage({
     );
   }
 
-  const [organizations, programs, severityStatusBreakdown, weeklyVolume, resolutionPerformance, bountySpendSummary, weeklyBountySpend, programBountySpend, slaSummary, topResearchers] = await Promise.all([
+  const [organizations, programs, severityStatusBreakdown, bountySpendSummary, weeklyBountySpend, programBountySpend, slaSummary, dashboard] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listProgramsForOrganization(organizationId),
     getOrganizationSeverityStatusBreakdown(organizationId),
-    getOrganizationWeeklyReportVolume(organizationId),
-    getOrganizationResolutionPerformance(organizationId),
     getOrganizationBountySpendSummary(organizationId),
     getOrganizationWeeklyBountySpend(organizationId),
     getOrganizationProgramBountySpend(organizationId),
     getOrganizationSlaSummary(organizationId),
-    getOrganizationTopResearchers(organizationId),
+    getOrganizationDashboard(organizationId, days),
   ]);
+  const statusCounts = new Map<ReportStatus, number>();
+  for (const cell of severityStatusBreakdown) statusCounts.set(cell.status, (statusCounts.get(cell.status) ?? 0) + cell.count);
   const organization = organizations.find((org) => org.id === organizationId);
 
   const spendByProgram = new Map<string, { currency: string; totalPaidMinorUnits: number }[]>();
@@ -164,6 +165,8 @@ export default async function OrganizationAnalyticsPage({
           <EmptyState title="No reports yet">Analytics fill in as reports are submitted across this organization's programs.</EmptyState>
         ) : (
           <>
+            {!selectedProgram && <OrganizationDashboard data={dashboard} days={days} organizationId={organizationId} statusCounts={statusCounts} />}
+
             {programRows.length > 1 && (
               <div className="space-y-3">
                 <div>
@@ -182,7 +185,7 @@ export default async function OrganizationAnalyticsPage({
                       </tr>
                     </thead>
                     <tbody>
-                      {programRows.map((row) => (
+                      {(showAllPrograms ? programRows : programRows.slice(0, 10)).map((row) => (
                         <tr key={row.id} className="border-b border-border last:border-0">
                           <td className="px-4 py-3">
                             <Link prefetch={false}
@@ -213,6 +216,15 @@ export default async function OrganizationAnalyticsPage({
                     </tbody>
                   </table>
                 </div>
+                {programRows.length > 10 && (
+                  <Link
+                    prefetch={false}
+                    href={`/organizations/${organizationId}/analytics?${new URLSearchParams({ ...(range ? { range } : {}), ...(showAllPrograms ? {} : { programs: "all" }) }).toString()}` as Route}
+                    className="inline-block text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  >
+                    {showAllPrograms ? "Show the 10 that need attention most" : `Show all ${programRows.length} programs`}
+                  </Link>
+                )}
               </div>
             )}
 
@@ -238,11 +250,6 @@ export default async function OrganizationAnalyticsPage({
               </div>
             ) : (
               <div className="space-y-8">
-                <div className="space-y-3">
-                  <SectionLabel>Organization-wide</SectionLabel>
-                  <OrganizationReportAnalytics severityStatusBreakdown={severityStatusBreakdown} weeklyVolume={weeklyVolume} resolutionPerformance={resolutionPerformance} />
-                </div>
-                <OrganizationTopResearchers rows={topResearchers} />
                 <OrganizationSla rows={slaSummary} programNames={new Map(programs.map((program) => [program.id, program.name]))} />
                 <OrganizationBountySpend summary={bountySpendSummary} weeklySpend={weeklyBountySpend} />
               </div>

@@ -1,8 +1,9 @@
 import "server-only";
-import { withActorTransaction, callRpc } from "@/lib/db/pool";
+import { withActorTransaction, withServiceRoleTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
-import { activePaymentProvider } from "@/lib/payment-provider";
+import { loadPayoutRecipient, selectPayoutProvider } from "@/lib/payment-provider";
+import { logIntegrationEvent } from "@/lib/integrations/common";
 import type { PaymentAttempt, PaymentObligation } from "@/types/payment";
 
 export { OrganizationServiceError };
@@ -202,9 +203,33 @@ export async function initiateManualPaymentAttempt(obligationId: string): Promis
     mapError(error as { message: string });
   }
   const attempt = mapAttemptRow(rows[0]);
-  await activePaymentProvider.createPayment({ idempotencyKey: attempt.id, amountMinorUnits: attempt.requestedAmountMinorUnits, currency: attempt.currency });
-  return attempt;
+  const provider = selectPayoutProvider(attempt.currency);
+  const payment = { idempotencyKey: attempt.id, amountMinorUnits: attempt.requestedAmountMinorUnits, currency: attempt.currency };
+  if (provider.mode === "manual") {
+    await provider.createPayment(payment);
+    return attempt;
+  }
+
+  // A configured provider pays it. If the call itself errors, the attempt stays open for a
+  // person to handle (the manual path) -- nothing is lost and nothing is paid twice, since a
+  // retry reuses the same attempt id as the provider's idempotency key.
+  let result;
+  try {
+    result = await provider.createPayment({ ...payment, recipient: await loadPayoutRecipient(attempt.id) });
+  } catch (error) {
+    await logIntegrationEvent("payments", provider.name, "call", "error", error instanceof Error ? error.message : String(error));
+    return attempt;
+  }
+  await logIntegrationEvent("payments", provider.name, "call", result.outcome === "failed" ? "rejected" : "ok", result.failureMessage);
+  const reference = result.providerReferenceId ?? `local-${attempt.id}`;
+  const submitted = await withServiceRoleTransaction((client) => callRpc<AttemptRow>(client, "public.mark_payment_attempt_submitted", [attempt.id, provider.name, reference]));
+  if (result.outcome !== "failed") return mapAttemptRow(submitted[0]);
+  const failed = await withServiceRoleTransaction((client) =>
+    callRpc<AttemptRow>(client, "public.record_provider_payment_result", [provider.name, reference, "failed", "provider_refused", result.failureMessage ?? null]),
+  );
+  return mapAttemptRow(failed[0]);
 }
+
 
 export async function recordManualPaymentResult(
   attemptId: string,

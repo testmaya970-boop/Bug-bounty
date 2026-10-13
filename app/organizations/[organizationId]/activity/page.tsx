@@ -11,6 +11,9 @@ import { getActorMembership, getOrganizationAuditActivity, listOrganizationMembe
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 import { perfTimed } from "../../../../lib/perf-trace";
+import { ActivityDashboard } from "../../../../components/dashboards/activity-dashboard";
+import { getOrganizationActivityDashboard } from "../../../../services/dashboards";
+import { rangeDays } from "../../../../lib/viz";
 
 /**
  * Hactivity (Turn 6, phase/9-ia): the org's full, chronological audit event feed --
@@ -21,12 +24,13 @@ import { perfTimed } from "../../../../lib/perf-trace";
  * denial, not a new permission model). No fabricated event types, no invented category --
  * the type filter is entity_type, already a real column on every row.
  */
-export default async function OrganizationActivityPage({ params }: { params: Promise<{ organizationId: string }> }) {
-  return perfTimed("route: activity (total)", () => renderActivityPage(params));
+export default async function OrganizationActivityPage({ params, searchParams }: { params: Promise<{ organizationId: string }>; searchParams: Promise<{ range?: string }> }) {
+  return perfTimed("route: activity (total)", () => renderActivityPage(params, searchParams));
 }
 
-async function renderActivityPage(paramsPromise: Promise<{ organizationId: string }>) {
+async function renderActivityPage(paramsPromise: Promise<{ organizationId: string }>, searchParamsPromise: Promise<{ range?: string }>) {
   const { organizationId } = await paramsPromise;
+  const days = rangeDays((await searchParamsPromise).range ?? "30");
   const user = await getCurrentUser();
   if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/activity` as Route);
 
@@ -39,22 +43,30 @@ async function renderActivityPage(paramsPromise: Promise<{ organizationId: strin
     );
   }
 
-  const [organizations, members, activityPage] = await perfTimed("activity: main batch", () =>
-    Promise.all([listCurrentUserOrganizations(user.id), listOrganizationMembers(organizationId), getOrganizationAuditActivity(organizationId)]),
+  const [organizations, members, activityPage, dashboard] = await perfTimed("activity: main batch", () =>
+    Promise.all([listCurrentUserOrganizations(user.id), listOrganizationMembers(organizationId), getOrganizationAuditActivity(organizationId), getOrganizationActivityDashboard(organizationId, days)]),
   );
   const organization = organizations.find((org) => org.id === organizationId);
   const actorNames = Object.fromEntries(members.map((member) => [member.userId, member.displayName]));
 
   return (
     <AppShell title="Activity" user={user} organizationId={organizationId}>
-      <div className="max-w-3xl space-y-6">
+      <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
         <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
-        <p className="text-sm text-ink-muted">Every action taken in this organization, most recent first.</p>
+        <ActivityDashboard data={dashboard} days={days} organizationId={organizationId} />
 
-        <OrganizationActivityFeed organizationId={organizationId} initialEvents={activityPage.items} initialNextCursor={activityPage.nextCursor} actorNames={actorNames} />
+        <section aria-labelledby="audit-log" className="max-w-3xl space-y-3 border-t border-border pt-6">
+          <div>
+            <h2 id="audit-log" className="text-lg font-semibold text-ink">
+              Audit log
+            </h2>
+            <p className="text-sm text-ink-muted">Every action taken in this organization, most recent first.</p>
+          </div>
+          <OrganizationActivityFeed organizationId={organizationId} initialEvents={activityPage.items} initialNextCursor={activityPage.nextCursor} actorNames={actorNames} />
+        </section>
       </div>
     </AppShell>
   );

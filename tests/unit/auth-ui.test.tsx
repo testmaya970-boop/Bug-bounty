@@ -2,8 +2,6 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { PasswordInput, passwordStrengthLabel, passwordStrengthLevel } from "../../components/auth/password-input";
-import { SignUpForm } from "../../components/auth/sign-up-form";
-import { ConfirmEmailPending } from "../../components/auth/confirm-email-pending";
 import { isBusinessEmail } from "../../lib/auth/business-email";
 
 vi.mock("../../actions/auth", () => ({ signUpAction: vi.fn(), resendConfirmationEmailAction: vi.fn() }));
