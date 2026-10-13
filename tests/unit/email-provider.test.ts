@@ -72,7 +72,7 @@ describe("notification email rendering: plain text only, no HTML injection surfa
     // on a newline starting a new SMTP header line, not on the substring "Bcc:" itself,
     // which is harmless once flattened onto the same line as ordinary text.
     expect(rendered.subject).not.toMatch(/[\r\n]/);
-    expect(rendered.subject).toBe("Unpatched: A new report was submitted — Evil title Bcc: attacker@evil.test");
+    expect(rendered.subject).toBe("Unpatched: A new report was submitted: Evil title Bcc: attacker@evil.test");
   });
 
   it("never produces HTML -- the body contains no angle-bracket tags even when the title contains them", () => {

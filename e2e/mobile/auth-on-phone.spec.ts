@@ -51,7 +51,7 @@ async function plantSignupCode(email: string, code: string) {
 async function signUp(page: Page, intent: "researcher" | "organization", email: string, password: string) {
   await page.goto(intent === "organization" ? "/organizations/sign-up" : "/researchers/sign-up");
   if (intent === "organization") await page.getByLabel("Organization name").fill("Phone Test Org");
-  else await page.getByLabel("Your name").fill("Phone Tester");
+  else await page.getByLabel("Your name").fill(`Phone Tester ${Date.now()}`);
   await page.getByLabel("Email").fill(email);
   await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
   await page.getByRole("textbox", { name: "Confirm password" }).fill(password);

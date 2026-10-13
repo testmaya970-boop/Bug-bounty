@@ -62,8 +62,10 @@ export async function GET() {
   }
 
   const status = !database.ok ? "down" : storage.ok && outbox.ok ? "ok" : "degraded";
+  // Up/down per check only: timings and queue counts told anyone how the system was doing
+  // inside. The numbers are on /platform/needs-recovery for admins.
   return NextResponse.json(
-    { status, checks: { database, storage, outbox }, checkedAt: new Date().toISOString() },
+    { status, checks: { database: database.ok, storage: storage.ok, outbox: outbox.ok }, checkedAt: new Date().toISOString() },
     { status: status === "down" ? 503 : 200, headers: { "Cache-Control": "no-store" } },
   );
 }

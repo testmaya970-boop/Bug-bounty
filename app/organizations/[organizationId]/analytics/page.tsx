@@ -203,7 +203,7 @@ export default async function OrganizationAnalyticsPage({
                           <td className={row.unresolvedHighSeverityCount > 0 ? "px-4 py-3 tabular-nums font-semibold text-danger" : "px-4 py-3 tabular-nums text-ink-muted"}>{row.unresolvedHighSeverityCount}</td>
                           <td className="px-4 py-3 tabular-nums text-ink-muted">
                             {row.spend.length === 0
-                              ? "—"
+                              ? "None"
                               : row.spend.map((s, i) => (
                                   <React.Fragment key={s.currency}>
                                     {i > 0 && ", "}

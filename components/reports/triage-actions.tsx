@@ -360,7 +360,7 @@ function DuplicateTargetPicker({ programId, reportId, value, onChange }: { progr
         ))}
       </Select>
       <button type="button" onClick={() => setUseManualEntry(true)} className="text-xs font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline">
-        The report isn't listed — enter its ID directly
+        The report isn't listed? Enter its ID directly
       </button>
     </div>
   );

@@ -27,7 +27,7 @@ export function LearningSection({ categories }: { categories: MockChallengeCateg
         </Link>
       </div>
       <p className="mt-1 max-w-xl text-sm text-ink-muted">Practice real-world exploitation techniques and rack up points before you take them into a live program.</p>
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Link prefetch={false}
           href={"/ctf" as Route}
           className="group relative flex min-h-40 flex-col justify-end overflow-hidden rounded-lg bg-ink p-6 text-canvas motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"

@@ -32,7 +32,7 @@ export default async function SafeHarborPage() {
           <h2 className="text-lg font-semibold text-ink">Safe harbor</h2>
           <p className="text-sm leading-relaxed text-ink-muted">
             If you discover a vulnerability while testing strictly within a program's published scope, in good faith, and in compliance with that program's stated rules, Unpatched considers your research authorized. Every report is checked at submission time against
-            the program's real, current scope — testing a target that was in scope when you tested it is what matters, not what the scope looks like later.
+            the program's real, current scope. Testing a target that was in scope when you tested it is what matters, not what the scope looks like later.
           </p>
           <p className="text-sm leading-relaxed text-ink-muted">
             Good-faith research means: you make a genuine effort to avoid privacy violations, service disruption, and destruction of data; you do not access, modify, or exfiltrate data beyond what is strictly necessary to demonstrate the vulnerability; you report what
@@ -48,7 +48,7 @@ export default async function SafeHarborPage() {
           <h2 className="text-lg font-semibold text-ink">Code of conduct</h2>
           <p className="text-sm leading-relaxed text-ink-muted">Every researcher and every organization on Unpatched is expected to:</p>
           <ul className="list-inside list-disc space-y-1.5 text-sm leading-relaxed text-ink-muted">
-            <li>Communicate honestly. A report's severity, impact, and reproduction steps should describe what you actually found — never exaggerated to influence a bounty decision.</li>
+            <li>Communicate honestly. A report's severity, impact, and reproduction steps should describe what you actually found, never exaggerated to influence a bounty decision.</li>
             <li>Submit your own, original findings. Reports copied from another researcher's work, from a public disclosure, or generated without a real understanding of the vulnerability are not acceptable.</li>
             <li>Respect the researcher–organization communication channel. Every message on a report is real and reviewed by real people; use it in good faith, not to pressure or threaten.</li>
             <li>Never demand payment as a condition of disclosure, and never threaten to disclose a vulnerability publicly to force a specific bounty amount.</li>
@@ -66,7 +66,7 @@ export default async function SafeHarborPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-ink">What this page is not</h2>
           <p className="text-sm leading-relaxed text-ink-muted">
-            This is not a substitute for legal advice, and it is not a guarantee that no legal action can ever be taken against you — it describes how Unpatched itself treats good-faith research conducted within these terms. Some jurisdictions and some organizations
+            This is not a substitute for legal advice, and it is not a guarantee that no legal action can ever be taken against you. It describes how Unpatched itself treats good-faith research conducted within these terms. Some jurisdictions and some organizations
             may still impose obligations beyond what is described here; when in doubt about a specific program, read that program's own scope and rules page first.
           </p>
         </section>

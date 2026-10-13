@@ -11,7 +11,7 @@ import { cn } from "../../lib/cn";
  * label. The text itself stays ink-muted (7.0:1 even on surface-muted) rather than
  * Netras's red, which is only 4.18:1 on the muted ground at this 12px size. */
 export function SectionLabel({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <p className={cn("flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-muted before:h-0.5 before:w-4 before:shrink-0 before:rounded-full before:bg-action before:content-['']", className)}>{children}</p>;
+  return <p className={cn("text-xs font-semibold uppercase tracking-wide text-ink-muted", className)}>{children}</p>;
 }
 
 /** A fact rendered as LABEL above VALUE, not "Label: value" inline -- the shape DESIGN.md's

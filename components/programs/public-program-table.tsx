@@ -108,7 +108,7 @@ export function PublicProgramTable({ programs }: { programs: PublicProgramSummar
                   ? formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)
                   : program.programType === "vdp"
                     ? <span className="font-normal text-ink-muted">Disclosure only</span>
-                    : "—"}
+                    : "Not set"}
               </td>
               <td className="whitespace-nowrap px-3 py-3 text-ink-muted">{program.activeResearcherCount}</td>
               <td className="whitespace-nowrap px-3 py-3 text-ink-muted">{program.resolvedReportCount}</td>

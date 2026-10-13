@@ -41,7 +41,7 @@ const asServiceRole = <T>(fn: (client: pg.Client) => Promise<T>) => asRole({ sub
 
 async function signUpVerified(page: Page, email: string): Promise<string> {
   await page.goto("/researchers/sign-up");
-  await page.getByLabel("Your name").fill("Authenticator Tester");
+  await page.getByLabel("Your name").fill(`Authenticator Tester ${Date.now()}`);
   await page.getByLabel("Email").fill(email);
   await page.getByRole("textbox", { name: "Password", exact: true }).fill(PASSWORD);
   await page.getByRole("textbox", { name: "Confirm password" }).fill(PASSWORD);

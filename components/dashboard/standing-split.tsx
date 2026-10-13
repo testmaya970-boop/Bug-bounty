@@ -32,7 +32,7 @@ export function StandingSplit({
   const visibleRows = leaderboardRows.slice(0, 8);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
       <div className="rounded-xl border border-border border-l-4 border-l-action bg-surface-raised p-6 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>

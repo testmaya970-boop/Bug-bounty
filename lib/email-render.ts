@@ -84,10 +84,10 @@ export function renderNotificationEmail(input: NotificationEmailInput): Rendered
     lines.push(`Organization: ${organization}`, `When: ${input.occurredAt}`);
     if (input.reason) lines.push("", `Reason given: ${input.reason}`);
     lines.push("", "Sign in to Unpatched for details. Contact platform support if you believe this is in error.");
-    return { subject: sanitizeHeaderValue(`Unpatched: ${label} — ${subjectOf}`), text: lines.join("\n") };
+    return { subject: sanitizeHeaderValue(`Unpatched: ${label}: ${subjectOf}`), text: lines.join("\n") };
   }
 
-  const subject = sanitizeHeaderValue(`Unpatched: ${label} — ${title}`);
+  const subject = sanitizeHeaderValue(`Unpatched: ${label}: ${title}`);
   const text = [`Hello ${recipientName},`, "", `${label}.`, "", `Report: ${title}`, `Program: ${program}`, `Organization: ${organization}`, `When: ${input.occurredAt}`, "", "Sign in to Unpatched to view the full details."].join("\n");
 
   return { subject, text };

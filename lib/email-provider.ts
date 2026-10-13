@@ -60,7 +60,7 @@ export const devEmailProvider: EmailProvider = {
 
   async send(message) {
     const providerReference = `dev-${message.idempotencyKey}`;
-    console.info(`[email:dev] delivery simulated — to=${message.to} subject=${JSON.stringify(message.subject)} idempotencyKey=${message.idempotencyKey}`);
+    console.info(`[email:dev] delivery simulated: to=${message.to} subject=${JSON.stringify(message.subject)} idempotencyKey=${message.idempotencyKey}`);
     return { success: true, providerReference };
   },
 };
@@ -244,7 +244,7 @@ function resolveEmailProvider(): EmailProvider {
   if (selection === "dev") return devEmailProvider;
   if (selection === "resend") return createResendEmailProvider();
   if (selection === "gmail-smtp") return createGmailSmtpEmailProvider();
-  throw new Error(`Unknown EMAIL_PROVIDER "${selection}" — expected "dev", "resend", or "gmail-smtp".`);
+  throw new Error(`Unknown EMAIL_PROVIDER "${selection}": expected "dev", "resend", or "gmail-smtp".`);
 }
 
 /** The active provider for this deployment. See lib/payment-provider.ts for the

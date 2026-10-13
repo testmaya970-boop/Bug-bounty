@@ -168,14 +168,14 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
           {resolutionPerformance && (
             <KpiTile
               label="Median time to first triage"
-              value={resolutionPerformance.medianHoursToFirstTriage !== null ? `${resolutionPerformance.medianHoursToFirstTriage.toFixed(1)}h` : "—"}
+              value={resolutionPerformance.medianHoursToFirstTriage !== null ? `${resolutionPerformance.medianHoursToFirstTriage.toFixed(1)}h` : "No data"}
               hint={resolutionPerformance.medianHoursToFirstTriage === null ? "No triaged reports yet" : undefined}
             />
           )}
           {bountySpendSummary && (
             <KpiTile
               label="Total paid"
-              value={bountySpendSummary.length > 0 ? bountySpendSummary.map((summary) => formatMoney(summary.totalPaidMinorUnits, summary.currency)).join(", ") : "—"}
+              value={bountySpendSummary.length > 0 ? bountySpendSummary.map((summary) => formatMoney(summary.totalPaidMinorUnits, summary.currency)).join(", ") : "None yet"}
               hint={bountySpendSummary.length === 0 ? "No bounties awarded yet" : undefined}
             />
           )}

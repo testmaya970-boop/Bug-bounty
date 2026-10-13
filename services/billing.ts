@@ -171,3 +171,49 @@ export function getFundingInstructions(env: NodeJS.ProcessEnv = process.env): Fu
 export function fundingReference(organizationId: string): string {
   return `UNP-${organizationId.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
 }
+
+/** Awards whose report has an open or escalated dispute -- the only place an award the
+ * researcher accepted can still be cancelled, by a platform admin (202610140007). */
+export type DisputedObligation = {
+  obligationId: string;
+  organizationId: string;
+  organizationName: string;
+  programId: string;
+  reportId: string;
+  reportTitle: string;
+  researcherName: string;
+  amountMinorUnits: number;
+  platformFeeMinorUnits: number;
+  currency: string;
+  mediationStatus: "open" | "escalated";
+};
+
+export async function listDisputedObligationsForAdmin(): Promise<DisputedObligation[]> {
+  type Row = {
+    obligation_id: string;
+    organization_id: string;
+    organization_name: string;
+    program_id: string;
+    report_id: string;
+    report_title: string;
+    researcher_name: string;
+    amount_minor_units: string;
+    platform_fee_minor_units: string;
+    currency: string;
+    mediation_status: DisputedObligation["mediationStatus"];
+  };
+  const rows = await asActor((client) => callRpc<Row>(client, "public.list_disputed_obligations_for_admin"));
+  return rows.map((r) => ({
+    obligationId: r.obligation_id,
+    organizationId: r.organization_id,
+    organizationName: r.organization_name,
+    programId: r.program_id,
+    reportId: r.report_id,
+    reportTitle: r.report_title,
+    researcherName: r.researcher_name,
+    amountMinorUnits: Number(r.amount_minor_units),
+    platformFeeMinorUnits: Number(r.platform_fee_minor_units),
+    currency: r.currency,
+    mediationStatus: r.mediation_status,
+  }));
+}

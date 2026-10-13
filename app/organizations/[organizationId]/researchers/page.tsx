@@ -133,7 +133,7 @@ export default async function OrganizationResearchersPage({ params }: { params: 
                             </div>
                           )}
                         </td>
-                        <td className="py-3 pr-4 align-top font-mono text-xs text-ink-muted">{researcher.lastSubmittedAt ? <LocalTime value={researcher.lastSubmittedAt} dateOnly /> : "—"}</td>
+                        <td className="py-3 pr-4 align-top font-mono text-xs text-ink-muted">{researcher.lastSubmittedAt ? <LocalTime value={researcher.lastSubmittedAt} dateOnly /> : "Never"}</td>
                       </tr>
                     );
                   })}

@@ -45,7 +45,9 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
         </div>
       </div>
 
-      <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      {/* grid-cols-1: an unsized column grows to its widest (nowrap) program name and ran
+          past a phone screen; minmax(0,1fr) keeps it at the screen width so names truncate. */}
+      <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="glass-surface-raised rounded-xl shadow-sm">
           {activePrograms.length > 0 && (
             <div className="p-5">

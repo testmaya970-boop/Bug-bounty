@@ -338,7 +338,8 @@ describe("auth service: signUpWithPassword always requires email confirmation", 
     expect((error as InstanceType<typeof AuthServiceError>).code).toBe("EMAIL_TAKEN");
   });
 
-  it("rejects a VERIFIED existing email with EMAIL_TAKEN without calling create_user", async () => {
+  it("answers a VERIFIED existing email exactly like a new one (no enumeration), emails the owner, and touches nothing", async () => {
+    const { activeEmailProvider } = await import("../../lib/email-provider");
     const sqls: string[] = [];
     fakeClient.query.mockImplementation(async (sql: string) => {
       sqls.push(sql);
@@ -347,7 +348,8 @@ describe("auth service: signUpWithPassword always requires email confirmation", 
     });
     const { signUpWithPassword } = await import("../../services/auth");
 
-    await expect(signUpWithPassword("taken@example.test", "a-new-strong-password")).rejects.toMatchObject({ code: "EMAIL_TAKEN" });
+    await expect(signUpWithPassword("taken@example.test", "a-new-strong-password")).resolves.toEqual({ status: "confirm_email", email: "taken@example.test" });
+    expect(activeEmailProvider.send).toHaveBeenCalledWith(expect.objectContaining({ to: "taken@example.test", subject: "Someone tried to sign up with your email" }));
     expect(sqls.some((sql) => sql.includes("create_user") || sql.includes("create_signup_verification_challenge"))).toBe(false);
   });
 

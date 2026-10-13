@@ -20,7 +20,7 @@ export default async function CollaborationSettingsPage() {
         <p className="mt-1 text-sm text-ink-muted">Co-researching a report with another researcher.</p>
       </div>
       <EmptyState title="Added per report, not here">
-        Collaboration isn't a setting you configure in advance — add a collaborator directly from any of your own reports (while it's still new or in triage) to split the eventual bounty. Open a report from{" "}
+        Collaboration isn't a setting you configure in advance. Add a collaborator directly from any of your own reports (while it's still new or in triage) to split the eventual bounty. Open a report from{" "}
         <Link prefetch={false} href={"/reports" as Route} className="font-medium text-action underline underline-offset-2">
           your reports
         </Link>{" "}

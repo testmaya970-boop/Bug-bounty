@@ -2,7 +2,7 @@ import React from "react";
 import type { OrganizationSlaSummary, SlaCount } from "../../types/program-policy";
 
 function Missed({ count }: { count: SlaCount }) {
-  if (count.tracked === 0) return <span className="text-ink-muted">—</span>;
+  if (count.tracked === 0) return <span className="text-ink-muted">None</span>;
   return (
     <span className={count.breached > 0 ? "font-semibold text-danger" : "text-ink-muted"}>
       {count.breached} of {count.tracked}
@@ -39,7 +39,7 @@ export function OrganizationSla({ rows, programNames }: { rows: OrganizationSlaS
               {tracked.map((row) => (
                 <tr key={row.programId} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 font-medium text-ink">{programNames.get(row.programId) ?? "Program"}</td>
-                  <td className="px-4 py-3 tabular-nums text-ink-muted">{row.medianFirstResponseHours === null ? "—" : `${row.medianFirstResponseHours}h`}</td>
+                  <td className="px-4 py-3 tabular-nums text-ink-muted">{row.medianFirstResponseHours === null ? "No data" : `${row.medianFirstResponseHours}h`}</td>
                   <td className="px-4 py-3 tabular-nums">
                     <Missed count={row.firstResponse} />
                   </td>

@@ -309,7 +309,8 @@ function HelpLink() {
       prefetch={false}
       aria-label="Help"
       title="Help"
-      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-muted transition-colors duration-150 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+      // Phones: hidden -- "Help & docs" is in the account menu, and the bar has no room at 320px.
+      className="hidden min-h-11 min-w-11 items-center sm:inline-flex justify-center rounded-md text-ink-muted transition-colors duration-150 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
       <Question aria-hidden="true" className="size-5" />
     </Link>
@@ -658,14 +659,16 @@ export function AppShellClient({
           redesign brief ("keep the top bar minimal"). Soft glass over the ambient
           background (docs/decisions/0062) rather than a flat opaque bar, so the warm
           gradient stays faintly visible as content scrolls beneath it. */}
-      <header className="glass-surface sticky top-0 z-20 flex h-16 items-center gap-3 rounded-none border-x-0 border-t-0 px-4 lg:px-6">
+      <header className="glass-surface sticky top-0 z-20 flex h-16 items-center gap-2 rounded-none border-x-0 border-t-0 px-3 sm:gap-3 sm:px-4 lg:px-6">
         <IconButton label="Open navigation" variant="quiet" className="shrink-0 lg:hidden" onClick={() => setOpen(true)}>
           <List aria-hidden="true" className="size-5" />
         </IconButton>
         <div className="lg:hidden">
           <SidebarBrand />
         </div>
-        <div className="flex-1">
+        {/* min-w-0: a flex child won't shrink below its content otherwise, and the search
+            field pushed the account button 2px past a 375px phone screen. */}
+        <div className="min-w-0 flex-1">
           <GlobalSearch />
         </div>
         <div className="flex shrink-0 items-center gap-1">

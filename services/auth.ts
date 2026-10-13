@@ -94,7 +94,10 @@ export async function signUpWithPassword(
       "select id, email_verified_at from public.users where email = $1",
       [normalizedEmail],
     );
-    if (existing[0]?.email_verified_at) throw new AuthServiceError("An account with this email already exists.", "EMAIL_TAKEN");
+    // A registered email gets the same "check your email" answer as a new one -- telling the
+    // caller "already exists" let anyone test which emails have accounts. The owner is told
+    // instead (below), and nothing about the account changes.
+    if (existing[0]?.email_verified_at) return null;
     if (existing[0]) {
       // Same as resending the code: the first signup's password and account type stand.
       // Anyone can type this email, so nothing they choose here may reach the account.
@@ -133,6 +136,16 @@ export async function signUpWithPassword(
     ]);
     return user.id;
   });
+
+  if (userId === null) {
+    await activeEmailProvider.send({
+      to: normalizedEmail,
+      subject: "Someone tried to sign up with your email",
+      text: `Someone tried to create an Unpatched account with this email address, which already has an account.\n\nIf it was you, sign in instead, or reset your password if you've forgotten it. If it wasn't you, you can ignore this email; nothing about your account has changed.`,
+      idempotencyKey: `signup-existing-${normalizedEmail}-${randomUUID()}`,
+    });
+    return { status: "confirm_email", email: normalizedEmail };
+  }
 
   await activeEmailProvider.send({
     to: normalizedEmail,

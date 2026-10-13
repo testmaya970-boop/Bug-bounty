@@ -195,7 +195,7 @@ function PublicHome() {
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action">[ 02 ] /// </span>Chapter two</p>
               <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Not a status field. A state machine.</h2>
               <p data-motion="chapter-body" className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
-                Every report moves through a fixed, real transition table — the exact same one that runs in production, not a simplified version for this page.
+                Every report moves through a fixed, real transition table: the same one that runs in production, not a simplified version for this page.
               </p>
               <div data-motion="chapter-figure" className="mt-12">
                 <StateMachineDiagram />
@@ -313,7 +313,7 @@ function PublicHome() {
       </main>
       <footer className="border-t border-border px-4 py-14 sm:px-6">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
             <div>
               <div className="flex items-center gap-2">
                 <ShieldCheck aria-hidden="true" className="size-5 text-action" />

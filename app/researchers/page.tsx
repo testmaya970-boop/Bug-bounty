@@ -126,7 +126,7 @@ export default async function ResearchersPage() {
               <SectionLabel>How the score works</SectionLabel>
               <p className="mt-2 text-sm text-ink-muted">
                 Resolved reports count +25, finalized bounties count +10, rejected reports count −5. Duplicate, informative, and not-applicable outcomes are recorded as neutral facts and never affect
-                the score either way — every input is an organization-confirmed outcome, never something you can self-report.
+                the score either way. Every input is an organization-confirmed outcome, never something you can self-report.
               </p>
             </div>
           </>

@@ -186,7 +186,11 @@
   --record-red: var(--action);
 }
 * { box-sizing: border-box; }
-html { min-width: 320px; background: var(--canvas); }
+/* No sideways page scroll, ever: a too-wide element is clipped at the page edge instead of
+   dragging the whole page sideways on a phone. `clip`, not `hidden`, so sticky headers and
+   the sidebar keep working (hidden would make html/body a scroll container). Tables and
+   code blocks scroll inside their own overflow-x-auto wrappers. */
+html { min-width: 320px; background: var(--canvas); overflow-x: clip; }
 /* Restores the ambient body gradient .glass-surface's own comment (below) has always
    described but the 0073 monochrome flattening silently dropped -- that class blurs a
    translucent fill "so the ambient body gradient reads faintly through a panel," but
@@ -198,7 +202,7 @@ html { min-width: 320px; background: var(--canvas); }
    texture that scrolls oddly with content sections. */
 /* Flat white page (netras.ai's own --bg); the old ambient radial washes stay gone. */
 body {
-  min-width: 320px; margin: 0; color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5;
+  min-width: 320px; margin: 0; color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; overflow-x: clip;
   background: var(--canvas);
 }
 /* netras.ai's selection highlight: 18% red wash under #0a0a0a text. */

@@ -127,7 +127,7 @@ export function StateMachineDiagram() {
           );
         })}
       </svg>
-      <p className="mt-2 text-center text-xs text-ink-muted">This is the same state machine that governs every report in Unpatched — nothing here is simplified for the demo.</p>
+      <p className="mt-2 text-center text-xs text-ink-muted">This is the same state machine that governs every report in Unpatched. Nothing here is simplified for the demo.</p>
     </div>
   );
 }

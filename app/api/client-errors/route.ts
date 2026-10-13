@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return new NextResponse(null, { status: 400 });
 
-  // The first x-forwarded-for hop is client-influenced, which is fine for a spam limit
-  // (not a security gate); the global cap bounds the table no matter what.
-  const client = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  // The last x-forwarded-for hop is the one our own server/proxy added; the first is the
+  // client's and could be rotated to dodge the per-client limit. The global cap holds regardless.
+  const client = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || request.headers.get("x-real-ip") || "unknown";
   let allowed = false;
   try {
     // 30/min per client + 1000/hour globally -- see check_client_error_rate_limit (202609250009).

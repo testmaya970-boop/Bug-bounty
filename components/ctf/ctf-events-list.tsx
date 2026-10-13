@@ -26,7 +26,7 @@ function EventStatusBadge({ status }: { status: CtfEventEffectiveStatus }) {
 }
 
 function EventCard({ event }: { event: CtfEventSummary }) {
-  const window = event.effectiveStatus === "upcoming" ? `Opens ${formatDateTime(event.startsAt)}` : event.effectiveStatus === "active" ? `Closes ${formatDateTime(event.endsAt)}` : `Ran ${formatDateTime(event.startsAt)} — ${formatDateTime(event.endsAt)}`;
+  const window = event.effectiveStatus === "upcoming" ? `Opens ${formatDateTime(event.startsAt)}` : event.effectiveStatus === "active" ? `Closes ${formatDateTime(event.endsAt)}` : `Ran ${formatDateTime(event.startsAt)} to ${formatDateTime(event.endsAt)}`;
   return (
     <Link
       href={`/ctf/events/${event.slug}` as Route}

@@ -67,7 +67,7 @@ function Telemetry({ status }: { status: Status }) {
 export function CommandRow({ action, status }: { action: PrimaryAction; status: Status }) {
   const [heroStat, ...restStats] = STAT_ITEMS;
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       {/* shadow and transition-shadow removed: box-shadow is stripped globally (see
           app/globals.css) and --glow-action no longer exists. */}
       <div className="group relative overflow-hidden rounded-xl bg-ink px-6 py-8 text-canvas sm:px-10 sm:py-10 motion-safe:animate-hero-reveal motion-reduce:transition-none">

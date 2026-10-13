@@ -70,7 +70,7 @@ export default async function PlatformCtfEventsPage() {
                     <span className="font-mono text-[11px] text-ink-muted">{event.challengeCount} challenges</span>
                     <span className="font-mono text-[11px] text-ink-muted">{event.solverCount} solvers</span>
                     <span className="w-full font-mono text-[11px] text-ink-muted sm:w-auto">
-                      {formatDateTime(event.startsAt)} — {formatDateTime(event.endsAt)}
+                      {formatDateTime(event.startsAt)} to {formatDateTime(event.endsAt)}
                     </span>
                   </Link>
                 </li>

@@ -13,6 +13,13 @@ export async function proxy(request: NextRequest) {
   const csp = buildContentSecurityPolicy(generateNonce(), process.env.NODE_ENV === "development");
   request.headers.set("content-security-policy", csp);
 
+  // Server Actions accept a request only when its Origin matches X-Forwarded-Host (or Host).
+  // A client-sent X-Forwarded-Host could match a forged Origin, so in production the app's
+  // own configured host always wins -- it is the only host Unpatched is served from.
+  if (process.env.NODE_ENV === "production" && process.env.APP_ORIGIN) {
+    request.headers.set("x-forwarded-host", new URL(process.env.APP_ORIGIN).host);
+  }
+
   // A non-uuid id in an org-scoped URL is a 404 before anything renders or queries -- see
   // lib/uuid-segment.ts for why this can't live in a layout. Path-based, not header-based.
   if (hasMalformedIdSegment(request.nextUrl.pathname)) {

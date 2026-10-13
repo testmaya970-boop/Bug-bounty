@@ -6,9 +6,9 @@ import { SectionLabel } from "../../../components/ui/security-primitives";
 import { EmptyState } from "../../../components/ui/feedback";
 import { LocalTime } from "../../../components/ui/local-time";
 import { DepositReview } from "../../../components/platform/deposit-review";
-import { RecordPaymentResultDialog } from "../../../components/reports/payment-status";
+import { CancelPaymentObligationDialog, RecordPaymentResultDialog } from "../../../components/reports/payment-status";
 import { isPlatformAdmin } from "../../../services/platform-operations";
-import { listManualPayoutsForAdmin, listPendingDepositsForAdmin } from "../../../services/billing";
+import { listDisputedObligationsForAdmin, listManualPayoutsForAdmin, listPendingDepositsForAdmin } from "../../../services/billing";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { DEPOSIT_METHOD_LABEL } from "../../../lib/billing-labels";
 import { minorUnitsToDecimalString } from "../../../lib/money";
@@ -23,7 +23,7 @@ export default async function PlatformPayoutsPage() {
   if (!user) redirect("/sign-in?redirectTo=/platform/payouts" as Route);
   if (!(await isPlatformAdmin())) notFound();
 
-  const [deposits, payouts] = await Promise.all([listPendingDepositsForAdmin(), listManualPayoutsForAdmin()]);
+  const [deposits, payouts, disputed] = await Promise.all([listPendingDepositsForAdmin(), listManualPayoutsForAdmin(), listDisputedObligationsForAdmin()]);
 
   return (
     <AppShell title="Payouts" user={user}>
@@ -90,6 +90,34 @@ export default async function PlatformPayoutsPage() {
                     reportId={p.reportId}
                     attemptId={p.attemptId}
                   />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="space-y-3">
+          <SectionLabel>Awards in dispute</SectionLabel>
+          <p className="text-sm text-ink-muted">Unpaid awards on reports with an open or escalated dispute. Once a researcher accepts an award only Unpatched can cancel it; cancelling returns the money to the organization&apos;s balance.</p>
+          {disputed.length === 0 ? (
+            <EmptyState title="No disputed awards">Awards on reports under dispute appear here.</EmptyState>
+          ) : (
+            <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
+              {disputed.map((d) => (
+                <li key={d.obligationId} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 text-sm">
+                  <div className="space-y-1">
+                    <p>
+                      <span className="font-mono font-semibold tabular-nums text-ink">
+                        {d.currency} {minorUnitsToDecimalString(d.amountMinorUnits)}
+                      </span>
+                      <span className="ml-2 font-medium text-ink">to {d.researcherName}</span>
+                      <span className="ml-2 text-xs text-ink-muted">from {d.organizationName}</span>
+                    </p>
+                    <p className="text-xs text-ink-muted">
+                      {d.reportTitle} · dispute {d.mediationStatus}
+                    </p>
+                  </div>
+                  <CancelPaymentObligationDialog organizationId={d.organizationId} programId={d.programId} reportId={d.reportId} obligationId={d.obligationId} />
                 </li>
               ))}
             </ul>

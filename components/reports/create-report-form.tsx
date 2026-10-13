@@ -678,15 +678,15 @@ export function CreateReportForm({
           <dl className="mt-3 grid gap-4 rounded-lg border border-border bg-surface-muted p-4 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Target</dt>
-              <dd className="mt-0.5 break-all font-mono text-ink">{target || "—"}</dd>
+              <dd className="mt-0.5 break-all font-mono text-ink">{target || "Not set"}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Title</dt>
-              <dd className="mt-0.5 text-ink">{title || "—"}</dd>
+              <dd className="mt-0.5 text-ink">{title || "Not set"}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Weakness type</dt>
-              <dd className="mt-0.5 text-ink">{weaknessType ? weaknessTypeLabel(weaknessType) : "—"}</dd>
+              <dd className="mt-0.5 text-ink">{weaknessType ? weaknessTypeLabel(weaknessType) : "Not set"}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Your severity assessment</dt>
