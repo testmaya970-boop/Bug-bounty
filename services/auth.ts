@@ -9,6 +9,7 @@ import { getCurrentSessionId } from "@/lib/auth/current-user";
 import { activeEmailProvider } from "@/lib/email-provider";
 import { randomUUID } from "node:crypto";
 import { getNativeEnv } from "@/lib/env";
+import { recordError } from "@/lib/error-tracking";
 
 export class AuthServiceError extends Error {
   constructor(
@@ -40,7 +41,9 @@ async function clearSessionCookie(): Promise<void> {
 
 async function currentUserAgentAndIp(): Promise<{ userAgent: string | null; ip: string | null }> {
   const h = await headers();
-  return { userAgent: h.get("user-agent"), ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null };
+  // The LAST hop: the one our own server/proxy appended. The first is whatever the client
+  // sent, so keying rate limits on it let a client dodge them by rotating the header.
+  return { userAgent: h.get("user-agent"), ip: h.get("x-forwarded-for")?.split(",").at(-1)?.trim() || null };
 }
 
 /**
@@ -78,8 +81,6 @@ export async function signUpWithPassword(
   metadata?: { displayName?: string; username?: string; intent?: "researcher" | "organization"; companyName?: string },
 ): Promise<SignUpResult> {
   const normalizedEmail = email.trim().toLowerCase();
-  // ponytail: per-client key is the first x-forwarded-for hop, which a client can set
-  // itself; the per-email limit still holds. Trust only the TLS proxy's hop once one exists.
   await consumeRateLimit("select public.check_sign_up_rate_limit($1, $2) as ok", [normalizedEmail, (await currentUserAgentAndIp()).ip], "Too many sign-up attempts. Try again in an hour.");
   const passwordHash = await hashPassword(password);
   const { code, codeHash, ttlSeconds } = generateSignupOtpChallenge();
@@ -87,21 +88,26 @@ export async function signUpWithPassword(
   const userId = await withServiceRoleTransaction(async (client) => {
     // An earlier signup that never entered its code (or whose code email never arrived)
     // would otherwise lock this email out forever with EMAIL_TAKEN. Re-issue a code instead.
-    // The new password rides on the challenge and is applied only in verifySignupCode, once
-    // the code proves ownership of the email -- this row is never touched before then (an
-    // unverified row may also be a real account mid email-change, services/account.ts).
+    // This row is never touched before the code proves ownership of the email (an unverified
+    // row may also be a real account mid email-change, services/account.ts).
     const { rows: existing } = await client.query<{ id: string; email_verified_at: string | null }>(
       "select id, email_verified_at from public.users where email = $1",
       [normalizedEmail],
     );
     if (existing[0]?.email_verified_at) throw new AuthServiceError("An account with this email already exists.", "EMAIL_TAKEN");
     if (existing[0]) {
+      // Same as resending the code: the first signup's password and account type stand.
+      // Anyone can type this email, so nothing they choose here may reach the account.
+      const { rows: latest } = await client.query<{ metadata: { intent?: string; companyName?: string } }>(
+        "select metadata from public.signup_verification_challenges where user_id = $1 order by created_at desc limit 1",
+        [existing[0].id],
+      );
       try {
         await callRpc(client, "public.create_signup_verification_challenge", [
           existing[0].id,
           codeHash,
           ttlSeconds,
-          JSON.stringify({ intent: metadata?.intent, companyName: metadata?.companyName, passwordHash }),
+          JSON.stringify({ intent: latest[0]?.metadata?.intent, companyName: latest[0]?.metadata?.companyName }),
         ]);
       } catch (error) {
         throw mapDbError(error);
@@ -287,24 +293,29 @@ export async function requestPasswordReset(email: string): Promise<void> {
   // Before the account lookup, so hitting the limit reveals nothing about the account.
   await consumeRateLimit("select public.check_password_reset_rate_limit($1, $2) as ok", [normalizedEmail, (await currentUserAgentAndIp()).ip], "Too many reset requests. Try again in an hour.");
 
-  await withServiceRoleTransaction(async (client) => {
+  const issued = await withServiceRoleTransaction(async (client) => {
     // Confirmed, active accounts only: a sign-up whose code was never entered is not a
     // registered account (signing up again re-sends its code), and a deactivated one can't
     // sign in whatever its password -- a reset would only mislead. The caller
     // shows the same neutral message either way, so this reveals nothing.
     const { rows } = await client.query<{ id: string }>("select id from public.users where email = $1 and email_verified_at is not null and deactivated_at is null", [normalizedEmail]);
     const user = rows[0];
-    if (!user) return;
+    if (!user) return null;
+    return { userId: user.id, token: await issuePasswordResetToken(client, user.id) };
+  });
+  if (!issued) return;
 
-    const token = await issuePasswordResetToken(client, user.id);
-    const resetUrl = `${origin}/auth/confirm?type=recovery&token=${encodeURIComponent(token)}`;
-    await activeEmailProvider.send({
+  // Not awaited: sending took seconds while "no such account" returned at once, so the
+  // response time alone told an attacker which emails are registered.
+  const resetUrl = `${origin}/auth/confirm?type=recovery&token=${encodeURIComponent(issued.token)}`;
+  void activeEmailProvider
+    .send({
       to: normalizedEmail,
       subject: "Reset your Unpatched password",
       text: `Reset your Unpatched password:\n\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, you can ignore this email.`,
-      idempotencyKey: `password-reset-${user.id}-${randomUUID()}`,
-    });
-  });
+      idempotencyKey: `password-reset-${issued.userId}-${randomUUID()}`,
+    })
+    .catch((error) => recordError({ source: "server", message: `Password reset email failed: ${error instanceof Error ? error.message : String(error)}` }));
 }
 
 /**
@@ -339,13 +350,13 @@ export async function verifySignupCode(email: string, code: string): Promise<{ u
       throw mapDbError(error);
     }
     const row = rows[0];
-    if (!row || row.outcome !== "valid") throw new AuthServiceError("That code didn't match or has expired. Request a new one and try again.", "INVALID_CODE");
+    // Returned, not thrown: throwing here rolls the transaction back, and with it the
+    // attempts counter the RPC just incremented -- which made the code guessable forever.
+    if (!row || row.outcome !== "valid") return null;
 
-    // Set by a repeat signup on a never-verified email (signUpWithPassword): the password
-    // chosen on that latest attempt wins, now that the code has proven email ownership.
-    if (row.metadata?.passwordHash) {
-      await client.query("update public.users set password_hash = $1, updated_at = now() where id = $2", [row.metadata.passwordHash, user.id]);
-    }
+    // A password riding on the challenge (older repeat signups) is never applied: a
+    // stranger could sign up again with someone's unverified email and have the owner's
+    // code set the stranger's password. The owner keeps their first password, or resets it.
 
     // Organization sign-up (work email enforced in signUpAction) is the only way to get an
     // organization account -- the only kind allowed to create an organization (202609280002).
@@ -356,6 +367,7 @@ export async function verifySignupCode(email: string, code: string): Promise<{ u
     return { userId: user.id, intent: row.metadata?.intent, companyName: row.metadata?.companyName };
   });
 
+  if (!result) throw new AuthServiceError("That code didn't match or has expired. Request a new one and try again.", "INVALID_CODE");
   return result;
 }
 

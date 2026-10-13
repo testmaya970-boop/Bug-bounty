@@ -484,7 +484,8 @@ export function PaymentStatusSection({
                       isRetry={obligation.status === "failed"}
                       blocked={blockers.length > 0}
                     />
-                    <CancelPaymentObligationDialog {...ref} obligationId={obligation.id} />
+                    {/* An accepted award changes only through mediation (202610140006). */}
+                    {!acceptance && <CancelPaymentObligationDialog {...ref} obligationId={obligation.id} />}
                   </div>
                 )}
                 {canManage && obligation.status === "processing" && attempt && <p className="text-xs text-ink-muted">Unpatched is sending this payout.</p>}

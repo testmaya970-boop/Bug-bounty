@@ -103,7 +103,9 @@ export const s3EvidenceObjectStore: EvidenceObjectStore = {
       const command = new GetObjectCommand({
         Bucket: bucket,
         Key: objectKey,
-        ResponseContentDisposition: `attachment; filename="${downloadFilename.replace(/[\\"]/g, "'")}"`,
+        // ASCII fallback with quotes, backslashes and control characters removed, plus the real
+        // name RFC 5987-encoded -- a raw CR/LF here would reach the response header.
+        ResponseContentDisposition: `attachment; filename="${downloadFilename.replace(/[^ -~]|[\\"]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(downloadFilename).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`,
         // The stored Content-Type is whatever the uploader claimed (e.g. text/html). Always
         // serve evidence as opaque bytes so it can never render, wherever storage is hosted.
         ResponseContentType: "application/octet-stream",

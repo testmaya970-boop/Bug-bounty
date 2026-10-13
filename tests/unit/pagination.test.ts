@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { clampPageSize, decodeCursor, encodeCursor, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "../../lib/pagination";
 
+const ID = "3f0c8a8e-1b2d-4c5e-8f9a-0b1c2d3e4f50";
+
 describe("pagination: cursor encode/decode round-trips, opaque to the caller", () => {
   it("round-trips a (sortValue, id) pair", () => {
-    const cursor = encodeCursor("2026-08-29T00:00:00Z", "row-1");
-    expect(decodeCursor(cursor)).toEqual({ sortValue: "2026-08-29T00:00:00Z", id: "row-1" });
+    const cursor = encodeCursor("2026-08-29T00:00:00Z", ID);
+    expect(decodeCursor(cursor)).toEqual({ sortValue: "2026-08-29T00:00:00Z", id: ID });
   });
 
   it("is not the raw, human-readable value -- an opaque token, not a documented shape", () => {
-    const cursor = encodeCursor("2026-08-29T00:00:00Z", "row-1");
+    const cursor = encodeCursor("2026-08-29T00:00:00Z", ID);
     expect(cursor).not.toContain("2026-08-29");
-    expect(cursor).not.toContain("row-1");
+    expect(cursor).not.toContain(ID);
   });
 
   it("returns null for garbage input rather than throwing", () => {
@@ -18,9 +20,13 @@ describe("pagination: cursor encode/decode round-trips, opaque to the caller", (
     expect(decodeCursor("")).toBeNull();
   });
 
+  it("refuses a forged id half (it reached the query and caused a 500)", () => {
+    expect(decodeCursor(Buffer.from("x|1 OR 1=1", "utf8").toString("base64url"))).toBeNull();
+  });
+
   it("handles a sortValue that itself contains the '|' separator by splitting only on the first occurrence", () => {
-    const cursor = encodeCursor("a|b|c", "row-1");
-    expect(decodeCursor(cursor)).toEqual({ sortValue: "a|b|c", id: "row-1" });
+    const cursor = encodeCursor("a|b|c", ID);
+    expect(decodeCursor(cursor)).toEqual({ sortValue: "a|b|c", id: ID });
   });
 });
 

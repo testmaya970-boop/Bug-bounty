@@ -10,7 +10,10 @@ export type IntegrationModule = "identity" | "payments" | "phone";
 /** True only off production, or in the local prod-test harness. Sandbox providers simulate a
  * third party in-app and must never run where real people verify or get paid. */
 export function sandboxAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.NODE_ENV !== "production" || env.LOCAL_PROD_TEST === "1";
+  // LOCAL_PROD_TEST counts only on a loopback origin, so the flag leaking into a real
+  // deployment can never switch on self-approved identity checks or simulated payouts.
+  const loopback = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(env.APP_ORIGIN ?? "");
+  return env.NODE_ENV !== "production" || (env.LOCAL_PROD_TEST === "1" && loopback);
 }
 
 /** A short, PII-free trail for Platform -> Integrations. Never throws: a logging failure must

@@ -114,7 +114,7 @@ describe("reputation service: getMyReputationLedger", () => {
     });
     const { getMyReputationLedger } = await import("../../services/reputation");
 
-    await getMyReputationLedger("researcher-1", encodeCursor("2026-08-29T00:00:00Z", "l1"));
+    await getMyReputationLedger("researcher-1", encodeCursor("2026-08-29T00:00:00Z", "00000000-0000-4000-8000-000000000019"));
 
     expect(capturedSql).toContain("occurred_at < $2");
     expect(capturedParams).toEqual(["researcher-1", "2026-08-29T00:00:00Z", 20]);

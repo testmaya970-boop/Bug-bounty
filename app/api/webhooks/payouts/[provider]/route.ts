@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { withServiceRoleTransaction, callRpc } from "@/lib/db/pool";
 import { logIntegrationEvent } from "@/lib/integrations/common";
 import { payoutProviderByName } from "@/lib/payment-provider";
+import { readBodyWithin } from "@/lib/read-body";
 
 // Payout results (RazorpayX / PayPal). Only a verified provider signature can mark a payout
 // paid or failed; retries are harmless (record_provider_payment_result: first final result wins).
@@ -10,7 +11,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const provider = payoutProviderByName(name);
   if (!provider?.parseWebhook) return new NextResponse("Unknown provider", { status: 404 });
 
-  const rawBody = await request.text();
+  // Provider events are a few KB; never buffer an unbounded body before the signature check.
+  const raw = await readBodyWithin(request, 256 * 1024);
+  if (raw === null) return new NextResponse(null, { status: 413 });
+  const rawBody = raw.toString("utf8");
   let result;
   try {
     result = await provider.parseWebhook(rawBody, request.headers);

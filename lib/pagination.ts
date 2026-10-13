@@ -19,7 +19,8 @@ export function decodeCursor(cursor: string): { sortValue: string; id: string } 
     if (separatorIndex <= 0) return null;
     const sortValue = decoded.slice(0, separatorIndex);
     const id = decoded.slice(separatorIndex + 1);
-    if (!sortValue || !id) return null;
+    // A forged id reached the query as a non-uuid and surfaced as a 500.
+    if (!sortValue || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
     return { sortValue, id };
   } catch {
     return null;

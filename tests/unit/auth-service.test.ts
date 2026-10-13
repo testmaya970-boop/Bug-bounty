@@ -351,13 +351,14 @@ describe("auth service: signUpWithPassword always requires email confirmation", 
     expect(sqls.some((sql) => sql.includes("create_user") || sql.includes("create_signup_verification_challenge"))).toBe(false);
   });
 
-  it("re-issues a code for a NEVER-verified existing email, carrying the new password on the challenge without touching the account row", async () => {
+  it("re-issues a code for a NEVER-verified existing email, keeping the FIRST signup's details -- a stranger's password or account type never rides along", async () => {
     const { activeEmailProvider } = await import("../../lib/email-provider");
     const sqls: string[] = [];
     let challengeArgs: unknown[] | undefined;
     fakeClient.query.mockImplementation(async (sql: string, args: unknown[]) => {
       sqls.push(sql);
       if (sql.includes("from public.users where email")) return queryReturning([{ id: "user-1", email_verified_at: null }]);
+      if (sql.includes("select metadata from public.signup_verification_challenges")) return queryReturning([{ metadata: { intent: "researcher" } }]);
       if (sql.includes("create_signup_verification_challenge")) {
         challengeArgs = args;
         return queryReturning([{ create_signup_verification_challenge: "challenge-2" }]);
@@ -371,8 +372,8 @@ describe("auth service: signUpWithPassword always requires email confirmation", 
     expect(result).toEqual({ status: "confirm_email", email: "stuck@example.test" });
     expect(challengeArgs?.[0]).toBe("user-1");
     const metadata = JSON.parse(challengeArgs?.[3] as string);
-    expect(metadata).toMatchObject({ intent: "organization", companyName: "Assurex" });
-    expect(metadata.passwordHash).toMatch(/^\$argon2/);
+    expect(metadata).toEqual({ intent: "researcher" });
+    expect(metadata.passwordHash).toBeUndefined();
     expect(sqls.some((sql) => sql.includes("create_user") || /update public\.users/.test(sql))).toBe(false);
     expect(activeEmailProvider.send).toHaveBeenCalledWith(expect.objectContaining({ to: "stuck@example.test" }));
   });
@@ -412,7 +413,7 @@ describe("auth service: verifySignupCode checks the emailed 6-digit code, never 
     await expect(verifySignupCode("new@example.test", "123456")).resolves.toEqual({ userId: "user-1", intent: "organization", companyName: "Acme" });
   });
 
-  it("applies a pending password from a repeat signup only after the code is valid, and never returns the hash", async () => {
+  it("never applies a password carried on a challenge (a repeat signup by a stranger), and never returns the hash", async () => {
     let passwordUpdateArgs: unknown[] | undefined;
     fakeClient.query.mockImplementation(async (sql: string, args: unknown[]) => {
       if (sql.includes("select id from public.users")) return queryReturning([{ id: "user-1" }]);
@@ -424,7 +425,7 @@ describe("auth service: verifySignupCode checks the emailed 6-digit code, never 
 
     const result = await verifySignupCode("stuck@example.test", "123456");
 
-    expect(passwordUpdateArgs).toEqual(["$argon2id$new", "user-1"]);
+    expect(passwordUpdateArgs).toBeUndefined();
     expect(JSON.stringify(result)).not.toContain("argon2");
   });
 

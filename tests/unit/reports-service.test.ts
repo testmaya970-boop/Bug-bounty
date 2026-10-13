@@ -214,7 +214,7 @@ describe("reports service: reads", () => {
 
   it("returns a nextCursor when a full page comes back, decodable to the last row's (submitted_at, id)", async () => {
     const rows = Array.from({ length: 20 }, (_, i) => ({
-      id: `report-${i}`,
+      id: `00000000-0000-4000-8000-0000000000${String(i).padStart(2, "0")}`,
       program_id: "prog-1",
       organization_id: "org-1",
       program_name: "Acme Bounty",
@@ -230,7 +230,7 @@ describe("reports service: reads", () => {
 
     const { nextCursor } = await listMyReports("actor-1");
     expect(nextCursor).not.toBeNull();
-    expect(decodeCursor(nextCursor!)).toEqual({ sortValue: "2026-08-27T00:00:01Z", id: "report-19" });
+    expect(decodeCursor(nextCursor!)).toEqual({ sortValue: "2026-08-27T00:00:01Z", id: "00000000-0000-4000-8000-000000000019" });
   });
 
   it("decodes a supplied cursor into positional (limit, before_submitted_at, before_id) args on the next call", async () => {
@@ -242,9 +242,9 @@ describe("reports service: reads", () => {
     });
     const { listMyReports } = await import("../../services/reports");
 
-    await listMyReports("actor-1", encodeCursor("2026-08-27T00:00:01Z", "report-19"), 10);
+    await listMyReports("actor-1", encodeCursor("2026-08-27T00:00:01Z", "00000000-0000-4000-8000-000000000019"), 10);
 
-    expect(captured).toEqual([10, "2026-08-27T00:00:01Z", "report-19", null, null, null]);
+    expect(captured).toEqual([10, "2026-08-27T00:00:01Z", "00000000-0000-4000-8000-000000000019", null, null, null]);
   });
 });
 
@@ -361,7 +361,7 @@ describe("reports service: listReportsForProgram -- server-side filters, never f
     });
     const { listReportsForProgram } = await import("../../services/reports");
 
-    await listReportsForProgram("prog-1", encodeCursor("2026-08-27T00:00:00Z", "report-1"));
+    await listReportsForProgram("prog-1", encodeCursor("2026-08-27T00:00:00Z", "00000000-0000-4000-8000-000000000001"));
 
     expect(capturedSql).toContain("r.submitted_at < $2");
     expect(capturedParams).toEqual(["prog-1", "2026-08-27T00:00:00Z", 20]);

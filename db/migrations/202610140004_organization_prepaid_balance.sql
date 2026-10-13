@@ -44,8 +44,6 @@ create policy "organization deposits read by finance roles" on public.organizati
   using (private.has_org_role(organization_id, array['owner', 'security_admin', 'billing_admin']::public.organization_member_role[]));
 revoke all on public.organization_deposits from public, anon, authenticated;
 grant select on public.organization_deposits to authenticated;
--- Seeding only; the app itself writes deposits through the functions below.
-grant select, insert on public.organization_deposits to service_role;
 
 -- Per-currency figures for one organization. Callers authorize.
 create or replace function private.organization_balance(p_organization_id uuid)
@@ -85,7 +83,7 @@ begin
   select b.available into remaining from private.organization_balance(new.organization_id) b where b.currency = new.currency;
   if coalesce(remaining, 0) < new.amount_minor_units + new.platform_fee_minor_units then
     raise exception 'INSUFFICIENT_BALANCE: this award needs % % (bounty + fee) but the % balance has % available -- add funds first',
-      new.currency, round((new.amount_minor_units + new.platform_fee_minor_units) / 100.0, 2), new.currency, round(coalesce(remaining, 0) / 100.0, 2)
+      new.currency, (new.amount_minor_units + new.platform_fee_minor_units) / 100.0, new.currency, coalesce(remaining, 0) / 100.0
       using errcode = '23514';
   end if;
   return new;

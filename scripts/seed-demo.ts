@@ -340,6 +340,16 @@ async function main() {
         await tryStep(withActor(owner.id, (client) => client.query("select public.calculate_bounty_recommendation($1)", [report3.id])), "calculate_bounty_recommendation (report 3)");
       }
       if (!hasDecision || hasDecision.state !== "finalized") {
+        // finalize_bounty refuses an unfunded award (202610140006): fund the report's org first.
+        // Idempotent -- one reference per organization, claimable once.
+        await withServiceRole((client) =>
+          client.query(
+            `insert into public.organization_deposits (organization_id, currency, amount_minor_units, method, payer_reference, status, requested_by, reviewed_at)
+             select r.organization_id, 'USD', 100000000, 'wire', 'SEED-FUNDING-' || r.organization_id, 'confirmed', $2, now() from public.reports r where r.id = $1
+             on conflict do nothing`,
+            [report3.id, owner.id],
+          ),
+        );
         await tryStep(
           withActor(owner.id, (client) => client.query("select public.finalize_bounty($1, $2, $3)", [report3.id, 300000, "Critical SSRF into cloud metadata -- exceptional impact."])),
           "finalize_bounty (report 3)",

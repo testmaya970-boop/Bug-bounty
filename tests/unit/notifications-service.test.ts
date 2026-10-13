@@ -88,7 +88,7 @@ describe("notifications service: getMyNotifications", () => {
     });
     const { getMyNotifications } = await import("../../services/notifications");
 
-    await getMyNotifications(encodeCursor("2026-08-29T00:00:00Z", "n1"), 9999);
+    await getMyNotifications(encodeCursor("2026-08-29T00:00:00Z", "00000000-0000-4000-8000-000000000019"), 9999);
 
     expect(capturedSql).toContain("created_at < $1");
     expect(capturedParams[0]).toBe("2026-08-29T00:00:00Z");

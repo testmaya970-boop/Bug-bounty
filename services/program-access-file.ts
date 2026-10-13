@@ -91,27 +91,30 @@ async function existingObjectKey(actorId: string | null, programId: string): Pro
 export async function uploadProgramAccessFile(programId: string, input: UploadInput): Promise<ProgramAccessFile> {
   validate(input);
   const actor = await getCurrentUser();
-  const actorId = actor?.id ?? null;
+  if (!actor) throw new OrganizationServiceError("Sign in to upload a file.", "AUTH_REQUIRED");
+  const actorId = actor.id;
 
   const previousObjectKey = await existingObjectKey(actorId, programId).catch(() => null);
 
   const sha256 = createHash("sha256").update(input.bytes).digest("hex");
   const objectKey = generateAccessFileObjectKey();
 
-  await evidenceObjectStore.putObject(objectKey, input.bytes, input.contentType || "application/octet-stream");
-
+  // The RPC authorizes first; the object is stored only once it has, inside the same
+  // transaction, so a refused caller never writes to storage (it used to upload first).
   let rows;
   try {
-    rows = await withActorTransaction(actorId, (client) =>
-      callRpc<AccessFileRow>(client, "public.upload_program_access_file", [
+    rows = await withActorTransaction(actorId, async (client) => {
+      const result = await callRpc<AccessFileRow>(client, "public.upload_program_access_file", [
         programId,
         objectKey,
         input.filename.trim(),
         input.contentType || "application/octet-stream",
         input.bytes.byteLength,
         sha256,
-      ]),
-    );
+      ]);
+      await evidenceObjectStore.putObject(objectKey, input.bytes, input.contentType || "application/octet-stream");
+      return result;
+    });
   } catch (error) {
     try {
       await evidenceObjectStore.deleteObject(objectKey);

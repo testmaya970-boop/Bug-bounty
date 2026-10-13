@@ -420,6 +420,16 @@ async function ensureReputationHistory(ownerId: string, orgId: string, researche
     await tryStep(withActor(ownerId, (client) => client.query("select public.calculate_bounty_recommendation($1)", [reportId])), "calculate_bounty_recommendation (veteran report)");
   }
   if (!hasDecision || hasDecision.state !== "finalized") {
+    // finalize_bounty refuses an unfunded award (202610140006): fund the report's org first.
+    // Idempotent -- one reference per organization, claimable once.
+    await withServiceRole((client) =>
+      client.query(
+        `insert into public.organization_deposits (organization_id, currency, amount_minor_units, method, payer_reference, status, requested_by, reviewed_at)
+         select r.organization_id, 'USD', 100000000, 'wire', 'SEED-FUNDING-' || r.organization_id, 'confirmed', $2, now() from public.reports r where r.id = $1
+         on conflict do nothing`,
+        [reportId, ownerId],
+      ),
+    );
     await tryStep(withActor(ownerId, (client) => client.query("select public.finalize_bounty($1, $2, $3)", [reportId, 150000, "Seed fixture -- exceptional impact."])), "finalize_bounty (veteran report)");
   }
   console.log("Veteran's reputation history ready (1 resolved report, 1 finalized $1,500 bounty).");

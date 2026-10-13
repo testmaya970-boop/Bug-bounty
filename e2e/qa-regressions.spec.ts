@@ -84,6 +84,10 @@ test.describe.serial("QA regressions (2026-10-12)", () => {
     ids.org = (await rpc(ids.owner, "select id from public.create_organization($1)", [`QA Regressions ${tag}`])).id;
     ids.program = (await rpc(ids.owner, "select id from public.create_program($1, $2)", [ids.org, `QA Program ${tag}`])).id;
     await rpc(ids.owner, "select public.create_bounty_policy_version($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)", [ids.program, "USD", 0, 0, 10000, 50000, 50000, 150000, 150000, 500000, 500000, 2000000]);
+    // Awards must be funded (202610140006).
+    await service((db) =>
+      db.query("insert into public.organization_deposits (organization_id, currency, amount_minor_units, method, payer_reference, status, requested_by) values ($1, 'USD', 100000000, 'wire', $2, 'confirmed', $3)", [ids.org, `QA-${tag}`, ids.owner]),
+    );
   });
 
   test.afterAll(async () => {
@@ -117,6 +121,7 @@ test.describe.serial("QA regressions (2026-10-12)", () => {
     await owner.query("set local session_replication_role = replica");
     await owner.query("delete from public.reputation_ledger where researcher_id = any($1::uuid[]) or organization_id = any($2::uuid[])", [users, orgs]);
     await owner.query("set local session_replication_role = origin");
+    await owner.query("delete from public.organization_deposits where organization_id = any($1::uuid[])", [orgs]);
     await owner.query("delete from public.organizations where id = any($1::uuid[])", [orgs]);
     await owner.query("delete from public.users where id = any($1::uuid[])", [users]);
     await owner.query("commit");

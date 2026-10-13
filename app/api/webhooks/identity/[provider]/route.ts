@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { withServiceRoleTransaction, callRpc } from "@/lib/db/pool";
 import { logIntegrationEvent } from "@/lib/integrations/common";
 import { identityProviderByName } from "@/lib/integrations/identity";
+import { readBodyWithin } from "@/lib/read-body";
 
 // Identity verification results (Persona / Cashfree). The provider's signature is the only
 // authority: an unsigned or stale request changes nothing. Retries are harmless -- the first
@@ -11,7 +12,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const provider = identityProviderByName(name);
   if (!provider) return new NextResponse("Unknown provider", { status: 404 });
 
-  const rawBody = await request.text();
+  // Provider events are a few KB; never buffer an unbounded body before the signature check.
+  const raw = await readBodyWithin(request, 256 * 1024);
+  if (raw === null) return new NextResponse(null, { status: 413 });
+  const rawBody = raw.toString("utf8");
   let result;
   try {
     result = await provider.parseWebhook(rawBody, request.headers);
