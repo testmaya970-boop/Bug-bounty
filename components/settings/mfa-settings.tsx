@@ -35,6 +35,8 @@ export function MfaSettings({ factors }: { factors: MfaFactor[] }) {
   const [code, setCode] = useState("");
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDisable, setConfirmingDisable] = useState(false);
+  const [disablePassword, setDisablePassword] = useState("");
   const [pending, startTransition] = useTransition();
 
   function handleBegin(chosen: MfaMethod) {
@@ -94,11 +96,13 @@ export function MfaSettings({ factors }: { factors: MfaFactor[] }) {
     if (!verifiedFactor) return;
     setError(null);
     startTransition(async () => {
-      const result = await unenrollMfaFactorAction({ factorId: verifiedFactor.id });
+      const result = await unenrollMfaFactorAction({ factorId: verifiedFactor.id, currentPassword: disablePassword });
       if (!result.ok) {
         setError(result.message);
         return;
       }
+      setConfirmingDisable(false);
+      setDisablePassword("");
       router.refresh();
     });
   }
@@ -116,16 +120,52 @@ export function MfaSettings({ factors }: { factors: MfaFactor[] }) {
           <p className="mt-1 text-sm text-ink-muted">
             Method: <span className="font-medium text-ink">{METHOD_LABEL[verifiedFactor.method]}</span>. To switch methods, disable it and enable the other one.
           </p>
-          <div className="mt-3 flex justify-end">
-            <Button variant="secondary" pending={pending} onClick={handleDisable}>
-              Disable
-            </Button>
-          </div>
+          {confirmingDisable ? (
+            <form
+              className="mt-3 space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleDisable();
+              }}
+            >
+              <Input
+                label="Current password"
+                type="password"
+                autoComplete="current-password"
+                helperText="Removing two-factor makes your account easier to take over, so confirm it is you."
+                value={disablePassword}
+                onChange={(event) => setDisablePassword(event.target.value)}
+                required
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setConfirmingDisable(false);
+                    setDisablePassword("");
+                    setError(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="destructive" pending={pending}>
+                  Turn off two-factor
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="mt-3 flex justify-end">
+              <Button variant="secondary" onClick={() => setConfirmingDisable(true)}>
+                Disable
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
       {step === "idle" && !verifiedFactor && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col rounded-lg border border-border bg-surface p-4">
             <p className="text-sm font-semibold text-ink">Authenticator app</p>
             <p className="mt-1 flex-1 text-sm text-ink-muted">Google Authenticator, Microsoft Authenticator, 1Password or similar. Works without signal or email. Recommended.</p>

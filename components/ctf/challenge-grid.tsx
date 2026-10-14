@@ -67,7 +67,7 @@ export function ChallengeGrid({ challenges, initialCategory, solvedChallengeIds 
       {visible.length === 0 ? (
         <p className="mt-4 rounded-lg border border-dashed border-border-strong bg-surface p-8 text-center text-sm text-ink-muted">No challenge matches these filters.</p>
       ) : (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 motion-safe:animate-enter-fade">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 motion-safe:animate-enter-fade">
           {visible.map((challenge) => (
             <ChallengeCard key={challenge.id} challenge={challenge} solved={solvedChallengeIds.has(challenge.id)} />
           ))}

@@ -132,7 +132,7 @@ function PendingInvitationsTab({ invitations }: { invitations: Awaited<ReturnTyp
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {invitations.map((invitation) => (
         <PendingProgramInvitationCard key={invitation.id} invitation={invitation} />
       ))}
@@ -149,6 +149,9 @@ async function AnonymousProgramsPage({ searchParams }: { searchParams: ProgramsS
 
   return (
     <div className="min-h-dvh bg-canvas text-ink">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-surface focus:px-4 focus:py-2 focus:outline-2 focus:outline-focus">
+        Skip to content
+      </a>
       <header className="border-b border-border px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           <Link prefetch={false} href="/" className="text-lg font-bold tracking-tight">
@@ -159,7 +162,7 @@ async function AnonymousProgramsPage({ searchParams }: { searchParams: ProgramsS
           </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 motion-safe:animate-hero-reveal">
+      <main id="main" className="mx-auto max-w-4xl px-4 py-12 sm:px-6 motion-safe:animate-hero-reveal">
         {/* A real fact, not decoration: the exact active count from the same query the
             registry below renders, given visual weight instead of only appearing as a
             row count further down the page -- confirmed live as the actual gap on this
@@ -217,6 +220,16 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
   const resolvedSearchParams = await searchParams;
   const user = await getCurrentUser();
   if (!user) return <AnonymousProgramsPage searchParams={resolvedSearchParams} />;
+
+  // Organization accounts never join programs or receive invitations, so they get the
+  // public registry alone: no researcher tabs, and none of their queries.
+  if (user.accountType === "organization") {
+    return (
+      <AppShell title="Programs" user={user}>
+        <AllProgramsTab searchParams={resolvedSearchParams} />
+      </AppShell>
+    );
+  }
 
   const tab = parseTabParam(resolvedSearchParams.tab);
 

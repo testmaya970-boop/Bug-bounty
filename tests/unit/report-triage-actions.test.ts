@@ -56,7 +56,7 @@ describe("acceptReportAction: rejects an invalid state transition", () => {
 
     const result = await acceptReportAction({ organizationId: VALID_ORG_ID, programId: VALID_PROGRAM_ID, reportId: VALID_REPORT_ID });
 
-    expect(result).toEqual({ ok: false, code: "INVALID_TRANSITION", message: "this report cannot be accepted from its current state" });
+    expect(result).toEqual({ ok: false, code: "INVALID_TRANSITION", message: "This report cannot be accepted from its current state." });
   });
 
   it("rejects a non-uuid reportId as INVALID_INPUT before ever reaching the database", async () => {

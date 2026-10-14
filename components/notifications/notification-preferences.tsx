@@ -32,15 +32,19 @@ function PreferenceRow({ preference, description }: { preference: NotificationPr
   const [pending, startTransition] = useTransition();
   const [enabled, setEnabled] = useState(preference.emailEnabled);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   function handleToggle() {
     const next = !enabled;
     setError(null);
+    setSaved(false);
     startTransition(async () => {
       const result = await setNotificationPreferenceAction(preference.category, next);
       // A failed save must say so -- otherwise the switch just sits there and looks broken.
-      if (result.ok) setEnabled(next);
-      else setError(result.message);
+      if (result.ok) {
+        setEnabled(next);
+        setSaved(true);
+      } else setError(result.message);
     });
   }
 
@@ -52,6 +56,11 @@ function PreferenceRow({ preference, description }: { preference: NotificationPr
         {error && (
           <p role="alert" className="mt-1 text-xs font-medium text-danger">
             {error}
+          </p>
+        )}
+        {saved && (
+          <p role="status" className="mt-1 text-xs font-medium text-success">
+            Saved. Emails are {enabled ? "on" : "off"}.
           </p>
         )}
       </div>

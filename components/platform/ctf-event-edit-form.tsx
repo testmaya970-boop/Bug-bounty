@@ -84,7 +84,7 @@ export function CtfEventEditForm({ event, allChallenges }: { event: CtfEventAdmi
       <form onSubmit={saveFields} className="space-y-4" noValidate>
         <Input label="Name" required value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
         <Textarea label="Description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={4000} />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="Starts at" type="datetime-local" required value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
           <Input label="Ends at" type="datetime-local" required value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
         </div>
@@ -134,7 +134,7 @@ export function CtfEventEditForm({ event, allChallenges }: { event: CtfEventAdmi
             return (
               <fieldset key={categoryId}>
                 <legend className="font-mono text-[11px] font-semibold uppercase tracking-wide text-ink-muted">{categoryId}</legend>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {inCategory.map((c) => (
                     <label
                       key={c.id}

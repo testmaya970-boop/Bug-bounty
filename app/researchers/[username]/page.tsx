@@ -43,7 +43,7 @@ export default async function PublicResearcherProfilePage({ params }: { params: 
         <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{profile.displayName}</h1>
         <p className="mt-1 font-mono text-sm text-ink-muted">@{profile.publicUsername}</p>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-lg border border-border bg-surface p-4">
             <SectionLabel>Reputation score</SectionLabel>
             <p className="mt-1.5 font-mono text-2xl font-semibold tabular-nums text-ink">{profile.score.toLocaleString("en-US")}</p>

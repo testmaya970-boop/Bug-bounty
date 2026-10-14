@@ -6,7 +6,7 @@ import { EmptyState, ErrorState } from "../ui/feedback";
 import { Button } from "../ui/button";
 import { SectionLabel } from "../ui/security-primitives";
 import { cn } from "../../lib/cn";
-import { markNotificationReadAction, listNotificationsPageAction } from "../../actions/notifications";
+import { markNotificationReadAction, markNotificationsReadAction, listNotificationsPageAction } from "../../actions/notifications";
 import { notificationLink } from "../../lib/notification-links";
 import { emitNotificationRead } from "../../lib/notification-events";
 import type { Notification, NotificationType } from "../../types/notifications";
@@ -81,7 +81,7 @@ function NotificationRow({ notification, onRead }: { notification: Notification;
           <LocalTime value={notification.createdAt} />
         </p>
         <div className="mt-1.5 flex items-center gap-3">
-          <Link prefetch={false} href={link.href} className="text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+          <Link prefetch={false} href={link.href} onClick={() => { if (!isRead) handleMarkRead(); }} className="text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
             {link.label} →
           </Link>
           {!isRead && (
@@ -105,6 +105,21 @@ export function NotificationListSection({ initialNotifications, initialNextCurso
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [markingAll, startMarkAll] = useTransition();
+
+  // Every unread notification loaded on this page, at most a few pages of ids.
+  function handleMarkAllRead() {
+    const ids = notifications.filter((n) => n.readAt === null).map((n) => n.id).slice(0, 200);
+    if (ids.length === 0) return;
+    startMarkAll(async () => {
+      const result = await markNotificationsReadAction(ids);
+      if (!result.ok) {
+        setLoadError(result.message);
+        return;
+      }
+      for (const id of ids) handleRead(id);
+    });
+  }
 
   function handleRead(id: string) {
     setNotifications((current) => current.map((n) => (n.id === id ? { ...n, readAt: new Date().toISOString() } : n)));
@@ -138,7 +153,14 @@ export function NotificationListSection({ initialNotifications, initialNextCurso
   return (
     <div className="space-y-6">
       <div>
-        <SectionLabel>Unread</SectionLabel>
+        <div className="flex items-center justify-between gap-3">
+          <SectionLabel>Unread</SectionLabel>
+          {unread.length > 0 && (
+            <Button type="button" variant="secondary" pending={markingAll} onClick={handleMarkAllRead} className="min-h-9 px-3 text-xs">
+              Mark all read
+            </Button>
+          )}
+        </div>
         {unread.length === 0 ? (
           <p className="mt-2 text-sm text-ink-muted">All caught up. There are no unread notifications.</p>
         ) : (

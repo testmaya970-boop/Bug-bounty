@@ -68,6 +68,14 @@ async function renderOrganizationFindingsPage({
       </AppShell>
     );
   }
+  // Billing admins see payments only; report contents are not theirs to read.
+  if (actor.role === "billing_admin") {
+    return (
+      <AppShell title="Findings" user={user} organizationId={organizationId}>
+        <PermissionDenied>Billing admins manage payments and don&apos;t see findings. Ask an owner or security admin if you need access.</PermissionDenied>
+      </AppShell>
+    );
+  }
 
   const organization = organizations.find((org) => org.id === organizationId);
 

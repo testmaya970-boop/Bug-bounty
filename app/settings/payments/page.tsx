@@ -3,10 +3,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { BountyTrackRecord } from "../../../components/payments/bounty-track-record";
+import { AwardedBounties } from "../../../components/payments/awarded-bounties";
 import { PayoutDetailsSettings, TaxFormSettings } from "../../../components/settings/payout-details-settings";
 import { KycSettings } from "../../../components/settings/kyc-settings";
 import { Alert } from "../../../components/ui/feedback";
-import { listMyPaymentObligations } from "../../../services/payments";
+import { listMyAwardsAwaitingPayment, listMyPaymentObligations } from "../../../services/payments";
 import { getMyKycStatus, getMyPayoutDetails } from "../../../services/researcher-profiles";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { requireResearcherSettings } from "../../../lib/auth/account-type";
@@ -35,7 +36,7 @@ export default async function PaymentsSettingsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirectTo=/settings/payments" as Route);
 
-  const [obligations, kycStatus, payoutDetails] = await Promise.all([listMyPaymentObligations(user.id), getMyKycStatus(), getMyPayoutDetails()]);
+  const [obligations, awards, kycStatus, payoutDetails] = await Promise.all([listMyPaymentObligations(user.id), listMyAwardsAwaitingPayment(user.id), getMyKycStatus(), getMyPayoutDetails()]);
 
   return (
     <div className="space-y-8">
@@ -50,7 +51,8 @@ export default async function PaymentsSettingsPage() {
         </p>
       </div>
 
-      <BountyTrackRecord obligations={obligations} />
+      <AwardedBounties awards={awards} />
+      {(obligations.length > 0 || awards.length === 0) && <BountyTrackRecord obligations={obligations} />}
 
       <Alert tone="info" title="Unpatched pays you, not the organization.">
         Unpatched uses the details below to send your bounties. Organizations never see them.

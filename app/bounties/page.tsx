@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { AppShell } from "../../components/app-shell";
 import { BountyTrackRecord } from "../../components/payments/bounty-track-record";
-import { listMyPaymentObligations } from "../../services/payments";
+import { AwardedBounties } from "../../components/payments/awarded-bounties";
+import { listMyAwardsAwaitingPayment, listMyPaymentObligations } from "../../services/payments";
 import { getCurrentUser } from "../../lib/auth/current-user";
 
 /**
@@ -23,14 +24,15 @@ export default async function BountiesPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirectTo=/bounties" as Route);
 
-  const obligations = await listMyPaymentObligations(user.id);
+  const [obligations, awards] = await Promise.all([listMyPaymentObligations(user.id), listMyAwardsAwaitingPayment(user.id)]);
 
   return (
     <AppShell title="Bounties" user={user}>
       <div className="max-w-4xl space-y-8">
         <p className="text-sm text-ink-muted">Your bounty track record: every payment your accepted reports have earned.</p>
 
-        <BountyTrackRecord obligations={obligations} />
+        <AwardedBounties awards={awards} />
+        {(obligations.length > 0 || awards.length === 0) && <BountyTrackRecord obligations={obligations} />}
       </div>
     </AppShell>
   );

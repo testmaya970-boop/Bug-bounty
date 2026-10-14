@@ -45,6 +45,12 @@ export function availableIdentityRegions(): { region: IdentityRegion; mode: "san
   });
 }
 
+/** Which phone routes can actually send a code: India (+91) and everywhere else. The
+ * settings page offers only these, instead of a form that always answers "not available". */
+export function availablePhoneRoutes(): { india: boolean; global: boolean } {
+  return { india: selectPhoneProvider("+91") !== null, global: selectPhoneProvider("+1") !== null };
+}
+
 /** Opens a hosted verification and returns where to send the browser. */
 export async function startIdentityVerification(region: IdentityRegion): Promise<string> {
   const user = await requireResearcher();

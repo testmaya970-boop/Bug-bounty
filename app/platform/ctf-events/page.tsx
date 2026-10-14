@@ -9,7 +9,7 @@ import { CtfEventCreateForm } from "../../../components/platform/ctf-event-creat
 import { isPlatformAdmin } from "../../../services/platform-operations";
 import { listCtfEventsForAdmin } from "../../../services/ctf-events";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { formatDateTime } from "../../../lib/format-date";
+import { LocalTime } from "../../../components/ui/local-time";
 import type { CtfEventEffectiveStatus } from "../../../types/ctf-event";
 
 const STATUS_TONE: Record<CtfEventEffectiveStatus, string> = {
@@ -70,7 +70,7 @@ export default async function PlatformCtfEventsPage() {
                     <span className="font-mono text-[11px] text-ink-muted">{event.challengeCount} challenges</span>
                     <span className="font-mono text-[11px] text-ink-muted">{event.solverCount} solvers</span>
                     <span className="w-full font-mono text-[11px] text-ink-muted sm:w-auto">
-                      {formatDateTime(event.startsAt)} to {formatDateTime(event.endsAt)}
+                      <LocalTime value={event.startsAt} /> to <LocalTime value={event.endsAt} />
                     </span>
                   </Link>
                 </li>

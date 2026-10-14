@@ -54,7 +54,7 @@ export function CtfEventCreateForm() {
         autoComplete="off"
       />
       <Textarea label="Description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={4000} helperText="Shown on the event card and detail page." />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input label="Starts at" type="datetime-local" required value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
         <Input label="Ends at" type="datetime-local" required value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
       </div>

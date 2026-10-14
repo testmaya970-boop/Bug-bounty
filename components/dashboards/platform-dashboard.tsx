@@ -88,7 +88,7 @@ export function PlatformDashboard({ data, days }: { data: Data; days: number }) 
           <StatTile label="Live programs" value={compactNumber(t.active_programs)} hint="Accepting reports now" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ChartCard
             title="Report volume"
             subtitle={`Per week, valid vs everything else, ${window}`}
@@ -123,7 +123,7 @@ export function PlatformDashboard({ data, days }: { data: Data; days: number }) 
           </ChartCard>
 
           <ChartCard title="Busiest organizations" subtitle={`Reports received, ${window}`} empty={data.top_organizations.length === 0 && "No reports in this period."}>
-            <BarList items={data.top_organizations.map((o) => ({ label: o.name, value: o.reports, secondary: `${o.valid} valid` }))} />
+            <BarList items={data.top_organizations.map((o) => ({ label: o.name, value: o.reports, secondary: `${o.reports === 1 ? "report" : "reports"}, ${o.valid} valid` }))} />
           </ChartCard>
 
           <ChartCard title="Programs by status" subtitle="Every program on the platform, now" table={{ columns: ["Status", "Programs"], rows: programSegments.filter((p) => p.value > 0).map((p) => [p.label, p.value]) }}>

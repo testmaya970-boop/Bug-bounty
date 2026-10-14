@@ -405,8 +405,9 @@ const addReportCollaboratorSchema = reportActionBase.extend({
     .string()
     .trim()
     .min(1, "Enter a username.")
-    .max(30, "Use 30 characters or fewer.")
-    .regex(/^[a-z0-9-]+$/, "Usernames are lowercase letters, numbers, and hyphens only."),
+    .max(32, "Use 32 characters or fewer.")
+    // Their account username (letters, numbers, underscores) or a public username (hyphens).
+    .regex(/^[A-Za-z0-9_-]{3,32}$/, "Enter their username: letters, numbers, underscores or hyphens."),
   bountySplitPercent: z.coerce.number().gt(0, "Enter a split greater than 0%.").lte(100, "Enter a split of 100% or less."),
 });
 

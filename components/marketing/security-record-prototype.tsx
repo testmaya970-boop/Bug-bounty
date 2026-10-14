@@ -320,7 +320,7 @@ export function SecurityRecordPrototype() {
             anchor on the left. This is "one distinctive scroll-driven
             transition," not eight repeated card sections. */}
         <section className="relative px-4 sm:px-6" aria-label="Security record lifecycle, scroll to advance">
-          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_26rem] lg:gap-4">
+          <div className="mx-auto grid grid-cols-1 max-w-6xl gap-8 lg:grid-cols-[1fr_26rem] lg:gap-4">
             <div>
               <StageBeat index={0} setActive={setActive} eyebrow="Signal" statement="Something surfaces. Not yet a finding -- just a signal worth looking at." detail="A researcher notices an anomaly in session-refresh behavior. Nothing is recorded yet; this is the moment before evidence exists." />
               <StageBeat index={1} setActive={setActive} eyebrow="Evidence" statement="Evidence attaches to the record. Immutable the moment it's uploaded." align="right" detail="Text, code, a request log, a file -- once attached, it cannot be edited. A correction becomes a new entry, never a silent change to this one." />

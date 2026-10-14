@@ -59,11 +59,14 @@ export function resolveLastOrganizationId(lastOrganizationId: string | undefined
  */
 export async function AppShell({
   title,
+  titleIsSection = false,
   children,
   user,
   organizationId,
 }: {
   title: string;
+  /** The title names a section and each child page renders its own <h1> (Settings). */
+  titleIsSection?: boolean;
   children: React.ReactNode;
   user?: ShellUser | null;
   organizationId?: string;
@@ -87,6 +90,7 @@ export async function AppShell({
   return (
     <AppShellClient
       title={title}
+      titleIsSection={titleIsSection}
       user={user}
       organizations={organizations}
       currentOrganizationId={resolvedOrganizationId}

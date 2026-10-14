@@ -212,7 +212,7 @@ async function renderProgramControlCenterPage({
       return (
         <AppShell title={recovered?.programName ?? "Program"} user={user} organizationId={organizationId}>
           <div className="space-y-6">
-            <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: "Programs", href: "/programs" }, { label: recovered?.programName ?? "Program" }]} />
+            <Breadcrumbs items={[{ label: "Programs", href: "/programs" }, { label: recovered?.programName ?? "Program" }]} />
 
             <div className="border-b border-border pb-5">
               <div className="flex flex-wrap items-center gap-3">
@@ -261,7 +261,7 @@ async function renderProgramControlCenterPage({
       return (
         <AppShell title={publicProgram.name} user={user} organizationId={organizationId}>
           <div className="mx-auto max-w-3xl space-y-8">
-            <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: "Programs", href: "/programs" }, { label: publicProgram.name }]} />
+            <Breadcrumbs items={[...(isOwnStaff ? [{ label: "Organizations", href: "/organizations" }] : []), { label: "Programs", href: "/programs" }, { label: publicProgram.name }]} />
             <div>
               {/* The program name is AppShell's own <h1> (title={publicProgram.name}); it
                   is not repeated here as a second h1. */}
@@ -290,6 +290,10 @@ async function renderProgramControlCenterPage({
               )}
               {isOwnStaff ? (
                 <p className="mt-2 text-sm text-canvas/70">You are on this organization&apos;s team, so you can&apos;t research its programs.</p>
+              ) : user.accountType === "organization" ? (
+                // Two-sided accounts: the database refuses an organization account joining,
+                // so it is never offered the button (it used to click through to a raw error).
+                <p className="mt-2 text-sm text-canvas/70">Organization accounts can&apos;t research programs. Researchers join from their own researcher account.</p>
               ) : publicProgram.status === "active" ? (
                 <div className="mt-4">
                   <JoinPublicProgramButton organizationId={organizationId} programId={programId} />
@@ -361,6 +365,9 @@ async function renderProgramControlCenterPage({
   const isProgramTriager = members.some((member) => member.userId === user.id);
   const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
   const canManageProgram = isProgramManager || isOrgAdmin;
+  // Researchers reach this page too: their way back is Programs, not the org trail they
+  // can't open.
+  const isOrgStaff = Boolean(actorMembership && actorMembership.status === "active");
   const isActiveResearcher = myParticipation?.status === "active";
 
   // Phase 8 perf fix: this used to be six sequential await stages (scopeEntries, then
@@ -431,10 +438,14 @@ async function renderProgramControlCenterPage({
     // name -- ProgramHeader's own h2, right below, already shows it once (matches the
     // triage inbox's own precedent of a section title, e.g. "Triage inbox", never a
     // repeated entity name).
-    <AppShell title="Overview" user={user} organizationId={organizationId}>
+    <AppShell title={isOrgStaff ? "Overview" : "Program"} user={user} organizationId={organizationId}>
       <div className="space-y-6">
         <Breadcrumbs
-          items={[{ label: "Organizations", href: "/organizations" }, { label: "Engagements", href: `/organizations/${organizationId}/programs` }, { label: program.name }]}
+          items={
+            isOrgStaff
+              ? [{ label: "Organizations", href: "/organizations" }, { label: "Engagements", href: `/organizations/${organizationId}/programs` }, { label: program.name }]
+              : [{ label: "Programs", href: "/programs" }, { label: program.name }]
+          }
         />
 
         <ProgramHeader
@@ -450,7 +461,7 @@ async function renderProgramControlCenterPage({
         />
 
         {canManageProgram ? (
-          <dl className="grid gap-4 text-sm sm:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-ink-muted">Created by</dt>
               <dd className="mt-0.5 font-medium text-ink">{program.createdByName}</dd>

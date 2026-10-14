@@ -30,7 +30,7 @@ export function BadgeGrid({ badges }: { badges: ResearcherBadge[] }) {
   return (
     <div className="border-t border-border pt-6">
       <SectionLabel>Badges</SectionLabel>
-      <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {badges.map((badge) => (
           <div key={badge.badgeKey} className="flex items-start gap-2.5 rounded-lg border border-border bg-surface p-3">
             <Medal aria-hidden="true" className={cn("mt-0.5 size-5 shrink-0", TIER_TONE[badge.tier])} />

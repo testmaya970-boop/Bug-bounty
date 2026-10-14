@@ -67,7 +67,7 @@ export function PublishProgramPolicyDialog({ organizationId, programId, current 
             <option value="none">None -- no public disclosure</option>
           </Select>
           {mode === "coordinated" && <Input label="Days after resolution" type="number" min={0} max={365} value={days} onChange={(e) => setDays(e.target.value)} />}
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Input label="First response (hours)" type="number" min={1} max={720} value={firstResponse} onChange={(e) => setFirstResponse(e.target.value)} helperText="Blank for no target" />
             <Input label="Triage (hours)" type="number" min={1} max={2160} value={triage} onChange={(e) => setTriage(e.target.value)} />
             <Input label="Resolution (days)" type="number" min={1} max={365} value={resolution} onChange={(e) => setResolution(e.target.value)} />

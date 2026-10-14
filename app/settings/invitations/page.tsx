@@ -24,7 +24,7 @@ export default async function InvitationsSettingsPage() {
       {invitations.length === 0 ? (
         <EmptyState title="No pending invitations">An organization's direct program invitation will appear here.</EmptyState>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {invitations.map((invitation) => (
             <PendingProgramInvitationCard key={invitation.id} invitation={invitation} />
           ))}

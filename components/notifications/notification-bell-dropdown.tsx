@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { Bell } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
-import { listNotificationPreviewAction, markNotificationReadAction } from "../../actions/notifications";
+import { listNotificationPreviewAction, markNotificationReadAction, markNotificationsReadAction } from "../../actions/notifications";
 import { notificationLink } from "../../lib/notification-links";
 import { emitNotificationRead, onNotificationRead } from "../../lib/notification-events";
 import type { Notification, NotificationType } from "../../types/notifications";
@@ -67,6 +67,7 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [loading, setLoading] = useState(false);
   const [, startTransition] = useTransition();
+  const [markingAll, startMarkAll] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   // Notification ids this bell itself just marked read and already applied to its own
@@ -132,6 +133,24 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
     });
   }
 
+  const unreadIds = notifications.slice(0, PREVIEW_COUNT).filter((n) => n.readAt === null).map((n) => n.id);
+
+  function handleMarkAllRead() {
+    const ids = unreadIds;
+    if (ids.length === 0) return;
+    startMarkAll(async () => {
+      const result = await markNotificationsReadAction(ids);
+      if (!result.ok) return;
+      const now = new Date().toISOString();
+      setNotifications((current) => current.map((n) => (ids.includes(n.id) ? { ...n, readAt: now } : n)));
+      setUnreadCount((current) => Math.max(0, current - ids.length));
+      for (const id of ids) {
+        selfMarkedIds.current.add(id);
+        emitNotificationRead(id);
+      }
+    });
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -157,9 +176,16 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
 
       {open && (
         // A named group, not role="menu": it holds links and a button, not menuitems.
-        <div id="recent-notifications" role="group" aria-label="Recent notifications" className="motion-safe:animate-enter-rise absolute right-0 z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface shadow-lg">
-          <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+        // Phones: a fixed sheet pinned under the 4rem top bar, inset from both edges, so it
+        // can never hang off the left edge the way a right-anchored w-80 did at 320/375px.
+        <div id="recent-notifications" role="group" aria-label="Recent notifications" className="motion-safe:animate-enter-rise fixed inset-x-2 top-16 z-30 rounded-md border border-border bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80">
+          <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
             <p className="text-sm font-semibold text-ink">Notifications</p>
+            {unreadIds.length > 0 && (
+              <button type="button" onClick={handleMarkAllRead} disabled={markingAll} className="ml-auto text-xs font-medium text-action hover:text-action-hover disabled:opacity-55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+                {markingAll ? "Marking…" : "Mark all read"}
+              </button>
+            )}
             <Link prefetch={false} href={"/notifications" as Route} onClick={() => setOpen(false)} className="text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
               View all
             </Link>

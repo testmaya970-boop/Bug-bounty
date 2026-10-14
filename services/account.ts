@@ -22,7 +22,7 @@ async function requireCurrentUserId(): Promise<string> {
 /** A live session alone must not be enough to take the account over (new password, new
  * email): the caller re-proves the current password. Shares the sign-in rate limit, so
  * this form is no side door for guessing it. */
-async function requireCurrentPassword(currentPassword: string): Promise<string> {
+export async function requireCurrentPassword(currentPassword: string): Promise<string> {
   const userId = await requireCurrentUserId();
   const { password_hash: hash, allowed } = await withServiceRoleTransaction(async (client) => {
     const { rows } = await client.query<{ password_hash: string; email: string }>("select password_hash, email from public.users where id = $1", [userId]);

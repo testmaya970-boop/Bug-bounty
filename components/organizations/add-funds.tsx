@@ -108,7 +108,7 @@ export function AddFunds({ organizationId, instructions, reference }: { organiza
               }}
             >
               <p className="font-semibold text-ink">2. Tell us you sent it</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Input label={`Amount (${currency})`} inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} required />
                 <Select label="Sent by" value={method} onChange={(event) => setMethod(event.target.value as DepositMethod)}>
                   {current.methods.map((m) => (

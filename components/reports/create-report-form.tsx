@@ -16,6 +16,8 @@ import { EVIDENCE_TYPE_LABELS, EVIDENCE_TYPES, FileField, fileProblem, type Text
 import { assetTypeLabel } from "../../lib/scope-labels";
 import { WEAKNESS_TYPE_ORDER, weaknessTypeLabel } from "../../lib/report-weakness-labels";
 import { getReportTemplate } from "../../lib/report-templates";
+import { upsertMyReportTemplateAction } from "../../actions/report-templates";
+import type { ReportTemplate } from "../../services/report-templates";
 import type { ProgramAssetType } from "../../types/scope";
 import type { ReportSeverity, ReportWeaknessType } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
@@ -210,6 +212,7 @@ export function CreateReportForm({
   inScopeTargets = [],
   policy = null,
   initialDraft = null,
+  savedTemplates: initialSavedTemplates = [],
 }: {
   organizationId: string;
   programId: string;
@@ -219,6 +222,8 @@ export function CreateReportForm({
   policy?: ProgramPolicy | null;
   /** The researcher's saved draft for this program, loaded by the page. */
   initialDraft?: DraftFields | null;
+  /** The researcher's own templates from Settings > Report Templates. */
+  savedTemplates?: ReportTemplate[];
 }) {
   const router = useRouter();
   const [policyAccepted, setPolicyAccepted] = useState(false);
@@ -258,6 +263,12 @@ export function CreateReportForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+
+  const [savedTemplates, setSavedTemplates] = useState(initialSavedTemplates);
+  const [templateNameOpen, setTemplateNameOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateNotice, setTemplateNotice] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
+  const [savingTemplate, startSavingTemplate] = useTransition();
 
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
   const [draftDismissed, setDraftDismissed] = useState(false);
@@ -377,6 +388,42 @@ export function CreateReportForm({
     if (description.trim().length === 0) setDescription(template.descriptionScaffold);
   }
 
+  /** Unlike the built-in weakness scaffold (which only fills an empty description), picking
+   * one of your own templates is an explicit request, so it may replace typed content, but
+   * only after a confirm. */
+  function applySavedTemplate(templateId: string) {
+    const template = savedTemplates.find((t) => t.id === templateId);
+    if (!template) return;
+    const overwrites = (template.descriptionTemplate && description.trim()) || (template.impactTemplate && impact.trim());
+    if (overwrites && !window.confirm(`Replace your description and impact with "${template.name}"?`)) return;
+    if (template.weaknessType) {
+      setWeaknessType(template.weaknessType);
+      setImpactPrompt(getReportTemplate(template.weaknessType).impactPrompt);
+    }
+    if (template.descriptionTemplate) setDescription(template.descriptionTemplate);
+    if (template.impactTemplate) setImpact(template.impactTemplate);
+  }
+
+  function saveAsTemplate() {
+    setTemplateNotice(null);
+    startSavingTemplate(async () => {
+      const result = await upsertMyReportTemplateAction({
+        name: templateName,
+        weaknessType: weaknessType || undefined,
+        descriptionTemplate: description || undefined,
+        impactTemplate: impact || undefined,
+      });
+      if (!result.ok) {
+        setTemplateNotice({ tone: "danger", text: result.message });
+        return;
+      }
+      setSavedTemplates((current) => [result.data, ...current]);
+      setTemplateNotice({ tone: "success", text: `Saved "${result.data.name}" to your templates.` });
+      setTemplateNameOpen(false);
+      setTemplateName("");
+    });
+  }
+
   function fieldErrorsNow(): FieldErrors {
     return validateReport({ target, title, weaknessType, description, impact, policyRequired: Boolean(policy), policyAccepted, unaddedEvidence: draftEvidenceContent, unaddedFileName: selectedFileName });
   }
@@ -479,7 +526,7 @@ export function CreateReportForm({
         <div>
           <SectionLabel>Target</SectionLabel>
           <p className="mt-1 text-sm text-ink-muted">Where does the issue exist? The server makes the final scope decision, not this form.</p>
-          <div className="mt-3 grid gap-4 sm:grid-cols-[10rem_1fr]">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-[10rem_1fr]">
             <Select
               label="Target type"
               value={assetType}
@@ -520,6 +567,23 @@ export function CreateReportForm({
           <SectionLabel>Finding</SectionLabel>
           <p className="mt-1 text-sm text-ink-muted">What did you discover?</p>
           <div className="mt-3 space-y-4">
+            {savedTemplates.length > 0 && (
+              <Select
+                label="Use one of your templates"
+                helperText="Fills weakness type, description and impact from a template saved in Settings."
+                value=""
+                onChange={(event) => applySavedTemplate(event.target.value)}
+              >
+                <option value="" disabled>
+                  Choose a template…
+                </option>
+                {savedTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </Select>
+            )}
             <Input
               label="Title"
               required
@@ -530,7 +594,7 @@ export function CreateReportForm({
               placeholder="Short, specific summary of the vulnerability"
               error={errors.titleError}
             />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Select
                 label="Weakness type"
                 required
@@ -664,7 +728,7 @@ export function CreateReportForm({
           )}
 
           <div className="mt-3 space-y-3 rounded-lg border border-dashed border-border-strong p-3">
-            <FileField inputRef={fileInputRef} error={errors.attachmentError ?? fileError ?? undefined} selectedName={selectedFileName} onClear={clearSelectedFile} onFileChange={(name) => setSelectedFileName(name)} />
+            <FileField required={false} inputRef={fileInputRef} error={errors.attachmentError ?? fileError ?? undefined} selectedName={selectedFileName} onClear={clearSelectedFile} onFileChange={(name) => setSelectedFileName(name)} />
             <div className="flex justify-end">
               <Button type="button" variant="secondary" onClick={addStagedFile}>
                 Add attachment
@@ -675,7 +739,7 @@ export function CreateReportForm({
 
         <div className="border-t border-border pt-5">
           <SectionLabel>Review</SectionLabel>
-          <dl className="mt-3 grid gap-4 rounded-lg border border-border bg-surface-muted p-4 text-sm sm:grid-cols-2">
+          <dl className="mt-3 grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface-muted p-4 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Target</dt>
               <dd className="mt-0.5 break-all font-mono text-ink">{target || "Not set"}</dd>
@@ -726,7 +790,42 @@ export function CreateReportForm({
         )}
         {missing.length === 0 && failure?.banner && <Alert tone="danger" title={failure.banner} />}
 
-        <div className="flex justify-end gap-2">
+        {templateNotice && <Alert tone={templateNotice.tone} title={templateNotice.text} />}
+        {templateNameOpen && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border p-3 sm:flex-row sm:items-end">
+            <Input
+              label="Template name"
+              className="min-w-0 flex-1"
+              value={templateName}
+              onChange={(event) => setTemplateName(event.target.value)}
+              maxLength={100}
+              helperText="Saves the weakness type, description and impact for your next report."
+            />
+            <div className="flex gap-2">
+              <Button type="button" variant="quiet" onClick={() => setTemplateNameOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="secondary" pending={savingTemplate} onClick={saveAsTemplate}>
+                Save template
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap justify-end gap-2">
+          {!templateNameOpen && (
+            <Button
+              type="button"
+              variant="quiet"
+              disabled={!description.trim() && !impact.trim()}
+              onClick={() => {
+                setTemplateNotice(null);
+                setTemplateNameOpen(true);
+              }}
+            >
+              Save as template
+            </Button>
+          )}
           <Button type="submit" pending={pending}>
             {pending ? "Submitting…" : "Submit report"}
           </Button>

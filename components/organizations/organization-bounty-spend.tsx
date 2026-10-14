@@ -155,7 +155,7 @@ export function OrganizationBountySpend({ summary, weeklySpend }: { summary: Org
       <div>
         <SectionLabel>Bounty spend</SectionLabel>
         <p className="mt-1 text-sm text-ink-muted">Bounties awarded across every program, and how much of that has actually been paid out.</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {summary.map((row) => (
             <SpendSummaryTile key={row.currency} summary={row} />
           ))}
@@ -166,7 +166,7 @@ export function OrganizationBountySpend({ summary, weeklySpend }: { summary: Org
         <div>
           <SectionLabel>Weekly awards</SectionLabel>
           <p className="mt-1 text-sm text-ink-muted">Past 12 weeks, by the date each payout was finalized.</p>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {[...weeksByCurrency.entries()].map(([currency, weeks]) => (
               <WeeklySpendChart key={currency} currency={currency} weeks={weeks} />
             ))}

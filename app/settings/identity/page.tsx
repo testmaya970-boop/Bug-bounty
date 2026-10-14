@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { requireResearcherSettings } from "../../../lib/auth/account-type";
-import { availableIdentityRegions, getMyPhoneStatus, listMyIdentityVerifications } from "../../../services/integrations";
+import { availableIdentityRegions, availablePhoneRoutes, getMyPhoneStatus, listMyIdentityVerifications } from "../../../services/integrations";
 import { IdentityStartButtons, PhoneVerificationForm } from "../../../components/settings/identity-verification";
 import { SectionLabel } from "../../../components/ui/security-primitives";
 import { LocalTime } from "../../../components/ui/local-time";
@@ -21,6 +21,7 @@ export default async function IdentitySettingsPage({ searchParams }: { searchPar
   await requireResearcherSettings();
   const [verifications, phone, { returned }] = await Promise.all([listMyIdentityVerifications(), getMyPhoneStatus(), searchParams]);
   const regions = availableIdentityRegions();
+  const phoneRoutes = availablePhoneRoutes();
   const latest = verifications[0];
   const verified = verifications.some((v) => v.status === "approved");
 
@@ -74,10 +75,12 @@ export default async function IdentitySettingsPage({ searchParams }: { searchPar
               · {phone.countryCode} ••••{phone.last4}
             </span>
           </p>
-        ) : (
+        ) : phoneRoutes.india || phoneRoutes.global ? (
           <p className="text-sm text-ink-muted">We&apos;ll text you a one-time code. Standard message rates may apply.</p>
+        ) : (
+          <p className="text-sm text-ink-muted">Phone verification isn&apos;t available yet. It doesn&apos;t affect anything else on your account.</p>
         )}
-        <PhoneVerificationForm hasPending={Boolean(phone.pending)} />
+        {(phoneRoutes.india || phoneRoutes.global) && <PhoneVerificationForm hasPending={Boolean(phone.pending)} routes={phoneRoutes} />}
       </section>
     </div>
   );

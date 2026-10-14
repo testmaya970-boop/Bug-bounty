@@ -115,6 +115,58 @@ export type MyPaymentObligation = Omit<PaymentObligation, "platformFeeMinorUnits
  * the researcher's own report earned; RLS already scopes this table to `researcher_id =
  * auth.uid()` (0014) for a plain select, no new RPC needed. No fabricated total, no
  * estimate -- exactly the real ledger. */
+/** A bounty finalized on one of the researcher's own reports that has no payment yet
+ * (they haven't confirmed the award, or the organization hasn't started paying). It is
+ * real money owed, so it must show up even though no payment_obligations row exists. */
+export type MyAwardAwaitingPayment = {
+  reportId: string;
+  reportTitle: string;
+  programName: string;
+  organizationId: string;
+  programId: string;
+  amountMinorUnits: number;
+  currency: string;
+  finalizedAt: string;
+  confirmed: boolean;
+};
+
+// ponytail: awards on reports the researcher submitted; a collaborator's share appears once
+// its payment exists. Read under RLS (decisions on their own reports are theirs to read).
+export async function listMyAwardsAwaitingPayment(userId: string): Promise<MyAwardAwaitingPayment[]> {
+  type Row = { report_id: string; title: string; program_name: string | null; organization_id: string; program_id: string; final_amount_minor_units: string; currency: string; finalized_at: string; confirmed: boolean };
+  let rows: Row[];
+  try {
+    rows = await withActorTransaction(userId, async (client) =>
+      (
+        await client.query<Row>(
+          `select d.report_id, r.title, p.name as program_name, r.organization_id, r.program_id, d.final_amount_minor_units, d.currency, d.finalized_at,
+                  exists (select 1 from public.bounty_acceptances a where a.report_id = d.report_id and a.researcher_id = $1) as confirmed
+             from public.report_bounty_decisions d
+             join public.reports r on r.id = d.report_id
+             left join public.programs p on p.id = r.program_id
+            where r.researcher_id = $1 and d.state = 'finalized' and d.final_amount_minor_units > 0
+              and not exists (select 1 from public.payment_obligations o where o.report_id = d.report_id and o.researcher_id = $1 and o.status <> 'cancelled')
+            order by d.finalized_at desc`,
+          [userId],
+        )
+      ).rows,
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((r) => ({
+    reportId: r.report_id,
+    reportTitle: r.title,
+    programName: r.program_name ?? "Program",
+    organizationId: r.organization_id,
+    programId: r.program_id,
+    amountMinorUnits: Number(r.final_amount_minor_units),
+    currency: r.currency,
+    finalizedAt: new Date(r.finalized_at).toISOString(),
+    confirmed: r.confirmed,
+  }));
+}
+
 export async function listMyPaymentObligations(userId: string): Promise<MyPaymentObligation[]> {
   let obligations: ObligationRow[];
   let programName: Map<string, string>;

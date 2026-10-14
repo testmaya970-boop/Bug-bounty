@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useId, useRef, useState } from "react";
+import { LinkSimple } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
 import { Markdown } from "./markdown";
 import { Label } from "./form";
 
-type ToolbarAction = { label: string; syntax: string; before: string; after: string; placeholder: string };
+type ToolbarAction = { label: string; syntax: React.ReactNode; before: string; after: string; placeholder: string; block?: boolean };
 
 // Same four marks HackerOne/Bugcrowd's own report composer toolbar exposes -- bold,
 // italic, inline code, and a fenced code block are the ones a vulnerability writeup
@@ -16,9 +17,25 @@ const TOOLBAR_ACTIONS: ToolbarAction[] = [
   { label: "Bold", syntax: "B", before: "**", after: "**", placeholder: "bold text" },
   { label: "Italic", syntax: "I", before: "_", after: "_", placeholder: "italic text" },
   { label: "Code", syntax: "</>", before: "`", after: "`", placeholder: "code" },
-  { label: "Code block", syntax: "{ }", before: "```\n", after: "\n```", placeholder: "paste output or PoC here" },
-  { label: "Link", syntax: "🔗", before: "[", after: "](https://)", placeholder: "link text" },
+  { label: "Code block", syntax: "{ }", before: "```\n", after: "\n```", placeholder: "paste output or PoC here", block: true },
+  { label: "Link", syntax: <LinkSimple aria-hidden="true" weight="bold" className="size-3.5" />, before: "[", after: "](https://)", placeholder: "link text" },
 ];
+
+/** Wraps value[start, end) in the action's marks. A block (a code fence) must sit on its own
+ * lines, so a newline is added before/after when the selection starts or ends mid-line;
+ * a fence glued to other text is not a code block at all. Returns the new value and the
+ * range of the wrapped text, to re-select it. */
+export function applyMarks(value: string, start: number, end: number, action: Pick<ToolbarAction, "before" | "after" | "placeholder" | "block">) {
+  const selected = value.slice(start, end) || action.placeholder;
+  const lead = action.block && start > 0 && value[start - 1] !== "\n" ? "\n" : "";
+  const trail = action.block && end < value.length && value[end] !== "\n" ? "\n" : "";
+  const prefix = lead + action.before;
+  return {
+    next: value.slice(0, start) + prefix + selected + action.after + trail + value.slice(end),
+    selectionStart: start + prefix.length,
+    selectionEnd: start + prefix.length + selected.length,
+  };
+}
 
 type FieldProps = { label: string; helperText?: string; error?: string; required?: boolean; className?: string };
 
@@ -53,18 +70,14 @@ export function MarkdownTextarea({
   function applyToolbarAction(action: ToolbarAction) {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = value.slice(start, end) || action.placeholder;
-    const next = value.slice(0, start) + action.before + selected + action.after + value.slice(end);
+    const { next, selectionStart, selectionEnd } = applyMarks(value, textarea.selectionStart, textarea.selectionEnd, action);
     onChange(next);
     // Re-focus and re-select the inserted text after React commits the new value --
     // a synchronous selectionStart/End set right after onChange would still read the
     // textarea's OLD value's length, so this has to wait a tick.
     requestAnimationFrame(() => {
       textarea.focus();
-      const selectionStart = start + action.before.length;
-      textarea.setSelectionRange(selectionStart, selectionStart + selected.length);
+      textarea.setSelectionRange(selectionStart, selectionEnd);
     });
   }
 

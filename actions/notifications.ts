@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { OrganizationServiceError, getMyNotificationPreferences, getMyNotifications, markNotificationRead, setNotificationPreference } from "@/services/notifications";
+import { OrganizationServiceError, getMyNotificationPreferences, getMyNotifications, markNotificationRead, markNotificationsRead, setNotificationPreference } from "@/services/notifications";
 import type { Notification } from "@/types/notifications";
 import type { Page } from "@/types/pagination";
 
@@ -24,6 +24,17 @@ export async function markNotificationReadAction(notificationId: string) {
   const parsed = uuidSchema.safeParse(notificationId);
   if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: "This request could not be understood." };
   const result = await toResult(markNotificationRead(parsed.data));
+  if (result.ok) revalidatePath("/notifications");
+  return result;
+}
+
+// The client only ever sends ids it has on screen (a few loaded pages at most).
+const notificationIdsSchema = z.array(uuidSchema).min(1).max(200);
+
+export async function markNotificationsReadAction(notificationIds: string[]) {
+  const parsed = notificationIdsSchema.safeParse(notificationIds);
+  if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: "This request could not be understood." };
+  const result = await toResult(markNotificationsRead(parsed.data));
   if (result.ok) revalidatePath("/notifications");
   return result;
 }

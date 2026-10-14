@@ -90,7 +90,7 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-lg border border-border bg-surface p-4">
             <SectionLabel>Available to award</SectionLabel>
             <Figure balances={balances} pick={(b) => b.available} empty="0.00" />
@@ -126,7 +126,7 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
                     <th scope="col" className="px-4 py-3 text-right">Fee</th>
                     <th scope="col" className="px-4 py-3 text-right">Total</th>
                     <th scope="col" className="px-4 py-3">Status</th>
-                    <th scope="col" className="px-4 py-3 text-right">
+                    <th scope="col" className="sticky right-0 bg-surface px-4 py-3 text-right shadow-[-8px_0_8px_-8px_rgb(0_0_0/0.12)]">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
@@ -151,7 +151,8 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
                         <td className="px-4 py-3">
                           <PaymentObligationStatusBadge status={row.status} pulse={row.status === "processing"} />
                         </td>
-                        <td className="px-4 py-3">
+                        {/* Pinned right: on a phone the table scrolls and the actions stay in view. */}
+                        <td className="sticky right-0 bg-surface px-4 py-3 shadow-[-8px_0_8px_-8px_rgb(0_0_0/0.12)]">
                           <div className="flex flex-wrap justify-end gap-2">
                             {(row.status === "pending" || row.status === "failed") && (
                               <InitiateManualPayoutButton

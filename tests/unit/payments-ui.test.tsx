@@ -66,7 +66,7 @@ describe("PaymentStatusSection: separates 'no obligation yet' from every real st
     expect(authorized).toContain("Payment pending");
     expect(authorized).toContain("600.00");
     expect(authorized).toContain("Pay researcher");
-    expect(authorized).toContain("Cancel payment obligation");
+    expect(authorized).toContain("Cancel award");
     // The fee is billed to the organization ON TOP (202609250010): PENDING_OBLIGATION is a
     // 600.00 bounty with a 120.00 fee, so the org's total due is 720.00 -- and nothing is
     // deducted from the researcher (no 480.00 anywhere).
@@ -85,7 +85,7 @@ describe("PaymentStatusSection: separates 'no obligation yet' from every real st
     expect(researcher).not.toContain("480.00");
     expect(researcher).not.toContain("720.00");
     expect(researcher).not.toContain("Pay researcher");
-    expect(researcher).not.toContain("Cancel payment obligation");
+    expect(researcher).not.toContain("Cancel award");
   });
 
   it("processing: the organization is told Unpatched is sending it -- it never records the result itself", () => {
@@ -104,7 +104,7 @@ describe("PaymentStatusSection: separates 'no obligation yet' from every real st
     const html = renderToStaticMarkup(<PaymentStatusSection obligations={[failed]} latestAttempts={{}} readiness={[]} acceptance={null} isOwnReport={false} canManage={true} bountyCurrency="USD" bountyAmountMinorUnits={60000} {...REF} />);
     expect(html).toContain("Payment failed");
     expect(html).toContain("Retry payout");
-    expect(html).toContain("Cancel payment obligation");
+    expect(html).toContain("Cancel award");
   });
 
   it("succeeded is terminal; a fully cancelled bounty can be re-issued", () => {

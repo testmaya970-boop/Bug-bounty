@@ -320,9 +320,9 @@ export function CancelPaymentObligationDialog({ organizationId, programId, repor
   return (
     <>
       <Button variant="destructive" onClick={() => setOpen(true)}>
-        Cancel payment obligation
+        Cancel award
       </Button>
-      <Dialog open={open} title="Cancel this payment obligation" onClose={close}>
+      <Dialog open={open} title="Cancel this award?" onClose={close}>
         {step === "edit" ? (
           <div className="space-y-4">
             <p className="text-sm text-ink-muted">This obligation is closed for good. Once every obligation on this bounty is cancelled, the bounty can be adjusted and re-issued.</p>
@@ -334,7 +334,7 @@ export function CancelPaymentObligationDialog({ organizationId, programId, repor
             )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={close}>
-                Cancel
+                Keep award
               </Button>
               <Button type="button" onClick={handleContinue}>
                 Continue

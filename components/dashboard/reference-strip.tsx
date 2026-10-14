@@ -32,7 +32,7 @@ export function ReferenceStrip({ activityWeeks }: { activityWeeks: number[][] })
   const activityTotal = activityWeeks.slice(-visibleWeeks).reduce((sum, week) => sum + week.reduce((a, b) => a + b, 0), 0);
 
   return (
-    <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
       <div className="bg-surface p-4">
         <div className="flex items-center justify-between gap-2">
           <SectionLabel>Activity</SectionLabel>

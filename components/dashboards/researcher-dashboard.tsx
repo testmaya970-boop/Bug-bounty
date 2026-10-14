@@ -52,7 +52,7 @@ export function ResearcherDashboard({ data, days }: { data: Data; days: number }
         <StatTile label="Median first response" value={formatHours(now.median_hours_to_first_response)} hint="From submission to first triage action" delta={change(now.median_hours_to_first_response, before.median_hours_to_first_response)} goodWhen="down" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
           title="Status of all your reports"
           subtitle={`${totalReports} report${totalReports === 1 ? "" : "s"}, all time`}

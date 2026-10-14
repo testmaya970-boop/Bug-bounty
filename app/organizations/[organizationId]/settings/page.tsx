@@ -120,10 +120,13 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
           )}
         </div>
 
+        {/* Billing admins work on payments, not programs (they can't read programs at all, so
+            the count read 0). Other non-admins only see the programs they are on. */}
+        {actor.role !== "billing_admin" && (
         <div className="border-t border-border pt-6">
           <SectionLabel>Programs</SectionLabel>
           <p className="mt-2 text-sm text-ink-muted">
-            {programs.length} program{programs.length === 1 ? "" : "s"} in this organization.
+            {programs.length} program{programs.length === 1 ? "" : "s"} {canManage ? "in this organization." : "you work on."}
           </p>
           <Link prefetch={false}
             href={`/organizations/${organizationId}/programs` as Route}
@@ -132,6 +135,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
             View programs →
           </Link>
         </div>
+        )}
 
         <div className="border-t border-border pt-6" id="integrations">
           <SectionLabel>Integrations</SectionLabel>

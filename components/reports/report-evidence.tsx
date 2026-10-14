@@ -237,25 +237,28 @@ export function FileField({
   selectedName,
   onClear,
   onFileChange,
+  required = true,
 }: {
   inputRef: React.RefObject<HTMLInputElement | null>;
   error?: string;
   selectedName?: string | null;
   onClear?: () => void;
   onFileChange?: (name: string | null) => void;
+  /** False where attaching a file is optional (the report composer). */
+  required?: boolean;
 }) {
   const id = "file-evidence-input";
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
-        File <span aria-hidden="true"> *</span>
+        File {required && <span aria-hidden="true"> *</span>}
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <input
           ref={inputRef}
           id={id}
           type="file"
-          required
+          required={required}
           aria-invalid={Boolean(error)}
           onChange={(event) => onFileChange?.(event.target.files?.[0]?.name ?? null)}
           className="block min-w-0 flex-1 text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-muted"

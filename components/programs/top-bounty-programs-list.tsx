@@ -20,7 +20,7 @@ import type { TopBountyProgram } from "../../types/program";
  */
 export function TopBountyProgramsList({ programs }: { programs: TopBountyProgram[] }) {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {programs.map((program) => (
         <li key={program.id} className="motion-safe:animate-enter-rise">
           <Link

@@ -14,6 +14,10 @@ const PLATFORM_FEE_PERCENT = 20;
 /** The org-facing explanation of how a bounty becomes money in a researcher's account. */
 export function HowPayingWorks({ routes }: { routes: PayoutRoute[] }) {
   const [open, setOpen] = useState(false);
+  // Routes paid the same way share one entry instead of repeating the same sentence.
+  const groups = [true, false]
+    .map((automated) => ({ automated, labels: routes.filter((r) => r.automated === automated).map((r) => r.label) }))
+    .filter((group) => group.labels.length > 0);
   return (
     <>
       <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
@@ -36,11 +40,11 @@ export function HowPayingWorks({ routes }: { routes: PayoutRoute[] }) {
           </Step>
           <Step n={4} title="You press Pay researcher, Unpatched sends it">
             <ul className="mt-2 space-y-2">
-              {routes.map((route) => (
-                <li key={route.label} className="rounded-md border border-border bg-surface-muted px-3 py-2">
-                  <p className="font-medium text-ink">{route.label}</p>
+              {groups.map((group) => (
+                <li key={group.labels.join()} className="rounded-md border border-border bg-surface-muted px-3 py-2">
+                  <p className="font-medium text-ink">{group.labels.join(" and ")}</p>
                   <p className="mt-0.5">
-                    {route.automated
+                    {group.automated
                       ? "Sent through our payout partner. The status changes to Paid or Failed on its own."
                       : "Sent by Unpatched's payments team by bank or PayPal transfer. The status changes to Paid once it's done."}
                   </p>

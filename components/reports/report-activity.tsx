@@ -1,7 +1,7 @@
 import React from "react";
 import { ActivityTimeline } from "../ui/data-display";
 import { minorUnitsToDecimalString } from "../../lib/money";
-import { formatDateTime as formatTimestamp } from "../../lib/format-date";
+import { LocalTime } from "../ui/local-time";
 import type { OrganizationAuditEventRecord } from "../../types/organization";
 
 const ACTION_LABELS: Record<string, string> = {
@@ -87,7 +87,7 @@ export function ReportActivity({ events, actorNames }: { events: OrganizationAud
   const items = events.map((event) => {
     const actorName = (event.actorId && actorNames[event.actorId]) || "A team member";
     const { title, detail } = describeEvent(event, actorName);
-    return { id: event.id, title, detail, timestamp: formatTimestamp(event.createdAt) };
+    return { id: event.id, title, detail, timestamp: <LocalTime value={event.createdAt} /> };
   });
   return <ActivityTimeline items={items} />;
 }

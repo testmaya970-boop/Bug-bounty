@@ -28,7 +28,7 @@ describe("organization-members service: error mapping", () => {
 
     const error: unknown = await inviteMember({ organizationId: "org-1", email: "a@b.com", role: "triager" }).catch((thrown) => thrown);
     expect(error).toBeInstanceOf(OrganizationServiceError);
-    expect(error).toMatchObject({ code: "FORBIDDEN", message: "actor cannot invite members to this organization" });
+    expect(error).toMatchObject({ code: "FORBIDDEN", message: "Actor cannot invite members to this organization." });
   });
 
   it("does not leak a raw, unrecognized database error to the caller", async () => {

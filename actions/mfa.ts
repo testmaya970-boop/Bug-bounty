@@ -20,6 +20,7 @@ import {
   type MfaEnrollment,
   type TotpEnrollment,
 } from "@/services/mfa";
+import { AuthServiceError, requireCurrentPassword } from "@/services/account";
 import { isSafeRedirect } from "@/lib/auth/safe-redirect";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
@@ -70,18 +71,21 @@ export async function generateBackupCodesAction(): Promise<ActionResult<string[]
   }
 }
 
-const factorIdSchema = z.object({ factorId: z.string().uuid() });
+// Removing two-factor takes the account password as well as the MFA'd session: a stolen
+// session alone must not be able to strip the second factor (and it was a one-click action).
+const unenrollSchema = z.object({ factorId: z.string().uuid(), currentPassword: z.string().min(1, "Enter your current password.") });
 
-export async function unenrollMfaFactorAction(input: z.infer<typeof factorIdSchema>): Promise<ActionResult<void>> {
-  const parsed = factorIdSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: "Check the form and try again." };
+export async function unenrollMfaFactorAction(input: z.infer<typeof unenrollSchema>): Promise<ActionResult<void>> {
+  const parsed = unenrollSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
   try {
+    await requireCurrentPassword(parsed.data.currentPassword);
     await unenrollMfaFactor();
     await clearMyBackupCodes();
     revalidatePath("/settings");
     return { ok: true, data: undefined };
   } catch (error) {
-    if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
+    if (error instanceof OrganizationServiceError || error instanceof AuthServiceError) return { ok: false, code: error.code, message: error.message };
     throw error;
   }
 }

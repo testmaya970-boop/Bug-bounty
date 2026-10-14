@@ -6,6 +6,15 @@ import { hasMalformedIdSegment } from "@/lib/uuid-segment";
 // Next.js 16 renamed middleware.ts -> proxy.ts. Proxy always runs on the Node.js runtime
 // (not configurable), which this needs: lib/session/middleware.ts validates the session
 // cookie over a real `pg` (node-postgres) TCP connection, which cannot run on Edge.
+function isDecodablePath(pathname: string): boolean {
+  try {
+    decodeURIComponent(pathname);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   // Set on the REQUEST so Next.js can read the nonce while rendering (updateSession's
   // NextResponse.next({ request }) forwards these headers), and on the response so the
@@ -22,7 +31,9 @@ export async function proxy(request: NextRequest) {
 
   // A non-uuid id in an org-scoped URL is a 404 before anything renders or queries -- see
   // lib/uuid-segment.ts for why this can't live in a layout. Path-based, not header-based.
-  if (hasMalformedIdSegment(request.nextUrl.pathname)) {
+  // A malformed percent-escape (/learn/%zz) can't be decoded into route params, and Next
+  // answered every dynamic route with a bare 500; it is simply a page that doesn't exist.
+  if (!isDecodablePath(request.nextUrl.pathname) || hasMalformedIdSegment(request.nextUrl.pathname)) {
     const notFound = NextResponse.rewrite(new URL("/_not-found", request.url), { status: 404, request: { headers: request.headers } });
     notFound.headers.set("Content-Security-Policy", csp);
     return notFound;

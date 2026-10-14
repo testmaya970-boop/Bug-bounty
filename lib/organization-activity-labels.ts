@@ -123,6 +123,22 @@ const ACTION_LABELS: Record<string, string> = {
   "platform.outbox_event_replayed": "had a stuck event replayed",
   "platform_admin.granted": "was granted platform admin access",
   "platform_admin.revoked": "had platform admin access revoked",
+
+  "billing.deposit_reported": "reported a deposit",
+  "billing.deposit_confirmed": "had a deposit confirmed",
+  "billing.deposit_rejected": "had a deposit rejected",
+  "organization.jira_connected": "connected Jira",
+  "organization.jira_connection_updated": "updated the Jira connection",
+  "organization.jira_disconnected": "disconnected Jira",
+  "platform.program_suspended": "had a program suspended by the platform",
+  "platform.program_reinstated": "had a program reinstated by the platform",
+  "program.access_file_uploaded": "uploaded a program access file",
+  "program.access_file_removed": "removed a program access file",
+  "program.access_file_downloaded": "downloaded a program access file",
+  "program.deleted": "deleted a draft program",
+  "program.member_assigned": "assigned someone to a program team",
+  "program.member_unassigned": "removed someone from a program team",
+  "report.asset_linked": "linked a report to an asset",
 };
 
 /** One real audit_logs row, described for a cross-entity activity timeline -- system
@@ -145,6 +161,11 @@ export function describeOrganizationActivity(event: OrganizationAuditEventRecord
     return { title, detail: `${event.metadata.currency} ${(event.metadata.amount_minor_units / 100).toFixed(2)}` };
   }
   return { title, detail: "" };
+}
+
+/** The plain-language phrase for an action ("assigned someone to a program team"). */
+export function organizationActionPhrase(action: string): string {
+  return ACTION_LABELS[action] ?? action;
 }
 
 /** "Changed a member's role" -- an action on its own, for breakdown charts and exports. */

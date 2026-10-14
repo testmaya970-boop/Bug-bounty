@@ -55,7 +55,7 @@ export function OrganizationDashboard({ data, days, organizationId, statusCounts
         <StatTile label="Bounties awarded" value={primary ? compactMoney(primary.awarded, primary.currency) : "--"} hint={`${now.researchers} researcher${now.researchers === 1 ? "" : "s"} reported`} delta={primary ? change(primary.awarded, primary.awarded_previous) : null} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
           title="Report inflow by severity"
           subtitle={`Per week by confirmed severity, ${window}`}
@@ -88,7 +88,7 @@ export function OrganizationDashboard({ data, days, organizationId, statusCounts
         </ChartCard>
 
         <ChartCard title="Most-reported assets" subtitle={`Reports per asset, ${window}`} empty={data.assets.length === 0 && "No reports in this period."}>
-          <BarList items={data.assets.map((a) => ({ label: a.target, value: a.count, secondary: `${a.valid} valid` }))} />
+          <BarList items={data.assets.map((a) => ({ label: a.target, value: a.count, secondary: `${a.count === 1 ? "report" : "reports"}, ${a.valid} valid` }))} />
         </ChartCard>
 
         <ChartCard title="Top researchers" subtitle={`Valid findings, ${window}`} empty={data.researchers.length === 0 && "No researchers reported in this period."} className="lg:col-span-2">

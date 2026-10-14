@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { blankOr, isBankCode, isPassportNumber, isPhoneCountryCode, isPhoneNumber, isPlausibleDateOfBirth, normalizeBankCode } from "@/lib/kyc-validation";
 import {
   OrganizationServiceError,
   reviewKycField,
@@ -43,19 +44,25 @@ const personalDetailsSchema = z.object({
 });
 
 const kycSchema = z.object({
-  phoneCountryCode: z.string().trim().max(8).optional(),
-  phoneNumber: z.string().trim().max(20).optional(),
+  phoneCountryCode: z.string().trim().max(8).optional().refine(blankOr(isPhoneCountryCode), "Enter a country code like +91."),
+  phoneNumber: z.string().trim().max(20).optional().refine(blankOr(isPhoneNumber), "Enter the phone number as 6 to 14 digits."),
   aadhaarNumber: z.string().trim().max(20).optional(),
   panNumber: z.string().trim().max(20).optional(),
-  passportNumber: z.string().trim().max(20).optional(),
-  passportDateOfBirth: z.string().trim().optional(),
+  passportNumber: z.string().trim().max(20).optional().refine(blankOr(isPassportNumber), "Enter the passport number: 6 to 9 letters and numbers."),
+  passportDateOfBirth: z.string().trim().optional().refine(blankOr((v) => isPlausibleDateOfBirth(v)), "Enter your real date of birth. You must be at least 16."),
 });
 
 const payoutDetailsSchema = z.object({
   method: z.enum(["bank_transfer", "paypal"]),
   bankAccountHolderName: z.string().trim().max(160).optional(),
   bankAccountNumber: z.string().trim().max(30).optional(),
-  bankIfscOrRouting: z.string().trim().max(34).optional(),
+  bankIfscOrRouting: z
+    .string()
+    .trim()
+    .max(34)
+    .optional()
+    .refine(blankOr(isBankCode), "Enter an IFSC (like HDFC0001234), a 9-digit US routing number, or a SWIFT code.")
+    .transform((v) => (v ? normalizeBankCode(v) : v)),
   paypalEmail: z.string().trim().max(320).optional(),
   payoutThresholdMinorUnits: z.coerce.number().int().positive().optional(),
   payoutSchedule: z.enum(["immediate", "weekly", "monthly", "on_threshold"]).optional(),
@@ -155,7 +162,7 @@ export async function submitMyKycAction(input: z.infer<typeof kycSchema>): Promi
   }
 }
 
-export async function updateMyPayoutDetailsAction(input: z.infer<typeof payoutDetailsSchema>): Promise<ActionResult<void>> {
+export async function updateMyPayoutDetailsAction(input: z.input<typeof payoutDetailsSchema>): Promise<ActionResult<void>> {
   const parsed = payoutDetailsSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
 

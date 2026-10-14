@@ -21,7 +21,9 @@ export function InviteMemberDialog({ organizationId, invitableRoles }: { organiz
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<OrganizationRole>(invitableRoles[0] ?? "triager");
+  // Least privilege by default: the list runs most- to least-powerful, and a quick
+  // email + Send must never make someone an owner.
+  const [role, setRole] = useState<OrganizationRole>(invitableRoles.includes("triager") ? "triager" : (invitableRoles.at(-1) ?? "triager"));
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

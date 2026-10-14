@@ -9,11 +9,16 @@ import { cn } from "../../lib/cn";
 // is styled, so every call site stays visually consistent for free.
 const MARKDOWN_COMPONENTS: Components = {
   p: ({ children }) => <p className="whitespace-pre-wrap break-words text-sm text-ink [&:not(:first-child)]:mt-3">{children}</p>,
-  a: ({ children, href }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="break-all font-medium text-action underline underline-offset-2 hover:text-action-hover">
-      {children}
-    </a>
-  ),
+  // react-markdown blanks unsafe URLs (javascript:, data:...); show those as plain text, not a
+  // link that goes nowhere.
+  a: ({ children, href }) =>
+    href ? (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="break-all font-medium text-action underline underline-offset-2 hover:text-action-hover">
+        {children}
+      </a>
+    ) : (
+      <span className="break-all">{children}</span>
+    ),
   ul: ({ children }) => <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink first:mt-0">{children}</ul>,
   ol: ({ children }) => <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-ink first:mt-0">{children}</ol>,
   li: ({ children }) => <li className="break-words">{children}</li>,

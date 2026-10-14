@@ -35,6 +35,9 @@ const DIFFICULTY_TONE: Record<MockChallenge["difficulty"], string> = { Easy: "te
  * titles themselves are already real, seeded CTF content (lib/mock/ctf.ts's
  * deriveDashboardSpotlight()), so the only thing that was fake was the button's behavior.
  */
+// A summary, not the list: the full set lives on /programs?tab=mine.
+const ACTIVE_WORK_LIMIT = 6;
+
 export function OperationalGrid({ activePrograms, featuredPrograms, challenges }: { activePrograms: ActiveProgram[]; featuredPrograms: TopBountyProgram[]; challenges: MockChallenge[] }) {
   return (
     <div>
@@ -51,9 +54,16 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
         <div className="glass-surface-raised rounded-xl shadow-sm">
           {activePrograms.length > 0 && (
             <div className="p-5">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Your active work</p>
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Your active work</p>
+                {activePrograms.length > ACTIVE_WORK_LIMIT && (
+                  <Link prefetch={false} href={"/programs?tab=mine" as Route} className="text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+                    View all {activePrograms.length}
+                  </Link>
+                )}
+              </div>
               <ul className="mt-2.5 space-y-1">
-                {activePrograms.map((participation) => (
+                {activePrograms.slice(0, ACTIVE_WORK_LIMIT).map((participation) => (
                   <li key={participation.programId}>
                     <Link
                       prefetch={false}

@@ -39,7 +39,7 @@ export default async function ProgramReportsInboxPage({
   const program = await getProgram(programId);
   if (!program || program.organizationId !== organizationId) {
     return (
-      <AppShell title="Triage inbox" user={user} organizationId={organizationId}>
+      <AppShell title="Reports" user={user} organizationId={organizationId}>
         <PermissionDenied>This program does not exist, or you do not have access to it.</PermissionDenied>
       </AppShell>
     );
@@ -55,7 +55,7 @@ export default async function ProgramReportsInboxPage({
 
   if (!(canManageProgram || isProgramTriager)) {
     return (
-      <AppShell title="Triage inbox" user={user} organizationId={organizationId}>
+      <AppShell title="Reports" user={user} organizationId={organizationId}>
         <PermissionDenied>Only this program&apos;s assigned team or an organization admin can open the triage inbox. Your own reports are available at /reports.</PermissionDenied>
       </AppShell>
     );
@@ -77,14 +77,14 @@ export default async function ProgramReportsInboxPage({
   ]);
 
   return (
-    <AppShell title="Triage inbox" user={user} organizationId={organizationId}>
+    <AppShell title="Reports" user={user} organizationId={organizationId}>
       <div className="space-y-6">
         <Breadcrumbs
           items={[
             { label: "Organizations", href: "/organizations" },
             { label: "Engagements", href: `/organizations/${organizationId}/programs` },
             { label: program.name, href: `/organizations/${organizationId}/programs/${programId}` },
-            { label: "Triage inbox" },
+            { label: "Reports" },
           ]}
         />
         <ProgramHeader organizationId={organizationId} programId={programId} programName={program.name} status={program.status} active="reports" canManage={canManageProgram} canWorkReports />

@@ -127,6 +127,8 @@ export default async function ReportDetailPage({
   const bountyFinalized = bountyDecision?.state === "finalized";
   const [payoutReadiness, bountyAcceptance] =
     bountyFinalized && (isOwnReport || canTriage) ? await Promise.all([getReportPayoutReadiness(reportId), getBountyAcceptance(reportId)]) : [[], null];
+  // Staff see which report this duplicates; the researcher can't open someone else's report.
+  const duplicateOriginal = report.status === "duplicate" && report.duplicateOfReportId && canTriage ? await getReport(report.duplicateOfReportId).catch(() => null) : null;
   const actorNames: Record<string, string> = { [report.researcherId]: report.researcherName, [user.id]: user.displayName };
   members.forEach((member) => {
     actorNames[member.userId] = member.displayName;
@@ -144,8 +146,13 @@ export default async function ReportDetailPage({
       <div className="mx-auto max-w-6xl space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Organizations", href: "/organizations" },
-            { label: "Engagements", href: `/organizations/${organizationId}/programs` },
+            // Staff get the org trail; the researcher who wrote it goes back via Programs.
+            ...(actorMembership?.status === "active"
+              ? [
+                  { label: "Organizations", href: "/organizations" },
+                  { label: "Engagements", href: `/organizations/${organizationId}/programs` },
+                ]
+              : [{ label: "Programs", href: "/programs" }]),
             { label: program?.name ?? "Program", href: `/organizations/${organizationId}/programs/${programId}` },
             { label: report.title },
           ]}
@@ -170,8 +177,10 @@ export default async function ReportDetailPage({
           >
             {report.status === "needs_information" ? (
               <>The organization has requested more information. Respond below, in Communication.</>
+            ) : isFinal ? (
+              <>This report is closed. Its history stays here for your records.</>
             ) : (
-              researcherNextActionLabel(report.status)
+              <>Nothing for you to do right now. You&apos;ll get a notification when the organization updates this report.</>
             )}
           </Alert>
         )}
@@ -213,7 +222,7 @@ export default async function ReportDetailPage({
                 docs/decisions/0009-report-triage-state-machine.md and 0043. */}
             <div className="border-b-2 border-border pb-6">
               <SectionLabel>Submitted by researcher</SectionLabel>
-              <div className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <MetadataPair label="Researcher" value={isOwnReport ? "You" : report.researcherName} />
                 <MetadataPair label="Submitted" value=<LocalTime value={report.submittedAt} /> />
                 {/* weaknessType/researcherSeverity are null for a report submitted before
@@ -396,13 +405,16 @@ export default async function ReportDetailPage({
               )}
               {report.status === "duplicate" && report.duplicateOfReportId && (
                 <p className="mt-3 text-sm text-ink-muted">
-                  Duplicate of report{" "}
-                  <a
-                    href={`/organizations/${organizationId}/programs/${programId}/reports/${report.duplicateOfReportId}` as Route}
-                    className="font-mono text-action underline underline-offset-2"
-                  >
-                    {report.duplicateOfReportId}
-                  </a>
+                  {duplicateOriginal ? (
+                    <>
+                      Duplicate of{" "}
+                      <a href={`/organizations/${organizationId}/programs/${programId}/reports/${duplicateOriginal.id}` as Route} className="font-medium text-action underline underline-offset-2">
+                        {duplicateOriginal.title}
+                      </a>
+                    </>
+                  ) : (
+                    "Duplicate of an earlier report on this program."
+                  )}
                 </p>
               )}
 

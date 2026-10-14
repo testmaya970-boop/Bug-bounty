@@ -54,7 +54,7 @@ export function ActivityDashboard({ data, days, organizationId }: { data: Data; 
         <StatTile label="Sensitive actions" value={compactNumber(now.sensitive)} hint="Access, money, scope and visibility changes" delta={change(now.sensitive, before.sensitive)} goodWhen="down" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
           title="Activity by area"
           subtitle={`Actions per week, ${window}`}

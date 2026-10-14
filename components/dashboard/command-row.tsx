@@ -118,7 +118,7 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
           className="glass-surface group/reward col-span-2 flex items-center justify-between rounded-lg p-3.5 transition-colors duration-200 motion-reduce:transition-none hover:border-glass-border-strong focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
         >
           <div>
-            <SectionLabel>Lifetime rewards</SectionLabel>
+            <SectionLabel>Rewards paid to you</SectionLabel>
             <p className="mt-1.5 font-mono text-xl font-semibold tabular-nums text-ink">{status.lifetimeRewardsLabel}</p>
           </div>
           <span aria-hidden="true" className="text-ink-muted transition-transform duration-200 group-hover/reward:translate-x-0.5 motion-reduce:transition-none">

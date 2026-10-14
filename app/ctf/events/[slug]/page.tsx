@@ -9,8 +9,8 @@ import { SectionLabel, MetadataPair } from "../../../../components/ui/security-p
 import { DifficultyBadge, CtfCategoryBadge, Badge } from "../../../../components/ui/badge";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 import { getCtfEventBySlug, getCtfEventLeaderboard } from "../../../../services/ctf-events";
-import { formatDateTime } from "../../../../lib/format-date";
-import { ALL_CTF_CHALLENGES, MOCK_CTF_CATEGORY_META, type MockCtfChallenge } from "../../../../lib/mock/ctf";
+import { LocalTime } from "../../../../components/ui/local-time";
+import { ALL_CTF_CHALLENGES, MOCK_CTF_CATEGORY_META, RETIRED_CTF_CHALLENGE_IDS, type MockCtfChallenge } from "../../../../lib/mock/ctf";
 import type { CtfEventEffectiveStatus } from "../../../../types/ctf-event";
 
 const STATUS_COPY: Record<CtfEventEffectiveStatus, { label: string; tone: string }> = {
@@ -45,9 +45,12 @@ export default async function CtfEventDetailPage({ params }: { params: Promise<{
 
   const leaderboard = await getCtfEventLeaderboard(event.id, 100);
   const status = STATUS_COPY[event.effectiveStatus];
-  const solvedCount = event.challenges.filter((c) => c.solvedInEvent).length;
-  const totalPoints = event.challenges.reduce((sum, c) => sum + c.points, 0);
-  const byId = new Map<string, MockCtfChallenge>(ALL_CTF_CHALLENGES.map((c) => [c.id, c]));
+  // Retired challenges (RETIRED_CTF_CHALLENGE_IDS) stay out of an event: their pages are
+  // gone, so they must not be listed, counted or scored here.
+  const byId = new Map<string, MockCtfChallenge>(ALL_CTF_CHALLENGES.filter((c) => !RETIRED_CTF_CHALLENGE_IDS.has(c.id)).map((c) => [c.id, c]));
+  const challenges = event.challenges.filter((c) => byId.has(c.challengeId));
+  const solvedCount = challenges.filter((c) => c.solvedInEvent).length;
+  const totalPoints = challenges.reduce((sum, c) => sum + c.points, 0);
 
   return (
     <AppShell title="CTF event" user={user}>
@@ -60,14 +63,14 @@ export default async function CtfEventDetailPage({ params }: { params: Promise<{
               {event.effectiveStatus === "active" && <span aria-hidden="true" className="size-1.5 animate-pulse rounded-full bg-success" />}
               {status.label}
             </span>
-            <span className="font-mono text-sm font-semibold text-ink">{event.challenges.length} challenges</span>
+            <span className="font-mono text-sm font-semibold text-ink">{challenges.length} challenges</span>
             <span className="font-mono text-sm text-ink-muted">{totalPoints.toLocaleString("en-US")} pts available</span>
           </div>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">{event.name}</h2>
           {event.description && <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">{event.description}</p>}
           <div className="mt-3 grid max-w-lg grid-cols-2 gap-4">
-            <MetadataPair label={event.effectiveStatus === "upcoming" ? "Opens" : "Started"} value={formatDateTime(event.startsAt)} />
-            <MetadataPair label={event.effectiveStatus === "ended" ? "Ended" : "Closes"} value={formatDateTime(event.endsAt)} />
+            <MetadataPair label={event.effectiveStatus === "upcoming" ? "Opens" : "Started"} value={<LocalTime value={event.startsAt} />} />
+            <MetadataPair label={event.effectiveStatus === "ended" ? "Ended" : "Closes"} value={<LocalTime value={event.endsAt} />} />
           </div>
           {event.effectiveStatus === "upcoming" && <p className="mt-3 text-sm font-medium text-action">This event has not started yet. Its challenges open when the window begins.</p>}
           {event.effectiveStatus === "ended" && <p className="mt-3 text-sm text-ink-muted">This event has ended. Its leaderboard below is final; the challenges remain solvable for practice (no longer scored here).</p>}
@@ -78,11 +81,11 @@ export default async function CtfEventDetailPage({ params }: { params: Promise<{
             <div className="flex items-center justify-between">
               <SectionLabel>Challenges in this event</SectionLabel>
               <span className="font-mono text-xs text-ink-muted">
-                {solvedCount}/{event.challenges.length} solved
+                {solvedCount}/{challenges.length} solved
               </span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {event.challenges.map((ec) => {
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {challenges.map((ec) => {
                 const challenge = byId.get(ec.challengeId);
                 if (!challenge) return null;
                 return (

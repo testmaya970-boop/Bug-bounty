@@ -96,7 +96,7 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
           </Alert>
         )}
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="space-y-4">
             <Panel>
               <h3 className="text-base font-semibold">Organization role</h3>

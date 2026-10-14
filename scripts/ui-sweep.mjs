@@ -41,7 +41,7 @@ const ROLES = {
   program_manager: { email: "e2e.program-manager@unpatched.demo", seeds: ["/", ...ORG.map((p) => `@org${p}`)] },
   triager: { email: "e2e.triager@unpatched.demo", seeds: ["/", ...ORG.map((p) => `@org${p}`)] },
   billing_admin: { email: "e2e.billing-admin@unpatched.demo", seeds: ["/", ...ORG.map((p) => `@org${p}`)] },
-  platform_admin: { email: "e2e.platform-admin@unpatched.demo", seeds: ["/", "/platform/organizations", "/platform/programs", "/platform/all-programs", "/platform/researchers", "/platform/kyc", "/platform/mediations", "/platform/retests", "/platform/needs-recovery", "/platform/errors"] },
+  platform_admin: { email: "e2e.platform-admin@unpatched.demo", seeds: ["/", "/platform", "/platform/organizations", "/platform/programs", "/platform/all-programs", "/platform/researchers", "/platform/kyc", "/platform/payouts", "/platform/mediations", "/platform/retests", "/platform/needs-recovery", "/platform/errors", "/platform/integrations", "/platform/audit-log", "/platform/ctf-events"] },
 };
 
 // Names of controls that change data or leave the page state -- never clicked by the sweep.
@@ -52,6 +52,16 @@ const PARALLEL = process.env.SWEEP_PARALLEL === "1";
 const NEVER = /sign ?out|log ?out|deactivate|delete (my )?account/i;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 const ERROR_TEXT = /Application error|Something went wrong|Internal Server Error|Unhandled Runtime Error|This page could not be found|could not load/i;
+
+// The production session cookie is Secure. Chrome still sends it to http://127.0.0.1, but
+// Playwright's request helper drops Secure cookies over http, so every signed-in link looked
+// like a 401. Pass the browser's cookies explicitly.
+async function checkLink(context, target) {
+  // cookies(url) applies the same Secure filter, so take them all and match the host here.
+  const host = new URL(target).hostname;
+  const cookie = (await context.cookies()).filter((c) => c.domain.replace(/^\./, "") === host).map((c) => `${c.name}=${c.value}`).join("; ");
+  return context.request.get(target, { maxRedirects: 5, timeout: 60_000, headers: cookie ? { cookie } : {} }).catch(() => null);
+}
 
 const issues = [];
 const add = (role, severity, kind, where, detail) => issues.push({ role, severity, kind, where, detail });
@@ -126,7 +136,11 @@ async function sweepRole(browser, role, { email, seeds }, orgId) {
 
     let response;
     try { response = await page.goto(url, { timeout: 90_000, waitUntil: "load" }); }
-    catch (e) { add(role, "P0", "load-failed", key, e.message.split("\n")[0]); continue; }
+    catch (e) {
+      // A link to a file (the activity CSV export) downloads instead of rendering: that's success.
+      if (!/Download is starting/.test(e.message)) add(role, "P0", "load-failed", key, e.message.split("\n")[0]);
+      continue;
+    }
     if (email && new URL(page.url()).pathname === "/sign-in" && !key.startsWith("/sign-in")) {
       add(role, "P0", "session-lost", key, "signed out mid-sweep (a click ended the session?); signing in again");
       await signIn(context, email);
@@ -168,7 +182,7 @@ async function sweepRole(browser, role, { email, seeds }, orgId) {
       u.hash = "";
       const target = u.toString();
       if (!linkChecked.has(target)) {
-        const r = await context.request.get(target, { maxRedirects: 5, timeout: 60_000 }).catch(() => null);
+        const r = await checkLink(context, target);
         linkChecked.set(target, r?.status() ?? 0);
         if (!r || r.status() >= 400) add(role, r && r.status() < 500 ? "P1" : "P0", "broken-link", key, `-> ${target.replace(BASE, "")} = ${r?.status() ?? "no response"}`);
       }
@@ -251,7 +265,7 @@ async function sweepRole(browser, role, { email, seeds }, orgId) {
           if (linksBefore.has(href) || /sign-out|\/api\//.test(new URL(href).pathname)) continue;
           const target = href.split("#")[0];
           if (!linkChecked.has(target)) {
-            const r = await context.request.get(target, { maxRedirects: 5, timeout: 60_000 }).catch(() => null);
+            const r = await checkLink(context, target);
             linkChecked.set(target, r?.status() ?? 0);
             if (!r || r.status() >= 400) add(role, r && r.status() < 500 ? "P1" : "P0", "broken-link", key, `-> ${target.replace(BASE, "")} = ${r?.status() ?? "no response"} (inside what "${name}" opened)`);
           }

@@ -5,7 +5,7 @@ import { DataTable, type DataColumn } from "../ui/data-display";
 import { Avatar } from "../ui/navigation";
 import { Badge, MemberStatusBadge, RoleBadge } from "../ui/badge";
 import { describeOrganizationAccess } from "../../services/authorization";
-import type { OrganizationMemberRecord } from "../../types/organization";
+import type { OrganizationMemberRecord } from "../../types/organization";
 import { LocalTime } from "../ui/local-time";
 
 type Row = OrganizationMemberRecord & { id: string };
@@ -44,6 +44,7 @@ export function MemberTable({ organizationId, members, lastActivityByUserId }: {
     {
       id: "actions",
       header: "Actions",
+      pinEnd: true,
       cell: (row) => (
         <Link prefetch={false} href={`/organizations/${organizationId}/members/${row.userId}` as Route} className="text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
           Manage

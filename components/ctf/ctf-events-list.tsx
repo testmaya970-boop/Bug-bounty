@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { SectionLabel } from "../ui/security-primitives";
 import { EmptyState } from "../ui/feedback";
-import { formatDateTime } from "../../lib/format-date";
+import { LocalTime } from "../ui/local-time";
 import type { CtfEventSummary, CtfEventEffectiveStatus } from "../../types/ctf-event";
 
 /** The three real event states the list groups by. Active first (what you can play now),
@@ -26,7 +26,14 @@ function EventStatusBadge({ status }: { status: CtfEventEffectiveStatus }) {
 }
 
 function EventCard({ event }: { event: CtfEventSummary }) {
-  const window = event.effectiveStatus === "upcoming" ? `Opens ${formatDateTime(event.startsAt)}` : event.effectiveStatus === "active" ? `Closes ${formatDateTime(event.endsAt)}` : `Ran ${formatDateTime(event.startsAt)} to ${formatDateTime(event.endsAt)}`;
+  const window =
+    event.effectiveStatus === "upcoming" ? (
+      <>Opens <LocalTime value={event.startsAt} /></>
+    ) : event.effectiveStatus === "active" ? (
+      <>Closes <LocalTime value={event.endsAt} /></>
+    ) : (
+      <>Ran <LocalTime value={event.startsAt} /> to <LocalTime value={event.endsAt} /></>
+    );
   return (
     <Link
       href={`/ctf/events/${event.slug}` as Route}
@@ -66,7 +73,7 @@ export function CtfEventsList({ events }: { events: CtfEventSummary[] }) {
       {live.length > 0 && (
         <section>
           <SectionLabel>Live now</SectionLabel>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {live.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
@@ -76,7 +83,7 @@ export function CtfEventsList({ events }: { events: CtfEventSummary[] }) {
       {upcoming.length > 0 && (
         <section>
           <SectionLabel>Upcoming</SectionLabel>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {upcoming.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
@@ -86,7 +93,7 @@ export function CtfEventsList({ events }: { events: CtfEventSummary[] }) {
       {ended.length > 0 && (
         <section>
           <SectionLabel>Ended</SectionLabel>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {ended.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}

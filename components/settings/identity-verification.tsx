@@ -55,9 +55,11 @@ const COUNTRY_CODES = [
 ];
 
 /** Send a code, then confirm it. In sandbox mode no SMS is sent, so the code is shown. */
-export function PhoneVerificationForm({ hasPending }: { hasPending: boolean }) {
+export function PhoneVerificationForm({ hasPending, routes }: { hasPending: boolean; routes: { india: boolean; global: boolean } }) {
   const router = useRouter();
-  const [countryCode, setCountryCode] = useState("+91");
+  // Only the countries a configured provider can text.
+  const countries = COUNTRY_CODES.filter((c) => (c.code === "+91" ? routes.india : routes.global));
+  const [countryCode, setCountryCode] = useState(countries[0]?.code ?? "+91");
   const [number, setNumber] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(hasPending);
@@ -81,7 +83,7 @@ export function PhoneVerificationForm({ hasPending }: { hasPending: boolean }) {
         }}
       >
         <Select label="Country" value={countryCode} onChange={(event) => setCountryCode(event.target.value)} className="w-56">
-          {COUNTRY_CODES.map((c) => (
+          {countries.map((c) => (
             <option key={c.code} value={c.code}>
               {c.label}
             </option>

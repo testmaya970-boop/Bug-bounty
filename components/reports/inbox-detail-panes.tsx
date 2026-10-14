@@ -135,7 +135,7 @@ function InboxMiddlePane({
           </Link>
         </div>
         <h2 className="mt-2 text-lg font-semibold text-ink">{report.title}</h2>
-        <div className="mt-2 grid gap-3 text-sm sm:grid-cols-2">
+        <div className="mt-2 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <MetadataPair label="Researcher" value={report.researcherName} />
           <MetadataPair label="Submitted" value=<LocalTime value={report.submittedAt} /> />
           <MetadataPair

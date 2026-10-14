@@ -1,7 +1,6 @@
 import React from "react";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { SimplePageShell } from "../../components/simple-page-shell";
@@ -25,8 +24,9 @@ import { getCurrentUser } from "../../lib/auth/current-user";
  * specifically for this page; nothing reads CHANGELOG.md here anymore.
  */
 export default async function HelpPage() {
+  // Public: help and docs must be readable before you have an account. Sending feedback
+  // (a settings page) still asks a signed-out visitor to sign in.
   const user = await getCurrentUser();
-  if (!user) redirect("/sign-in?redirectTo=/help" as Route);
 
   let changelog = "";
   try {

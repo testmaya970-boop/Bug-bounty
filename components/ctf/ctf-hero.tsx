@@ -21,7 +21,7 @@ export function CtfHero({
   totalPointsEarned: number;
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 motion-safe:animate-hero-reveal">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 motion-safe:animate-hero-reveal">
       <div className="rounded-lg border border-border bg-surface p-4">
         <div className="flex items-center justify-between gap-2">
           <SectionLabel>Challenges</SectionLabel>

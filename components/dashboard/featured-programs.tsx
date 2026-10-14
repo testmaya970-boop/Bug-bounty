@@ -13,7 +13,7 @@ export function FeaturedPrograms({ programs }: { programs: MockFeaturedProgram[]
     <div>
       <SectionLabel>Featured</SectionLabel>
       <h2 className="mt-1 text-lg font-semibold text-ink">Featured security programs</h2>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {programs.map((program) => {
           const isSelected = selectedId === program.id;
           return (

@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
-import { confirmMfaEnrollmentAction, redeemBackupCodeGateAction, requestMfaVerificationCodeAction, revokeMySessionAction, verifyMfaGateAction } from "../../actions/mfa";
+import { confirmMfaEnrollmentAction, redeemBackupCodeGateAction, requestMfaVerificationCodeAction, revokeMySessionAction, unenrollMfaFactorAction, verifyMfaGateAction } from "../../actions/mfa";
+import * as accountService from "../../services/account";
 import * as mfaService from "../../services/mfa";
 
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("../../services/mfa", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../services/mfa")>();
-  return { ...actual, confirmMfaEnrollment: vi.fn(), verifyMfaCode: vi.fn(), redeemBackupCode: vi.fn(), revokeMySession: vi.fn(), requestMfaVerificationCode: vi.fn() };
+  return { ...actual, confirmMfaEnrollment: vi.fn(), verifyMfaCode: vi.fn(), redeemBackupCode: vi.fn(), revokeMySession: vi.fn(), requestMfaVerificationCode: vi.fn(), unenrollMfaFactor: vi.fn(), clearMyBackupCodes: vi.fn() };
+});
+vi.mock("../../services/account", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../services/account")>();
+  return { ...actual, requireCurrentPassword: vi.fn() };
 });
 
 const mockedRedirect = vi.mocked(redirect);
@@ -93,5 +98,27 @@ describe("revokeMySessionAction: validates a real session id before calling the 
     const result = await revokeMySessionAction({ sessionId: "11111111-1111-4111-8111-111111111111" });
     expect(result.ok).toBe(true);
     expect(mfaService.revokeMySession).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111");
+  });
+});
+
+describe("unenrollMfaFactorAction: turning off two-factor needs the account password", () => {
+  const factorId = "11111111-1111-4111-8111-111111111111";
+  it("refuses without a password and never touches the factor", async () => {
+    const result = await unenrollMfaFactorAction({ factorId, currentPassword: "" });
+    expect(result.ok).toBe(false);
+    expect(mfaService.unenrollMfaFactor).not.toHaveBeenCalled();
+  });
+  it("refuses a wrong password and never touches the factor", async () => {
+    vi.mocked(accountService.requireCurrentPassword).mockRejectedValue(new accountService.AuthServiceError("Your current password is not correct.", "INVALID_CREDENTIALS"));
+    const result = await unenrollMfaFactorAction({ factorId, currentPassword: "wrong" });
+    expect(result).toEqual({ ok: false, code: "INVALID_CREDENTIALS", message: "Your current password is not correct." });
+    expect(mfaService.unenrollMfaFactor).not.toHaveBeenCalled();
+  });
+  it("removes the factor and backup codes once the password checks out", async () => {
+    vi.mocked(accountService.requireCurrentPassword).mockResolvedValue("user-1");
+    const result = await unenrollMfaFactorAction({ factorId, currentPassword: "right" });
+    expect(result.ok).toBe(true);
+    expect(mfaService.unenrollMfaFactor).toHaveBeenCalled();
+    expect(mfaService.clearMyBackupCodes).toHaveBeenCalled();
   });
 });

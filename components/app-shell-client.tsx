@@ -257,8 +257,11 @@ function AccountMenu({ user }: { user: ShellUser }) {
 function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
+  // The shortcut works with Ctrl or Cmd; the hint shows the one this keyboard has.
+  const [shortcut, setShortcut] = useState("Ctrl K");
 
   useEffect(() => {
+    if (/Mac|iPhone|iPad/.test(navigator.platform)) setShortcut("⌘K");
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -288,7 +291,7 @@ function GlobalSearch() {
         className="min-h-10 w-full rounded-md border border-border bg-surface/60 pl-9 pr-14 text-sm text-ink outline-none backdrop-blur transition-colors duration-200 placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/25 motion-reduce:transition-none"
       />
       <kbd aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-border bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-ink-muted">
-        ⌘K
+        {shortcut}
       </kbd>
     </form>
   );
@@ -608,6 +611,7 @@ function SidebarNav({
 
 export function AppShellClient({
   title,
+  titleIsSection = false,
   children,
   user,
   organizations,
@@ -618,6 +622,7 @@ export function AppShellClient({
   platformAdminNeedsMfa = false,
 }: {
   title: string;
+  titleIsSection?: boolean;
   children: React.ReactNode;
   user?: ShellUser | null;
   organizations: OrganizationSummary[];
@@ -728,7 +733,12 @@ export function AppShellClient({
         >
           <div className="mx-auto max-w-[1440px]">
             <header className="mb-4 border-b border-border pb-3">
-              <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+              {/* One h1 per page: under a section title (Settings) the child page owns it. */}
+              {titleIsSection ? (
+                <p className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight sm:text-2xl">{title}</p>
+              ) : (
+                <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+              )}
             </header>
             {children}
           </div>

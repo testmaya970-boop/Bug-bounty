@@ -76,7 +76,7 @@ export default async function OrganizationMembersPage({ params }: { params: Prom
           <MemberTable organizationId={organizationId} members={members} lastActivityByUserId={lastActivityByUserId} />
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <PendingInvitationsPanel organizationId={organizationId} invitations={invitations} canManage={canManageMembers(actor.role)} />
           <Panel>
             <h2 className="text-base font-semibold">Recent activity</h2>

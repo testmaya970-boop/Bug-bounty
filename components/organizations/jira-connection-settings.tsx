@@ -132,7 +132,7 @@ function ConnectionForm({
           </a>
         }
       />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input label="Project key" required placeholder="SEC" value={values.projectKey} onChange={set("projectKey")} error={errorFor("projectKey")} autoComplete="off" />
         <Input label="Issue type" required helperText="Must exist in that project." value={values.issueTypeName} onChange={set("issueTypeName")} error={errorFor("issueTypeName")} autoComplete="off" />
       </div>

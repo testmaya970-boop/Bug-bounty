@@ -37,7 +37,7 @@ export function ReputationCharts({ counts, severityCounts }: { counts: Reputatio
   if (!hasOutcomes && !hasSeverity) return null;
 
   return (
-    <div className="grid gap-8 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
       {hasOutcomes && (
         <div>
           <SectionLabel>Outcomes by type</SectionLabel>

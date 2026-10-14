@@ -123,6 +123,9 @@ function PublicHome() {
           bar: the grammar explicitly forbids the pill-shaped sticky wordmark+CTA
           bar every earlier version of this page carried. A plain top rule with
           the wordmark and two real entry points, in document flow, not fixed. */}
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-surface focus:px-4 focus:py-2 focus:outline-2 focus:outline-focus">
+        Skip to content
+      </a>
       <header className="border-b border-border px-4 py-5 sm:px-6">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-2">
@@ -140,7 +143,7 @@ function PublicHome() {
         </div>
       </header>
 
-        <main>
+        <main id="main">
           {/* TITLE PAGE (docs/decisions/0082/0083) -- the chaptered-editorial hero:
               type on the paper ground, the hero-art bleeding off both edges as the
               only imagery above the fold. Headline/copy/buttons unchanged. */}
@@ -171,9 +174,9 @@ function PublicHome() {
               SVG this session already built, given a real chapter instead of sharing
               the hero with the title page. */}
           <section id="how-it-works" className="relative overflow-hidden border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28">
-            <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
+            <div className="mx-auto grid grid-cols-1 max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
               <div className="relative z-10">
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action">[ 01 ] /// </span>Chapter one</p>
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action-hover">[ 01 ] /// </span>Chapter one</p>
                 <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Signal, then evidence.</h2>
                 <p data-motion="chapter-body" className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
                   A researcher notices something worth a second look. Domains, URLs, or IP ranges: the single most-specific scope match decides what&rsquo;s authorized before anyone tests anything. Text,
@@ -192,7 +195,7 @@ function PublicHome() {
               chapter's one real "second-read" moment. */}
           <section className="border-t border-border bg-surface-muted px-4 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto max-w-4xl">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action">[ 02 ] /// </span>Chapter two</p>
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action-hover">[ 02 ] /// </span>Chapter two</p>
               <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Not a status field. A state machine.</h2>
               <p data-motion="chapter-body" className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
                 Every report moves through a fixed, real transition table: the same one that runs in production, not a simplified version for this page.
@@ -210,9 +213,9 @@ function PublicHome() {
               tinted card. */}
           <section id="for-researchers" className="border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto max-w-6xl">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action">[ 03 ] /// </span>Chapter three</p>
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action-hover">[ 03 ] /// </span>Chapter three</p>
               <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 max-w-2xl text-3xl sm:text-4xl`}>Decision, fix, verification: two real paths through the same record.</h2>
-              <div className="mt-12 grid gap-6 lg:grid-cols-2 lg:gap-12">
+              <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12">
                 <h3 className="text-xl font-bold text-ink lg:pr-12">Find real work. Keep the record.</h3>
                 <h3 id="for-organizations" className="text-xl font-bold text-ink lg:pl-12">
                   Run a program, not a vulnerability inbox.
@@ -221,7 +224,7 @@ function PublicHome() {
               <div data-motion="chapter-figure" className="mt-6">
                 <WorkflowDiagramPair left={RESEARCHER_STAGES} right={ORGANIZATION_STAGES} />
               </div>
-              <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:gap-12">
+              <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12">
                 <Link prefetch={false} href={"/researchers/sign-up" as Route} className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pr-12">
                   Continue as researcher
                 </Link>
@@ -240,13 +243,13 @@ function PublicHome() {
             and the quiet chapter-three ground change is its silence-before, per
             feel.md's peak rules. */}
         <section className="relative overflow-hidden border-t border-border bg-surface-muted px-4 py-24 sm:px-6 sm:py-32">
-          <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
+          <div className="mx-auto grid grid-cols-1 max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
             <figure data-motion="chapter-figure" className="chapter-art-full relative order-2 -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:order-1 lg:mx-0 lg:h-[68vh]" aria-hidden="true">
               <AuditSeal />
               <figcaption className="sr-only">A notary-style audit seal, its ring reading RECEIVED, TRIAGED, DECIDED, RECORDED -- the real Unpatched report lifecycle.</figcaption>
             </figure>
             <div className="relative z-10 order-1 lg:order-2">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action">[ 04 ] /// </span>Chapter four</p>
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action-hover">[ 04 ] /// </span>Chapter four</p>
               <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Security work should leave a record.</h2>
               <p data-motion="chapter-body" className="mt-4 max-w-[54ch] text-base leading-relaxed text-ink-muted">Not a status that quietly changed. Not a decision no one can trace back to a reason.</p>
               <dl data-motion="chapter-body" className="mt-8 space-y-5 border-t border-border pt-6">

@@ -92,6 +92,23 @@ export async function markNotificationRead(notificationId: string): Promise<void
   }
 }
 
+/** "Mark all read" over the notifications the caller currently has loaded. Each id still
+ * goes through mark_notification_read, which only touches the caller's own rows, so a
+ * forged id gets no further than the per-item RPC would. One transaction so the batch
+ * lands or fails together. */
+// ponytail: loops the per-item RPC (no mark_all RPC exists); add a set-based
+// mark_all_notifications_read RPC if the batch ever grows past a few pages.
+export async function markNotificationsRead(notificationIds: string[]): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, async (client) => {
+      for (const id of notificationIds) await callRpc(client, "public.mark_notification_read", [id]);
+    });
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
 /** The header bell's real unread badge count -- same RLS-scoped pattern
  * services/reports.ts's countMyReportsNeedingResponse already uses, not a new RPC just
  * to answer one number. No notification is ever fabricated to fill this badge: 0 unread
