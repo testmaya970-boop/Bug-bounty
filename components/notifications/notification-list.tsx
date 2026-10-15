@@ -51,6 +51,11 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   report_disclosure_approved: "Your report was approved for public disclosure",
   report_disclosure_declined: "Your disclosure request was declined",
   report_disclosure_unpublished: "Your disclosed report was unpublished",
+  deposit_reported: "An organization reported a deposit to confirm",
+  deposit_confirmed: "Funds were added to your balance",
+  deposit_rejected: "A deposit could not be confirmed",
+  balance_low: "Your balance is running low",
+  invoice_issued: "A new invoice is ready",
 };
 
 function NotificationRow({ notification, onRead }: { notification: Notification; onRead: (id: string) => void }) {

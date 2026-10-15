@@ -5,7 +5,7 @@ import { withServiceRoleTransaction } from "@/lib/db/pool";
 // Shared plumbing for the third-party integration modules (identity, payments, phone).
 // Provider selection is configuration only (env vars); keys never reach the UI or the DB.
 
-export type IntegrationModule = "identity" | "payments" | "phone";
+export type IntegrationModule = "identity" | "payments" | "phone" | "cards";
 
 /** True only off production, or in the local prod-test harness. Sandbox providers simulate a
  * third party in-app and must never run where real people verify or get paid. */

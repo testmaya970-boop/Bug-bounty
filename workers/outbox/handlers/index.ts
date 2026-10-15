@@ -2,7 +2,7 @@ import { registerHandler } from "../registry";
 import { handleReportCreatedV1 } from "./report-created-v1";
 import { createReportOutcomeHandler } from "./reputation/report-outcome";
 import { handleBountyFinalizedV1 } from "./reputation/bounty-finalized-v1";
-import { createNotificationHandler, createPaymentNotificationHandler, createPlatformNotificationHandler } from "./notifications/notification-handler";
+import { createBillingNotificationHandler, createNotificationHandler, createPaymentNotificationHandler, createPlatformNotificationHandler } from "./notifications/notification-handler";
 import { handleJiraSync, JIRA_SYNC_EVENT_TYPES } from "./jira/jira-sync-handler";
 
 /** The complete handler registry for this slice. Importing this module (a side effect
@@ -82,4 +82,11 @@ registerHandler("report_disclosure.unpublished", 1, createPaymentNotificationHan
 
 // Jira outbound sync (db/migrations/202610010001_jira_integration.sql): one handler for
 // every report event Jira should see -- a no-op for an org without a Jira connection.
+// Billing (db/migrations/202610150002_payment_features.sql): enqueued by an audit_logs trigger.
+registerHandler("billing.deposit_reported", 1, createBillingNotificationHandler("deposit_reported"));
+registerHandler("billing.deposit_confirmed", 1, createBillingNotificationHandler("deposit_confirmed"));
+registerHandler("billing.deposit_rejected", 1, createBillingNotificationHandler("deposit_rejected"));
+registerHandler("billing.balance_low", 1, createBillingNotificationHandler("balance_low"));
+registerHandler("billing.invoice_issued", 1, createBillingNotificationHandler("invoice_issued"));
+
 for (const eventType of JIRA_SYNC_EVENT_TYPES) registerHandler(eventType, 1, handleJiraSync);

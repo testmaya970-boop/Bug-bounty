@@ -51,8 +51,14 @@ const LABELS: Record<NotificationType, string> = {
   report_disclosure_approved: "Your report was approved for public disclosure",
   report_disclosure_declined: "Your disclosure request was declined",
   report_disclosure_unpublished: "Your disclosed report was unpublished",
+  deposit_reported: "An organization reported a deposit to confirm",
+  deposit_confirmed: "Funds were added to your balance",
+  deposit_rejected: "A deposit could not be confirmed",
+  balance_low: "Your balance is running low",
+  invoice_issued: "A new invoice is ready",
 };
 
+const BILLING_TYPES = new Set<NotificationType>(["deposit_reported", "deposit_confirmed", "deposit_rejected", "balance_low", "invoice_issued"]);
 const PLATFORM_TYPES = new Set<NotificationType>(["program_suspended", "program_reinstated", "organization_suspended", "organization_reinstated"]);
 
 export type NotificationEmailInput = {
@@ -74,6 +80,14 @@ export function renderNotificationEmail(input: NotificationEmailInput): Rendered
   const program = sanitizeHeaderValue(input.programName);
   const organization = sanitizeHeaderValue(input.organizationName);
   const recipientName = sanitizeHeaderValue(input.recipientDisplayName);
+
+  if (BILLING_TYPES.has(input.notificationType)) {
+    // No report or program: the organization, and the database-written summary (amounts only).
+    const lines = [`Hello ${recipientName},`, "", `${label}.`, "", `Organization: ${organization}`, `When: ${input.occurredAt}`];
+    if (input.reason) lines.push("", input.reason);
+    lines.push("", "Sign in to Unpatched to see the details on the Payments page.");
+    return { subject: sanitizeHeaderValue(`Unpatched: ${label}: ${organization}`), text: lines.join("\n") };
+  }
 
   if (PLATFORM_TYPES.has(input.notificationType)) {
     // No report: name the program (program notices) or the organization instead. The reason

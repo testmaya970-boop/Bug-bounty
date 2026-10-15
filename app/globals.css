@@ -459,3 +459,20 @@ a:is(.glass-surface, .glass-surface-raised) { transition: transform 0.2s ease, b
      paragraph and buttons. Reserve its height below the CTAs instead. */
   .hero-art-host { padding-bottom: calc(24vh + 1.5rem); }
 }
+
+/* Printing an invoice prints only the invoice, not the app around it. */
+@media print {
+  body:has(.print-only-this) * {
+    visibility: hidden;
+  }
+  .print-only-this,
+  .print-only-this * {
+    visibility: visible;
+  }
+  .print-only-this {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: 0;
+  }
+}

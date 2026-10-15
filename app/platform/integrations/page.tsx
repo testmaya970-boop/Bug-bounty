@@ -10,7 +10,7 @@ import { getIntegrationStatuses, listPendingSandboxPayouts, listRecentIntegratio
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { formatMoney } from "../../../lib/money";
 
-const MODULE_LABEL = { identity: "Identity verification", payments: "Payouts", phone: "Phone verification" } as const;
+const MODULE_LABEL = { identity: "Identity verification", payments: "Payouts", cards: "Card funding", phone: "Phone verification" } as const;
 const MODE: Record<IntegrationStatus["mode"], { label: string; tone: string; note: string }> = {
   live: { label: "Live", tone: "bg-success/10 text-success", note: "Talking to the provider." },
   sandbox: { label: "Sandbox", tone: "bg-warning/15 text-warning", note: "Simulated in-app. Never runs in production." },

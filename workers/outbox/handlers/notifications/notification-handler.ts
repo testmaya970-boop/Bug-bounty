@@ -154,6 +154,12 @@ export function createPaymentNotificationHandler(notificationType: NotificationT
   return createEventRoutedHandler("public.route_payment_notifications", notificationType);
 }
 
+/** Billing notices (202610150002): a reported deposit to platform admins; confirmations,
+ * low balance and invoices to the organization's finance roles. */
+export function createBillingNotificationHandler(notificationType: NotificationType) {
+  return createEventRoutedHandler("public.route_billing_notifications", notificationType);
+}
+
 /** Routers that take (event id, notification type) and re-verify provenance themselves. */
 function createEventRoutedHandler(routerRpc: string, notificationType: NotificationType) {
   return async function handleEventRoutedNotification(event: OutboxEvent): Promise<void> {

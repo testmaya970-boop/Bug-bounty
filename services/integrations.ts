@@ -8,6 +8,7 @@ import { logIntegrationEvent, sandboxAllowed } from "@/lib/integrations/common";
 import { IDENTITY_ENV, identityProviderName, selectIdentityProvider, type IdentityRegion } from "@/lib/integrations/identity";
 import { PHONE_ENV, phoneProviderName, selectPhoneProvider, toE164 } from "@/lib/integrations/phone";
 import { PAYOUT_ENV, payoutProviderName } from "@/lib/payment-provider";
+import { CARD_ENV, cardProviderName } from "@/lib/integrations/card";
 
 export { OrganizationServiceError };
 
@@ -156,7 +157,7 @@ export async function checkPhoneCode(code: string): Promise<void> {
 // --- Platform overview --------------------------------------------------------------------
 
 export type IntegrationStatus = {
-  module: "identity" | "payments" | "phone";
+  module: "identity" | "payments" | "phone" | "cards";
   route: string;
   provider: string;
   mode: "none" | "manual" | "sandbox" | "live" | "misconfigured";
@@ -178,6 +179,8 @@ export function getIntegrationStatuses(): IntegrationStatus[] {
     status("identity", "Rest of world (document + selfie)", identityProviderName("GLOBAL"), IDENTITY_ENV),
     status("payments", "INR payouts (bank transfer)", payoutProviderName("INR"), PAYOUT_ENV),
     status("payments", "Other currencies (PayPal)", payoutProviderName("USD"), PAYOUT_ENV),
+    status("cards", "INR card top-ups (Razorpay)", cardProviderName("INR"), CARD_ENV),
+    status("cards", "USD card top-ups (Stripe)", cardProviderName("USD"), CARD_ENV),
     status("phone", "India (+91)", phoneProviderName("+91"), PHONE_ENV),
     status("phone", "Rest of world", phoneProviderName("+1"), PHONE_ENV),
   ];

@@ -15,9 +15,9 @@ import { getCurrentUser } from "../../lib/auth/current-user";
  * for anything that has actually shipped -- this page makes no claim beyond "we're
  * building this."
  */
-export default async function HaiPage() {
+export default async function AssistantPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/sign-in?redirectTo=/hai" as Route);
+  if (!user) redirect("/sign-in?redirectTo=/assistant" as Route);
 
   const alreadyOnWaitlist = await amIOnHaiWaitlist();
 
