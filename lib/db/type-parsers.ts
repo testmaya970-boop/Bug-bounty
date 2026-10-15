@@ -193,6 +193,10 @@ export async function ensureEnumArrayTypeParsers(pool: Pool): Promise<void> {
         pgTypes.setTypeParser(arrayOid, (value: string) => arrayParser.create(value, (v) => v).parse());
       }
     })();
+    // A failed attempt is forgotten so the next call retries. Caching the rejected promise
+    // turned one database blip at startup into a server that failed every request, in
+    // milliseconds, until it was restarted.
+    registration.catch(() => registeredPools.delete(pool));
     registeredPools.set(pool, registration);
   }
   return registration;

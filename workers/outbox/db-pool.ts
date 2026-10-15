@@ -29,7 +29,12 @@ let pool: Pool | null = null;
 async function getPool(): Promise<Pool> {
   if (!pool) {
     const env = getNativeEnv();
-    pool = new Pool({ connectionString: env.DATABASE_URL, max: 5 });
+    pool = new Pool({ connectionString: env.DATABASE_URL, max: 5, keepAlive: true });
+    // Same as lib/db/pool.ts: a connection the database closed while idle is dropped and
+    // logged, and the worker keeps going on fresh connections.
+    pool.on("error", (error) => {
+      console.error(`[outbox-worker] idle connection lost: ${error.message}`);
+    });
   }
   // The worker is a separate Node.js process from Next.js's own -- pg's type-parser
   // registry is process-global, so this must run against the worker's own pool too. See
@@ -44,16 +49,20 @@ async function getPool(): Promise<Pool> {
 
 async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await (await getPool()).connect();
+  // A connection too broken to roll back is destroyed, not returned to the pool.
+  let broken: Error | undefined;
   try {
     await client.query("begin");
     const result = await fn(client);
     await client.query("commit");
     return result;
   } catch (error) {
-    await client.query("rollback").catch(() => {});
+    await client.query("rollback").catch((rollbackError: Error) => {
+      broken = rollbackError;
+    });
     throw error;
   } finally {
-    client.release();
+    client.release(broken);
   }
 }
 

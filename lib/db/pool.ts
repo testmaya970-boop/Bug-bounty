@@ -26,6 +26,15 @@ async function getPool(): Promise<Pool> {
       // Server-side backstops so one stuck query or abandoned transaction can't pin a
       // connection forever.
       options: "-c statement_timeout=30000 -c idle_in_transaction_session_timeout=30000",
+      // Notice dead TCP connections (database restart, network drop) instead of handing
+      // them out.
+      keepAlive: true,
+    });
+    // An idle connection the database closed (restart, idle timeout) emits here. pg drops
+    // that client from the pool on its own; without a listener the error would be thrown
+    // as an unhandled event. Logged so an outage is visible, then the pool reconnects.
+    pool.on("error", (error) => {
+      console.error(`[db] idle connection lost: ${error.message}`);
     });
   }
   // See lib/db/type-parsers.ts for why this is needed (pg does not auto-parse
@@ -90,24 +99,34 @@ export async function setActorClaims(client: PoolClient, claims: { sub: string; 
 export async function withClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await (await getPool()).connect();
   try {
-    return await fn(client);
-  } finally {
+    const result = await fn(client);
     client.release();
+    return result;
+  } catch (error) {
+    // No transaction to roll back here, so a failed query may mean a dead connection:
+    // discard it rather than lend it to the next request (a fresh one costs one connect).
+    client.release(error instanceof Error ? error : true);
+    throw error;
   }
 }
 
 export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await (await getPool()).connect();
+  // Set when the connection itself is broken (the rollback can't even run): the client is
+  // destroyed on release instead of going back into the pool for the next request.
+  let broken: Error | undefined;
   try {
     await client.query("begin");
     const result = await fn(client);
     await client.query("commit");
     return result;
   } catch (error) {
-    await client.query("rollback").catch(() => {});
+    await client.query("rollback").catch((rollbackError: Error) => {
+      broken = rollbackError;
+    });
     throw error;
   } finally {
-    client.release();
+    client.release(broken);
   }
 }
 
