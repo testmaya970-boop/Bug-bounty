@@ -3,33 +3,32 @@
 import React, { useMemo, useState } from "react";
 import { SectionLabel } from "../ui/security-primitives";
 import { cn } from "../../lib/cn";
-import type { MockCtfLeaderboardRow } from "../../lib/mock/ctf";
-import type { MockResearcherLevel } from "../../lib/mock/researcher-dashboard";
+import type { CtfLeaderboardRow, CtfLevel } from "../../services/ctf";
 
-type SortKey = "ctfPoints" | "challengesSolved" | "fastestSolveMinutes";
-const SORT_OPTIONS: { key: SortKey; label: string; ascending?: boolean }[] = [
+type SortKey = "ctfPoints" | "challengesSolved";
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "ctfPoints", label: "Points" },
   { key: "challengesSolved", label: "Solved" },
-  { key: "fastestSolveMinutes", label: "Fastest solve", ascending: true },
 ];
-const LEVEL_OPTIONS: MockResearcherLevel[] = ["Distinguished", "Expert", "Specialist", "Practitioner", "Apprentice"];
+const LEVEL_OPTIONS: CtfLevel[] = ["Distinguished", "Expert", "Specialist", "Practitioner", "Apprentice"];
 
 // Shared by header and data rows so columns can never drift -- same recipe as
 // components/researchers/leaderboard-table.tsx's own GRID_COLS, with CTF-specific
 // columns (Rank / Researcher (+ distance track) / Points / Solved / Fastest solve /
 // Level), never the real reputation ledger's vocabulary.
-const GRID_COLS = "grid-cols-[2.5rem_minmax(0,1fr)_5.5rem_4.5rem] lg:grid-cols-[2.5rem_minmax(0,1fr)_6rem_5rem_7rem_6.5rem]";
+const GRID_COLS = "grid-cols-[2.5rem_minmax(0,1fr)_5.5rem_4.5rem] lg:grid-cols-[2.5rem_minmax(0,1fr)_6rem_5rem_6.5rem]";
 
 /**
  * The CTF section's own leaderboard -- deliberately gamified vocabulary (points, rank,
- * fastest solve), never the real reputation ledger's "confirmed outcomes" language.
- * Reads MOCK_CTF_LEADERBOARD only; never merged with /researchers' own MOCK_LEADERBOARD.
+ * solved), never the real reputation ledger's "confirmed outcomes" language.
+ * Real standings from ctf_solves (get_ctf_leaderboard); never merged with /researchers' own
+ * reputation leaderboard.
  * Structural clone of components/researchers/leaderboard-table.tsx's filter/sort/
  * distance-bar/"You"-row recipe.
  */
-export function CtfLeaderboardTable({ rows, myUsername }: { rows: MockCtfLeaderboardRow[]; myUsername?: string }) {
+export function CtfLeaderboardTable({ rows, myResearcherId }: { rows: CtfLeaderboardRow[]; myResearcherId?: string }) {
   const [search, setSearch] = useState("");
-  const [levelFilter, setLevelFilter] = useState<MockResearcherLevel | "">("");
+  const [levelFilter, setLevelFilter] = useState<CtfLevel | "">("");
   const [sortKey, setSortKey] = useState<SortKey>("ctfPoints");
 
   const leaderPoints = rows[0]?.ctfPoints ?? 1;
@@ -38,11 +37,10 @@ export function CtfLeaderboardTable({ rows, myUsername }: { rows: MockCtfLeaderb
     let filtered = rows;
     if (search.trim()) {
       const term = search.trim().toLowerCase();
-      filtered = filtered.filter((row) => row.username.toLowerCase().includes(term));
+      filtered = filtered.filter((row) => row.name.toLowerCase().includes(term));
     }
     if (levelFilter) filtered = filtered.filter((row) => row.level === levelFilter);
-    const ascending = SORT_OPTIONS.find((o) => o.key === sortKey)?.ascending ?? false;
-    return [...filtered].sort((a, b) => (ascending ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey]));
+    return [...filtered].sort((a, b) => b[sortKey] - a[sortKey]);
   }, [rows, search, levelFilter, sortKey]);
 
   function handleReset() {
@@ -59,20 +57,19 @@ export function CtfLeaderboardTable({ rows, myUsername }: { rows: MockCtfLeaderb
           <SectionLabel>CTF leaderboard</SectionLabel>
           <h2 className="mt-1 text-lg font-semibold text-ink">Every ranked challenger</h2>
         </div>
-        <span className="shrink-0 rounded-full border border-border-strong px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Preview</span>
       </div>
-      <p className="mt-1 text-xs text-ink-muted">Mock data: a preview leaderboard, not a ranking against real other researchers.</p>
+      <p className="mt-1 text-xs text-ink-muted">Points from flags you capture here. Ties go to whoever got there first.</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <label className="sr-only" htmlFor="ctf-leaderboard-search">
-          Search researchers by username
+          Search researchers by name
         </label>
         <input
           id="ctf-leaderboard-search"
           type="text"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by username"
+          placeholder="Search by name"
           className="min-h-10 min-w-0 flex-1 rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30 sm:max-w-56"
         />
         <label className="sr-only" htmlFor="ctf-leaderboard-level-filter">
@@ -81,7 +78,7 @@ export function CtfLeaderboardTable({ rows, myUsername }: { rows: MockCtfLeaderb
         <select
           id="ctf-leaderboard-level-filter"
           value={levelFilter}
-          onChange={(event) => setLevelFilter(event.target.value as MockResearcherLevel | "")}
+          onChange={(event) => setLevelFilter(event.target.value as CtfLevel | "")}
           className="min-h-10 rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30"
         >
           <option value="">All levels</option>
@@ -124,7 +121,9 @@ export function CtfLeaderboardTable({ rows, myUsername }: { rows: MockCtfLeaderb
 
       <div className="mt-2">
         {visibleRows.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border-strong bg-surface p-8 text-center text-sm text-ink-muted">No challenger matches these filters.</p>
+          <p className="rounded-lg border border-dashed border-border-strong bg-surface p-8 text-center text-sm text-ink-muted">
+            {rows.length === 0 ? "Nobody has captured a flag yet. Solve a challenge to take the top spot." : "No challenger matches these filters."}
+          </p>
         ) : (
           <div role="table" aria-label="CTF leaderboard" className="overflow-hidden rounded-lg border border-border bg-surface">
             <div role="row" className={cn("grid items-center gap-3 border-b border-border bg-surface-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted", GRID_COLS)}>
@@ -136,9 +135,6 @@ export function CtfLeaderboardTable({ rows, myUsername }: { rows: MockCtfLeaderb
               <span role="columnheader" className="text-right">
                 Solved
               </span>
-              <span role="columnheader" className="hidden text-right lg:block">
-                Fastest solve
-              </span>
               <span role="columnheader" className="hidden lg:block">
                 Level
               </span>
@@ -147,23 +143,23 @@ export function CtfLeaderboardTable({ rows, myUsername }: { rows: MockCtfLeaderb
             {visibleRows.map((row) => {
               const distancePct = Math.round((row.ctfPoints / leaderPoints) * 1000) / 10;
               const gap = leaderPoints - row.ctfPoints;
-              const isMe = myUsername && row.username === myUsername;
+              const isMe = myResearcherId !== undefined && row.researcherId === myResearcherId;
               return (
-                <div key={row.username} role="row" className={cn("grid items-center gap-3 border-b border-border px-3 py-2.5 last:border-0", GRID_COLS, isMe && "bg-action/5")}>
+                <div key={row.researcherId} role="row" className={cn("grid items-center gap-3 border-b border-border px-3 py-2.5 last:border-0", GRID_COLS, isMe && "bg-action/5")}>
                   <span role="cell" className="font-mono text-xs font-semibold text-ink-muted">
                     #{row.rank}
                   </span>
 
                   <div role="cell" className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-ink">{row.username}</p>
+                      <p className="truncate text-sm font-semibold text-ink">{row.name}</p>
                       {isMe && <span className="shrink-0 rounded-full bg-action/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-action">You</span>}
                     </div>
                     <div className="relative mt-1.5 h-2 w-full max-w-md overflow-hidden rounded-full bg-surface-muted">
                       <div className="h-full rounded-full bg-action motion-safe:transition-[width] motion-safe:duration-150" style={{ width: `${distancePct}%`, opacity: Math.max(0.35, 1 - (row.rank - 1) * 0.045) }} />
                     </div>
                     <p className="mt-1 font-mono text-[11px] text-ink-muted lg:hidden">
-                      {row.level} · {row.fastestSolveMinutes} min fastest
+                      {row.level}
                       {row.rank > 1 && <span className="text-danger"> · −{gap.toLocaleString("en-US")} behind #1</span>}
                     </p>
                     {row.rank > 1 && <p className="mt-0.5 hidden font-mono text-[11px] text-danger lg:block">−{gap.toLocaleString("en-US")} behind #1</p>}
@@ -174,9 +170,6 @@ export function CtfLeaderboardTable({ rows, myUsername }: { rows: MockCtfLeaderb
                   </span>
                   <span role="cell" className="text-right font-mono text-xs tabular-nums text-ink-muted">
                     {row.challengesSolved}
-                  </span>
-                  <span role="cell" className="hidden text-right font-mono text-xs tabular-nums text-ink-muted lg:block">
-                    {row.fastestSolveMinutes} min
                   </span>
                   <span role="cell" className="hidden truncate text-xs font-medium text-ink-muted lg:block">
                     {row.level}

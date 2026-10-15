@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog } from "../ui/navigation";
 import { Button } from "../ui/button";
-import { Input } from "../ui/form";
+import { Input, Select } from "../ui/form";
 import { createBountyPolicyVersionAction } from "../../actions/bounty";
 import { minorUnitsToDecimalString, parseDecimalToMinorUnits } from "../../lib/money";
 import type { BountyPolicy } from "../../types/bounty";
@@ -78,7 +78,7 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"edit" | "confirm">("edit");
-  const [currency, setCurrency] = useState(currentPolicy?.currency ?? "USD");
+  const [currency, setCurrency] = useState<"USD" | "INR">(currentPolicy?.currency === "INR" ? "INR" : "USD");
   const [ranges, setRanges] = useState<RangeInputs>(() => defaultRangeInputs(currentPolicy));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -87,7 +87,7 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
     if (pending) return;
     setOpen(false);
     setStep("edit");
-    setCurrency(currentPolicy?.currency ?? "USD");
+    setCurrency(currentPolicy?.currency === "INR" ? "INR" : "USD");
     setRanges(defaultRangeInputs(currentPolicy));
     setError(null);
   }
@@ -104,12 +104,13 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
   }
 
   function handleContinue() {
-    if (!/^[A-Za-z]{3}$/.test(currency.trim())) {
-      setError("Use a 3-letter currency code, e.g. USD.");
+    const parsed = parsedRanges();
+    if (!parsed) {
+      setError("Enter a valid amount for every severity tier, with minimum no greater than maximum.");
       return;
     }
-    if (!parsedRanges()) {
-      setError("Enter a valid amount for every severity tier, with minimum no greater than maximum.");
+    if (parsed.critical.max === 0) {
+      setError("A bounty table must pay something: set at least the Critical maximum above zero.");
       return;
     }
     setError(null);
@@ -121,7 +122,7 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
     if (!parsed) return;
     setError(null);
     startTransition(async () => {
-      const result = await createBountyPolicyVersionAction({ organizationId, programId, currency: currency.trim().toUpperCase(), ranges: parsed });
+      const result = await createBountyPolicyVersionAction({ organizationId, programId, currency, ranges: parsed });
       if (!result.ok) {
         setError(result.message);
         return;
@@ -147,7 +148,11 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
                 This replaces version {currentPolicy.versionNumber}. Reports already calculated or finalized under it are never affected.
               </p>
             )}
-            <Input label="Currency" required value={currency} onChange={(event) => setCurrency(event.target.value)} maxLength={3} className="max-w-24 [&_input]:uppercase" />
+            {/* Awards are paid from the prepaid balance, which holds INR and USD only. */}
+            <Select label="Currency" value={currency} onChange={(event) => setCurrency(event.target.value === "INR" ? "INR" : "USD")} className="max-w-32">
+              <option value="USD">USD</option>
+              <option value="INR">INR</option>
+            </Select>
             <div className="space-y-2">
               {SEVERITY_TIERS.map((severity) => (
                 <div key={severity} className="flex flex-wrap items-end gap-2">

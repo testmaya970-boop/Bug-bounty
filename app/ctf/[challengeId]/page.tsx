@@ -8,7 +8,7 @@ import { SectionLabel, MetadataPair } from "../../../components/ui/security-prim
 import { DifficultyBadge, CtfCategoryBadge } from "../../../components/ui/badge";
 import { FlagSubmissionForm } from "../../../components/ctf/flag-submission-form";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { listMyCtfSolves } from "../../../services/ctf";
+import { getCtfSolveCounts, listMyCtfSolves } from "../../../services/ctf";
 import { findCtfChallengeBySlug, findCtfTrackById, MOCK_CTF_CATEGORY_META } from "../../../lib/mock/ctf";
 import { getCtfMaterial } from "../../../lib/ctf-material";
 
@@ -46,7 +46,7 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
   const track = challenge.trackId ? findCtfTrackById(challenge.trackId) : undefined;
   const categoryLabel = MOCK_CTF_CATEGORY_META[challenge.categoryId].label;
   const { embed: embeddedData, files: artifacts } = getCtfMaterial(challenge.id);
-  const solves = await listMyCtfSolves();
+  const [solves, solveCounts] = await Promise.all([listMyCtfSolves(), getCtfSolveCounts()]);
   const existingSolve = solves.find((solve) => solve.challengeId === challenge.id) ?? null;
 
   return (
@@ -124,11 +124,10 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
                 <MetadataPair label="Category" value={categoryLabel} />
                 <MetadataPair label="Difficulty" value={challenge.difficulty} />
                 <MetadataPair label="Points" value={challenge.points} />
-                <MetadataPair label="Solves (preview)" value={challenge.solveCount.toLocaleString("en-US")} />
+                <MetadataPair label="Solves" value={(solveCounts.get(challenge.id) ?? 0).toLocaleString("en-US")} />
                 <MetadataPair label="Est. time" value={`~${challenge.estimatedMinutes} min`} />
                 {track && <MetadataPair label="Track" value={track.label} />}
               </div>
-              <p className="mt-3 text-xs text-ink-muted">Mock data: the solve count is a preview figure, not a real tally of other researchers. Your own flag submission below is server-verified and real.</p>
               <div className="mt-5 border-t border-border pt-5">
                 <FlagSubmissionForm challenge={challenge} initialSolve={existingSolve} />
               </div>

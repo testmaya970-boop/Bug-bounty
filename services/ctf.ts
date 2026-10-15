@@ -57,3 +57,48 @@ export async function listCtfSolvesForActor(actorId: string): Promise<CtfSolve[]
     mapError(error as { message: string });
   }
 }
+
+/** A real row of the CTF leaderboard (get_ctf_leaderboard over ctf_solves). */
+export type CtfLeaderboardRow = { rank: number; researcherId: string; name: string; ctfPoints: number; challengesSolved: number; level: CtfLevel };
+export type CtfLevel = "Distinguished" | "Expert" | "Specialist" | "Practitioner" | "Apprentice";
+
+/** Level by standing among everyone ranked: top 10% Distinguished, and so on down. */
+export function ctfLevelFor(rank: number, total: number): CtfLevel {
+  const pct = (total - rank + 1) / total;
+  if (pct > 0.9) return "Distinguished";
+  if (pct > 0.7) return "Expert";
+  if (pct > 0.45) return "Specialist";
+  if (pct > 0.2) return "Practitioner";
+  return "Apprentice";
+}
+
+export async function getCtfLeaderboard(limit = 100): Promise<CtfLeaderboardRow[]> {
+  const actor = await getCurrentUser();
+  type Row = { rank: string; researcher_id: string; display_name: string; public_username: string | null; points: string; challenges_solved: string };
+  let rows: Row[];
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<Row>(client, "public.get_ctf_leaderboard", [limit]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((r) => ({
+    rank: Number(r.rank),
+    researcherId: r.researcher_id,
+    name: r.public_username ?? r.display_name,
+    ctfPoints: Number(r.points),
+    challengesSolved: Number(r.challenges_solved),
+    level: ctfLevelFor(Number(r.rank), rows.length),
+  }));
+}
+
+/** Real solves per challenge id. A challenge nobody has solved is absent (read it as 0). */
+export async function getCtfSolveCounts(): Promise<Map<string, number>> {
+  const actor = await getCurrentUser();
+  let rows: { challenge_id: string; solves: string }[];
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<{ challenge_id: string; solves: string }>(client, "public.get_ctf_solve_counts"));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return new Map(rows.map((r) => [r.challenge_id, Number(r.solves)]));
+}

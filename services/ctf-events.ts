@@ -1,6 +1,7 @@
 import "server-only";
 import { withActorTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { RETIRED_CTF_CHALLENGE_IDS } from "@/lib/mock/ctf";
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
 import type {
   CtfEventSummary,
@@ -23,9 +24,21 @@ type EventRow = { id: string; slug: string; name: string; description: string; s
 
 export async function listCtfEvents(): Promise<CtfEventSummary[]> {
   const actor = await getCurrentUser();
-  let rows;
+  let rows: EventRow[];
+  let liveCount: Map<string, number>;
   try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<EventRow>(client, "public.list_ctf_events"));
+    ({ rows, liveCount } = await withActorTransaction(actor?.id ?? null, async (client) => {
+      const events = await callRpc<EventRow>(client, "public.list_ctf_events");
+      // Retired challenges (RETIRED_CTF_CHALLENGE_IDS) no longer exist for players, so a card
+      // counts only the live ones, matching the event page.
+      const { rows: links } = await client.query<{ event_id: string; challenge_id: string }>(
+        "select event_id, challenge_id from public.ctf_event_challenges where event_id = any($1)",
+        [events.map((e) => e.id)],
+      );
+      const counts = new Map<string, number>();
+      for (const link of links) if (!RETIRED_CTF_CHALLENGE_IDS.has(link.challenge_id)) counts.set(link.event_id, (counts.get(link.event_id) ?? 0) + 1);
+      return { rows: events, liveCount: counts };
+    }));
   } catch (error) {
     mapError(error as { message: string });
   }
@@ -37,7 +50,7 @@ export async function listCtfEvents(): Promise<CtfEventSummary[]> {
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     effectiveStatus: row.effective_status as CtfEventEffectiveStatus,
-    challengeCount: Number(row.challenge_count),
+    challengeCount: liveCount.get(row.id) ?? 0,
   }));
 }
 

@@ -9,7 +9,9 @@ import type { BountyPolicy, ReportBountyDecision } from "@/types/bounty";
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
 const uuidSchema = z.string().uuid();
-const currencySchema = z.string().regex(/^[A-Z]{3}$/, "Use a 3-letter currency code, e.g. USD.");
+// The prepaid balance (202610140004) holds INR and USD only; a bounty in any other currency
+// could never be paid.
+const currencySchema = z.enum(["USD", "INR"], { message: "Choose USD or INR." });
 const amountSchema = z.number().int().nonnegative();
 const rangeSchema = z.object({ min: amountSchema, max: amountSchema }).refine((range) => range.min <= range.max, { message: "Minimum cannot exceed maximum." });
 
@@ -36,7 +38,9 @@ const createPolicySchema = z.object({
   organizationId: uuidSchema,
   programId: uuidSchema,
   currency: currencySchema,
-  ranges: z.object({ none: rangeSchema, low: rangeSchema, medium: rangeSchema, high: rangeSchema, critical: rangeSchema }),
+  ranges: z
+    .object({ none: rangeSchema, low: rangeSchema, medium: rangeSchema, high: rangeSchema, critical: rangeSchema })
+    .refine((r) => r.critical.max > 0, { message: "A bounty table must pay something: set at least the Critical maximum above zero." }),
 });
 
 export async function createBountyPolicyVersionAction(input: z.infer<typeof createPolicySchema>): Promise<ActionResult<BountyPolicy>> {

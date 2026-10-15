@@ -9,14 +9,12 @@ import { ChallengeGrid } from "../../components/ctf/challenge-grid";
 import { CtfLeaderboardTable } from "../../components/ctf/ctf-leaderboard-table";
 import { CtfEventsList } from "../../components/ctf/ctf-events-list";
 import { getCurrentUser } from "../../lib/auth/current-user";
-import { listMyCtfSolves } from "../../services/ctf";
+import { getCtfLeaderboard, listMyCtfSolves } from "../../services/ctf";
 import { listCtfEvents } from "../../services/ctf-events";
 import { perfTimed } from "../../lib/perf-trace";
 import {
   MOCK_CTF_CHALLENGES,
   MOCK_CTF_TRACKS,
-  MOCK_CTF_LEADERBOARD,
-  MOCK_MY_CTF_POSITION,
   MOCK_CTF_TOTAL_POINTS_AVAILABLE,
   type CtfCategoryId,
 } from "../../lib/mock/ctf";
@@ -46,6 +44,7 @@ async function renderCtfPage({ searchParams }: { searchParams: Promise<{ categor
   const totalPointsEarned = solves.reduce((sum, solve) => sum + solve.pointsAwarded, 0);
   // Only the Events tab needs the event list -- each tab fetches only what it renders.
   const events = activeTab === "events" ? await perfTimed("CTF: listCtfEvents", () => listCtfEvents()) : [];
+  const leaderboard = activeTab === "leaderboard" ? await perfTimed("CTF: getCtfLeaderboard", () => getCtfLeaderboard()) : [];
 
   return (
     <AppShell title="CTF" user={user}>
@@ -88,7 +87,7 @@ async function renderCtfPage({ searchParams }: { searchParams: Promise<{ categor
         </div>
 
         {activeTab === "leaderboard" ? (
-          <CtfLeaderboardTable rows={MOCK_CTF_LEADERBOARD} myUsername={MOCK_MY_CTF_POSITION.username} />
+          <CtfLeaderboardTable rows={leaderboard} myResearcherId={user.id} />
         ) : activeTab === "events" ? (
           <CtfEventsList events={events} />
         ) : (
