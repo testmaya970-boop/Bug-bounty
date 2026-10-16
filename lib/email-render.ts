@@ -2,6 +2,7 @@
 // reachable from the standalone outbox worker process, not just Next.js Server
 // Components/Actions, and the guard throws unconditionally outside webpack/Turbopack.
 import type { NotificationType } from "@/types/notifications";
+import { NOTIFICATION_LABELS } from "@/lib/notification-labels";
 
 /**
  * Plain text only -- deliberately, not a shortcut. Report titles, program names, and
@@ -20,43 +21,7 @@ function sanitizeHeaderValue(value: string): string {
   return value.replace(/[\r\n]+/g, " ").trim();
 }
 
-const LABELS: Record<NotificationType, string> = {
-  report_created: "A new report was submitted",
-  report_needs_information: "The organization requested more information",
-  report_resolved: "Your report was resolved",
-  report_duplicate: "Your report was marked as a duplicate",
-  report_informative: "Your report was marked informative",
-  report_not_applicable: "Your report was marked not applicable",
-  report_rejected: "Your report was rejected",
-  bounty_finalized: "A bounty was finalized for your report",
-  report_triage_started: "Your report has entered triage",
-  report_accepted: "Your report was accepted",
-  report_message_posted: "There's a new message on a report",
-  program_suspended: "A program was suspended by the platform",
-  program_reinstated: "A program was reinstated by the platform",
-  organization_suspended: "Your organization was suspended by the platform",
-  organization_reinstated: "Your organization was reinstated by the platform",
-  bounty_adjusted: "The bounty for your report was adjusted",
-  payment_scheduled: "A bounty payment to you was scheduled",
-  payment_succeeded: "A bounty payment to you was sent",
-  payment_failed: "A bounty payment to you could not be completed",
-  payment_cancelled: "A bounty payment to you was cancelled",
-  report_mediation_opened: "A researcher requested mediation on a report",
-  report_assigned: "A report was assigned to you",
-  report_retest_requested: "A researcher asked for a retest",
-  report_retest_decided: "Your retest request was decided",
-  report_mediation_resolved: "Your mediation request was answered",
-  report_reopened: "Your resolved report was reopened",
-  report_disclosure_requested: "A researcher asked to publish a report",
-  report_disclosure_approved: "Your report was approved for public disclosure",
-  report_disclosure_declined: "Your disclosure request was declined",
-  report_disclosure_unpublished: "Your disclosed report was unpublished",
-  deposit_reported: "An organization reported a deposit to confirm",
-  deposit_confirmed: "Funds were added to your balance",
-  deposit_rejected: "A deposit could not be confirmed",
-  balance_low: "Your balance is running low",
-  invoice_issued: "A new invoice is ready",
-};
+const LABELS = NOTIFICATION_LABELS;
 
 const BILLING_TYPES = new Set<NotificationType>(["deposit_reported", "deposit_confirmed", "deposit_rejected", "balance_low", "invoice_issued"]);
 const PLATFORM_TYPES = new Set<NotificationType>(["program_suspended", "program_reinstated", "organization_suspended", "organization_reinstated"]);

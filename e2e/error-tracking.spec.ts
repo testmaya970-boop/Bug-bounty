@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 import { passMfaGate } from "./mfa-gate";
 
 // In-house error tracking end to end: an uncaught browser error is reported

@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Response } from "@playwright/test";
+import { test, expect, type Page, type Response } from "./qa-test";
 
 // seed:e2e researcher -- the earlier demo.researcher account is created by no seed script,
 // so this spec could only pass on the one machine where it was hand-made.

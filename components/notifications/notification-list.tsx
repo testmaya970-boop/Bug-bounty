@@ -9,54 +9,10 @@ import { cn } from "../../lib/cn";
 import { markNotificationReadAction, markNotificationsReadAction, listNotificationsPageAction } from "../../actions/notifications";
 import { notificationLink } from "../../lib/notification-links";
 import { emitNotificationRead } from "../../lib/notification-events";
-import type { Notification, NotificationType } from "../../types/notifications";
+import type { Notification } from "../../types/notifications";
 import { LocalTime } from "../ui/local-time";
+import { NOTIFICATION_LABELS } from "../../lib/notification-labels";
 
-/** Honest, content-free labels -- no report title/description is ever available here by
- * design (see docs/decisions/0017-notification-routing-and-delivery-foundation.md).
- * Clicking through re-reads the actual report through its own, still-current
- * authorization -- a recipient who has since lost access sees this page's own permission-
- * denied state there, with no special-casing needed here. Every current type links to the
- * same report detail route -- it is the one destination safe and correct for both the
- * organization side (report_created) and the researcher side (every terminal outcome and
- * bounty_finalized), so no per-type destination branching exists to get wrong. */
-const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
-  report_created: "A new report was submitted",
-  report_needs_information: "The organization requested more information",
-  report_resolved: "A report was resolved",
-  report_duplicate: "A report was marked as a duplicate",
-  report_informative: "A report was marked informative",
-  report_not_applicable: "A report was marked not applicable",
-  report_rejected: "A report was rejected",
-  bounty_finalized: "A bounty was finalized",
-  report_triage_started: "A report entered triage",
-  report_accepted: "A report was accepted",
-  report_message_posted: "A new message was posted on a report",
-  program_suspended: "A program was suspended by the platform",
-  program_reinstated: "A program was reinstated by the platform",
-  organization_suspended: "Your organization was suspended by the platform",
-  organization_reinstated: "Your organization was reinstated by the platform",
-  bounty_adjusted: "The bounty for your report was adjusted",
-  payment_scheduled: "A bounty payment to you was scheduled",
-  payment_succeeded: "A bounty payment to you was sent",
-  payment_failed: "A bounty payment to you could not be completed",
-  payment_cancelled: "A bounty payment to you was cancelled",
-  report_mediation_opened: "A researcher requested mediation on a report",
-  report_assigned: "A report was assigned to you",
-  report_retest_requested: "A researcher asked for a retest",
-  report_retest_decided: "Your retest request was decided",
-  report_mediation_resolved: "Your mediation request was answered",
-  report_reopened: "Your resolved report was reopened",
-  report_disclosure_requested: "A researcher asked to publish a report",
-  report_disclosure_approved: "Your report was approved for public disclosure",
-  report_disclosure_declined: "Your disclosure request was declined",
-  report_disclosure_unpublished: "Your disclosed report was unpublished",
-  deposit_reported: "An organization reported a deposit to confirm",
-  deposit_confirmed: "Funds were added to your balance",
-  deposit_rejected: "A deposit could not be confirmed",
-  balance_low: "Your balance is running low",
-  invoice_issued: "A new invoice is ready",
-};
 
 function NotificationRow({ notification, onRead }: { notification: Notification; onRead: (id: string) => void }) {
   const [pending, startTransition] = useTransition();
@@ -80,7 +36,7 @@ function NotificationRow({ notification, onRead }: { notification: Notification;
       </div>
       <div className="min-w-0 flex-1 pb-1">
         <span className="sr-only">{isRead ? "Read: " : "Unread: "}</span>
-        <p className={cn("truncate text-sm", isRead ? "font-normal text-ink-muted" : "font-semibold text-ink")}>{NOTIFICATION_TYPE_LABELS[notification.notificationType]}</p>
+        <p className={cn("truncate text-sm", isRead ? "font-normal text-ink-muted" : "font-semibold text-ink")}>{NOTIFICATION_LABELS[notification.notificationType]}</p>
         <p className="mt-0.5 font-mono text-xs text-ink-muted">
           {notification.programName && <>{notification.programName} · </>}
           <LocalTime value={notification.createdAt} />

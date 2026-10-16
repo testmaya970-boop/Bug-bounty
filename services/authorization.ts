@@ -6,15 +6,9 @@ export function requireAuthenticated(user: AuthenticatedUser | null): asserts us
   if (!user) throw new AuthorizationError("Authentication required");
 }
 
-export function requirePlatformAdmin(user: AuthenticatedUser | null) {
-  requireAuthenticated(user);
-  if (user.platformRole !== "platform_admin") throw new AuthorizationError();
-}
-
-export function requireOrganizationRole(user: AuthenticatedUser | null, membership: OrganizationMembership | null, organizationId: string, allowed: OrganizationMembership["role"][]) {
-  requireAuthenticated(user);
-  if (!membership || membership.userId !== user.id || membership.organizationId !== organizationId || membership.status !== "active" || !allowed.includes(membership.role)) throw new AuthorizationError();
-}
+// Platform-admin and organization-role checks live in the database (private.is_platform_admin,
+// which also requires an MFA-verified session, and private.has_org_role). The TS helpers that
+// once mirrored them read the retired users.platform_role column and were removed (Oct 2026).
 
 // --- Organization role capability model ---------------------------------------------
 // This is the single source of truth for "what can this role do" text shown in the
@@ -116,7 +110,7 @@ const ACCESS_SUMMARIES: Record<OrganizationRole, OrganizationAccessSummary> = {
     can: [
       "Everything a Security Admin can do",
       "Invite other owners and change anyone's role",
-      "Manage organization identity and settings",
+      "Manage organization identity and settings (Security Admins can edit the description too)",
     ],
     cannot: [],
     note: "An organization always keeps at least one owner.",
@@ -129,11 +123,11 @@ const ACCESS_SUMMARIES: Record<OrganizationRole, OrganizationAccessSummary> = {
       "Create, launch, pause, and close every program",
       "Edit scope, program settings, and researcher access on every program",
       "Read and triage every report, and decide bounties",
-      "Run payouts and see platform fees",
+      "Add funds, pay awarded bounties from the balance, and see platform fees",
       "Invite, suspend, and remove members (except owners), and assign program teams",
       "Connect and manage integrations (Jira)",
     ],
-    cannot: ["Change an existing member's role", "Invite or remove owners"],
+    cannot: ["Change an existing member's role", "Invite or remove owners", "Record a payout as sent (Unpatched does that)"],
   },
   program_manager: {
     role: "program_manager",
@@ -142,7 +136,7 @@ const ACCESS_SUMMARIES: Record<OrganizationRole, OrganizationAccessSummary> = {
     can: [
       "Run the programs they are assigned to: scope, settings, researcher access, launch and pause",
       "Read and triage every report in those programs",
-      "Decide and finalize bounty amounts in those programs",
+      "Decide and finalize bounty amounts in those programs (the award is refused if the organization's balance or the program's budget can't cover it)",
     ],
     cannot: ["See programs they are not assigned to", "Run payouts or see platform fees", "Manage organization members or roles"],
   },
@@ -162,9 +156,10 @@ const ACCESS_SUMMARIES: Record<OrganizationRole, OrganizationAccessSummary> = {
     organizationAccess: "Limited",
     can: [
       "See every bounty payment and platform fee (Payments page)",
-      "Create payment obligations and record payouts",
+      "Add funds, set program budgets and low-balance alerts, and pay awarded bounties from the balance",
+      "Download the organization's platform-fee invoices",
     ],
-    cannot: ["Read report contents -- only each payment's report title", "Triage reports or change programs", "Manage members"],
+    cannot: ["Read report contents -- only each payment's report title", "Record a payout as sent (Unpatched does that)", "Triage reports or change programs", "Manage members"],
   },
 };
 

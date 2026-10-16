@@ -11,13 +11,12 @@
 export type PaymentObligationStatus = "pending" | "processing" | "succeeded" | "failed" | "cancelled";
 
 /**
- * requires_operator_action is the manual provider's only honest non-terminal state: it
- * never claims success until an explicit operator action records one. succeeded/failed
- * are terminal for the attempt (not necessarily for the obligation, which may retry after
- * a failed attempt). A future async-provider state (e.g. provider_pending) does not exist
- * yet -- nothing in this slice can produce it; see the migration's own note.
+ * requires_operator_action: a manual payout waiting for Unpatched to send it and record the
+ * result. pending_provider: handed to a payout provider (202610140002), waiting for its signed
+ * webhook. succeeded/failed are terminal for the attempt (not necessarily for the obligation,
+ * which may retry after a failed attempt). Mirrors the payment_attempts.state check.
  */
-export type PaymentAttemptState = "requires_operator_action" | "succeeded" | "failed";
+export type PaymentAttemptState = "requires_operator_action" | "pending_provider" | "succeeded" | "failed";
 
 /** No organizationId/programId/researcherId -- the caller already has these from the
  * report context, the same minimal shape ReportBountyDecision already established. */

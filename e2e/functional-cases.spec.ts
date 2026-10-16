@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 
 // Form-level cases the journey specs don't reach: every settings form saves AND the saved
 // value survives a reload (a real round trip, not optimistic UI), plus the failure paths.

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 import { passMfaGate } from "./mfa-gate";
 
 // The three analytics dashboards (db/migrations/202610130003): each renders its KPI row and

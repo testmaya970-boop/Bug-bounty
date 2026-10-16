@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 import { passMfaGate } from "./mfa-gate";
 
 // Full launch journey across three real sessions: org admin drafts a public bug bounty

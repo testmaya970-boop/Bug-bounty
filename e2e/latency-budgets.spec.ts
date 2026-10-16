@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 
 // docs/launch-qa.md's latency budgets, measured the way that doc specifies: against the
 // prod build playwright.config.ts starts, seed:launch accounts, 1 warm-up + 3 measured

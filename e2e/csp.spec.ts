@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 import { passMfaGate } from "./mfa-gate";
 
 // The strict, nonce-based Content-Security-Policy (proxy.ts, lib/security/csp.ts) must not

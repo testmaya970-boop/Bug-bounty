@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 
 // Program policy (db/migrations/202610060009) through the real UI: visible before joining
 // (even signed out), accepted on the report form, bound to the submitted report with its

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./qa-test";
 
 test("new dark security-ops shell: theme, nav, routing, typography, drawer", async ({ page }) => {
   const consoleErrors: string[] = [];

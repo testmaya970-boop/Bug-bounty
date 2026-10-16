@@ -33,7 +33,7 @@ describe("NotificationListSection: honest empty state, content-free rows", () =>
 
   it("renders an unread notification with an unread indicator, program name, and a Mark read control", () => {
     const html = render([BASE_NOTIFICATION]);
-    expect(html).toContain("A report was resolved");
+    expect(html).toContain("Your report was resolved");
     expect(html).toContain("CloudVault");
     expect(html).toContain("Mark read");
   });
@@ -58,7 +58,7 @@ describe("NotificationListSection: honest empty state, content-free rows", () =>
 
   it("degrades gracefully when the program name is unavailable (e.g. a since-revoked researcher's older notification)", () => {
     const html = render([{ ...BASE_NOTIFICATION, programName: null }]);
-    expect(html).toContain("A report was resolved");
+    expect(html).toContain("Your report was resolved");
     expect(html).not.toContain("null");
   });
 

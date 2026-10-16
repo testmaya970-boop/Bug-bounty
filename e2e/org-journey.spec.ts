@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -385,7 +385,7 @@ test("org journey: researcher accepts an invitation, sees the finalized amount, 
   // report.accepted and report.resolved on the triage-walk report both route to this
   // researcher (they submitted it) -- proves the Turn 8 handler pipeline end to end,
   // through the real outbox worker (playwright.config.ts's second webServer entry).
-  await expect(page.getByText(/report entered triage|A report was accepted|A report was resolved/).first()).toBeVisible();
+  await expect(page.getByText(/entered triage|report was accepted|report was resolved/).first()).toBeVisible();
 
   // The bell's accessible name includes the unread count when non-zero ("Notifications, N
   // unread") -- match either form.

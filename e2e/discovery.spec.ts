@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 
 // Discovery filters run in the database, and report drafts live on the server
 // (db/migrations/202610060014). seed:e2e clears e2e drafts every run.

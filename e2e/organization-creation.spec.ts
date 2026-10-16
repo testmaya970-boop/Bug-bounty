@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./qa-test";
 
 // Regression test for a real, previously-shipped bug: typing into the "Organization
 // name" field inside CreateOrganizationDialog lost focus to the dialog's close button

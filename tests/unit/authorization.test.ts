@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  AuthorizationError,
   canChangeRoles,
   canCreateProgram,
   canGrantRole,
@@ -8,20 +7,8 @@ import {
   describeOrganizationAccess,
   describeRoleChangeImpact,
   isLastActiveOwner,
-  requireOrganizationRole,
-  requirePlatformAdmin,
 } from "../../services/authorization";
 
-const user = { id: "user-a", platformRole: "researcher" as const, accountType: "researcher" as const, username: "user-a", displayName: "User A", email: "user-a@example.com" };
-const owner = { organizationId: "org-a", userId: "user-a", role: "owner" as const, status: "active" as const };
-
-describe("authorization", () => {
-  it("allows an organization owner in their organization", () => expect(() => requireOrganizationRole(user, owner, "org-a", ["owner"])).not.toThrow());
-  it("rejects cross-organization membership reuse (IDOR)", () => expect(() => requireOrganizationRole(user, owner, "org-b", ["owner"])).toThrow(AuthorizationError));
-  it("rejects a suspended member even with the right role", () => expect(() => requireOrganizationRole(user, { ...owner, status: "suspended" }, "org-a", ["owner"])).toThrow(AuthorizationError));
-  it("rejects non-admin platform roles", () => expect(() => requirePlatformAdmin(user)).toThrow(AuthorizationError));
-  it("permits a platform admin", () => expect(() => requirePlatformAdmin({ ...user, id: "admin", platformRole: "platform_admin" })).not.toThrow());
-});
 
 describe("organization role capability model", () => {
   it("lets owner and security_admin manage members, and no one else", () => {

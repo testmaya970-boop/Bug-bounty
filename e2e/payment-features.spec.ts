@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 import { passMfaGate } from "./mfa-gate";
 
 // Card top-ups, low-balance alerts, program budgets, billing details and fee invoices

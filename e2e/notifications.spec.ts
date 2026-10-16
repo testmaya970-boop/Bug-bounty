@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 
 // Turn 8b: "Is it working or not" for notifications is answered by this spec's own
 // red/green run, nothing else -- a dedicated proof, not a promise. Runs against the same

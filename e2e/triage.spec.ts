@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 
 // Report assignment (db/migrations/202610060011) through the real UI: a program manager assigns a
 // report to a triager from the report page, the Reports list shows and filters by

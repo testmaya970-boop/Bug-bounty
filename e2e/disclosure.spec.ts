@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./qa-test";
 
 // Disclosure lifecycle (db/migrations/202610060012) through the real UI: the researcher
 // proposes a write-up, the program manager redacts and approves it (scheduled by the

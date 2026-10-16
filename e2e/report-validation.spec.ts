@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./qa-test";
 import { readFileSync } from "node:fs";
 
 // Submitting an incomplete report flags every missing required field at once, field by

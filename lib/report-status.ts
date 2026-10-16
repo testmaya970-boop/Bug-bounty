@@ -55,8 +55,8 @@ export const REPORT_STATUS_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
 };
 
 /** A short, honest "what does a triager still need to do" hint for one inbox row --
- * derived purely from REPORT_STATUS_TRANSITIONS above, never a separate assignment/SLA
- * concept (neither exists in this domain). Every terminal status reads "None (final)",
+ * derived purely from REPORT_STATUS_TRANSITIONS above (the status changes a triager can pick;
+ * a resolved report reopens only when a retest fails, via decide_report_retest, not a status pick). Every terminal status reads "None (final)",
  * matching this page's own isFinal = allowedNext.length === 0 predicate. */
 export function reportNextActionLabel(status: ReportStatus): string {
   if (REPORT_STATUS_TRANSITIONS[status].length === 0) return "None (final)";

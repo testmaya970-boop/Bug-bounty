@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./qa-test";
 import path from "node:path";
 
 // A HackerOne scope CSV export (e2e/fixtures/hackerone-scope.csv: BOM, multi-line quoted
