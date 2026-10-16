@@ -103,9 +103,9 @@ test("org posts a message on a report -> researcher is notified (bell, /notifica
   await signIn(page, VETERAN_EMAIL);
   await page.goto("/notifications");
   // .first(): this seeded researcher accumulates one of each per suite run.
-  await expect(page.getByText("A report entered triage").first()).toBeVisible();
-  await expect(page.getByText("A report was accepted").first()).toBeVisible();
-  await expect(page.getByText("A new message was posted on a report").first()).toBeVisible();
+  await expect(page.getByText("Your report has entered triage").first()).toBeVisible();
+  await expect(page.getByText("Your report was accepted").first()).toBeVisible();
+  await expect(page.getByText("There's a new message on a report").first()).toBeVisible();
 
   await expect(bellButton(page)).toHaveAttribute("aria-label", /Notifications, \d+ unread/);
   await bellButton(page).click();
@@ -132,7 +132,7 @@ test("org posts a message on a report -> researcher is notified (bell, /notifica
   // --- Admin: now notified of the researcher's message -----------------------------------
   await signIn(page, ADMIN_EMAIL);
   await page.goto("/notifications");
-  await expect(page.getByText("A new message was posted on a report").first()).toBeVisible();
+  await expect(page.getByText("There's a new message on a report").first()).toBeVisible();
   await expect(bellButton(page)).toHaveAttribute("aria-label", /Notifications, \d+ unread/);
 
   await signOut(page);
@@ -148,9 +148,9 @@ test("an unrelated organization's admin sees nothing from this org's activity --
   await expect(bellButton(page)).toHaveAttribute("aria-label", "Notifications");
 
   await page.goto("/notifications");
-  await expect(page.getByText("A report entered triage")).not.toBeVisible();
-  await expect(page.getByText("A report was accepted")).not.toBeVisible();
-  await expect(page.getByText("A new message was posted on a report")).not.toBeVisible();
+  await expect(page.getByText("Your report has entered triage")).not.toBeVisible();
+  await expect(page.getByText("Your report was accepted")).not.toBeVisible();
+  await expect(page.getByText("There's a new message on a report")).not.toBeVisible();
   await expect(page.getByText("No notifications")).toBeVisible();
 
   await signOut(page);

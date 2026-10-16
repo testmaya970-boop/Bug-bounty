@@ -9,10 +9,12 @@ export * from "@playwright/test";
 // Headless/CI runs and QA_DRONE=0 skip it entirely; it never changes what a test does.
 const DRONE = path.join(__dirname, "support", "qa-drone.js");
 
-export const test = base.extend<{ qaDrone: void }>({
+/** Specs that measure speed turn it off (test.use({ qaDroneEnabled: false })) so the overlay never counts against a latency budget. */
+export const test = base.extend<{ qaDrone: void; qaDroneEnabled: boolean }>({
+  qaDroneEnabled: [true, { option: true }],
   qaDrone: [
-    async ({ context, headless }, use, testInfo) => {
-      const on = !headless && process.env.QA_DRONE !== "0";
+    async ({ context, headless, qaDroneEnabled }, use, testInfo) => {
+      const on = qaDroneEnabled && !headless && process.env.QA_DRONE !== "0";
       if (on) await context.addInitScript({ path: DRONE });
       await use();
       if (!on || testInfo.status === testInfo.expectedStatus) return;

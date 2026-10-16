@@ -1,5 +1,8 @@
 import { test, expect, type Page } from "./qa-test";
 
+// Measure the app, not the QA overlay.
+test.use({ qaDroneEnabled: false });
+
 // docs/launch-qa.md's latency budgets, measured the way that doc specifies: against the
 // prod build playwright.config.ts starts, seed:launch accounts, 1 warm-up + 3 measured
 // hits per route with waitUntil "load", median of the 3. Each measurement is broken down
