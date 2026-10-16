@@ -98,8 +98,13 @@
     return { x: anchor.x + Math.cos(a) * shell, y: anchor.y + Math.sin(a * 1.3) * shell * 0.7 };
   }
 
+  let lastDraw = 0;
   function tick(t) {
     requestAnimationFrame(tick);
+    // Idle cruising redraws at ~20fps: the test browser shares the machine with the app server,
+    // and a 60fps canvas in one window measurably slowed server responses in another.
+    if (mode === "cloud" && !bullets.length && !sparks.length && t - lastDraw < 50) return;
+    lastDraw = t;
     if ((mode === "gun" || mode === "lens") && t > modeUntil) { mode = "cloud"; label?.remove(); label = null; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, innerWidth, innerHeight);
