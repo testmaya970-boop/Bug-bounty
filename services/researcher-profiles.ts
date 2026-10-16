@@ -45,16 +45,17 @@ export async function getMyBiography(userId: string): Promise<string | null> {
 }
 
 /** Any researcher's own biography, for display to another viewer (e.g. an organization
- * triaging their report) -- "profiles public read" RLS permits this for any signed-in
- * user, the same visibility researcherName on a report already has. Returns null both
+ * triaging their report); nothing for a deactivated account. Returns null both
  * when the researcher has never set a bio and when no profile row exists at all --
  * identical, honest degradation, never an error. */
 export async function getResearcherBiography(userId: string): Promise<string | null> {
   const actor = await getCurrentUser();
   let rows;
   try {
+    // researcher_profiles is own-row only (202610160001): the biography alone comes through
+    // get_researcher_biography, never the resume, LinkedIn or handles.
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
-      client.query<{ biography: string | null }>("select biography from public.researcher_profiles where user_id = $1", [userId]).then((r) => r.rows),
+      client.query<{ biography: string | null }>("select public.get_researcher_biography($1) as biography", [userId]).then((r) => r.rows),
     );
   } catch (error) {
     mapError(error as { message: string });
