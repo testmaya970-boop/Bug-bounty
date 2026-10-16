@@ -160,6 +160,11 @@ export function createBillingNotificationHandler(notificationType: NotificationT
   return createEventRoutedHandler("public.route_billing_notifications", notificationType);
 }
 
+/** Program lifecycle, scope and launch-decision notices (202610160005). */
+export function createProgramNotificationHandler(notificationType: NotificationType) {
+  return createEventRoutedHandler("public.route_program_notifications", notificationType);
+}
+
 /** Routers that take (event id, notification type) and re-verify provenance themselves. */
 function createEventRoutedHandler(routerRpc: string, notificationType: NotificationType) {
   return async function handleEventRoutedNotification(event: OutboxEvent): Promise<void> {

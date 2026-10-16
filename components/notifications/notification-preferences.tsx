@@ -11,6 +11,7 @@ const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   bounty_activity: "Bounty finalized",
   platform_activity: "Platform decisions",
   billing_activity: "Billing",
+  program_activity: "Program changes",
 };
 
 // What each side actually receives (enqueue_report_notification, 202609230002): the

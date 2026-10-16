@@ -39,4 +39,10 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   deposit_rejected: "A deposit could not be confirmed",
   balance_low: "Your balance is running low",
   invoice_issued: "A new invoice is ready",
+  program_launch_approved: "Your program launch was approved",
+  program_launch_rejected: "Your program launch was sent back",
+  program_paused: "A program you take part in was paused",
+  program_resumed: "A program you take part in is accepting reports again",
+  program_closed: "A program you take part in was closed",
+  program_scope_changed: "The scope of a program you take part in changed",
 };

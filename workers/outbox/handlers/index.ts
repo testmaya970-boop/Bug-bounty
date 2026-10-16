@@ -2,7 +2,7 @@ import { registerHandler } from "../registry";
 import { handleReportCreatedV1 } from "./report-created-v1";
 import { createReportOutcomeHandler } from "./reputation/report-outcome";
 import { handleBountyFinalizedV1 } from "./reputation/bounty-finalized-v1";
-import { createBillingNotificationHandler, createNotificationHandler, createPaymentNotificationHandler, createPlatformNotificationHandler } from "./notifications/notification-handler";
+import { createBillingNotificationHandler, createProgramNotificationHandler, createNotificationHandler, createPaymentNotificationHandler, createPlatformNotificationHandler } from "./notifications/notification-handler";
 import { handleJiraSync, JIRA_SYNC_EVENT_TYPES } from "./jira/jira-sync-handler";
 
 /** The complete handler registry for this slice. Importing this module (a side effect
@@ -88,5 +88,15 @@ registerHandler("billing.deposit_confirmed", 1, createBillingNotificationHandler
 registerHandler("billing.deposit_rejected", 1, createBillingNotificationHandler("deposit_rejected"));
 registerHandler("billing.balance_low", 1, createBillingNotificationHandler("balance_low"));
 registerHandler("billing.invoice_issued", 1, createBillingNotificationHandler("invoice_issued"));
+
+// Program lifecycle, scope changes and launch decisions (202610160005): audit_logs trigger.
+registerHandler("program.paused", 1, createProgramNotificationHandler("program_paused"));
+registerHandler("program.resumed", 1, createProgramNotificationHandler("program_resumed"));
+registerHandler("program.closed", 1, createProgramNotificationHandler("program_closed"));
+registerHandler("scope.asset_added", 1, createProgramNotificationHandler("program_scope_changed"));
+registerHandler("scope.asset_updated", 1, createProgramNotificationHandler("program_scope_changed"));
+registerHandler("scope.asset_removed", 1, createProgramNotificationHandler("program_scope_changed"));
+registerHandler("platform.program_launch_approved", 1, createProgramNotificationHandler("program_launch_approved"));
+registerHandler("platform.program_launch_rejected", 1, createProgramNotificationHandler("program_launch_rejected"));
 
 for (const eventType of JIRA_SYNC_EVENT_TYPES) registerHandler(eventType, 1, handleJiraSync);

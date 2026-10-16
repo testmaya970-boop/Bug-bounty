@@ -24,7 +24,8 @@ function sanitizeHeaderValue(value: string): string {
 const LABELS = NOTIFICATION_LABELS;
 
 const BILLING_TYPES = new Set<NotificationType>(["deposit_reported", "deposit_confirmed", "deposit_rejected", "balance_low", "invoice_issued"]);
-const PLATFORM_TYPES = new Set<NotificationType>(["program_suspended", "program_reinstated", "organization_suspended", "organization_reinstated"]);
+const PLATFORM_TYPES = new Set<NotificationType>(["program_suspended", "program_reinstated", "organization_suspended", "organization_reinstated", "program_launch_approved", "program_launch_rejected"]);
+const PROGRAM_TYPES = new Set<NotificationType>(["program_paused", "program_resumed", "program_closed", "program_scope_changed"]);
 
 export type NotificationEmailInput = {
   notificationType: NotificationType;
@@ -52,6 +53,14 @@ export function renderNotificationEmail(input: NotificationEmailInput): Rendered
     if (input.reason) lines.push("", input.reason);
     lines.push("", "Sign in to Unpatched to see the details on the Payments page.");
     return { subject: sanitizeHeaderValue(`Unpatched: ${label}: ${organization}`), text: lines.join("\n") };
+  }
+
+  if (PROGRAM_TYPES.has(input.notificationType)) {
+    // No report: the program and what changed (a scope summary written by the database).
+    const lines = [`Hello ${recipientName},`, "", `${label}.`, "", `Program: ${program}`, `Organization: ${organization}`, `When: ${input.occurredAt}`];
+    if (input.reason) lines.push("", input.reason);
+    lines.push("", "Check the program's scope and status before you keep testing.");
+    return { subject: sanitizeHeaderValue(`Unpatched: ${label}: ${program}`), text: lines.join("\n") };
   }
 
   if (PLATFORM_TYPES.has(input.notificationType)) {

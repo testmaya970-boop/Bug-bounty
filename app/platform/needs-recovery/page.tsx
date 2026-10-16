@@ -97,7 +97,9 @@ export default async function NeedsRecoveryPage() {
                   {paymentAttempts.map((attempt) => (
                     <li key={attempt.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">Payment attempt failed · <LocalTime value={attempt.completedAt ?? attempt.startedAt} /></p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">
+                          {attempt.failureCode === "STALE_PROVIDER" ? "No result from the provider" : "Payment attempt failed"} · <LocalTime value={attempt.completedAt ?? attempt.startedAt} />
+                        </p>
                         <p className="mt-1 text-sm font-medium text-ink">{attempt.organizationName}</p>
                         <p className="mt-0.5 text-sm text-ink-muted">
                           {attempt.programName} · Report #{attempt.reportId.slice(0, 8)}
