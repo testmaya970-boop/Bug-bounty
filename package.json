@@ -29,6 +29,7 @@
     "rollback": "node scripts/release.mjs rollback",
     "releases": "node scripts/release.mjs list",
     "check:rpc-args": "node --env-file-if-exists=.env.local scripts/check-rpc-call-order.mjs",
+    "check:authz": "node --env-file-if-exists=.env.local scripts/check-authz-catalog.mjs",
     "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs",
     "seed:launch": "tsx --env-file=.env.local scripts/seed-demo.ts",
     "seed:e2e": "tsx --env-file=.env.local scripts/seed-e2e.ts"
