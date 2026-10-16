@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
-import { addScopeEntry, listActiveScopeEntriesForOrganization, removeScopeEntry, updateScopeEntry } from "@/services/scope";
+import { addScopeEntry, listOrganizationAssets, removeScopeEntry, updateScopeEntry } from "@/services/scope";
 import { linkReportToScopeEntry } from "@/services/reports";
-import type { ScopeEntry } from "@/types/scope";
+import type { AssetInventoryItem } from "@/types/scope";
 import type { Page } from "@/types/pagination";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
@@ -89,23 +89,17 @@ const listOrganizationScopeEntriesSchema = z.object({
   assetType: assetTypeSchema.optional(),
 });
 
-/** The org-wide asset inventory page's own "load more" -- see
- * actions/reports.ts's listReportsForOrganizationPageAction for the identical shape this
- * mirrors. */
-export async function listScopeEntriesForOrganizationPageAction(input: {
+/** The asset inventory page's "load more". */
+export async function listOrganizationAssetsPageAction(input: {
   organizationId: string;
   cursor?: string;
   programId?: string;
   assetType?: z.infer<typeof assetTypeSchema>;
-}): Promise<ActionResult<Page<ScopeEntry>>> {
+  includeRetired?: boolean;
+}): Promise<ActionResult<Page<AssetInventoryItem>>> {
   const parsed = listOrganizationScopeEntriesSchema.safeParse(input);
   if (!parsed.success) return invalidInput();
-  return toResult(
-    listActiveScopeEntriesForOrganization(parsed.data.organizationId, parsed.data.cursor, undefined, {
-      programId: parsed.data.programId,
-      assetType: parsed.data.assetType,
-    }),
-  );
+  return toResult(listOrganizationAssets(parsed.data.organizationId, parsed.data.cursor, { programId: parsed.data.programId, assetType: parsed.data.assetType, includeRetired: input.includeRetired === true }));
 }
 
 const linkReportAssetSchema = z.object({ organizationId: uuidSchema, programId: uuidSchema, reportId: uuidSchema, scopeEntryId: uuidSchema });

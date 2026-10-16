@@ -103,7 +103,9 @@ test("password and email changes demand the current password; a changed password
   await expect(emailForm.getByRole("alert")).toHaveText("Your current password is not correct.");
 
   // ...nor the password.
-  const next = `Rotated-${stamp()}-Passphrase`;
+  // The trailing digit matters: a base-36 timestamp alone sometimes has none, and the new
+  // password then fails "add at least one number" before the current password is checked.
+  const next = `Rotated-${stamp()}-Passphrase-7`;
   await passwordForm.getByRole("textbox", { name: "Current password" }).fill("not-my-password");
   await passwordForm.getByRole("textbox", { name: "New password", exact: true }).fill(next);
   await passwordForm.getByRole("textbox", { name: "Confirm new password" }).fill(next);

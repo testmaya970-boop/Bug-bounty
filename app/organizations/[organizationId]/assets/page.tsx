@@ -9,36 +9,29 @@ import { OrganizationAssetsTable } from "../../../../components/organizations/or
 import { getActorMembership } from "../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listProgramsForOrganization } from "../../../../services/programs";
-import { listActiveScopeEntriesForOrganization } from "../../../../services/scope";
+import { listOrganizationAssets } from "../../../../services/scope";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 import type { ProgramAssetType } from "../../../../types/scope";
 
 const VALID_ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
 /**
- * Assets: every active scope entry across every one of this organization's engagements,
- * one flat, filterable, paginated list -- extends the existing scope/asset model
- * (public.program_scope_entries, docs/decisions/0006-scope-asset-model.md) rather than
- * forking a second, global assets table. Closes the "Assets" gap in HackerOne's own
- * documented org nav -- this app previously had no cross-program scope view at all, only
- * per-program (embedded on the program detail page's own Scope section, which stays the
- * place creation/editing actually happens -- see OrganizationAssetsTable's own comment).
- *
- * Access matches every other org-wide read surface (Analytics, Findings, Researchers):
- * any active organization member, not narrowed to owner/security_admin --
- * listActiveScopeEntriesForOrganization is RLS-scoped exactly like listActiveScopeEntries
- * already is, so a plain member who manages no program simply sees an empty (correctly
- * narrowed) result, never a permission error.
+ * Assets: the organization's asset inventory (public.assets, 202610160009) -- every asset its
+ * engagements have had in scope, the engagements it is assigned to, and the findings filed
+ * against it, the model HackerOne's Asset Inventory and Bugcrowd's asset management use.
+ * Owners and security admins see every asset; program staff see the assets of their programs
+ * (list_organization_assets decides, so a narrower role gets a narrower list, not an error).
  */
 export default async function OrganizationAssetsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ organizationId: string }>;
-  searchParams: Promise<{ program?: string; type?: string }>;
+  searchParams: Promise<{ program?: string; type?: string; retired?: string }>;
 }) {
   const { organizationId } = await params;
-  const { program: programParam, type: typeParam } = await searchParams;
+  const { program: programParam, type: typeParam, retired } = await searchParams;
+  const includeRetired = retired === "1";
   const user = await getCurrentUser();
   if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/assets` as Route);
 
@@ -57,9 +50,10 @@ export default async function OrganizationAssetsPage({
   const programId = programParam && programs.some((program) => program.id === programParam) ? programParam : "all";
   const assetType: ProgramAssetType | "all" = typeParam && VALID_ASSET_TYPES.includes(typeParam as ProgramAssetType) ? (typeParam as ProgramAssetType) : "all";
 
-  const { items: entries, nextCursor } = await listActiveScopeEntriesForOrganization(organizationId, undefined, undefined, {
+  const { items: assets, nextCursor } = await listOrganizationAssets(organizationId, undefined, {
     programId: programId === "all" ? undefined : programId,
     assetType: assetType === "all" ? undefined : assetType,
+    includeRetired,
   });
 
   return (
@@ -69,14 +63,15 @@ export default async function OrganizationAssetsPage({
 
         <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
 
-        <p className="text-sm text-ink-muted">Every asset in scope across every engagement. Manage an asset from its own engagement's Scope section.</p>
+        <p className="text-sm text-ink-muted">Every asset your engagements cover, where it is in scope, and the findings filed against it. Change scope from an engagement's Scope section.</p>
 
         <OrganizationAssetsTable
           organizationId={organizationId}
-          initialEntries={entries}
+          initialAssets={assets}
           initialNextCursor={nextCursor}
           programId={programId}
           assetType={assetType}
+          includeRetired={includeRetired}
           programOptions={programs.map((program) => ({ id: program.id, name: program.name }))}
         />
       </div>

@@ -3,7 +3,7 @@ import { withActorTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { mapRpcError as mapError } from "@/services/rpc-error";
 import { clampPageSize, decodeCursor, encodeCursor } from "@/lib/pagination";
-import type { ProgramAssetType, ScopeEntry, ScopeEvaluationResult, ScopeState } from "@/types/scope";
+import type { AssetInventoryItem, ProgramAssetType, ScopeEntry, ScopeEvaluationResult, ScopeState } from "@/types/scope";
 import type { Page } from "@/types/pagination";
 
 type ScopeEntryRow = {
@@ -72,58 +72,34 @@ export async function listActiveScopeEntries(programId: string): Promise<ScopeEn
 
 export type ScopeEntryFilters = { programId?: string; assetType?: ProgramAssetType };
 
-/** Cross-program asset inventory for one organization -- the org-wide counterpart to
- * listActiveScopeEntries above (identical row shape/RLS, only the scoping predicate
- * differs: organization_id instead of program_id, plus optional program/type filters).
- * RLS narrows the same way every other org-wide read in this codebase already documents:
- * an org owner/security_admin sees every entry across every program, a plain member who
- * manages no program sees none -- never a second, page-level permission check
- * duplicating what RLS already decides. Keyset-paginated on created_at, matching
- * services/reports.ts's listReportsForOrganization cursor shape exactly. */
-export async function listActiveScopeEntriesForOrganization(
-  organizationId: string,
-  cursor?: string,
-  limit?: number,
-  filters?: ScopeEntryFilters,
-): Promise<Page<ScopeEntry>> {
+/** The organization's asset inventory (202610160009): one row per asset with the programs it
+ * is in scope for, its open and total findings, and the last report filed against it. Owners and
+ * security admins see every asset; program staff see the assets of the programs they work on
+ * (list_organization_assets decides). Keyset-paginated on the asset's display identifier. */
+export async function listOrganizationAssets(organizationId: string, cursor?: string, filters: ScopeEntryFilters & { includeRetired?: boolean } = {}): Promise<Page<AssetInventoryItem>> {
   const actor = await getCurrentUser();
-  const pageSize = clampPageSize(limit);
   const decoded = cursor ? decodeCursor(cursor) : null;
-
-  const conditions = ["e.organization_id = $1", "e.status = 'active'"];
-  const params: unknown[] = [organizationId];
-  if (filters?.programId) {
-    params.push(filters.programId);
-    conditions.push(`e.program_id = $${params.length}`);
-  }
-  if (filters?.assetType) {
-    params.push(filters.assetType);
-    conditions.push(`e.asset_type = $${params.length}`);
-  }
-  if (decoded) {
-    params.push(decoded.sortValue);
-    conditions.push(`e.created_at > $${params.length}`);
-  }
-  params.push(pageSize);
-
-  let rows;
+  const pageSize = clampPageSize(50);
+  type Row = { asset_id: string; asset_type: ProgramAssetType; display_identifier: string; programs: AssetInventoryItem["programs"]; open_reports: string; total_reports: string; last_report_at: string | null };
+  let rows: Row[];
   try {
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
-      client
-        .query<ScopeEntryRow>(
-          `select e.id, e.program_id, e.organization_id, e.asset_type, e.target, e.display_target, e.scope_state, e.description, e.status, e.created_by, e.created_at, e.updated_at, e.removed_at, u.display_name as creator_display_name
-           from public.program_scope_entries e left join public.users u on u.id = e.created_by
-           where ${conditions.join(" and ")} order by e.created_at asc limit $${params.length}`,
-          params,
-        )
-        .then((r) => r.rows),
+      callRpc<Row>(client, "public.list_organization_assets", [organizationId, filters.assetType ?? null, filters.programId ?? null, decoded?.sortValue ?? null, decoded?.id ?? null, pageSize, filters.includeRetired ?? false]),
     );
   } catch (error) {
     mapError(error as { message: string });
   }
-  const items = rows.map(mapScopeEntryRow);
-  const nextCursor = rows.length === pageSize ? encodeCursor(rows[rows.length - 1].created_at, rows[rows.length - 1].id) : null;
-  return { items, nextCursor };
+  const items = rows.map((r) => ({
+    id: r.asset_id,
+    assetType: r.asset_type,
+    displayIdentifier: r.display_identifier,
+    programs: r.programs,
+    openReports: Number(r.open_reports),
+    totalReports: Number(r.total_reports),
+    lastReportAt: r.last_report_at ? new Date(r.last_report_at).toISOString() : null,
+  }));
+  const last = rows[rows.length - 1];
+  return { items, nextCursor: rows.length === pageSize && last ? encodeCursor(last.display_identifier, last.asset_id) : null };
 }
 
 /**

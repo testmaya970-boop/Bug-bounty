@@ -169,8 +169,8 @@ describe("scope service: evaluateProgramScope", () => {
 // org-scoped query is genuinely predicated on the caller-supplied organization_id (never
 // a different id, never unscoped), which is the one thing a service-layer regression
 // could actually break even with RLS correctly enforced underneath.
-describe("scope service: listActiveScopeEntriesForOrganization (cross-org read denial)", () => {
-  it("scopes the query strictly to the given organization_id -- never a second organization's rows, and RLS narrows further underneath this", async () => {
+describe("scope service: listOrganizationAssets (asset inventory)", () => {
+  it("asks list_organization_assets for exactly this organization with the filters as arguments -- never fetched-then-filtered here", async () => {
     let capturedSql = "";
     let capturedParams: unknown[] = [];
     fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
@@ -178,39 +178,36 @@ describe("scope service: listActiveScopeEntriesForOrganization (cross-org read d
       capturedParams = params;
       return queryReturning([]);
     });
-    const { listActiveScopeEntriesForOrganization } = await import("../../services/scope");
+    const { listOrganizationAssets } = await import("../../services/scope");
 
-    await listActiveScopeEntriesForOrganization("org-mine");
+    await listOrganizationAssets("org-1", undefined, { programId: "prog-1", assetType: "url" });
 
-    expect(capturedSql).toContain("e.organization_id = $1");
-    expect(capturedSql).toContain("e.status = 'active'");
-    expect(capturedParams[0]).toBe("org-mine");
+    expect(capturedSql).toContain("public.list_organization_assets");
+    expect(capturedParams).toEqual(["org-1", "url", "prog-1", null, null, 50, false]);
   });
 
-  it("an org this actor cannot see returns an empty page, never a thrown error -- RLS-filtered reads look identical to 'nothing here,' the same not-found-vs-not-authorized property every other read in this codebase has", async () => {
-    fakeClient.query.mockImplementation(async () => queryReturning([]));
-    const { listActiveScopeEntriesForOrganization } = await import("../../services/scope");
+  it("maps counts to numbers, and a full page yields a cursor that resumes after its last asset", async () => {
+    const row = (i: number) => ({ asset_id: `00000000-0000-4000-8000-00000000000${i}`, asset_type: "domain", display_identifier: `a${i}.example`, programs: [{ program_id: "p", program_name: "P", scope_state: "in_scope" }], open_reports: "2", total_reports: "5", last_report_at: "2026-10-01T00:00:00Z" });
+    fakeClient.query.mockImplementation(async () => queryReturning(Array.from({ length: 50 }, (_, i) => row(i % 10))));
+    const { listOrganizationAssets } = await import("../../services/scope");
+    const { decodeCursor } = await import("../../lib/pagination");
 
-    const result = await listActiveScopeEntriesForOrganization("org-not-mine");
+    const page = await listOrganizationAssets("org-1");
 
-    expect(result).toEqual({ items: [], nextCursor: null });
+    expect(page.items[0]).toMatchObject({ openReports: 2, totalReports: 5, displayIdentifier: "a0.example" });
+    expect(decodeCursor(page.nextCursor!)).toEqual({ sortValue: "a9.example", id: "00000000-0000-4000-8000-000000000009" });
   });
 
-  it("applies the program/type filters as real WHERE predicates, never fetched-then-filtered in application code", async () => {
-    let capturedSql = "";
-    let capturedParams: unknown[] = [];
-    fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
-      capturedSql = sql;
-      capturedParams = params;
-      return queryReturning([]);
+  it("an organization this actor cannot see surfaces the database's refusal as a typed error", async () => {
+    const { OrganizationServiceError } = await import("../../services/rpc-error");
+    fakeClient.query.mockImplementation(async () => {
+      throw new Error("FORBIDDEN: you are not an active member of this organization");
     });
-    const { listActiveScopeEntriesForOrganization } = await import("../../services/scope");
+    const { listOrganizationAssets } = await import("../../services/scope");
 
-    await listActiveScopeEntriesForOrganization("org-1", undefined, undefined, { programId: "prog-1", assetType: "url" });
+    const error: unknown = await listOrganizationAssets("org-not-mine").catch((thrown) => thrown);
 
-    expect(capturedSql).toContain("e.program_id = $2");
-    expect(capturedSql).toContain("e.asset_type = $3");
-    expect(capturedParams).toEqual(["org-1", "prog-1", "url", 20]);
+    expect(error).toBeInstanceOf(OrganizationServiceError);
   });
 });
 

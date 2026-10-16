@@ -28,3 +28,14 @@ export type ScopeEvaluationResult = {
   matchedEntryId: string | null;
   matchedTarget: string | null;
 };
+
+/** One asset in an organization's inventory (public.assets, 202610160009). */
+export type AssetInventoryItem = {
+  id: string;
+  assetType: ProgramAssetType;
+  displayIdentifier: string;
+  programs: { program_id: string; program_name: string; scope_state: ScopeState }[];
+  openReports: number;
+  totalReports: number;
+  lastReportAt: string | null;
+};
