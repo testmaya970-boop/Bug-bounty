@@ -36,7 +36,7 @@ function NotificationRow({ notification, onRead }: { notification: Notification;
       </div>
       <div className="min-w-0 flex-1 pb-1">
         <span className="sr-only">{isRead ? "Read: " : "Unread: "}</span>
-        <p className={cn("truncate text-sm", isRead ? "font-normal text-ink-muted" : "font-semibold text-ink")}>{NOTIFICATION_LABELS[notification.notificationType]}</p>
+        <p className={cn("break-words text-sm", isRead ? "font-normal text-ink-muted" : "font-semibold text-ink")}>{NOTIFICATION_LABELS[notification.notificationType]}</p>
         <p className="mt-0.5 font-mono text-xs text-ink-muted">
           {notification.programName && <>{notification.programName} · </>}
           <LocalTime value={notification.createdAt} />

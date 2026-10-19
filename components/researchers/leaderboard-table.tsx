@@ -125,12 +125,12 @@ export function LeaderboardTable({ rows, myResearcherId }: { rows: PublicLeaderb
                     {row.publicUsername ? (
                       <Link prefetch={false}
                         href={`/researchers/${row.publicUsername}` as Route}
-                        className="truncate text-sm font-semibold text-ink transition-colors duration-150 hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none"
+                        className="break-words text-sm font-semibold text-ink transition-colors duration-150 hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none"
                       >
                         {row.displayName}
                       </Link>
                     ) : (
-                      <p className="truncate text-sm font-semibold text-ink">{row.displayName}</p>
+                      <p className="break-words text-sm font-semibold text-ink">{row.displayName}</p>
                     )}
                     {isMe && <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">You</span>}
                   </div>

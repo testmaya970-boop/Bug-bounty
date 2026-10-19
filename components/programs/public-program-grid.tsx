@@ -41,7 +41,7 @@ export function PublicProgramGrid({
               <OrgLogo organizationId={program.organizationId} name={program.organizationName} version={program.logoVersion} />
               <div className="min-w-0 flex-1">
                 <p
-                  className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink"
+                  className="break-words text-sm font-semibold leading-snug text-ink"
                   title={program.name}
                 >
                   {program.name}

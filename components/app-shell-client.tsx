@@ -501,14 +501,16 @@ function OrganizationSwitcher({ organizations, currentOrganizationId }: { organi
   );
 }
 
-function SidebarBrand() {
+/** compact: the phone header. Below 400px the wordmark hides and only the mark shows -- the
+ * header measured 373px wide with it, overflowing a 320px screen by 41px (and 360px by 1px). */
+function SidebarBrand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" prefetch={false} className="flex items-center gap-2 px-1 focus-visible:outline-2 focus-visible:outline-focus">
+    <Link href="/" prefetch={false} aria-label="Unpatched home" className="flex items-center gap-2 px-1 focus-visible:outline-2 focus-visible:outline-focus">
       {/* shadow-[...var(--glow-action)] removed -- --glow-action no longer exists, see app/globals.css */}
       <span aria-hidden="true" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-action text-on-action">
         <ShieldCheck weight="fill" className="size-4" />
       </span>
-      <span className="truncate font-[family-name:var(--font-display)] text-base font-semibold tracking-tight text-ink">Unpatched</span>
+      <span aria-hidden="true" className={`${compact ? "hidden min-[400px]:inline" : ""} truncate font-[family-name:var(--font-display)] text-base font-semibold tracking-tight text-ink`}>Unpatched</span>
     </Link>
   );
 }
@@ -680,7 +682,7 @@ export function AppShellClient({
           <List aria-hidden="true" className="size-5" />
         </IconButton>
         <div className="lg:hidden">
-          <SidebarBrand />
+          <SidebarBrand compact />
         </div>
         {/* min-w-0: a flex child won't shrink below its content otherwise, and the search
             field pushed the account button 2px past a 375px phone screen. */}

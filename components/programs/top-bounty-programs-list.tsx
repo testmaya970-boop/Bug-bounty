@@ -33,7 +33,7 @@ export function TopBountyProgramsList({ programs }: { programs: TopBountyProgram
                 <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{program.organizationName}</p>
                 <ProgramStatusBadge status={program.status} />
               </div>
-              <p className="mt-1 truncate text-base font-semibold text-ink">{program.name}</p>
+              <p className="mt-1 break-words text-base font-semibold text-ink">{program.name}</p>
             </div>
             <div className="flex items-center justify-between gap-3">
               <p className="text-2xl font-bold tracking-tight text-ink">{formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)}</p>
