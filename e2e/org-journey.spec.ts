@@ -256,6 +256,9 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await page.getByLabel("Note").fill("Agreed with the researcher for this E2E finding.");
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText(/Paying it takes the bounty plus the platform fee/)).toBeVisible();
+  // What finalizing will check, shown before committing (202610190002): 500 + 20% fee.
+  await expect(page.getByText("USD 600.00")).toBeVisible();
+  await expect(page.getByText("Covers it")).toBeVisible();
   await page.getByRole("button", { name: "Confirm finalization" }).click();
   // .first(): once the outbox worker creates the payment obligation, the payment-status
   // panel shows the amount too.

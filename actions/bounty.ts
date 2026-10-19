@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
-import { acceptBounty, adjustBounty, calculateBountyRecommendation, createBountyPolicyVersion, finalizeBounty } from "@/services/bounty";
+import { acceptBounty, adjustBounty, calculateBountyRecommendation, checkAwardFunding, createBountyPolicyVersion, finalizeBounty, type AwardFunding } from "@/services/bounty";
 import type { BountyPolicy, ReportBountyDecision } from "@/types/bounty";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
@@ -71,6 +71,15 @@ export async function finalizeBountyAction(input: z.infer<typeof finalizeSchema>
   const result = await toResult(finalizeBounty(parsed.data.reportId, parsed.data.amountMinorUnits, parsed.data.note));
   if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
   return result;
+}
+
+const fundingSchema = reportActionBase.extend({ amountMinorUnits: amountSchema });
+
+/** The finalize dialog's preview of what finalizing will check (budget left, balance covers). */
+export async function checkAwardFundingAction(input: z.infer<typeof fundingSchema>): Promise<ActionResult<AwardFunding>> {
+  const parsed = fundingSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
+  return toResult(checkAwardFunding(parsed.data.reportId, parsed.data.amountMinorUnits));
 }
 
 const adjustSchema = reportActionBase.extend({

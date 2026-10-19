@@ -212,3 +212,30 @@ export async function acceptBounty(reportId: string): Promise<void> {
     mapError(error as { message: string });
   }
 }
+
+/** What finalize_bounty will check, before confirming (check_award_funding, 202610190002): the
+ * program budget, and whether the organization balance covers bounty + fee (yes/no only). */
+export type AwardFunding = {
+  currency: string;
+  neededMinorUnits: number;
+  balanceCovers: boolean;
+  budget: { currency: string; capMinorUnits: number; leftMinorUnits: number; covers: boolean } | null;
+};
+
+export async function checkAwardFunding(reportId: string, amountMinorUnits: number): Promise<AwardFunding> {
+  const actor = await getCurrentUser();
+  type Row = { currency: string; needed_minor_units: string; balance_covers: boolean; budget_currency: string | null; budget_cap_minor_units: string | null; budget_left_minor_units: string | null; budget_covers: boolean };
+  let rows: Row[];
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<Row>(client, "public.check_award_funding", [reportId, amountMinorUnits]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  const r = rows[0];
+  return {
+    currency: r.currency,
+    neededMinorUnits: Number(r.needed_minor_units),
+    balanceCovers: r.balance_covers,
+    budget: r.budget_currency ? { currency: r.budget_currency, capMinorUnits: Number(r.budget_cap_minor_units), leftMinorUnits: Number(r.budget_left_minor_units), covers: r.budget_covers } : null,
+  };
+}

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Dialog } from "../ui/navigation";
 import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/form";
-import { adjustBountyAction, calculateBountyRecommendationAction, finalizeBountyAction } from "../../actions/bounty";
+import { adjustBountyAction, calculateBountyRecommendationAction, checkAwardFundingAction, finalizeBountyAction } from "../../actions/bounty";
+import type { AwardFunding } from "../../services/bounty";
 import { minorUnitsToDecimalString, parseDecimalToMinorUnits } from "../../lib/money";
 import type { ReportBountyDecision } from "../../types/bounty";
 import { LocalTime } from "../ui/local-time";
@@ -55,11 +56,13 @@ export function FinalizeBountyDialog({ organizationId, programId, reportId, curr
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [funding, setFunding] = useState<AwardFunding | null>(null);
 
   function close() {
     if (pending) return;
     setOpen(false);
     setStep("edit");
+    setFunding(null);
     setAmountInput("");
     setNote("");
     setError(null);
@@ -72,7 +75,16 @@ export function FinalizeBountyDialog({ organizationId, programId, reportId, curr
       return;
     }
     setError(null);
-    setStep("confirm");
+    // Show what finalizing will check (budget left, balance covers) before the commit step.
+    startTransition(async () => {
+      const result = await checkAwardFundingAction({ organizationId, programId, reportId, amountMinorUnits: amount });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setFunding(result.data);
+      setStep("confirm");
+    });
   }
 
   function handleConfirm() {
@@ -109,7 +121,7 @@ export function FinalizeBountyDialog({ organizationId, programId, reportId, curr
               <Button type="button" variant="secondary" onClick={close}>
                 Cancel
               </Button>
-              <Button type="button" onClick={handleContinue}>
+              <Button type="button" pending={pending} onClick={handleContinue}>
                 Continue
               </Button>
             </div>
@@ -122,6 +134,25 @@ export function FinalizeBountyDialog({ organizationId, programId, reportId, curr
             {/* Finalizing records the decision; paying it draws on the prepaid balance
                 (202610140004). Said here, at the moment an org admin commits to a number. */}
             <p className="text-sm text-ink-muted">Paying it takes the bounty plus the platform fee from your organization&apos;s balance. Unpatched sends it to the researcher.</p>
+            {funding && (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border border-border p-3 text-sm">
+                <dt className="text-ink-muted">With the platform fee</dt>
+                <dd className="text-right font-mono tabular-nums text-ink">
+                  {funding.currency} {minorUnitsToDecimalString(funding.neededMinorUnits)}
+                </dd>
+                <dt className="text-ink-muted">Organization balance</dt>
+                <dd className={`text-right font-medium ${funding.balanceCovers ? "text-success" : "text-danger"}`}>{funding.balanceCovers ? "Covers it" : "Doesn't cover it"}</dd>
+                <dt className="text-ink-muted">Program budget</dt>
+                <dd className={`text-right ${funding.budget && !funding.budget.covers ? "font-medium text-danger" : "text-ink"}`}>
+                  {funding.budget ? `${funding.budget.currency} ${minorUnitsToDecimalString(Math.max(funding.budget.leftMinorUnits, 0))} left of ${minorUnitsToDecimalString(funding.budget.capMinorUnits)}` : "No limit set"}
+                </dd>
+              </dl>
+            )}
+            {funding && (!funding.balanceCovers || (funding.budget && !funding.budget.covers)) && (
+              <p role="alert" className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink">
+                {!funding.balanceCovers ? "Ask an owner or billing admin to add funds in Payments first." : "This would go over the program's budget. An owner or billing admin can raise it in Payments."}
+              </p>
+            )}
             {error && (
               <p role="alert" className="text-sm font-medium text-danger">
                 {error}
@@ -131,7 +162,7 @@ export function FinalizeBountyDialog({ organizationId, programId, reportId, curr
               <Button type="button" variant="secondary" onClick={() => setStep("edit")} disabled={pending}>
                 Back
               </Button>
-              <Button type="button" pending={pending} onClick={handleConfirm}>
+              <Button type="button" pending={pending} disabled={Boolean(funding && (!funding.balanceCovers || (funding.budget && !funding.budget.covers)))} onClick={handleConfirm}>
                 Confirm finalization
               </Button>
             </div>
