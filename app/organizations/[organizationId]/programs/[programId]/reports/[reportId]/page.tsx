@@ -264,7 +264,7 @@ export default async function ReportDetailPage({
                   <Markdown content={report.impact} className="mt-2" />
                 </div>
               )}
-              {report.cvssMetrics && report.cvssBaseScore !== null && <CvssSummary metrics={report.cvssMetrics} baseScore={report.cvssBaseScore} />}
+              {report.cvssMetrics && report.cvssBaseScore !== null && <CvssSummary metrics={report.cvssMetrics} baseScore={report.cvssBaseScore} confirmedSeverity={report.confirmedSeverity} />}
             </div>
 
             {/* Collaborators: visible to the submitter, any listed collaborator, and

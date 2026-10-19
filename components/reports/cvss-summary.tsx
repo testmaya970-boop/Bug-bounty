@@ -2,20 +2,8 @@ import React from "react";
 import { SectionLabel } from "../ui/security-primitives";
 import { severityTone } from "../ui/badge";
 import type { CvssMetrics, ReportSeverity } from "../../types/report";
+import { SEVERITY_LABEL, cvssBand, cvssSeverityMismatch } from "../../lib/cvss";
 
-/** FIRST.org's own published CVSS v3.1 qualitative severity rating scale, reused
- * verbatim -- see docs/decisions/0069. Returns the same lowercase ReportSeverity keys
- * severityTone (components/ui/badge.tsx) already uses, so the score's color reuses the
- * existing severity color system directly -- never a second, parallel mapping. */
-function qualitativeRating(score: number): ReportSeverity {
-  if (score === 0) return "none";
-  if (score < 4) return "low";
-  if (score < 7) return "medium";
-  if (score < 9) return "high";
-  return "critical";
-}
-
-const QUALITATIVE_LABEL: Record<ReportSeverity, string> = { none: "None", low: "Low", medium: "Medium", high: "High", critical: "Critical" };
 
 const ATTACK_VECTOR_LABEL: Record<CvssMetrics["attackVector"], string> = { network: "Network", adjacent: "Adjacent network", local: "Local", physical: "Physical" };
 const ATTACK_COMPLEXITY_LABEL: Record<CvssMetrics["attackComplexity"], string> = { low: "Low", high: "High" };
@@ -34,15 +22,21 @@ const IMPACT_LABEL: Record<CvssMetrics["confidentialityImpact"], string> = { non
  * CVSS metrics attached (the common case, since CVSS is optional) -- never an "not yet
  * assessed" placeholder.
  */
-export function CvssSummary({ metrics, baseScore }: { metrics: CvssMetrics; baseScore: number }) {
+export function CvssSummary({ metrics, baseScore, confirmedSeverity }: { metrics: CvssMetrics; baseScore: number; confirmedSeverity: ReportSeverity | null }) {
+  const mismatch = cvssSeverityMismatch(confirmedSeverity, baseScore);
   return (
     <div className="border-t border-border pt-5">
       <SectionLabel>CVSS v3.1 base score</SectionLabel>
       <p className="mt-1.5 flex items-baseline gap-2">
-        <span className={`font-mono text-2xl font-semibold tabular-nums ${severityTone[qualitativeRating(baseScore)].text}`}>{baseScore.toFixed(1)}</span>
-        <span className="text-sm font-medium text-ink-muted">{QUALITATIVE_LABEL[qualitativeRating(baseScore)]}</span>
+        <span className={`font-mono text-2xl font-semibold tabular-nums ${severityTone[cvssBand(baseScore)].text}`}>{baseScore.toFixed(1)}</span>
+        <span className="text-sm font-medium text-ink-muted">{SEVERITY_LABEL[cvssBand(baseScore)]}</span>
       </p>
       <p className="mt-1 text-xs text-ink-muted">The standardized justification the organization attached when it confirmed this report&apos;s severity.</p>
+      {mismatch && confirmedSeverity && (
+        <p className="mt-1 text-xs text-ink">
+          The organization confirmed <span className="font-semibold">{SEVERITY_LABEL[confirmedSeverity]}</span>; CVSS alone rates it {SEVERITY_LABEL[mismatch]}. Ask in the report thread if the reason isn&apos;t clear.
+        </p>
+      )}
       <dl className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
         <div>
           <dt className="font-semibold uppercase tracking-wide text-ink-muted">Attack vector</dt>

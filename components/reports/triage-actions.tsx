@@ -22,6 +22,7 @@ import {
 import { reportStatusLabel } from "../../lib/report-status";
 import { useTriageStatus } from "./triage-status-rail";
 import type { CvssMetrics, ReportSeverity, ReportStatus } from "../../types/report";
+import { SEVERITY_LABEL, cvssSeverityMismatch } from "../../lib/cvss";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -507,6 +508,13 @@ export function SeverityControl({ organizationId, programId, reportId, currentSe
     });
   }
 
+  const mismatch = cvssSeverityMismatch(currentSeverity, currentCvssBaseScore);
+  const mismatchNote = mismatch && currentSeverity && (
+    <p role="status" className="mt-1.5 rounded border border-warning/40 bg-warning/10 px-2 py-1 text-xs text-ink">
+      CVSS {currentCvssBaseScore?.toFixed(1)} rates this {SEVERITY_LABEL[mismatch]}, not {SEVERITY_LABEL[currentSeverity]}. If that&apos;s deliberate, tell the researcher why in a message.
+    </p>
+  );
+
   if (locked) {
     const label = currentSeverity ? currentSeverity[0].toUpperCase() + currentSeverity.slice(1) : "Not set";
     return (
@@ -516,6 +524,7 @@ export function SeverityControl({ organizationId, programId, reportId, currentSe
           {label}: fixed now that a final decision has been made.
           {typeof currentCvssBaseScore === "number" && ` CVSS base score ${currentCvssBaseScore.toFixed(1)}.`}
         </p>
+        {mismatchNote}
       </div>
     );
   }
@@ -532,6 +541,7 @@ export function SeverityControl({ organizationId, programId, reportId, currentSe
           </option>
         ))}
       </Select>
+      {mismatchNote}
 
       <button type="button" onClick={() => setShowCvss((current) => !current)} className="mt-2 text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
         {showCvss ? "Hide CVSS scoring" : "Attach a CVSS score"}
