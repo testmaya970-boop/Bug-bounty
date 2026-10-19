@@ -12,7 +12,6 @@ import type {
   AuditLogEntry,
   ProgramPendingReview,
   SuspendedOrganization,
-  SuspendedResearcher,
 } from "@/types/platform-operations";
 import type { ProgramSummary, ProgramStatus, ProgramType, EngagementType, ProgramVisibility } from "@/types/program";
 
@@ -242,35 +241,6 @@ export async function rejectProgramLaunch(programId: string, reason: string): Pr
 }
 
 // --- Cross-program researcher suspension (see db/migrations/202609050014_researcher_platform_suspension.sql) ---
-
-type SuspendedResearcherRow = {
-  id: string;
-  username: string;
-  display_name: string;
-  email: string;
-  suspended_at: string;
-};
-
-function mapSuspendedResearcherRow(row: SuspendedResearcherRow): SuspendedResearcher {
-  return {
-    id: row.id,
-    username: row.username,
-    displayName: row.display_name,
-    email: row.email,
-    suspendedAt: row.suspended_at,
-  };
-}
-
-export async function listSuspendedResearchersForAdmin(): Promise<SuspendedResearcher[]> {
-  const actor = await getCurrentUser();
-  let rows;
-  try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<SuspendedResearcherRow>(client, "public.list_suspended_researchers_for_admin"));
-  } catch (error) {
-    mapError(error as { message: string });
-  }
-  return rows.map(mapSuspendedResearcherRow);
-}
 
 /** target is resolved server-side by suspend_researcher_platform_wide's own caller -- this
  * function takes a real user id, not a username; see actions/platform-operations.ts's
@@ -584,4 +554,21 @@ export async function listAuditLogsForAdmin(options?: { limit?: number; before?:
     metadata: row.metadata,
     createdAt: row.created_at,
   }));
+}
+
+/** Every account a platform admin can restore, searchable by name, username or email:
+ * suspended (Reinstate) and self-deactivated (Reactivate). Admin-deleted accounts are left
+ * out because they can't be reactivated (list_restricted_accounts_for_admin, 202610190005). */
+export type RestrictedAccount = { id: string; username: string; displayName: string; email: string | null; accountType: string; state: "suspended" | "deactivated"; since: string | null };
+
+export async function listRestrictedAccountsForAdmin(query: string): Promise<RestrictedAccount[]> {
+  const actor = await getCurrentUser();
+  type Row = { id: string; username: string; display_name: string; email: string | null; account_type: string; state: RestrictedAccount["state"]; since: string | null };
+  let rows: Row[];
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<Row>(client, "public.list_restricted_accounts_for_admin", [query.trim() || null, 100]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((r) => ({ id: r.id, username: r.username, displayName: r.display_name, email: r.email, accountType: r.account_type, state: r.state, since: r.since ? new Date(r.since).toISOString() : null }));
 }

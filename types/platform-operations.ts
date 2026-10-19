@@ -71,16 +71,6 @@ export type ProgramPendingReview = {
   scopeEntryCount: number;
 };
 
-/** A researcher currently suspended platform-wide -- list_suspended_researchers_for_admin.
- * See supabase/migrations/202609050014_researcher_platform_suspension.sql. */
-export type SuspendedResearcher = {
-  id: string;
-  username: string;
-  displayName: string;
-  email: string;
-  suspendedAt: string;
-};
-
 /** An organization currently suspended platform-wide -- list_suspended_organizations_for_admin.
  * See supabase/migrations/202609050016_organization_status_control.sql and
  * 202609050017_organization_operability_gate.sql. */

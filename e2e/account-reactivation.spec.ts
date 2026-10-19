@@ -72,11 +72,13 @@ async function reactivateAsAdmin(page: Page, email: string) {
   await signIn(page, "e2e.platform-admin-2@unpatched.demo", "E2ESeed!2026");
   await passMfaGate(page, "e2e.platform-admin-2@unpatched.demo");
   await expect(page).toHaveURL((url) => !url.pathname.startsWith("/sign-in"));
-  await page.goto("/platform/researchers");
-  await page.getByRole("combobox", { name: "Deactivated account" }).fill(email);
-  await page.getByRole("option").filter({ hasText: email }).click();
-  await page.getByLabel("Explain why this account is being reactivated").fill("E2E: user asked to come back");
-  await page.getByRole("button", { name: "Reactivate" }).click();
+  // Found through the restricted-accounts search (202610190005), then restored from its row.
+  await page.goto(`/platform/researchers?q=${encodeURIComponent(email)}`);
+  const row = page.getByRole("listitem").filter({ hasText: email });
+  await expect(row.getByText("Deactivated by its owner")).toBeVisible();
+  await row.getByLabel("Explain why this account is being reactivated").fill("E2E: user asked to come back");
+  await row.getByRole("button", { name: "Reactivate" }).click();
+  await expect(page.getByText(`${email} can sign in again.`)).toBeVisible();
 }
 
 const freshEmail = (tag: string) => `e2e.reactivate-${tag}-${Date.now().toString(36)}${randomBytes(2).toString("hex")}@unpatched.demo`;
@@ -121,9 +123,9 @@ test("an account deleted by a platform admin can't be reactivated", async ({ pag
   await signIn(page, "e2e.platform-admin-2@unpatched.demo", "E2ESeed!2026");
   await passMfaGate(page, "e2e.platform-admin-2@unpatched.demo");
   await expect(page).toHaveURL((url) => !url.pathname.startsWith("/sign-in"));
-  await page.goto("/platform/researchers");
-  await page.getByRole("combobox", { name: "Deactivated account" }).fill(email);
-  await expect(page.getByText(/No deactivated researcher matches/)).toBeVisible();
+  // An admin-deleted account is never offered for reactivation: the search finds nothing.
+  await page.goto(`/platform/researchers?q=${encodeURIComponent(email)}`);
+  await expect(page.getByText("No matching accounts")).toBeVisible();
 
   // ...and the database refuses it even if asked directly, as a platform admin.
   const adminId = await asServiceRole(async (db) => (await db.query("select id from public.users where email = 'e2e.platform-admin-2@unpatched.demo'")).rows[0].id);

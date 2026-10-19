@@ -144,58 +144,40 @@ export function ReinstateResearcherForm({ userId }: { userId: string }) {
 }
 
 /** Undoes a user's own deactivation -- the "contact support" path the deactivation page
- * promises. Keyed by email (what a person writing to support gives), any account type.
- * Accounts deleted by a platform admin are refused by the database. */
-export function ReactivateAccountForm() {
+ * promises -- from that account's row in the restricted-accounts list (found with its search).
+ * Accounts deleted by a platform admin never appear there; the database refuses them anyway. */
+export function ReactivateAccountForm({ email }: { email: string }) {
   const router = useRouter();
-  const [account, setAccount] = useState<AdminAccountMatch | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  if (done) return <p className="mt-2 text-xs font-medium text-success">{email} can sign in again.</p>;
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (pending) return;
     setError(null);
-    setDone(null);
-    if (!account?.email) {
-      setError("Search for and select the deactivated account.");
-      return;
-    }
-    const email = account.email;
     startTransition(async () => {
       const result = await reactivateAccountAction({ email, reason });
       if (!result.ok) {
         setError(result.message);
         return;
       }
-      setDone(`${email} can sign in again.`);
-      setAccount(null);
-      setReason("");
+      setDone(true);
       router.refresh();
     });
   }
 
   return (
-    <form className="space-y-3 rounded-lg border border-border bg-surface p-4" onSubmit={handleSubmit} noValidate>
-      <div>
-        <p className="text-sm font-semibold text-ink">Reactivate a deactivated account</p>
-        <p className="mt-1 text-sm text-ink-muted">For someone who deactivated their own account and asked to come back. Accounts deleted by a platform admin can't be reactivated.</p>
-      </div>
-      <AccountSearch label="Deactivated account" selected={account} onSelect={setAccount} onlyDeactivated />
-      <Textarea label="Explain why this account is being reactivated" required value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} />
+    <form className="mt-3 space-y-2 border-t border-border pt-3" onSubmit={handleSubmit} noValidate>
+      <Textarea label="Explain why this account is being reactivated" required value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} error={error ?? undefined} />
       <div className="flex justify-end">
-        <Button type="submit" pending={pending}>
+        <Button type="submit" variant="secondary" pending={pending}>
           Reactivate
         </Button>
       </div>
-      {done && <p className="text-xs font-medium text-success">{done}</p>}
-      {error && (
-        <p role="alert" className="text-xs font-medium text-danger">
-          {error}
-        </p>
-      )}
     </form>
   );
 }
