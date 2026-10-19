@@ -5,7 +5,9 @@
 //   2. an anonymous caller can execute a public function that is not on that list;
 //   3. any function still calls a retired authorizer (the copy-forward bug behind P0-1);
 //   4. anything in the private schema is executable by PUBLIC or anon (202610160006);
-//   5. a SECURITY DEFINER function does not pin search_path.
+//   5. a SECURITY DEFINER function does not pin search_path;
+//   6. the server's own service_role cannot execute a private function (the worker and
+//      server-only functions call them with the caller's rights -- 202610190007).
 // Run after migrations:  npm run check:authz   (needs MIGRATION_DATABASE_URL or DATABASE_URL)
 import pg from "pg";
 
@@ -40,6 +42,7 @@ const { rows } = await c.query(`
     coalesce(array_to_string(p.proconfig, ','), '') as config,
     has_function_privilege('authenticated', p.oid, 'execute') as authed,
     has_function_privilege('anon', p.oid, 'execute') as anon,
+    has_function_privilege('service_role', p.oid, 'execute') as service,
     exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where a.grantee = 0 and a.privilege_type = 'EXECUTE') as public_exec
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname in ('public', 'private') and p.prokind = 'f'`);
@@ -54,6 +57,7 @@ for (const f of rows) {
   if (f.schema === "public" && f.anon && !PUBLIC_BY_DESIGN.has(f.name)) problems.push(`${id}: executable by anon but not on PUBLIC_BY_DESIGN`);
   for (const r of RETIRED) if (f.name !== r && f.def.includes(r)) problems.push(`${id}: calls retired authorizer ${r}`);
   if (f.schema === "private" && (f.public_exec || f.anon)) problems.push(`${id}: private function executable by PUBLIC/anon`);
+  if (f.schema === "private" && !f.service) problems.push(`${id}: service_role cannot execute it (server-only callers would fail)`);
   if (f.definer && !/search_path/.test(f.config)) problems.push(`${id}: SECURITY DEFINER without a pinned search_path`);
 }
 
