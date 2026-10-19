@@ -95,7 +95,7 @@ test("set up an authenticator app, then sign in with its code (no email, no repl
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/\/mfa\/verify/);
   await expect(page.getByText("Enter the 6-digit code from your authenticator app.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Resend code" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Email me a new code" })).toHaveCount(0);
 
   // The code already used to enroll is refused (replay); the next one works.
   await page.getByLabel("Verification code").fill(enrollCode);

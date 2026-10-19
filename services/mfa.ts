@@ -319,3 +319,15 @@ export async function revokeAllOtherSessions(): Promise<number> {
   }
   return count;
 }
+
+/** True while a usable sign-in code is already out (unconsumed, unexpired, under the attempt
+ * limit), so /mfa/verify doesn't cancel it by sending another on every page load. */
+export async function hasLiveMfaVerificationCode(): Promise<boolean> {
+  const user = await requireCurrentUser();
+  try {
+    const rows = await withActorTransaction(user.id, (client) => callRpc<{ has_live_mfa_challenge: boolean }>(client, "public.has_live_mfa_challenge", ["verify"]));
+    return rows[0]?.has_live_mfa_challenge ?? false;
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}

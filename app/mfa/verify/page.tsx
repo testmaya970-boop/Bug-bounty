@@ -4,7 +4,8 @@ import type { Route } from "next";
 import { AuthLayout } from "../../../components/auth/auth-layout";
 import { MfaVerifyForm } from "../../../components/auth/mfa-verify-form";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { getMyMfaStatus, listMyMfaFactors, requestMfaVerificationCode } from "../../../services/mfa";
+import { getMyMfaStatus, hasLiveMfaVerificationCode, listMyMfaFactors, requestMfaVerificationCode } from "../../../services/mfa";
+import { activeEmailProvider } from "../../../lib/email-provider";
 import { isSafeRedirect } from "../../../lib/auth/safe-redirect";
 
 /**
@@ -27,15 +28,15 @@ export default async function MfaVerifyPage({ searchParams }: { searchParams: Pr
   const verifiedFactor = factors.find((factor) => factor.status === "verified");
   if (!verifiedFactor) redirect((isSafeRedirect(redirectTo) ? redirectTo : "/") as Route);
 
-  // Email method: landing on this page is itself the trigger to email a fresh 'verify'
-  // challenge (create_mfa_challenge invalidates any still-live challenge before issuing a
-  // new one, so re-rendering this page on a redirect loop can never leave two valid codes
-  // outstanding at once). Authenticator method: nothing to send -- the code is in the app.
-  if (verifiedFactor.method === "email") await requestMfaVerificationCode();
+  // Email method: send a code only if no usable one is out yet. Sending on every render
+  // cancelled the code the person was holding each time they reloaded or retyped the address
+  // (create_mfa_challenge invalidates the previous one), which made sign-in feel stuck. "Email
+  // me a new code" in the form is the explicit way to get another. Authenticator: nothing to send.
+  if (verifiedFactor.method === "email" && !(await hasLiveMfaVerificationCode())) await requestMfaVerificationCode();
 
   return (
     <AuthLayout eyebrow="Two-factor authentication" title="Verify it's you" description="This account has two-factor authentication enabled." variant="default">
-      <MfaVerifyForm factorId={verifiedFactor.id} method={verifiedFactor.method} redirectTo={isSafeRedirect(redirectTo) ? redirectTo : undefined} />
+      <MfaVerifyForm factorId={verifiedFactor.id} method={verifiedFactor.method} redirectTo={isSafeRedirect(redirectTo) ? redirectTo : undefined} emailIsSimulated={activeEmailProvider.name === "dev"} />
     </AuthLayout>
   );
 }
