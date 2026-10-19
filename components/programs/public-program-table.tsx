@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { ArrowsDownUp } from "@phosphor-icons/react";
-import { Avatar } from "../ui/navigation";
+import { OrgLogo } from "../ui/org-logo";
 import { ProgramStatusBadge, ProgramTypeBadge } from "../ui/badge";
 import { formatBountyRange } from "../../lib/money";
 import type { PublicProgramSummary } from "../../types/program";
@@ -96,7 +96,7 @@ export function PublicProgramTable({ programs }: { programs: PublicProgramSummar
                   href={`/organizations/${program.organizationId}/programs/${program.id}` as Route}
                   className="flex min-w-0 items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
-                  <Avatar name={program.organizationName} tinted />
+                  <OrgLogo organizationId={program.organizationId} name={program.organizationName} version={program.logoVersion} />
                   <span className="min-w-0">
                     <span className="block truncate font-semibold text-ink group-hover:underline">{program.name}</span>
                     <span className="block truncate text-xs text-ink-muted">{program.organizationName}</span>

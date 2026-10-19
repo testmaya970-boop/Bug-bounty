@@ -4,6 +4,7 @@ import { mapRpcError as mapError } from "@/services/rpc-error";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { clampPageSize, decodeCursor, encodeCursor } from "@/lib/pagination";
 import type { EngagementType, ProgramMemberRecord, ProgramSummary, ProgramType, PublicProgramScopeEntry, PublicProgramSummary, TopBountyProgram } from "@/types/program";
+import { getOrganizationLogoVersions } from "@/services/organization-logos";
 import type { ResearcherFocusArea } from "@/types/researcher-identity";
 import type { Page } from "@/types/pagination";
 
@@ -449,7 +450,8 @@ export async function listPublicPrograms(filters?: PublicProgramFilters, cursor?
   } catch (error) {
     mapError(error as { message: string });
   }
-  const items = rows.map(mapPublicProgramListRow);
+  const logos = await getOrganizationLogoVersions(rows.map((r) => r.organization_id));
+  const items = rows.map((r) => ({ ...mapPublicProgramListRow(r), logoVersion: logos[r.organization_id] }));
   // The cursor carries the row's own sort key (created_at, bounty or name -- never a
   // value an edit changes), so paging is stable under every sort.
   const nextCursor = rows.length === pageSize ? encodeCursor(rows[rows.length - 1].sort_value, rows[rows.length - 1].id) : null;
@@ -465,7 +467,9 @@ export async function getPublicProgram(programId: string): Promise<PublicProgram
     mapError(error as { message: string });
   }
   const row = rows[0];
-  return row ? mapPublicProgramRow(row) : null;
+  if (!row) return null;
+  const logos = await getOrganizationLogoVersions([row.organization_id]);
+  return { ...mapPublicProgramRow(row), logoVersion: logos[row.organization_id] };
 }
 
 type TopBountyProgramRow = { id: string; organization_id: string; name: string; organization_name: string; status: ProgramSummary["status"]; bounty_min_minor_units: number; bounty_max_minor_units: number; bounty_currency: string };

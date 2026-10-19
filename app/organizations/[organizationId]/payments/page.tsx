@@ -10,6 +10,7 @@ import {
 import { SectionLabel } from "../../../../components/ui/security-primitives";
 import { PaymentObligationStatusBadge } from "../../../../components/ui/badge";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import {
   CancelPaymentObligationDialog,
   InitiateManualPayoutButton,
@@ -158,6 +159,8 @@ export default async function OrganizationPaymentsPage({
         />
         <OrganizationHeader
           organizationName={organization?.name ?? "Organization"}
+          organizationId={organizationId}
+          logoVersion={await getOrganizationLogoVersion(organizationId)}
         />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <p className="max-w-2xl text-sm text-ink-muted">

@@ -9,6 +9,7 @@ import { AssetTypeBadge, SeverityBadge, StatusBadge } from "../../../components/
 import { ActivityTimeline } from "../../../components/ui/data-display";
 import { RegistryList, SectionLabel } from "../../../components/ui/security-primitives";
 import { OrganizationHeader } from "../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../services/organization-logos";
 import { canManageMembers, canManagePayments, canViewOrganizationAnalytics } from "../../../services/authorization";
 import { getActorMembership, getOrganizationAuditActivity, listOrganizationMembers } from "../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../services/organizations";
@@ -145,7 +146,7 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         {/* Read-only and purely informational -- only a platform admin can lift a
             suspension (see supabase/migrations/202609050016_organization_status_control.sql

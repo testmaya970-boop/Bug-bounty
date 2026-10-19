@@ -9,6 +9,7 @@ import { MemberTable } from "../../../../components/organizations/member-table";
 import { PendingInvitationsPanel } from "../../../../components/organizations/pending-invitations-panel";
 import { MemberActivity } from "../../../../components/organizations/member-activity";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import { ORGANIZATION_ROLES, canGrantRole, canManageMembers } from "../../../../services/authorization";
 import { getActorMembership, getOrganizationAuditActivity, listOrganizationMembers, listPendingInvitations } from "../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
@@ -58,7 +59,7 @@ export default async function OrganizationMembersPage({ params }: { params: Prom
       <div className="space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization", href: `/organizations/${organizationId}` }, { label: "Members" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-ink-muted">

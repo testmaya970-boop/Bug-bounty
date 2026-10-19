@@ -1,5 +1,6 @@
 import React from "react";
 import { SectionLabel } from "../ui/security-primitives";
+import { OrgLogo } from "../ui/org-logo";
 
 /**
  * Turn 8b: the org-level tab row this component used to render is deleted -- nine
@@ -16,11 +17,14 @@ import { SectionLabel } from "../ui/security-primitives";
  * page still shows once, directly under its own breadcrumb. No `active` prop, because
  * there is no second nav here anymore to highlight anything in.
  */
-export function OrganizationHeader({ organizationName }: { organizationName: string }) {
+export function OrganizationHeader({ organizationName, organizationId, logoVersion }: { organizationName: string; organizationId?: string; logoVersion?: string }) {
   return (
-    <div className="border-b border-border pb-4">
-      <SectionLabel>Organization</SectionLabel>
-      <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{organizationName}</h2>
+    <div className="flex min-w-0 items-center gap-3 border-b border-border pb-4">
+      {organizationId && logoVersion && <OrgLogo organizationId={organizationId} name={organizationName} version={logoVersion} size="lg" />}
+      <div className="min-w-0">
+        <SectionLabel>Organization</SectionLabel>
+        <h2 className="mt-1 break-words text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{organizationName}</h2>
+      </div>
     </div>
   );
 }

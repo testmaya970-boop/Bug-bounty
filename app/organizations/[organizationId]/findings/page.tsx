@@ -5,6 +5,7 @@ import { AppShell } from "../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../components/ui/navigation";
 import { PermissionDenied } from "../../../../components/ui/feedback";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import { OrganizationFindingsTable } from "../../../../components/organizations/organization-findings-table";
 import { getActorMembership } from "../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
@@ -98,7 +99,7 @@ async function renderOrganizationFindingsPage({
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <p className="text-sm text-ink-muted">Every report across every engagement. Filter, scan, and open a report to act on it in its own engagement's triage inbox.</p>
 

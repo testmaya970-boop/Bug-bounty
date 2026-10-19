@@ -7,6 +7,7 @@ import { SectionLabel } from "../../components/ui/security-primitives";
 import { EmptyState } from "../../components/ui/feedback";
 import { ProgramStatusBadge, StatusBadge } from "../../components/ui/badge";
 import { searchEverything } from "../../services/search";
+import { OrgLogo } from "../../components/ui/org-logo";
 import { getCurrentUser } from "../../lib/auth/current-user";
 
 /**
@@ -58,8 +59,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
                   {results.programs.map((p) => (
                     <li key={p.id}>
-                      <Link prefetch={false} href={`/organizations/${p.organizationId}/programs/${p.id}` as Route} className="flex min-w-0 items-center justify-between gap-3 px-4 py-3 hover:bg-surface-hover">
-                        <span className="min-w-0">
+                      <Link prefetch={false} href={`/organizations/${p.organizationId}/programs/${p.id}` as Route} className="flex min-w-0 items-center gap-3 px-4 py-3 hover:bg-surface-hover">
+                        <OrgLogo organizationId={p.organizationId} name={p.organizationName} version={p.logoVersion} />
+                        <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium text-ink">{p.name}</span>
                           <span className="block truncate text-xs text-ink-muted">{p.organizationName}</span>
                         </span>

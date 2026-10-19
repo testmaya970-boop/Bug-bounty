@@ -7,6 +7,7 @@ import { Breadcrumbs } from "../../../../components/ui/navigation";
 import { EmptyState, PermissionDenied } from "../../../../components/ui/feedback";
 import { ProgramStatusBadge } from "../../../../components/ui/badge";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import { CreateProgramDialog } from "../../../../components/programs/create-program-dialog";
 import { DeleteDraftProgramDialog } from "../../../../components/programs/delete-draft-program-dialog";
 import { canCreateProgram } from "../../../../services/authorization";
@@ -73,7 +74,7 @@ export default async function OrganizationEngagementsPage({ params, searchParams
       <div className="max-w-3xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization", href: `/organizations/${organizationId}` }, { label: "Engagements" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         {programs.length === 0 ? (
           <EmptyState title="No engagements yet">

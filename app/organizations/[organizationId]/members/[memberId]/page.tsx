@@ -10,6 +10,7 @@ import { MemberActivity } from "../../../../../components/organizations/member-a
 import { RoleChangeDialog } from "../../../../../components/organizations/role-change-dialog";
 import { ReactivateMemberDialog, RemoveMemberDialog, SuspendMemberDialog } from "../../../../../components/organizations/member-action-dialogs";
 import { OrganizationHeader } from "../../../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../../../services/organization-logos";
 import { canChangeRoles, canManageMembers, isLastActiveOwner } from "../../../../../services/authorization";
 import { getActorMembership, getOrganizationAuditActivity, listOrganizationMembers } from "../../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../../services/organizations";
@@ -70,7 +71,7 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
           ]}
         />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <Card className="flex flex-wrap items-center gap-4 p-5">
           <Avatar name={target.displayName} />

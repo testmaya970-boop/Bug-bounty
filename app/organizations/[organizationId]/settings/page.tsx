@@ -7,7 +7,11 @@ import { Breadcrumbs } from "../../../../components/ui/navigation";
 import { PermissionDenied } from "../../../../components/ui/feedback";
 import { MetadataPair, SectionLabel } from "../../../../components/ui/security-primitives";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import { OrganizationDescriptionForm } from "../../../../components/organizations/organization-description-form";
+import { OrganizationLogoForm } from "../../../../components/organizations/organization-logo-form";
+import { OrgLogo } from "../../../../components/ui/org-logo";
+import { getOrganizationLogoVersions } from "../../../../services/organization-logos";
 import { JiraConnectionSettings } from "../../../../components/organizations/jira-connection-settings";
 import { canManageIntegrations, canManageMembers } from "../../../../services/authorization";
 import { getJiraConnection, jiraWebhookUrl } from "../../../../services/jira";
@@ -49,7 +53,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
   // member would silently come back empty, which would misrepresent "0" as a real count
   // rather than "you aren't authorized to see this." So that fetch only happens at all
   // when `canManage` is true.
-  const [organizations, members, programs, invitations, description, jiraConnection] = await Promise.all([
+  const [organizations, members, programs, invitations, description, jiraConnection, logoVersions] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listOrganizationMembers(organizationId),
     listProgramsForOrganization(organizationId),
@@ -58,6 +62,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
     // Owner/security_admin only (get_jira_connection_for_org raises FORBIDDEN otherwise),
     // so only fetched for them -- same reasoning as invitations above.
     canIntegrate ? getJiraConnection(organizationId) : Promise.resolve(null),
+    getOrganizationLogoVersions([organizationId]),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
@@ -71,7 +76,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
       <div className="max-w-2xl space-y-8">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization", href: `/organizations/${organizationId}` }, { label: "Settings" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <div>
           <p className="text-sm text-ink-muted">
@@ -84,6 +89,18 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
           <div className="mt-3">
             <MetadataPair label="Organization name" value={organization?.name ?? "Organization"} />
             <p className="mt-2 text-xs text-ink-muted">Organization name changes aren&apos;t available yet.</p>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-6">
+          <SectionLabel>Logo</SectionLabel>
+          <p className="mt-1 text-sm text-ink-muted">Shown on this organization's programs, in search and on its pages.</p>
+          <div className="mt-3">
+            {canManage ? (
+              <OrganizationLogoForm organizationId={organizationId} name={organization?.name ?? "Organization"} version={logoVersions[organizationId]} />
+            ) : (
+              <OrgLogo organizationId={organizationId} name={organization?.name ?? "Organization"} version={logoVersions[organizationId]} size="lg" />
+            )}
           </div>
         </div>
 

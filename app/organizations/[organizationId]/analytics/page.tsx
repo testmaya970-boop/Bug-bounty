@@ -8,6 +8,7 @@ import { AppShell } from "../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../components/ui/navigation";
 import { EmptyState, PermissionDenied } from "../../../../components/ui/feedback";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import { OrganizationDashboard } from "../../../../components/dashboards/organization-dashboard";
 import { getOrganizationDashboard } from "../../../../services/dashboards";
 import { rangeDays } from "../../../../lib/viz";
@@ -157,7 +158,7 @@ export default async function OrganizationAnalyticsPage({
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         {programs.length === 0 ? (
           <EmptyState title="No analytics yet">Analytics fill in once this organization has at least one program receiving reports.</EmptyState>

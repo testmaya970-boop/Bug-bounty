@@ -2,11 +2,12 @@ import "server-only";
 import { withActorTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { mapRpcError as mapError } from "@/services/rpc-error";
+import { getOrganizationLogoVersions } from "@/services/organization-logos";
 import type { ProgramStatus } from "@/types/program";
 import type { ReportStatus } from "@/types/report";
 
 export type SearchResults = {
-  programs: { id: string; organizationId: string; name: string; organizationName: string; status: ProgramStatus }[];
+  programs: { id: string; organizationId: string; name: string; organizationName: string; status: ProgramStatus; logoVersion?: string }[];
   reports: { id: string; organizationId: string; programId: string; title: string; programName: string; status: ReportStatus }[];
   researchers: { id: string; displayName: string; username: string }[];
 };
@@ -30,5 +31,7 @@ export async function searchEverything(query: string): Promise<SearchResults> {
     else if (r.kind === "report") empty.reports.push({ id: r.id, organizationId: r.organization_id!, programId: r.program_id!, title: r.title, programName: r.subtitle, status: r.status as ReportStatus });
     else empty.researchers.push({ id: r.id, displayName: r.title, username: r.slug! });
   }
+  const logos = await getOrganizationLogoVersions(empty.programs.map((p) => p.organizationId));
+  for (const p of empty.programs) p.logoVersion = logos[p.organizationId];
   return empty;
 }

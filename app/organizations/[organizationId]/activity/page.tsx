@@ -5,6 +5,7 @@ import { AppShell } from "../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../components/ui/navigation";
 import { PermissionDenied } from "../../../../components/ui/feedback";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import { OrganizationActivityFeed } from "../../../../components/organizations/organization-activity-feed";
 import { canManageMembers } from "../../../../services/authorization";
 import { getActorMembership, getOrganizationAuditActivity, listOrganizationMembers } from "../../../../services/organization-members";
@@ -54,7 +55,7 @@ async function renderActivityPage(paramsPromise: Promise<{ organizationId: strin
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <ActivityDashboard data={dashboard} days={days} organizationId={organizationId} />
 

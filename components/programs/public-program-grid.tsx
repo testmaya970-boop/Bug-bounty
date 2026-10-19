@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { Avatar } from "../ui/navigation";
+import { OrgLogo } from "../ui/org-logo";
 import { ProgramStatusBadge, ProgramTypeBadge } from "../ui/badge";
 import { assetTypeLabel } from "../../lib/scope-labels";
 import { focusAreaLabel } from "../../lib/researcher-identity-labels";
@@ -38,7 +38,7 @@ export function PublicProgramGrid({
             {/* Name gets the full width: only the status sits beside it; every other badge
                 moves to its own row instead of squeezing the name to "QA...". */}
             <div className="flex items-start gap-2.5">
-              <Avatar name={program.organizationName} tinted />
+              <OrgLogo organizationId={program.organizationId} name={program.organizationName} version={program.logoVersion} />
               <div className="min-w-0 flex-1">
                 <p
                   className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink"

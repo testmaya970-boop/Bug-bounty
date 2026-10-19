@@ -7,6 +7,7 @@ import { Breadcrumbs } from "../../../../components/ui/navigation";
 import { SectionLabel } from "../../../../components/ui/security-primitives";
 import { PermissionDenied } from "../../../../components/ui/feedback";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import { getActorMembership } from "../../../../services/organization-members";
 import { canViewOrganizationResearchers } from "../../../../services/authorization";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
@@ -73,7 +74,7 @@ export default async function OrganizationResearchersPage({ params }: { params: 
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} />
+        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <div>
           <div className="flex items-baseline justify-between gap-3">

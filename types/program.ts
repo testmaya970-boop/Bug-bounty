@@ -53,6 +53,8 @@ export type ProgramSummary = {
 export type PublicProgramSummary = {
   id: string;
   organizationId: string;
+  /** Version of the organization's logo (202610190006); absent when it has none. */
+  logoVersion?: string;
   name: string;
   organizationName: string;
   status: ProgramStatus;
