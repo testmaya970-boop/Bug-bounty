@@ -36,6 +36,9 @@ export function ConfirmEmailPending({ email, emailIsSimulated }: { email: string
   const [resent, setResent] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
+  // One transition, but the spinner belongs to the button that started it: the other button
+  // is only disabled (no double submit), never shown as loading too.
+  const [busy, setBusy] = useState<"verify" | "resend" | null>(null);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -46,6 +49,7 @@ export function ConfirmEmailPending({ email, emailIsSimulated }: { email: string
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    setBusy("verify");
     startTransition(async () => {
       const result = await verifySignupCodeAction({ email, code });
       if (!result.ok) {
@@ -60,6 +64,7 @@ export function ConfirmEmailPending({ email, emailIsSimulated }: { email: string
   function handleResend() {
     setError(null);
     setResent(false);
+    setBusy("resend");
     startTransition(async () => {
       const result = await resendConfirmationEmailAction({ email });
       if (!result.ok) {
@@ -99,14 +104,14 @@ export function ConfirmEmailPending({ email, emailIsSimulated }: { email: string
             {error}
           </p>
         )}
-        <Button type="submit" pending={pending} className="w-full justify-center">
-          {pending ? "Verifying…" : "Verify"}
+        <Button type="submit" pending={pending && busy === "verify"} disabled={pending && busy === "resend"} className="w-full justify-center">
+          {pending && busy === "verify" ? "Verifying…" : "Verify"}
         </Button>
       </form>
 
       <div className="text-center text-sm text-ink-muted">
         <p>Didn&apos;t receive it?</p>
-        <Button type="button" variant="secondary" pending={pending} disabled={cooldown > 0} onClick={handleResend} className="mt-2">
+        <Button type="button" variant="secondary" pending={pending && busy === "resend"} disabled={cooldown > 0 || (pending && busy === "verify")} onClick={handleResend} className="mt-2">
           {cooldown > 0 ? `Resend code (${cooldown}s)` : "Resend code"}
         </Button>
         {resent && !error && <p className="mt-2 text-success">Sent again. Check your email.</p>}

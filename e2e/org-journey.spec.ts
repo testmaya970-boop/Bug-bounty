@@ -377,6 +377,12 @@ test("org journey: researcher accepts an invitation, sees the finalized amount, 
   await page.getByRole("button", { name: "Accept" }).click();
   await expect(page.getByText(PRIVATE_PROGRAM_NAME)).not.toBeVisible();
 
+  // --- Now a participant, the private program is findable from the top-bar search (202610190001) --
+  await page.getByRole("searchbox", { name: "Global search" }).fill(PRIVATE_PROGRAM_NAME);
+  await page.getByRole("searchbox", { name: "Global search" }).press("Enter");
+  await page.waitForURL(/\/search\?q=/);
+  await expect(page.getByRole("link", { name: new RegExp(PRIVATE_PROGRAM_NAME) })).toBeVisible();
+
   await signOut(page);
 
   // --- Veteran researcher: bell shows the new notification, sees the finalized amount ---

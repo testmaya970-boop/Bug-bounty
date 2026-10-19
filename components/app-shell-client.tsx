@@ -246,14 +246,9 @@ function AccountMenu({ user }: { user: ShellUser }) {
   );
 }
 
-/** A single global search field -- ⌘K opens it (focuses the input; no command-palette
- * overlay in this slice, just a fast way to reach the existing field without a mouse).
- * No search backend exists yet for a cross-entity query (programs+reports+researchers at
- * once) -- Enter routes to the real program search already built (docs/decisions/0053/
- * 0054), the one real search surface that exists today, rather than inventing a new one.
- * The placeholder says exactly that ("Search programs") rather than promising reports/
- * researchers too -- a prior placeholder text overclaimed the field's real scope, the
- * same kind of real/fake mismatch this pass is fixing everywhere else it appears. */
+/** The global search field -- ⌘K / Ctrl K focuses it. Enter opens /search, the one search
+ * across programs, reports and public researcher profiles (search_everything, 202610190001),
+ * where the database decides what this person may find. */
 function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
@@ -275,7 +270,7 @@ function GlobalSearch() {
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     const trimmed = value.trim();
-    if (trimmed) window.location.href = `/programs?q=${encodeURIComponent(trimmed)}`;
+    if (trimmed) window.location.href = `/search?q=${encodeURIComponent(trimmed)}`;
   }
 
   return (
@@ -286,7 +281,7 @@ function GlobalSearch() {
         type="search"
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder="Search programs…"
+        placeholder="Search programs, reports, researchers…"
         aria-label="Global search"
         className="min-h-10 w-full rounded-md border border-border bg-surface/60 pl-9 pr-14 text-sm text-ink outline-none backdrop-blur transition-colors duration-200 placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/25 motion-reduce:transition-none"
       />
@@ -305,6 +300,22 @@ function NotificationBell({ unreadCount }: { unreadCount: number }) {
 // why -- no dedicated help center existed at the time). Turn 6/phase-9-ia built a real
 // /help destination (support link, real docs, live-read release notes) -- this now
 // points there instead, one level up from feedback rather than skipping straight to it.
+/** Phones only: the search field is hidden below sm, so this takes Help's slot (which is
+ * hidden there too) and opens the /search page with its own field. */
+function MobileSearchLink() {
+  return (
+    <Link
+      href={"/search" as Route}
+      prefetch={false}
+      aria-label="Search"
+      title="Search"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-muted transition-colors duration-150 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:hidden"
+    >
+      <MagnifyingGlass aria-hidden="true" className="size-5" />
+    </Link>
+  );
+}
+
 function HelpLink() {
   return (
     <Link
@@ -677,6 +688,7 @@ export function AppShellClient({
           <GlobalSearch />
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <MobileSearchLink />
           <HelpLink />
           <NotificationBell unreadCount={unreadNotificationCount} />
           {user ? <AccountMenu user={user} /> : <Avatar name="Account" />}
