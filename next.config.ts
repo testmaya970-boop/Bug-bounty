@@ -1,4 +1,24 @@
 import type { NextConfig } from "next";
+import { networkInterfaces } from "node:os";
+
+/**
+ * Development only: opening `next dev` on a phone goes through this machine's LAN address or a
+ * dev tunnel (VS Code port forwarding, ngrok, Cloudflare quick tunnels). A tunnel hands the
+ * request to the server as localhost while the phone's Origin is the tunnel's host, so Next's
+ * Server Actions CSRF check refused every form ("Invalid Server Actions request"), and the dev
+ * server also blocked its own scripts for the unknown origin. These are allowed in development
+ * only; a production build keeps the strict same-origin check (SERVER_ACTIONS_ALLOWED_ORIGINS
+ * remains the explicit opt-in there).
+ */
+const isDev = process.env.NODE_ENV !== "production";
+const devPort = process.env.PORT ?? "3000";
+const lanAddresses = isDev
+  ? Object.values(networkInterfaces())
+      .flat()
+      .filter((a): a is NonNullable<typeof a> => Boolean(a && a.family === "IPv4" && !a.internal))
+      .map((a) => a.address)
+  : [];
+const devTunnelHosts = isDev ? ["*.devtunnels.ms", "*.ngrok-free.app", "*.ngrok.app", "*.trycloudflare.com"] : [];
 
 /**
  * Static security headers for every response -- see
@@ -27,7 +47,7 @@ const nextConfig: NextConfig = {
   // load ("11 drain listeners added to [Gzip]", then 50-100s hung page loads in E2E).
   compress: process.env.NEXT_COMPRESS === "1",
   typedRoutes: true,
-  allowedDevOrigins: ["127.0.0.1", "localhost"],
+  allowedDevOrigins: ["127.0.0.1", "localhost", ...lanAddresses, ...devTunnelHosts],
   // Evidence file uploads go through a Server Action (actions/report-file-evidence.ts).
   // The application's own 10 MiB evidence size limit (see
   // docs/decisions/0011-binary-evidence-storage.md) is the one a user actually sees
@@ -45,10 +65,14 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["@phosphor-icons/react"],
     serverActions: {
       bodySizeLimit: "12mb",
-      allowedOrigins: (process.env.SERVER_ACTIONS_ALLOWED_ORIGINS ?? "")
-        .split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean),
+      allowedOrigins: [
+        ...(process.env.SERVER_ACTIONS_ALLOWED_ORIGINS ?? "")
+          .split(",")
+          .map((origin) => origin.trim())
+          .filter(Boolean),
+        ...lanAddresses.map((address) => `${address}:${devPort}`),
+        ...devTunnelHosts,
+      ],
     },
   },
   async headers() {
