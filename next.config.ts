@@ -72,6 +72,10 @@ const nextConfig: NextConfig = {
           .filter(Boolean),
         ...lanAddresses.map((address) => `${address}:${devPort}`),
         ...devTunnelHosts,
+        // VS Code port forwarding rewrites the browser's Origin to localhost:<port> and sends the
+        // tunnel host as x-forwarded-host (seen live: origin localhost:3000 vs
+        // b1kfmwk4-3000.inc1.devtunnels.ms), so the local origin itself must be accepted.
+        ...(isDev ? [`localhost:${devPort}`, `127.0.0.1:${devPort}`] : []),
       ],
     },
   },
