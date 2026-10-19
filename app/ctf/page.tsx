@@ -60,7 +60,7 @@ async function renderCtfPage({ searchParams }: { searchParams: Promise<{ categor
           totalPointsEarned={totalPointsEarned}
         />
 
-        <CtfTracksStrip tracks={MOCK_CTF_TRACKS} />
+        <CtfTracksStrip tracks={MOCK_CTF_TRACKS} challenges={MOCK_CTF_CHALLENGES} solvedChallengeIds={solvedChallengeIds} />
 
         <div className="flex gap-1 border-b border-border">
           <a

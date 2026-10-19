@@ -13,10 +13,18 @@ import { PublicHomeMotion } from "../components/marketing/public-home-motion";
 import { ProgramDiscoveryPreview } from "../components/marketing/program-discovery-preview";
 import { StateMachineDiagram } from "../components/marketing/state-machine-diagram";
 import { getCurrentUser } from "../lib/auth/current-user";
-import { listMyPendingProgramInvitations, listMyProgramParticipations } from "../services/program-researchers";
+import {
+  listMyPendingProgramInvitations,
+  listMyProgramParticipations,
+} from "../services/program-researchers";
 import { listMyReports } from "../services/reports";
 import { hasAnyOrganizationMembership } from "../services/organizations";
-import { getMyReputationLedger, getMyReputationProgramCounts, getPublicLeaderboard, getResearcherReputationScore } from "../services/reputation";
+import {
+  getMyReputationLedger,
+  getMyReputationProgramCounts,
+  getPublicLeaderboard,
+  getResearcherReputationScore,
+} from "../services/reputation";
 import { getMyHomeDashboardSummary } from "../services/home-dashboard";
 import { isPlatformAdmin } from "../services/platform-operations";
 import { listMyPaymentObligations } from "../services/payments";
@@ -31,7 +39,10 @@ import { StandingSplit } from "../components/dashboard/standing-split";
 import { getMyEmailAliasAddress } from "../services/email-alias";
 import { ReferenceStrip } from "../components/dashboard/reference-strip";
 import { LearningSection } from "../components/dashboard/learning-section";
-import { MOCK_CHALLENGE_CATEGORIES, MOCK_CHALLENGE_SPOTLIGHT } from "../lib/mock/researcher-dashboard";
+import {
+  MOCK_CHALLENGE_CATEGORIES,
+  MOCK_CHALLENGE_SPOTLIGHT,
+} from "../lib/mock/researcher-dashboard";
 import { computeReportActivityWeeks } from "../lib/activity-calendar";
 import { listTopBountyPrograms } from "../services/programs";
 import { perfTimed } from "../lib/perf-trace";
@@ -64,42 +75,126 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
     <details className="group border-t border-border py-5 transition-colors duration-200 ease-out motion-reduce:transition-none">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-ink [&::-webkit-details-marker]:hidden">
         {question}
-        <span aria-hidden="true" className="shrink-0 text-xl text-ink-muted transition-transform duration-200 ease-out group-open:rotate-45 motion-reduce:transition-none">
+        <span
+          aria-hidden="true"
+          className="shrink-0 text-xl text-ink-muted transition-transform duration-200 ease-out group-open:rotate-45 motion-reduce:transition-none"
+        >
           +
         </span>
       </summary>
-      <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-ink-muted motion-safe:animate-enter-rise">{answer}</p>
+      <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-ink-muted motion-safe:animate-enter-rise">
+        {answer}
+      </p>
     </details>
   );
 }
 
 const RESEARCHER_STAGES = [
-  { label: "Join a program", detail: "An organization invites you directly by email. There is no public application queue yet." },
-  { label: "Understand scope", detail: "Every in-scope and out-of-scope target is explicit before you test anything. Nothing unlisted is implicitly allowed." },
-  { label: "Submit a finding", detail: "Target, title, description: the server makes the final scope decision, not the form." },
-  { label: "Attach evidence", detail: "Text, code, request/response logs, or a file, up to 10 MB. Attached at submission or added afterward." },
-  { label: "Communicate", detail: "A structured message thread on the report itself, not a scattered email chain." },
-  { label: "Track resolution", detail: "Every status change is real and visible: triaging, needs information, accepted, resolved." },
-  { label: "Build reputation", detail: "An append-only record of organization-confirmed outcomes. Never a score, never a leaderboard." },
+  {
+    label: "Join a program",
+    detail:
+      "An organization invites you directly by email. There is no public application queue yet.",
+  },
+  {
+    label: "Understand scope",
+    detail:
+      "Every in-scope and out-of-scope target is explicit before you test anything. Nothing unlisted is implicitly allowed.",
+  },
+  {
+    label: "Submit a finding",
+    detail:
+      "Target, title, description: the server makes the final scope decision, not the form.",
+  },
+  {
+    label: "Attach evidence",
+    detail:
+      "Text, code, request/response logs, or a file, up to 10 MB. Attached at submission or added afterward.",
+  },
+  {
+    label: "Communicate",
+    detail:
+      "A structured message thread on the report itself, not a scattered email chain.",
+  },
+  {
+    label: "Track resolution",
+    detail:
+      "Every status change is real and visible: triaging, needs information, accepted, resolved.",
+  },
+  {
+    label: "Build reputation",
+    detail:
+      "An append-only record of organization-confirmed outcomes. Never a score, never a leaderboard.",
+  },
 ];
 
 const ORGANIZATION_STAGES = [
-  { label: "Define a program", detail: "Created at draft. Nothing is exposed to a researcher until you're ready." },
-  { label: "Define scope", detail: "Domains, URLs, or IP ranges. The single most-specific match decides what's authorized." },
-  { label: "Invite researchers", detail: "By email, one at a time. An invited researcher gains no access to any other program or your organization." },
-  { label: "Triage a report", detail: "A real state machine: new, triaging, needs information, accepted. Never a generic status field." },
-  { label: "Request information", detail: "Ask the researcher directly on the report, without changing its outcome." },
-  { label: "Make a decision", detail: "Resolved, duplicate, informative, not applicable, or rejected. A bounty decision is layered on top, never inside the report row." },
-  { label: "Audit", detail: "Every decision is attributed and timestamped. Nothing is quietly overwritten." },
+  {
+    label: "Define a program",
+    detail:
+      "Created at draft. Nothing is exposed to a researcher until you're ready.",
+  },
+  {
+    label: "Define scope",
+    detail:
+      "Domains, URLs, or IP ranges. The single most-specific match decides what's authorized.",
+  },
+  {
+    label: "Invite researchers",
+    detail:
+      "By email, one at a time. An invited researcher gains no access to any other program or your organization.",
+  },
+  {
+    label: "Triage a report",
+    detail:
+      "A real state machine: new, triaging, needs information, accepted. Never a generic status field.",
+  },
+  {
+    label: "Request information",
+    detail:
+      "Ask the researcher directly on the report, without changing its outcome.",
+  },
+  {
+    label: "Make a decision",
+    detail:
+      "Resolved, duplicate, informative, not applicable, or rejected. A bounty decision is layered on top, never inside the report row.",
+  },
+  {
+    label: "Audit",
+    detail:
+      "Every decision is attributed and timestamped. Nothing is quietly overwritten.",
+  },
 ];
 
 const PHILOSOPHY_STAGES = [
-  { label: "Report submitted", detail: "The target, the scope match, and the description: frozen at the moment of submission." },
-  { label: "Evidence attached", detail: "Text, code, or a file. Immutable once uploaded. A corrected finding is a new entry, never an edit." },
-  { label: "Triage decision", detail: "Every transition needs an actor and an event. There is no generic status field that could be set silently." },
-  { label: "Researcher communication", detail: "Kept with the report it concerns, not lost in a separate inbox." },
-  { label: "Resolution", detail: "A final decision, with a reason. Not a status flipped without explanation." },
-  { label: "Audit trail", detail: "Who decided what, and when. Readable by the organization, not just implied by the current state." },
+  {
+    label: "Report submitted",
+    detail:
+      "The target, the scope match, and the description: frozen at the moment of submission.",
+  },
+  {
+    label: "Evidence attached",
+    detail:
+      "Text, code, or a file. Immutable once uploaded. A corrected finding is a new entry, never an edit.",
+  },
+  {
+    label: "Triage decision",
+    detail:
+      "Every transition needs an actor and an event. There is no generic status field that could be set silently.",
+  },
+  {
+    label: "Researcher communication",
+    detail: "Kept with the report it concerns, not lost in a separate inbox.",
+  },
+  {
+    label: "Resolution",
+    detail:
+      "A final decision, with a reason. Not a status flipped without explanation.",
+  },
+  {
+    label: "Audit trail",
+    detail:
+      "Who decided what, and when. Readable by the organization, not just implied by the current state.",
+  },
 ];
 
 /**
@@ -123,117 +218,222 @@ function PublicHome() {
           bar: the grammar explicitly forbids the pill-shaped sticky wordmark+CTA
           bar every earlier version of this page carried. A plain top rule with
           the wordmark and two real entry points, in document flow, not fixed. */}
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-surface focus:px-4 focus:py-2 focus:outline-2 focus:outline-focus">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-surface focus:px-4 focus:py-2 focus:outline-2 focus:outline-focus"
+      >
         Skip to content
       </a>
       <header className="border-b border-border px-4 py-5 sm:px-6">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck aria-hidden="true" className="size-5 text-action" />
-            <span className="font-display text-lg uppercase tracking-tight">Unpatched</span>
+            <span className="font-display text-lg uppercase tracking-tight">
+              Unpatched
+            </span>
           </div>
           <div className="flex items-center gap-5 text-sm font-semibold text-ink-muted">
-            <Link prefetch={false} href="/sign-in" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+            <Link
+              prefetch={false}
+              href="/sign-in"
+              className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+            >
               Sign in
             </Link>
-            <Link prefetch={false} href="/programs" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+            <Link
+              prefetch={false}
+              href="/programs"
+              className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+            >
               Programs
             </Link>
           </div>
         </div>
       </header>
 
-        <main id="main">
-          {/* TITLE PAGE (docs/decisions/0082/0083) -- the chaptered-editorial hero:
+      <main id="main">
+        {/* TITLE PAGE (docs/decisions/0082/0083) -- the chaptered-editorial hero:
               type on the paper ground, the hero-art bleeding off both edges as the
               only imagery above the fold. Headline/copy/buttons unchanged. */}
-          <section className="hero-art-host relative overflow-hidden px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
-            <HeroArt />
-            <div className="relative mx-auto max-w-2xl text-center">
-              <h1 data-motion="hero-heading" className={`${headingClass} text-4xl leading-[1.05] sm:text-5xl lg:text-[3.4rem]`}>
-                Every finding becomes a record no one can quietly change.
-              </h1>
-              <p data-motion="hero-copy" className="mx-auto mt-6 max-w-xl text-base text-ink-muted sm:text-lg">
-                Researchers submit real findings. Organizations triage and decide. Every step, evidence, response, and resolution is written once and never silently overwritten.
-              </p>
-              <div data-motion="hero-ctas" className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                <Link prefetch={false} href={"/researchers/sign-up" as Route} className={primaryLinkClass}>
-                  Explore security research <ArrowRight aria-hidden="true" className="size-4" />
-                </Link>
-                <Link prefetch={false} href={"/organizations/sign-up" as Route} className={secondaryLinkClass}>
-                  Run a security program
-                </Link>
-              </div>
+        <section className="hero-art-host relative overflow-hidden px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
+          <HeroArt />
+          <div className="relative mx-auto max-w-2xl text-center">
+            <h1
+              data-motion="hero-heading"
+              className={`${headingClass} text-4xl leading-[1.05] sm:text-5xl lg:text-[3.4rem]`}
+            >
+              Every finding becomes a record no one can quietly change.
+            </h1>
+            <p
+              data-motion="hero-copy"
+              className="mx-auto mt-6 max-w-xl text-base text-ink-muted sm:text-lg"
+            >
+              Researchers submit real findings. Organizations triage and decide.
+              Every step, evidence, response, and resolution is written once and
+              never silently overwritten.
+            </p>
+            <div
+              data-motion="hero-ctas"
+              className="mt-8 flex flex-wrap items-center justify-center gap-3"
+            >
+              <Link
+                prefetch={false}
+                href={"/researchers/sign-up" as Route}
+                className={primaryLinkClass}
+              >
+                Explore security research{" "}
+                <ArrowRight aria-hidden="true" className="size-4" />
+              </Link>
+              <Link
+                prefetch={false}
+                href={"/organizations/sign-up" as Route}
+                className={secondaryLinkClass}
+              >
+                Run a security program
+              </Link>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* CHAPTER ONE — SIGNAL / EVIDENCE (docs/decisions/0083). Hard-cut ground
+        {/* CHAPTER ONE — SIGNAL / EVIDENCE (docs/decisions/0083). Hard-cut ground
               (per devices.md §10: a chaptered page paints grounds per section, never
               drifts between them), the bug specimen full and real, its own callout
               labels read as case annotations rather than decoration -- the same real
               SVG this session already built, given a real chapter instead of sharing
               the hero with the title page. */}
-          <section id="how-it-works" className="relative overflow-hidden border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28">
-            <div className="mx-auto grid grid-cols-1 max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
-              <div className="relative z-10">
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action-hover">[ 01 ] /// </span>Chapter one</p>
-                <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Signal, then evidence.</h2>
-                <p data-motion="chapter-body" className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
-                  A researcher notices something worth a second look. Domains, URLs, or IP ranges: the single most-specific scope match decides what&rsquo;s authorized before anyone tests anything. Text,
-                  code, request/response logs, or a file, up to 10 MB, attached at submission or added afterward.
-                </p>
-              </div>
-              <figure data-motion="chapter-figure" className="chapter-art-full relative -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:mx-0 lg:h-[64vh]" aria-hidden="true">
-                <BugSpecimen />
-                <figcaption className="sr-only">A specimen-plate diagram of a security finding, annotated with real vulnerability classes: unvalidated input, broken access control, session token exposed, outdated dependency.</figcaption>
-              </figure>
+        <section
+          id="how-it-works"
+          className="relative overflow-hidden border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28"
+        >
+          <div className="mx-auto grid grid-cols-1 max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
+            <div className="relative z-10">
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">
+                <span aria-hidden="true" className="text-action-hover">
+                  [ 01 ] ///{" "}
+                </span>
+                Chapter one
+              </p>
+              <h2
+                data-motion="chapter-heading"
+                className={`${headingClass} mt-3 text-3xl sm:text-4xl`}
+              >
+                Signal, then evidence.
+              </h2>
+              <p
+                data-motion="chapter-body"
+                className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted"
+              >
+                A researcher notices something worth a second look. Domains,
+                URLs, or IP ranges: the single most-specific scope match decides
+                what&rsquo;s authorized before anyone tests anything. Text,
+                code, request/response logs, or a file, up to 10 MB, attached at
+                submission or added afterward.
+              </p>
             </div>
-          </section>
+            <figure
+              data-motion="chapter-figure"
+              className="chapter-art-full relative -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:mx-0 lg:h-[64vh]"
+              aria-hidden="true"
+            >
+              <BugSpecimen />
+              <figcaption className="sr-only">
+                A specimen-plate diagram of a security finding, annotated with
+                real vulnerability classes: unvalidated input, broken access
+                control, session token exposed, outdated dependency.
+              </figcaption>
+            </figure>
+          </div>
+        </section>
 
-          {/* CHAPTER TWO — FINDING / TRIAGE. Hard-cut ground change (bg-surface-muted,
+        {/* CHAPTER TWO — FINDING / TRIAGE. Hard-cut ground change (bg-surface-muted,
               not an interpolated drift), the real state-machine diagram as the
               chapter's one real "second-read" moment. */}
-          <section className="border-t border-border bg-surface-muted px-4 py-20 sm:px-6 sm:py-28">
-            <div className="mx-auto max-w-4xl">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action-hover">[ 02 ] /// </span>Chapter two</p>
-              <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Not a status field. A state machine.</h2>
-              <p data-motion="chapter-body" className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted">
-                Every report moves through a fixed, real transition table: the same one that runs in production, not a simplified version for this page.
-              </p>
-              <div data-motion="chapter-figure" className="mt-12">
-                <StateMachineDiagram />
-              </div>
+        <section className="border-t border-border bg-surface-muted px-4 py-20 sm:px-6 sm:py-28">
+          <div className="mx-auto max-w-4xl">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">
+              <span aria-hidden="true" className="text-action-hover">
+                [ 02 ] ///{" "}
+              </span>
+              Chapter two
+            </p>
+            <h2
+              data-motion="chapter-heading"
+              className={`${headingClass} mt-3 text-3xl sm:text-4xl`}
+            >
+              Not a status field. A state machine.
+            </h2>
+            <p
+              data-motion="chapter-body"
+              className="mt-4 max-w-[62ch] text-base leading-relaxed text-ink-muted"
+            >
+              Every report moves through a fixed, real transition table: the
+              same one that runs in production, not a simplified version for
+              this page.
+            </p>
+            <div data-motion="chapter-figure" className="mt-12">
+              <StateMachineDiagram />
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* CHAPTER THREE — DECISION / FIX / VERIFICATION. Two real paths (the
+        {/* CHAPTER THREE — DECISION / FIX / VERIFICATION. Two real paths (the
               researcher path, the organization path) as one shared WorkflowDiagramPair
               grid, step N of one aligned with step N of the other -- per taste.md's
               "media never bleeds under type" rule for this grammar, not a rounded
               tinted card. */}
-          <section id="for-researchers" className="border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28">
-            <div className="mx-auto max-w-6xl">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action-hover">[ 03 ] /// </span>Chapter three</p>
-              <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 max-w-2xl text-3xl sm:text-4xl`}>Decision, fix, verification: two real paths through the same record.</h2>
-              <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12">
-                <h3 className="text-xl font-bold text-ink lg:pr-12">Find real work. Keep the record.</h3>
-                <h3 id="for-organizations" className="text-xl font-bold text-ink lg:pl-12">
-                  Run a program, not a vulnerability inbox.
-                </h3>
-              </div>
-              <div data-motion="chapter-figure" className="mt-6">
-                <WorkflowDiagramPair left={RESEARCHER_STAGES} right={ORGANIZATION_STAGES} />
-              </div>
-              <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12">
-                <Link prefetch={false} href={"/researchers/sign-up" as Route} className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pr-12">
-                  Continue as researcher
-                </Link>
-                <Link prefetch={false} href={"/organizations/sign-up" as Route} className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pl-12">
-                  Continue as organization
-                </Link>
-              </div>
+        <section
+          id="for-researchers"
+          className="border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28"
+        >
+          <div className="mx-auto max-w-6xl">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">
+              <span aria-hidden="true" className="text-action-hover">
+                [ 03 ] ///{" "}
+              </span>
+              Chapter three
+            </p>
+            <h2
+              data-motion="chapter-heading"
+              className={`${headingClass} mt-3 max-w-2xl text-3xl sm:text-4xl`}
+            >
+              Decision, fix, verification: two real paths through the same
+              record.
+            </h2>
+            <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12">
+              <h3 className="text-xl font-bold text-ink lg:pr-12">
+                Find real work. Keep the record.
+              </h3>
+              <h3
+                id="for-organizations"
+                className="text-xl font-bold text-ink lg:pl-12"
+              >
+                Run a program, not a vulnerability inbox.
+              </h3>
             </div>
-          </section>
+            <div data-motion="chapter-figure" className="mt-6">
+              <WorkflowDiagramPair
+                left={RESEARCHER_STAGES}
+                right={ORGANIZATION_STAGES}
+              />
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12">
+              <Link
+                prefetch={false}
+                href={"/researchers/sign-up" as Route}
+                className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pr-12"
+              >
+                Continue as researcher
+              </Link>
+              <Link
+                prefetch={false}
+                href={"/organizations/sign-up" as Route}
+                className="inline-block border-b border-ink text-sm font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus lg:pl-12"
+              >
+                Continue as organization
+              </Link>
+            </div>
+          </div>
+        </section>
 
         {/* CHAPTER FOUR — RECORD (docs/decisions/0083). The peak, per BRIEF.md's
             feeling curve: the audit seal, full, its own real ring text (RECEIVED /
@@ -244,19 +444,49 @@ function PublicHome() {
             feel.md's peak rules. */}
         <section className="relative overflow-hidden border-t border-border bg-surface-muted px-4 py-24 sm:px-6 sm:py-32">
           <div className="mx-auto grid grid-cols-1 max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
-            <figure data-motion="chapter-figure" className="chapter-art-full relative order-2 -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:order-1 lg:mx-0 lg:h-[68vh]" aria-hidden="true">
+            <figure
+              data-motion="chapter-figure"
+              className="chapter-art-full relative order-2 -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:order-1 lg:mx-0 lg:h-[68vh]"
+              aria-hidden="true"
+            >
               <AuditSeal />
-              <figcaption className="sr-only">A notary-style audit seal, its ring reading RECEIVED, TRIAGED, DECIDED, RECORDED -- the real Unpatched report lifecycle.</figcaption>
+              <figcaption className="sr-only">
+                A notary-style audit seal, its ring reading RECEIVED, TRIAGED,
+                DECIDED, RECORDED -- the real Unpatched report lifecycle.
+              </figcaption>
             </figure>
             <div className="relative z-10 order-1 lg:order-2">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true" className="text-action-hover">[ 04 ] /// </span>Chapter four</p>
-              <h2 data-motion="chapter-heading" className={`${headingClass} mt-3 text-3xl sm:text-4xl`}>Security work should leave a record.</h2>
-              <p data-motion="chapter-body" className="mt-4 max-w-[54ch] text-base leading-relaxed text-ink-muted">Not a status that quietly changed. Not a decision no one can trace back to a reason.</p>
-              <dl data-motion="chapter-body" className="mt-8 space-y-5 border-t border-border pt-6">
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">
+                <span aria-hidden="true" className="text-action-hover">
+                  [ 04 ] ///{" "}
+                </span>
+                Chapter four
+              </p>
+              <h2
+                data-motion="chapter-heading"
+                className={`${headingClass} mt-3 text-3xl sm:text-4xl`}
+              >
+                Security work should leave a record.
+              </h2>
+              <p
+                data-motion="chapter-body"
+                className="mt-4 max-w-[54ch] text-base leading-relaxed text-ink-muted"
+              >
+                Not a status that quietly changed. Not a decision no one can
+                trace back to a reason.
+              </p>
+              <dl
+                data-motion="chapter-body"
+                className="mt-8 space-y-5 border-t border-border pt-6"
+              >
                 {PHILOSOPHY_STAGES.map((stage) => (
                   <div key={stage.label}>
-                    <dt className="text-sm font-bold text-ink">{stage.label}</dt>
-                    <dd className="mt-1 max-w-[54ch] text-sm leading-relaxed text-ink-muted">{stage.detail}</dd>
+                    <dt className="text-sm font-bold text-ink">
+                      {stage.label}
+                    </dt>
+                    <dd className="mt-1 max-w-[54ch] text-sm leading-relaxed text-ink-muted">
+                      {stage.detail}
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -270,7 +500,9 @@ function PublicHome() {
             questions about Unpatched's real, current constraints, unchanged. */}
         <section className="border-t border-border px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-3xl">
-            <h2 className={`${headingClass} text-2xl sm:text-3xl`}>Frequently asked questions</h2>
+            <h2 className={`${headingClass} text-2xl sm:text-3xl`}>
+              Frequently asked questions
+            </h2>
             <div className="mt-2">
               <FaqItem
                 question="Can I browse every program on Unpatched?"
@@ -284,7 +516,10 @@ function PublicHome() {
                 question="Can evidence be edited after I attach it?"
                 answer="No. Text, code, and files are immutable once uploaded. A corrected finding is a new entry, never a silent edit to the original."
               />
-              <FaqItem question="Is Unpatched's audit trail visible to me?" answer="Yes. Every decision on a report you're part of, as the submitting researcher or an authorized organization member, is readable, not just implied by the current status." />
+              <FaqItem
+                question="Is Unpatched's audit trail visible to me?"
+                answer="Yes. Every decision on a report you're part of, as the submitting researcher or an authorized organization member, is readable, not just implied by the current status."
+              />
             </div>
             <div className="mt-6">
               <ProgramDiscoveryPreview />
@@ -300,14 +535,27 @@ function PublicHome() {
             bands. The CTA is set as running text. */}
         <section className="border-t border-border px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted"><span aria-hidden="true">[ </span>REC-0000842<span aria-hidden="true"> ] /// </span>closed</p>
-            <h2 className={`${headingClass} mt-4 text-2xl sm:text-3xl`}>The record does not disappear.</h2>
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">
+              <span aria-hidden="true">[ </span>REC-0000842
+              <span aria-hidden="true"> ] /// </span>closed
+            </p>
+            <h2 className={`${headingClass} mt-4 text-2xl sm:text-3xl`}>
+              The record does not disappear.
+            </h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-muted">
-              <Link prefetch={false} href={"/researchers/sign-up" as Route} className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              <Link
+                prefetch={false}
+                href={"/researchers/sign-up" as Route}
+                className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
                 Continue as researcher
               </Link>
               {" · "}
-              <Link prefetch={false} href={"/organizations/sign-up" as Route} className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              <Link
+                prefetch={false}
+                href={"/organizations/sign-up" as Route}
+                className="border-b border-ink font-semibold text-ink hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
                 Continue as organization
               </Link>
             </p>
@@ -319,27 +567,48 @@ function PublicHome() {
           <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
             <div>
               <div className="flex items-center gap-2">
-                <ShieldCheck aria-hidden="true" className="size-5 text-action" />
-                <span className="font-display text-lg uppercase text-ink">Unpatched</span>
+                <ShieldCheck
+                  aria-hidden="true"
+                  className="size-5 text-action"
+                />
+                <span className="font-display text-lg uppercase text-ink">
+                  Unpatched
+                </span>
               </div>
-              <p className="mt-3 max-w-xs text-sm text-ink-muted">Every finding becomes a record no one can quietly change.</p>
+              <p className="mt-3 max-w-xs text-sm text-ink-muted">
+                Every finding becomes a record no one can quietly change.
+              </p>
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">Product</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">
+                Product
+              </p>
               <ul className="mt-4 space-y-2.5 text-sm text-ink-muted">
                 <li>
-                  <Link prefetch={false} href="/programs" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link
+                    prefetch={false}
+                    href="/programs"
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     Browse programs
                   </Link>
                 </li>
                 <li>
-                  <Link prefetch={false} href="/learn" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link
+                    prefetch={false}
+                    href="/learn"
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     Learn
                   </Link>
                 </li>
                 <li>
-                  <Link prefetch={false} href="/ctf" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link
+                    prefetch={false}
+                    href="/ctf"
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     CTF challenges
                   </Link>
                 </li>
@@ -347,20 +616,34 @@ function PublicHome() {
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">Get started</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">
+                Get started
+              </p>
               <ul className="mt-4 space-y-2.5 text-sm text-ink-muted">
                 <li>
-                  <Link prefetch={false} href={"/researchers/sign-up" as Route} className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link
+                    prefetch={false}
+                    href={"/researchers/sign-up" as Route}
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     For researchers
                   </Link>
                 </li>
                 <li>
-                  <Link prefetch={false} href={"/organizations/sign-up" as Route} className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link
+                    prefetch={false}
+                    href={"/organizations/sign-up" as Route}
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     For organizations
                   </Link>
                 </li>
                 <li>
-                  <Link prefetch={false} href="/sign-in" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link
+                    prefetch={false}
+                    href="/sign-in"
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     Sign in
                   </Link>
                 </li>
@@ -368,20 +651,34 @@ function PublicHome() {
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">Trust</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">
+                Trust
+              </p>
               <ul className="mt-4 space-y-2.5 text-sm text-ink-muted">
                 <li>
-                  <Link prefetch={false} href="/safe-harbor" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link
+                    prefetch={false}
+                    href="/safe-harbor"
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     Safe Harbor & Code of Conduct
                   </Link>
                 </li>
                 <li>
-                  <Link prefetch={false} href="/disclosures" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link
+                    prefetch={false}
+                    href="/disclosures"
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     Disclosures
                   </Link>
                 </li>
                 <li>
-                  <Link prefetch={false} href="/help" className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+                  <Link
+                    prefetch={false}
+                    href="/help"
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     Help
                   </Link>
                 </li>
@@ -391,7 +688,9 @@ function PublicHome() {
 
           <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6 text-xs text-ink-muted">
             <p>© {new Date().getFullYear()} Unpatched.</p>
-            <p className="font-mono">Every report moves through the same recorded path.</p>
+            <p className="font-mono">
+              Every report moves through the same recorded path.
+            </p>
           </div>
         </div>
       </footer>
@@ -405,7 +704,9 @@ function PublicHome() {
  * COUNT or a complete, non-paginated list), never a partial page's `.length`, and no
  * bounty totals, rankings, SLAs, or synthetic activity appear anywhere on this screen. */
 export default async function HomePage() {
-  return perfTimed("route: researcher dashboard (total)", () => renderHomePage());
+  return perfTimed("route: researcher dashboard (total)", () =>
+    renderHomePage(),
+  );
 }
 
 async function renderHomePage() {
@@ -422,50 +723,72 @@ async function renderHomePage() {
   // rule exactly. Every other account -- researcher-only, both, or neither yet -- lands
   // here, including right after sign-in: HomePage is this app's real researcher
   // dashboard, not /programs (the public program registry).
-  const [participations, hasOrganization, admin] = await perfTimed("HomePage gate batch (participations+hasOrg+admin)", () =>
-    Promise.all([listMyProgramParticipations(), hasAnyOrganizationMembership(user.id), isPlatformAdmin()]),
+  const [participations, hasOrganization, admin] = await perfTimed(
+    "HomePage gate batch (participations+hasOrg+admin)",
+    () =>
+      Promise.all([
+        listMyProgramParticipations(),
+        hasAnyOrganizationMembership(user.id),
+        isPlatformAdmin(),
+      ]),
   );
   // Platform staff land on the platform overview (determineDefaultDestination's own first
   // rule). Checked here too because sign-in can't know yet: admin power needs the MFA'd
   // session (202610100001), and the MFA step sends everyone to "/" when it finishes.
   if (admin) redirect("/platform" as Route);
   const hasResearcherParticipation = participations.length > 0;
-  if (hasOrganization && !hasResearcherParticipation) redirect("/organizations" as Route);
+  if (hasOrganization && !hasResearcherParticipation)
+    redirect("/organizations" as Route);
 
-  const [invitations, dashboardSummary, reputationLedgerPage, reputationProgramCounts, myReportsPage, featuredPrograms, leaderboard, reputationScore, paymentObligations, emailAlias] =
-    await perfTimed("HomePage 10-query dashboard batch", () =>
-      Promise.all([
-        listMyPendingProgramInvitations(),
-        // Replaces four separate round trips (getMyReputationSummary,
-        // getMyReputationSeverityCounts, getMyReportStatusCounts,
-        // countMyReportsNeedingResponse) with one combined RPC -- see
-        // services/home-dashboard.ts and supabase/migrations/202609070001_home_dashboard_summary.sql.
-        // Those four functions are unchanged and still exist for any other caller.
-        getMyHomeDashboardSummary(),
-        getMyReputationLedger(user.id),
-        getMyReputationProgramCounts(user.id),
-        // Large single page, not full pagination -- only joins report title/program name onto
-        // the ledger's own evidence rows (see components/reputation/reputation-ledger.tsx),
-        // matching the identical call on app/researchers/page.tsx, whose real reputation
-        // section is embedded below rather than duplicated.
-        listMyReports(user.id, undefined, MAX_PAGE_SIZE),
-        // Real, currently-active-bounty-policy programs only, capped to a small dashboard
-        // count -- the same query app/programs/page.tsx's own "Highest-paying programs"
-        // section uses, never lib/mock/researcher-dashboard's fabricated MOCK_FEATURED_PROGRAMS.
-        listTopBountyPrograms(3),
-        // Real leaderboard (get_public_leaderboard), the same query app/researchers/page.tsx
-        // itself uses -- StandingSplit renders a top-8 slice of this, never
-        // lib/mock/researcher-dashboard's fabricated MOCK_LEADERBOARD.
-        getPublicLeaderboard(8),
-        getResearcherReputationScore(user.id),
-        // Real payment_obligations ledger, the same query app/bounties/page.tsx and
-        // app/settings/payments/page.tsx already use -- feeds CommandRow's real
-        // "lifetime rewards" stat, replacing the fabricated MOCK_RESEARCHER_STATUS figure.
-        listMyPaymentObligations(user.id),
-        getMyEmailAliasAddress(user.id),
-      ]),
-    );
-  const { reputationSummary: reputationCounts, reputationSeverityCounts, reportStatusCounts, reportsNeedingResponse } = dashboardSummary;
+  const [
+    invitations,
+    dashboardSummary,
+    reputationLedgerPage,
+    reputationProgramCounts,
+    myReportsPage,
+    featuredPrograms,
+    leaderboard,
+    reputationScore,
+    paymentObligations,
+    emailAlias,
+  ] = await perfTimed("HomePage 10-query dashboard batch", () =>
+    Promise.all([
+      listMyPendingProgramInvitations(),
+      // Replaces four separate round trips (getMyReputationSummary,
+      // getMyReputationSeverityCounts, getMyReportStatusCounts,
+      // countMyReportsNeedingResponse) with one combined RPC -- see
+      // services/home-dashboard.ts and supabase/migrations/202609070001_home_dashboard_summary.sql.
+      // Those four functions are unchanged and still exist for any other caller.
+      getMyHomeDashboardSummary(),
+      getMyReputationLedger(user.id),
+      getMyReputationProgramCounts(user.id),
+      // Large single page, not full pagination -- only joins report title/program name onto
+      // the ledger's own evidence rows (see components/reputation/reputation-ledger.tsx),
+      // matching the identical call on app/researchers/page.tsx, whose real reputation
+      // section is embedded below rather than duplicated.
+      listMyReports(user.id, undefined, MAX_PAGE_SIZE),
+      // Real, currently-active-bounty-policy programs only, capped to a small dashboard
+      // count -- the same query app/programs/page.tsx's own "Highest-paying programs"
+      // section uses, never lib/mock/researcher-dashboard's fabricated MOCK_FEATURED_PROGRAMS.
+      listTopBountyPrograms(3),
+      // Real leaderboard (get_public_leaderboard), the same query app/researchers/page.tsx
+      // itself uses -- StandingSplit renders a top-8 slice of this, never
+      // lib/mock/researcher-dashboard's fabricated MOCK_LEADERBOARD.
+      getPublicLeaderboard(8),
+      getResearcherReputationScore(user.id),
+      // Real payment_obligations ledger, the same query app/bounties/page.tsx and
+      // app/settings/payments/page.tsx already use -- feeds CommandRow's real
+      // "lifetime rewards" stat, replacing the fabricated MOCK_RESEARCHER_STATUS figure.
+      listMyPaymentObligations(user.id),
+      getMyEmailAliasAddress(user.id),
+    ]),
+  );
+  const {
+    reputationSummary: reputationCounts,
+    reputationSeverityCounts,
+    reportStatusCounts,
+    reportsNeedingResponse,
+  } = dashboardSummary;
   const activePrograms = participations.filter((p) => p.status === "active");
 
   const researcherStatus = computeResearcherDashboardStatus({
@@ -475,24 +798,39 @@ async function renderHomePage() {
     paymentObligations,
   });
 
-  const reputationEvidenceByReportId: Record<string, { title: string; programName: string }> = {};
+  const reputationEvidenceByReportId: Record<
+    string,
+    { title: string; programName: string }
+  > = {};
   const reputationProgramNames = new Map<string, string>();
   for (const report of myReportsPage.items) {
-    reputationEvidenceByReportId[report.id] = { title: report.title, programName: report.programName };
+    reputationEvidenceByReportId[report.id] = {
+      title: report.title,
+      programName: report.programName,
+    };
     reputationProgramNames.set(report.programId, report.programName);
   }
-  const hasReputationHistory = reputationLedgerPage.items.length > 0 || reputationCounts.some((entry) => entry.count > 0);
+  const hasReputationHistory =
+    reputationLedgerPage.items.length > 0 ||
+    reputationCounts.some((entry) => entry.count > 0);
 
   // The one real next step, in priority order -- identical logic to before, only the
   // presentation is new. A large PrimaryActionPanel replaces the previous small
   // ink-filled text link so this reads as the page's one dominant action, not one line
   // among several.
-  const primaryAction: { eyebrow: string; title: string; description: string; label: string; href: Route } =
+  const primaryAction: {
+    eyebrow: string;
+    title: string;
+    description: string;
+    label: string;
+    href: Route;
+  } =
     reportsNeedingResponse > 0
       ? {
           eyebrow: "Action required",
           title: `${reportsNeedingResponse} report${reportsNeedingResponse === 1 ? "" : "s"} waiting on you`,
-          description: "An organization has requested more information on at least one of your reports.",
+          description:
+            "An organization has requested more information on at least one of your reports.",
           label: "Respond to reports",
           href: "/reports" as Route,
         }
@@ -500,14 +838,18 @@ async function renderHomePage() {
         ? {
             eyebrow: "Waiting on you",
             title: `${invitations.length} pending program invitation${invitations.length === 1 ? "" : "s"}`,
-            description: "An organization has invited you to research one of its programs.",
+            description:
+              "An organization has invited you to research one of its programs.",
             label: "Review invitations",
             href: "/programs" as Route,
           }
         : {
             eyebrow: "Research",
             title: "Find your next security target",
-            description: activePrograms.length > 0 ? "Browse the programs you can research, or discover a new public program." : "Browse public programs open to the community, or wait for an invitation.",
+            description:
+              activePrograms.length > 0
+                ? "Browse the programs you can research, or discover a new public program."
+                : "Browse public programs open to the community, or wait for an invitation.",
             label: "Browse programs",
             href: "/programs" as Route,
           };
@@ -531,7 +873,11 @@ async function renderHomePage() {
     <AppShell title={primaryAction.title} user={user}>
       <div className="max-w-6xl space-y-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-sm text-ink-muted">{user.displayName ? `Welcome back, ${user.displayName}` : "Your security workspace"}</p>
+          <p className="text-sm text-ink-muted">
+            {user.displayName
+              ? `Welcome back, ${user.displayName}`
+              : "Your security workspace"}
+          </p>
           <span className="font-mono text-xs text-ink-muted">
             {reportsNeedingResponse > 0
               ? `${reportsNeedingResponse} report${reportsNeedingResponse === 1 ? "" : "s"} waiting on your response`
@@ -548,50 +894,82 @@ async function renderHomePage() {
             <div className="min-w-0">
               <SectionLabel>Email alias</SectionLabel>
               {emailAlias.address ? (
-                <p className="mt-0.5 truncate font-mono text-sm text-ink select-all">{emailAlias.address}</p>
+                <p className="mt-0.5 truncate font-mono text-sm text-ink select-all">
+                  {emailAlias.address}
+                </p>
               ) : (
-                <p className="mt-0.5 text-sm text-ink-muted">Get a private alias for signing up test accounts on program targets.</p>
+                <p className="mt-0.5 text-sm text-ink-muted">
+                  Get a private alias for signing up test accounts on program
+                  targets.
+                </p>
               )}
             </div>
-            <Link prefetch={false} href={"/settings/email-alias" as Route} className="shrink-0 text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            <Link
+              prefetch={false}
+              href={"/settings/email-alias" as Route}
+              className="shrink-0 text-sm font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
               {emailAlias.address ? "Manage alias →" : "Create your alias →"}
             </Link>
           </div>
         )}
 
-        <OperationalGrid activePrograms={activePrograms} featuredPrograms={featuredPrograms} challenges={MOCK_CHALLENGE_SPOTLIGHT} />
+        <OperationalGrid
+          activePrograms={activePrograms}
+          featuredPrograms={featuredPrograms}
+          challenges={MOCK_CHALLENGE_SPOTLIGHT}
+        />
 
         <LearningSection categories={MOCK_CHALLENGE_CATEGORIES} />
 
-        <StandingSplit reputationCounts={reputationCounts} hasReputationHistory={hasReputationHistory} leaderboardRows={leaderboard} />
+        <StandingSplit
+          reputationCounts={reputationCounts}
+          hasReputationHistory={hasReputationHistory}
+          leaderboardRows={leaderboard}
+        />
 
         {hasReputationHistory && (
           <div className="rounded-xl border-l-4 border-l-action bg-surface-raised p-6 shadow-sm">
             <SectionLabel>Verified impact</SectionLabel>
-            <h2 className="mt-0.5 text-base font-semibold text-ink">Reputation detail</h2>
+            <h2 className="mt-0.5 text-base font-semibold text-ink">
+              Reputation detail
+            </h2>
             <div className="mt-4 space-y-6">
-              <ReputationCharts counts={reputationCounts} severityCounts={reputationSeverityCounts} />
-              <ReputationProgramContext programCounts={reputationProgramCounts} programNames={reputationProgramNames} />
-              <ReputationLedgerSection initialEntries={reputationLedgerPage.items} initialNextCursor={reputationLedgerPage.nextCursor} evidenceByReportId={reputationEvidenceByReportId} />
+              <ReputationCharts
+                counts={reputationCounts}
+                severityCounts={reputationSeverityCounts}
+              />
+              <ReputationProgramContext
+                programCounts={reputationProgramCounts}
+                programNames={reputationProgramNames}
+              />
+              <ReputationLedgerSection
+                initialEntries={reputationLedgerPage.items}
+                initialNextCursor={reputationLedgerPage.nextCursor}
+                evidenceByReportId={reputationEvidenceByReportId}
+              />
             </div>
           </div>
         )}
 
         <ReferenceStrip activityWeeks={activityWeeks} />
 
-        <div className="border-t border-border pt-4 text-xs text-ink-muted">
-          <p>When an organization requests information on a report, it appears here and in Notifications.</p>
-          {/* Only shown to someone who already belongs to an organization — for anyone
-              else, /organizations is the identical dead end the sidebar's own
-              Organization nav group is hidden for (see docs/decisions/0044/0048): its
-              only content is "you don't have one yet, create one," which is not a real
-              next step to surface on a researcher's own home screen. */}
-          {hasOrganization && (
-            <Link prefetch={false} href="/organizations" className="mt-2 inline-block font-medium text-ink-muted hover:text-ink">
+        {/* Only shown to someone who already belongs to an organization — for anyone
+            else, /organizations is the identical dead end the sidebar's own
+            Organization nav group is hidden for (see docs/decisions/0044/0048): its
+            only content is "you don't have one yet, create one," which is not a real
+            next step to surface on a researcher's own home screen. */}
+        {hasOrganization && (
+          <div className="border-t border-border pt-4 text-xs">
+            <Link
+              prefetch={false}
+              href="/organizations"
+              className="inline-block font-medium text-ink-muted hover:text-ink"
+            >
               Manage an organization instead?
             </Link>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </AppShell>
   );
