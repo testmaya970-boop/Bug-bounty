@@ -96,8 +96,23 @@ export async function setActorClaims(client: PoolClient, claims: { sub: string; 
 /** Borrows a pooled client for the duration of fn, always releasing it back to the pool
  * afterward -- for call sites (middleware's session-cookie validation) that need a raw
  * client without an implicit transaction wrapper around the whole call. */
+/** A connection that couldn't be opened in time is safe to retry: no query ran. Seen live: a
+ * slow PostgreSQL checkpoint on Docker Desktop (15s disk write) made one connect hit the 10s
+ * timeout and failed a whole page ("timeout exceeded when trying to connect"). One retry after a
+ * short pause rides out that kind of stall; anything else (bad credentials, refused) fails fast. */
+async function connectWithRetry(): Promise<PoolClient> {
+  const p = await getPool();
+  try {
+    return await p.connect();
+  } catch (error) {
+    if (!(error instanceof Error) || !/timeout exceeded when trying to connect|Connection terminated due to connection timeout/i.test(error.message)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    return p.connect();
+  }
+}
+
 export async function withClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
-  const client = await (await getPool()).connect();
+  const client = await connectWithRetry();
   try {
     const result = await fn(client);
     client.release();
@@ -111,7 +126,7 @@ export async function withClient<T>(fn: (client: PoolClient) => Promise<T>): Pro
 }
 
 export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
-  const client = await (await getPool()).connect();
+  const client = await connectWithRetry();
   // Set when the connection itself is broken (the rollback can't even run): the client is
   // destroyed on release instead of going back into the pool for the next request.
   let broken: Error | undefined;
