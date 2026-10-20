@@ -30,6 +30,7 @@ import {
   getOrganizationBalances,
   listBalanceAlerts,
   listInvoices,
+  listInvoiceRefsByObligation,
   listOrganizationDeposits,
   listProgramBudgets,
   type OrganizationBalance,
@@ -127,6 +128,7 @@ export default async function OrganizationPaymentsPage({
     budgets,
     billingProfile,
     invoices,
+    invoiceRefs,
   ] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listPaymentLedgerForBilling(organizationId),
@@ -136,6 +138,7 @@ export default async function OrganizationPaymentsPage({
     listProgramBudgets(organizationId),
     getBillingProfile(organizationId),
     listInvoices(organizationId),
+    listInvoiceRefsByObligation(organizationId),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
@@ -264,6 +267,9 @@ export default async function OrganizationPaymentsPage({
                     <th scope="col" className="px-4 py-3">
                       Status
                     </th>
+                    <th scope="col" className="px-4 py-3">
+                      Invoice
+                    </th>
                     <th
                       scope="col"
                       className="sticky right-0 bg-surface px-4 py-3 text-right shadow-[-8px_0_8px_-8px_rgb(0_0_0/0.12)]"
@@ -310,6 +316,22 @@ export default async function OrganizationPaymentsPage({
                             status={row.status}
                             pulse={row.status === "processing"}
                           />
+                        </td>
+                        {/* Each paid award's fee is billed on the monthly invoice that lists it. */}
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {invoiceRefs[row.obligationId] ? (
+                            <Link
+                              prefetch={false}
+                              href={`/organizations/${organizationId}/payments/invoices/${invoiceRefs[row.obligationId].invoiceId}` as Route}
+                              className="font-mono text-xs font-semibold text-action hover:underline"
+                            >
+                              {invoiceRefs[row.obligationId].number}
+                            </Link>
+                          ) : row.status === "succeeded" ? (
+                            <span className="text-xs text-ink-muted">After month end</span>
+                          ) : (
+                            <span className="text-xs text-ink-muted">Not paid yet</span>
+                          )}
                         </td>
                         {/* Pinned right: on a phone the table scrolls and the actions stay in view. */}
                         <td className="sticky right-0 bg-surface px-4 py-3 shadow-[-8px_0_8px_-8px_rgb(0_0_0/0.12)]">

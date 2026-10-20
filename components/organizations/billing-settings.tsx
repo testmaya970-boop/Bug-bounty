@@ -11,6 +11,7 @@ import {
   type ActionResult,
 } from "../../actions/billing";
 import { minorUnitsToDecimalString } from "../../lib/money";
+import { BILLING_COUNTRIES, GST_STATES } from "../../lib/countries";
 import type {
   BalanceAlert,
   BillingProfile,
@@ -277,13 +278,13 @@ export function BillingProfileForm({
     addressLine: profile?.addressLine ?? "",
     city: profile?.city ?? "",
     postalCode: profile?.postalCode ?? "",
-    country: profile?.country ?? "IN",
+    country: profile?.country ?? "US",
     stateCode: profile?.stateCode ?? "",
   });
   const { pending, save, note } = useSave();
   const field = (key: keyof typeof form) => ({
     value: form[key],
-    onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm({ ...form, [key]: event.target.value }),
   });
   const india = form.country.trim().toUpperCase() === "IN";
@@ -297,6 +298,8 @@ export function BillingProfileForm({
             upsertBillingProfileAction({
               organizationId,
               ...form,
+              // GSTIN and GST state apply to Indian companies only.
+              gstin: india ? form.gstin : "",
               stateCode: india ? form.stateCode : "",
             }),
           "Billing details saved.",
@@ -310,12 +313,13 @@ export function BillingProfileForm({
           maxLength={200}
           {...field("legalName")}
         />
-        <Input
-          label="GSTIN"
-          helperText="Optional. 15 characters, for GST input credit."
-          maxLength={15}
-          {...field("gstin")}
-        />
+        <Select label="Country" required {...field("country")}>
+          {BILLING_COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
         <Input
           className="sm:col-span-2"
           label="Address"
@@ -330,22 +334,20 @@ export function BillingProfileForm({
           maxLength={12}
           {...field("postalCode")}
         />
-        <Input
-          label="Country"
-          helperText="Two-letter code, like IN or US."
-          required
-          maxLength={2}
-          {...field("country")}
-        />
         {india && (
-          <Input
-            label="State code"
-            helperText="The 2-digit GST state code, like 29 for Karnataka."
-            required
-            maxLength={2}
-            inputMode="numeric"
-            {...field("stateCode")}
-          />
+          <>
+            <Select label="State (GST)" required {...field("stateCode")}>
+              <option value="" disabled>
+                Choose a state
+              </option>
+              {GST_STATES.map((st) => (
+                <option key={st.code} value={st.code}>
+                  {st.code} · {st.name}
+                </option>
+              ))}
+            </Select>
+            <Input label="GSTIN" helperText="Optional. 15 characters, starting with your state code, for GST input credit." maxLength={15} {...field("gstin")} />
+          </>
         )}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-3">

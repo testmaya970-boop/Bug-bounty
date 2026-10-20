@@ -63,12 +63,13 @@ test.describe.serial("payment features", () => {
 
     // Billing details: a GSTIN whose state doesn't match is refused; a matching one saves.
     await page.getByLabel("Legal name").fill("E2E Journey Org Pvt Ltd");
-    await page.getByLabel("GSTIN").fill("27ABCDE1234F1Z5");
     await page.getByLabel("Address").fill("1 MG Road");
     await page.getByLabel("City").fill("Bengaluru");
     await page.getByLabel("Postal code").fill("560001");
-    await page.getByLabel("Country").fill("IN");
-    await page.getByLabel("State code").fill("29");
+    // GSTIN and GST state only appear for an Indian company.
+    await page.getByLabel("Country").selectOption("IN");
+    await page.getByLabel("State (GST)").selectOption("29");
+    await page.getByLabel("GSTIN").fill("27ABCDE1234F1Z5");
     await page.getByRole("button", { name: "Save billing details" }).click();
     await expect(page.getByRole("alert").filter({ hasText: /GSTIN/i })).toBeVisible();
     await page.getByLabel("GSTIN").fill("29ABCDE1234F1Z5");

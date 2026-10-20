@@ -10,11 +10,23 @@ import {
 } from "../../../../../../services/billing";
 import { getCurrentUser } from "../../../../../../lib/auth/current-user";
 import { minorUnitsToDecimalString } from "../../../../../../lib/money";
+import { GST_STATES, countryName } from "../../../../../../lib/countries";
+
+/** Where the service is supplied for tax purposes: the customer's location (the GST state for
+ * an Indian customer, otherwise the country). */
+function placeOfSupply(buyer: InvoiceParty): string {
+  if (!buyer.country) return "Not provided";
+  if (buyer.country.toUpperCase() === "IN") {
+    const state = GST_STATES.find((st) => st.code === buyer.state_code);
+    return state ? `${state.name} (${state.code})` : "India";
+  }
+  return countryName(buyer.country);
+}
 
 function Party({ title, party }: { title: string; party: InvoiceParty }) {
   const address =
     party.address ??
-    [party.address_line, party.city, party.postal_code, party.country]
+    [party.address_line, party.city, party.postal_code, countryName(party.country)]
       .filter(Boolean)
       .join(", ");
   return (
@@ -84,6 +96,8 @@ export default async function InvoicePage({
               <dd className="font-mono text-ink">
                 {invoice.issuedAt.slice(0, 10)}
               </dd>
+              <dt className="text-ink-muted">Place of supply</dt>
+              <dd className="text-ink">{placeOfSupply(invoice.buyer)}</dd>
               <dt className="text-ink-muted">Period</dt>
               <dd className="font-mono text-ink">
                 {invoice.periodStart} to {invoice.periodEnd}

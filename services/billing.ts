@@ -408,3 +408,15 @@ export async function issueInvoicesForMonth(month: string): Promise<number> {
   const rows = await asActor((client) => callRpc(client, "public.issue_invoices_for_period", [start, end, JSON.stringify(seller)]));
   return rows.length;
 }
+
+/** obligation id -> the invoice that bills its platform fee, for the Payments ledger's
+ * per-payment Invoice link. Read under RLS (finance roles). */
+export async function listInvoiceRefsByObligation(organizationId: string): Promise<Record<string, { invoiceId: string; number: string }>> {
+  const result = await asActor((client) =>
+    client.query<{ obligation_id: string; invoice_id: string; number: string }>(
+      "select l.obligation_id, i.id as invoice_id, i.number from public.invoice_lines l join public.invoices i on i.id = l.invoice_id where i.organization_id = $1",
+      [organizationId],
+    ),
+  );
+  return Object.fromEntries(result.rows.map((r) => [r.obligation_id, { invoiceId: r.invoice_id, number: r.number }]));
+}

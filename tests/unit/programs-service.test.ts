@@ -11,6 +11,7 @@ vi.mock("@/lib/db/pool", async () => {
   };
 });
 vi.mock("@/lib/auth/current-user", () => ({ getCurrentUser: vi.fn() }));
+vi.mock("@/services/organization-logos", () => ({ getOrganizationLogoVersions: vi.fn(async () => ({})) }));
 
 function queryReturning(rows: unknown[]) {
   return { rows, rowCount: rows.length };
