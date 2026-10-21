@@ -486,7 +486,7 @@ function CvssMetricsForm({ metrics, onChange }: { metrics: CvssMetrics; onChange
 /** `locked` mirrors the database's own rule (docs/decisions/0012): once a report reaches
  * a terminal state, confirmed_severity can never change again, so an editable control
  * that would only ever be rejected is replaced with a plain read-only value instead. */
-export function SeverityControl({ organizationId, programId, reportId, currentSeverity, currentCvssBaseScore, locked }: ReportRef & { currentSeverity: ReportSeverity | null; currentCvssBaseScore?: number | null; locked: boolean }) {
+export function SeverityControl({ organizationId, programId, reportId, currentSeverity, currentCvssBaseScore, locked, lockReason = "decision" }: ReportRef & { currentSeverity: ReportSeverity | null; currentCvssBaseScore?: number | null; locked: boolean; lockReason?: "decision" | "bounty" }) {
   const router = useRouter();
   const { setOptimistic, rollback } = useTriageStatus();
   const [pending, startTransition] = useTransition();
@@ -521,7 +521,7 @@ export function SeverityControl({ organizationId, programId, reportId, currentSe
       <div className="max-w-xs">
         <p className="text-sm font-medium text-ink">Confirmed severity</p>
         <p className="mt-0.5 text-sm text-ink-muted">
-          {label}: fixed now that a final decision has been made.
+          {label}: {lockReason === "bounty" ? "fixed because the bounty is finalized." : "fixed now that a final decision has been made."}
           {typeof currentCvssBaseScore === "number" && ` CVSS base score ${currentCvssBaseScore.toFixed(1)}.`}
         </p>
         {mismatchNote}

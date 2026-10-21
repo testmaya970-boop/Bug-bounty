@@ -421,7 +421,7 @@ export default async function ReportDetailPage({
               {canTriage && (
                 <div className="mt-5 space-y-4 border-t border-border pt-5">
                   <ReportAssigneeControl organizationId={organizationId} programId={programId} reportId={reportId} assigneeId={report.assigneeId} staff={assignableStaff} currentUserId={user.id} />
-                  <SeverityControl organizationId={organizationId} programId={programId} reportId={reportId} currentSeverity={report.confirmedSeverity} currentCvssBaseScore={report.cvssBaseScore} locked={isFinal} />
+                  <SeverityControl organizationId={organizationId} programId={programId} reportId={reportId} currentSeverity={report.confirmedSeverity} currentCvssBaseScore={report.cvssBaseScore} locked={isFinal || bountyFinalized} lockReason={bountyFinalized && !isFinal ? "bounty" : "decision"} />
                   <TriageActionPanel organizationId={organizationId} programId={programId} reportId={reportId} status={report.status} allowedNext={allowedNext} />
                 </div>
               )}
