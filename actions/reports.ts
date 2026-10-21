@@ -356,6 +356,8 @@ const listOrganizationReportsSchema = z.object({
   status: z.enum(["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"]).optional(),
   severity: severitySchema.optional(),
   assignee: z.union([z.literal("me"), z.literal("unassigned"), uuidSchema]).optional(),
+  query: z.string().trim().max(100).optional(),
+  sort: z.enum(["newest", "oldest"]).optional(),
 });
 
 /** Findings' own "load more" -- see listReportsForProgramPageAction's own comment above,
@@ -367,6 +369,8 @@ export async function listReportsForOrganizationPageAction(input: {
   status?: ReportStatus;
   severity?: ReportSeverity;
   assignee?: string;
+  query?: string;
+  sort?: "newest" | "oldest";
 }): Promise<ActionResult<Page<Report>>> {
   const parsed = listOrganizationReportsSchema.safeParse(input);
   if (!parsed.success) return invalidInput();
@@ -376,6 +380,8 @@ export async function listReportsForOrganizationPageAction(input: {
       status: parsed.data.status,
       severity: parsed.data.severity,
       assignee: parsed.data.assignee,
+      query: parsed.data.query,
+      sort: parsed.data.sort,
     }),
   );
 }

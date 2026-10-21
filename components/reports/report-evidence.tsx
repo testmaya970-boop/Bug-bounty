@@ -2,13 +2,14 @@
 
 import React, { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "../ui/button";
+import { Button, IconButton } from "../ui/button";
 import { Select, Textarea } from "../ui/form";
 import { SectionLabel } from "../ui/security-primitives";
 import { addOrganizationEvidenceAction, addResearcherEvidenceAction } from "../../actions/reports";
 import { getEvidenceDownloadUrlAction, uploadOrganizationFileEvidenceAction, uploadResearcherFileEvidenceAction } from "../../actions/report-file-evidence";
 import type { ReportEvidence, ReportEvidenceType, ReportVisibility } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
+import { DownloadSimple } from "@phosphor-icons/react";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -48,9 +49,9 @@ function DownloadFileEvidenceButton({ organizationId, programId, reportId, evide
 
   return (
     <div>
-      <Button variant="secondary" onClick={handleDownload} pending={pending}>
-        Download
-      </Button>
+      <IconButton label="Download" variant="secondary" onClick={handleDownload} pending={pending}>
+        {!pending && <DownloadSimple aria-hidden="true" className="size-[18px]" />}
+      </IconButton>
       {error && (
         <p role="alert" className="mt-1 text-xs font-medium text-danger">
           {error}

@@ -2,9 +2,10 @@
 
 import React, { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "../ui/button";
+import { Button, IconButton } from "../ui/button";
 import { OrgLogo } from "../ui/org-logo";
 import { removeOrganizationLogoAction, uploadOrganizationLogoAction } from "../../actions/organization-logo";
+import { Trash } from "@phosphor-icons/react";
 
 const MAX_BYTES = 256 * 1024;
 
@@ -56,9 +57,9 @@ export function OrganizationLogoForm({ organizationId, name, version }: { organi
             <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={pending} onChange={(event) => handleFile(event.target.files?.[0])} />
           </label>
           {version && (
-            <Button type="button" variant="quiet" pending={pending && busy === "remove"} disabled={pending && busy === "upload"} onClick={handleRemove}>
-              Remove
-            </Button>
+            <IconButton label="Remove" type="button" variant="quiet" className="text-danger" pending={pending && busy === "remove"} disabled={pending && busy === "upload"} onClick={handleRemove}>
+              {!(pending && busy === "remove") && <Trash aria-hidden="true" className="size-[18px]" />}
+            </IconButton>
           )}
         </div>
         {error && (

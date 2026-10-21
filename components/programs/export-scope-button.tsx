@@ -6,6 +6,7 @@ import { Select } from "../ui/form";
 import { Dialog } from "../ui/navigation";
 import { serializeScopeEntries, scopeFileMimeType, type ScopeImportFormat } from "../../lib/scope-import-export";
 import type { ScopeEntry } from "../../types/scope";
+import { DownloadSimple } from "@phosphor-icons/react";
 
 /** Client-side only -- entries are already fetched and on the page (the same
  * scopeEntries the Scope section itself renders), so export needs no server round trip:
@@ -48,6 +49,7 @@ export function ExportScopeButton({ entries, programName }: { entries: ScopeEntr
               Cancel
             </Button>
             <Button type="button" onClick={handleExport}>
+              <DownloadSimple aria-hidden="true" className="size-[18px]" />
               Download
             </Button>
           </div>

@@ -10,7 +10,7 @@ import { Button } from "../ui/button";
 import { SeverityBadge, StatusBadge } from "../ui/badge";
 import { reportStatusLabel, reportNextActionLabel } from "../../lib/report-status";
 import { listReportsForOrganizationPageAction } from "../../actions/reports";
-import type { Report, ReportSeverity, ReportStatus } from "../../types/report";
+import type { Report, ReportSeverity, ReportStatus } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
 
 const FILTERABLE_STATUSES: ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"];
@@ -37,6 +37,8 @@ export function OrganizationFindingsTable({
   severity,
   programOptions,
   assignee = "all",
+  query = "",
+  sort = "newest",
 }: {
   organizationId: string;
   initialReports: Report[];
@@ -47,6 +49,8 @@ export function OrganizationFindingsTable({
   programOptions: { id: string; name: string }[];
   /** "all", "me" or "unassigned" (202610060011). */
   assignee?: "all" | "me" | "unassigned";
+  query?: string;
+  sort?: "newest" | "oldest";
 }) {
   const router = useRouter();
   const [reports, setReports] = useState(initialReports);
@@ -57,7 +61,8 @@ export function OrganizationFindingsTable({
 
   const programNameById = new Map(programOptions.map((program) => [program.id, program.name]));
 
-  function navigateWithFilters(next: { programId?: string | "all"; status?: ReportStatus | "all"; severity?: ReportSeverity | "all"; assignee?: string }) {
+  const [search, setSearch] = useState(query);
+  function navigateWithFilters(next: { programId?: string | "all"; status?: ReportStatus | "all"; severity?: ReportSeverity | "all"; assignee?: string; query?: string; sort?: "newest" | "oldest" }) {
     const params = new URLSearchParams();
     const nextProgramId = next.programId ?? programId;
     const nextStatus = next.status ?? status;
@@ -67,9 +72,13 @@ export function OrganizationFindingsTable({
     if (nextSeverity !== "all") params.set("severity", nextSeverity);
     const nextAssignee = next.assignee ?? assignee;
     if (nextAssignee !== "all") params.set("assignee", nextAssignee);
-    const query = params.toString();
+    const nextQuery = (next.query ?? query).trim();
+    if (nextQuery) params.set("q", nextQuery);
+    const nextSort = next.sort ?? sort;
+    if (nextSort !== "newest") params.set("sort", nextSort);
+    const qs = params.toString();
     startFilterTransition(() => {
-      router.push((`/organizations/${organizationId}/findings` + (query ? `?${query}` : "")) as Route);
+      router.push((`/organizations/${organizationId}/findings` + (qs ? `?${qs}` : "")) as Route);
     });
   }
 
@@ -84,6 +93,8 @@ export function OrganizationFindingsTable({
         status: status === "all" ? undefined : status,
         severity: severity === "all" ? undefined : severity,
         assignee: assignee === "all" ? undefined : assignee,
+        query: query || undefined,
+        sort,
       });
       if (!result.ok) {
         setLoadError(result.message);
@@ -94,10 +105,43 @@ export function OrganizationFindingsTable({
     });
   }
 
-  const hasActiveFilter = programId !== "all" || status !== "all" || severity !== "all" || assignee !== "all";
+  const hasActiveFilter = programId !== "all" || status !== "all" || severity !== "all" || assignee !== "all" || query !== "";
 
   return (
     <div className="rounded-lg border border-border bg-surface">
+      {/* Search + order sit above the filters: the first question is usually "find that
+          one report", the second "newest or oldest first". Enter submits; the URL keeps it. */}
+      <form
+        role="search"
+        aria-label="Search findings"
+        className="flex flex-col gap-2 border-b border-border p-3 sm:flex-row sm:items-end"
+        onSubmit={(event) => {
+          event.preventDefault();
+          navigateWithFilters({ query: search });
+        }}
+      >
+        <div className="min-w-0 flex-1">
+          <label htmlFor="findings-q" className="mb-1.5 block text-sm font-medium text-ink">
+            Search findings
+          </label>
+          <input
+            id="findings-q"
+            type="search"
+            value={search}
+            maxLength={100}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Title, target, researcher or #number"
+            className="min-h-11 w-full min-w-0 rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30"
+          />
+        </div>
+        <Select label="Order" className="sm:w-44" disabled={filterPending} value={sort} onChange={(event) => navigateWithFilters({ sort: event.target.value as "newest" | "oldest", query: search })}>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </Select>
+        <Button type="submit" variant="secondary" disabled={filterPending}>
+          Search
+        </Button>
+      </form>
       <div className="flex flex-wrap items-end gap-3 border-b border-border p-3">
         <Select label="Engagement" className="max-w-xs" disabled={filterPending} value={programId} onChange={(event) => navigateWithFilters({ programId: event.target.value })}>
           <option value="all">All engagements</option>

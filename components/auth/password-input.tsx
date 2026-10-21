@@ -3,6 +3,7 @@
 import React, { forwardRef, useId, useState } from "react";
 import { Label } from "../ui/form";
 import { passwordProblem } from "../../lib/auth/password-policy";
+import { Eye, EyeSlash } from "@phosphor-icons/react";
 
 const inputClass =
   "min-h-11 w-full rounded-md border border-border bg-surface px-3 pr-16 text-sm text-ink outline-none placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70";
@@ -73,9 +74,10 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(fu
           onClick={() => setVisible((current) => !current)}
           aria-label={visible ? "Hide password" : "Show password"}
           aria-pressed={visible}
-          className="absolute inset-y-0 right-0 px-3 text-xs font-semibold uppercase tracking-wide text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
+          title={visible ? "Hide password" : "Show password"}
+          className="absolute inset-y-0 right-0 inline-flex min-w-11 items-center justify-center px-3 text-ink-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
         >
-          {visible ? "Hide" : "Show"}
+          {visible ? <EyeSlash aria-hidden="true" className="size-[18px]" /> : <Eye aria-hidden="true" className="size-[18px]" />}
         </button>
       </div>
       {strengthLevel !== undefined && strengthLevel > 0 && (() => {

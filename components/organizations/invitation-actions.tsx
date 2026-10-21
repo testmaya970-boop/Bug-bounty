@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Button } from "../ui/button";
+import { Button, IconButton } from "../ui/button";
 import { cancelOrganizationInvitation, resendOrganizationInvitation } from "../../actions/organization-members";
 import type { OrganizationInvitationRecord } from "../../types/organization";
+import { ArrowClockwise, X } from "@phosphor-icons/react";
 
 export function InvitationActions({ organizationId, invitation }: { organizationId: string; invitation: OrganizationInvitationRecord }) {
   const [pending, startTransition] = useTransition();
@@ -39,12 +40,12 @@ export function InvitationActions({ organizationId, invitation }: { organization
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex gap-2">
-        <Button variant="secondary" pending={pending && pendingAction === "resend"} onClick={handleResend}>
-          Resend
-        </Button>
-        <Button variant="quiet" pending={pending && pendingAction === "cancel"} onClick={handleCancel}>
-          Cancel invitation
-        </Button>
+        <IconButton label="Resend" variant="secondary" pending={pending && pendingAction === "resend"} onClick={handleResend}>
+          {!(pending && pendingAction === "resend") && <ArrowClockwise aria-hidden="true" className="size-[18px]" />}
+        </IconButton>
+        <IconButton label="Cancel invitation" variant="quiet" className="text-danger" pending={pending && pendingAction === "cancel"} onClick={handleCancel}>
+          {!(pending && pendingAction === "cancel") && <X aria-hidden="true" className="size-[18px]" />}
+        </IconButton>
       </div>
       {error && (
         <p role="alert" className="text-xs font-medium text-danger">

@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Panel } from "../ui/feedback";
-import { Button } from "../ui/button";
+import { Button, IconButton } from "../ui/button";
 import { Select } from "../ui/form";
 import { SectionLabel } from "../ui/security-primitives";
 import {
@@ -11,6 +11,7 @@ import {
   unassignProgramMemberAction,
 } from "../../actions/programs";
 import type { ProgramMemberRecord } from "../../types/program";
+import { Trash } from "@phosphor-icons/react";
 
 export type ProgramTeamCandidate = {
   userId: string;
@@ -94,7 +95,8 @@ export function ProgramTeamPanel({
                     {WHAT_THEY_DO[member.role]}
                   </p>
                 </div>
-                <Button
+                <IconButton
+                  label={`Remove ${member.displayName} from this program`}
                   variant="quiet"
                   className="text-danger"
                   disabled={pending}
@@ -108,12 +110,8 @@ export function ProgramTeamPanel({
                     )
                   }
                 >
-                  Remove
-                  <span className="sr-only">
-                    {" "}
-                    {member.displayName} from this program
-                  </span>
-                </Button>
+                  <Trash aria-hidden="true" className="size-[18px]" />
+                </IconButton>
               </li>
             ))}
           </ul>

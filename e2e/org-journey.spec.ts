@@ -199,6 +199,23 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await expect(page.getByText(TRIAGE_WALK_REPORT_TITLE)).toHaveCount(0);
   await page.getByLabel("Filter by status").selectOption("all");
   await page.waitForURL(/\/findings$/);
+  // Search and order (21 Oct): a fragment of the title finds it, nonsense finds nothing,
+  // and the order switch is carried in the URL.
+  const findingsSearch = page.getByRole("search", { name: "Search findings" });
+  await findingsSearch.getByLabel("Search findings").fill(TRIAGE_WALK_REPORT_TITLE.slice(0, 18));
+  await findingsSearch.getByRole("button", { name: "Search" }).click();
+  await page.waitForURL(/q=/);
+  await expect(page.getByText(TRIAGE_WALK_REPORT_TITLE).first()).toBeVisible();
+  await findingsSearch.getByLabel("Search findings").fill("zz-no-such-finding-zz");
+  await findingsSearch.getByRole("button", { name: "Search" }).click();
+  await page.waitForURL(/q=zz-no-such-finding-zz/);
+  await expect(page.getByText(TRIAGE_WALK_REPORT_TITLE)).toHaveCount(0);
+  await findingsSearch.getByLabel("Search findings").fill("");
+  await findingsSearch.getByLabel("Order").selectOption("oldest");
+  await page.waitForURL(/sort=oldest/);
+  await expect(page.getByText(TRIAGE_WALK_REPORT_TITLE).first()).toBeVisible();
+  await findingsSearch.getByLabel("Order").selectOption("newest");
+  await page.waitForURL(/\/findings$/);
 
   // --- Inbox: new -> triaged -> resolved -> finalize bounty ----------------------------
   await sidebarNav(page, "Engagements").click();

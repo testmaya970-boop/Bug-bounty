@@ -241,7 +241,13 @@ export async function listReportsForProgram(programId: string, cursor?: string, 
   return { items, nextCursor };
 }
 
-export type OrganizationReportFilters = ReportInboxFilters & { programId?: string };
+export type OrganizationReportFilters = ReportInboxFilters & {
+  programId?: string;
+  /** Matches title, target, report number or the researcher's username (case-insensitive). */
+  query?: string;
+  /** newest (default) or oldest submitted first. */
+  sort?: "newest" | "oldest";
+};
 
 /** Findings: every report across every one of an organization's engagements, one flat
  * list -- the cross-program counterpart to listReportsForProgram above (identical
@@ -273,9 +279,18 @@ export async function listReportsForOrganization(organizationId: string, cursor?
     conditions.push(`r.confirmed_severity = $${params.length}`);
   }
   pushAssigneeCondition(filters, actor?.id ?? null, conditions, params);
+  const query = filters?.query?.trim().slice(0, 100);
+  if (query) {
+    // Escaped for ILIKE so % and _ typed in a search are literal characters.
+    params.push(`%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+    const p = `$${params.length}`;
+    const seq = /^#?\d+$/.test(query) ? ` or r.submission_seq = ${Number(query.replace("#", ""))}` : "";
+    conditions.push(`(r.title ilike ${p} or r.display_target ilike ${p} or u.username ilike ${p}${seq})`);
+  }
+  const oldestFirst = filters?.sort === "oldest";
   if (decoded) {
     params.push(decoded.sortValue);
-    conditions.push(`r.submitted_at < $${params.length}`);
+    conditions.push(`r.submitted_at ${oldestFirst ? ">" : "<"} $${params.length}`);
   }
   params.push(pageSize);
 
@@ -285,7 +300,7 @@ export async function listReportsForOrganization(organizationId: string, cursor?
       client
         .query<ReportRow>(
           `select ${REPORT_SELECT_COLUMNS} from public.reports r left join public.users u on u.id = r.researcher_id left join public.users a on a.id = r.assignee_id
-           where ${conditions.join(" and ")} order by r.submitted_at desc limit $${params.length}`,
+           where ${conditions.join(" and ")} order by r.submitted_at ${oldestFirst ? "asc" : "desc"} limit $${params.length}`,
           params,
         )
         .then((r) => r.rows),

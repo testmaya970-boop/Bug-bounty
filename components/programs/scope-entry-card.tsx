@@ -2,15 +2,16 @@
 
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "../ui/button";
+import { Button, IconButton } from "../ui/button";
 import { Dialog } from "../ui/navigation";
 import { Input, Select, Textarea } from "../ui/form";
 import { AssetTypeBadge, ScopeStateBadge } from "../ui/badge";
 import { removeScopeEntryAction, updateScopeEntryAction } from "../../actions/scope";
 import { assetTypeLabel } from "../../lib/scope-labels";
 import { cn } from "../../lib/cn";
-import type { ProgramAssetType, ScopeEntry, ScopeState } from "../../types/scope";
+import type { ProgramAssetType, ScopeEntry, ScopeState } from "../../types/scope";
 import { LocalTime } from "../ui/local-time";
+import { PencilSimple, Trash } from "@phosphor-icons/react";
 
 const ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -74,9 +75,9 @@ function EditScopeEntryDialog({ organizationId, programId, entry }: { organizati
 
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        Edit
-      </Button>
+      <IconButton label="Edit" variant="secondary" onClick={() => setOpen(true)}>
+        <PencilSimple aria-hidden="true" className="size-[18px]" />
+      </IconButton>
       <Dialog open={open} title="Edit scope entry" onClose={close}>
         <form className="space-y-4" onSubmit={handleSubmit} noValidate>
           <Select
@@ -199,9 +200,9 @@ function RemoveEntryDialog({ organizationId, programId, entry }: { organizationI
 
   return (
     <>
-      <Button variant="destructive" onClick={() => setOpen(true)}>
-        Remove
-      </Button>
+      <IconButton label="Remove" variant="quiet" className="text-danger" onClick={() => setOpen(true)}>
+        <Trash aria-hidden="true" className="size-[18px]" />
+      </IconButton>
       <Dialog open={open} title="Remove scope entry?" onClose={close}>
         <div className="space-y-4">
           <p className="text-sm text-ink-muted">

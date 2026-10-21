@@ -48,13 +48,13 @@ describe("ScopeEntryCard", () => {
   it("hides mutation actions when the caller cannot manage scope (e.g. program is no longer draft)", () => {
     const html = renderToStaticMarkup(<ScopeEntryCard organizationId="org-1" programId="prog-1" entry={entry} canManage={false} />);
     expect(html).not.toContain("Mark out of scope");
-    expect(html).not.toContain(">Remove<");
+    expect(html).not.toContain(`aria-label="Remove"`);
   });
 
   it("shows mutation actions when the caller can manage scope", () => {
     const html = renderToStaticMarkup(<ScopeEntryCard organizationId="org-1" programId="prog-1" entry={entry} canManage={true} />);
     expect(html).toContain("Mark out of scope");
-    expect(html).toContain(">Remove<");
+    expect(html).toContain(`aria-label="Remove"`); // an icon button: the accessible name, not visible text
   });
 
   it("never shows a color-only state -- ScopeStateBadge always carries its text label", () => {

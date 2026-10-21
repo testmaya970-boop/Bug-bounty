@@ -2,12 +2,13 @@
 
 import React, { useState, useTransition } from "react";
 import { Input, Select, Textarea } from "../ui/form";
-import { Button } from "../ui/button";
+import { Button, IconButton } from "../ui/button";
 import { Alert } from "../ui/feedback";
 import { upsertMyReportTemplateAction, deleteMyReportTemplateAction } from "../../actions/report-templates";
 import { WEAKNESS_TYPE_ORDER, weaknessTypeLabel } from "../../lib/report-weakness-labels";
 import type { ReportTemplate } from "../../services/report-templates";
 import type { ReportWeaknessType } from "../../types/report";
+import { PencilSimple, Trash } from "@phosphor-icons/react";
 
 const EMPTY_DRAFT = { id: undefined as string | undefined, name: "", weaknessType: "" as ReportWeaknessType | "", descriptionTemplate: "", impactTemplate: "" };
 
@@ -121,12 +122,12 @@ export function ReportTemplatesSettings({ templates: initialTemplates }: { templ
               <p className="mt-0.5 text-xs text-ink-muted">{template.weaknessType ? weaknessTypeLabel(template.weaknessType) : "No weakness type set"}</p>
             </div>
             <div className="flex shrink-0 gap-2">
-              <Button variant="secondary" onClick={() => startEdit(template)}>
-                Edit
-              </Button>
-              <Button variant="destructive" pending={pending && deletingId === template.id} onClick={() => handleDelete(template.id)}>
-                Delete
-              </Button>
+              <IconButton label="Edit" variant="secondary" onClick={() => startEdit(template)}>
+                <PencilSimple aria-hidden="true" className="size-[18px]" />
+              </IconButton>
+              <IconButton label="Delete" variant="quiet" className="text-danger" pending={pending && deletingId === template.id} onClick={() => handleDelete(template.id)}>
+                {!(pending && deletingId === template.id) && <Trash aria-hidden="true" className="size-[18px]" />}
+              </IconButton>
             </div>
           </li>
         ))}

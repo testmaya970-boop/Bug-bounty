@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { Card, Alert } from "../ui/feedback";
-import { Button } from "../ui/button";
+import { Button, IconButton } from "../ui/button";
 import { Checkbox, Input, Select, Textarea } from "../ui/form";
 import { ProgramPolicySummary } from "../programs/program-policy";
 import type { ProgramPolicy } from "../../types/program-policy";
@@ -21,6 +21,7 @@ import type { ReportTemplate } from "../../services/report-templates";
 import type { ProgramAssetType } from "../../types/scope";
 import type { ReportSeverity, ReportWeaknessType } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
+import { Trash } from "@phosphor-icons/react";
 
 const ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -673,9 +674,9 @@ export function CreateReportForm({
                     <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{EVIDENCE_TYPE_LABELS[item.evidenceType]}</p>
                     <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs text-ink">{item.content}</pre>
                   </div>
-                  <Button type="button" variant="quiet" onClick={() => removeStagedEvidence(item.localId)}>
-                    Remove
-                  </Button>
+                  <IconButton label="Remove" type="button" variant="quiet" className="text-danger" onClick={() => removeStagedEvidence(item.localId)}>
+                    <Trash aria-hidden="true" className="size-[18px]" />
+                  </IconButton>
                 </li>
               ))}
             </ul>
@@ -719,9 +720,9 @@ export function CreateReportForm({
                     </span>
                     <span className="block font-mono text-xs text-ink-muted">{formatFileSize(item.file.size)}</span>
                   </span>
-                  <Button type="button" variant="quiet" onClick={() => removeStagedFile(item.localId)}>
-                    Remove
-                  </Button>
+                  <IconButton label={`Remove ${item.file.name}`} type="button" variant="quiet" className="text-danger" onClick={() => removeStagedFile(item.localId)}>
+                    <Trash aria-hidden="true" className="size-[18px]" />
+                  </IconButton>
                 </li>
               ))}
             </ul>

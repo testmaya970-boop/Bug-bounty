@@ -12,7 +12,9 @@
 // (create_organization, upsert_billing_profile, submit_report, finalize_bounty,
 // create_payment_obligation, record_manual_payment_result, issue_invoices_for_period...).
 // Idempotent: each organization is skipped once it has a paid award. All companies are
-// fictional. The hunter is the e2e veteran researcher, so run `npm run seed:e2e` first.
+// fictional. The hunter is its own researcher (showcase.hunter), never an E2E account: the
+// release-gate specs read the E2E researchers' report lists, and 21 extra reports pushed theirs
+// off the first page. Needs the E2E platform admin, so run `npm run seed:e2e` first.
 //
 // Usage: ALLOW_TEST_ACCOUNTS=1 npm run seed:showcase
 
@@ -31,7 +33,7 @@ if (!DATABASE_URL) {
 }
 
 const PASSWORD = "E2ESeed!2026";
-const HUNTER_EMAIL = "e2e.veteran@unpatched.demo";
+const HUNTER_EMAIL = "showcase.hunter@unpatched.demo";
 const ADMIN_EMAIL = "e2e.platform-admin@unpatched.demo";
 const SELLER = { name: "Unpatched SANDBOX (not a tax invoice)", gstin: null, address: "Bengaluru, Karnataka, India", state_code: "29" };
 
@@ -110,6 +112,15 @@ async function step<T>(label: string, run: () => Promise<T>): Promise<T | null> 
 
 async function userId(email: string): Promise<string | null> {
   return (await asService((c) => one<{ id: string } | undefined>(c, "select id from public.users where email = $1", [email])))?.id ?? null;
+}
+
+async function ensureHunter(): Promise<string> {
+  const existing = await userId(HUNTER_EMAIL);
+  if (existing) return existing;
+  const hash = await argon2.hash(PASSWORD, { type: argon2.argon2id });
+  const created = await asService((c) => one<{ id: string }>(c, "select * from public.create_user($1, $2, $3, $4)", [HUNTER_EMAIL, hash, "Showcase Hunter", "showcase_hunter"]));
+  await asService((c) => c.query("update public.users set email_verified_at = now(), account_type = 'researcher', submission_daily_cap_override = 1000 where id = $1", [created.id]));
+  return created.id;
 }
 
 async function ensureOwner(company: Company): Promise<string> {
@@ -201,9 +212,9 @@ async function seedCompany(company: Company, hunterId: string, adminId: string):
 }
 
 async function main() {
-  const hunterId = await userId(HUNTER_EMAIL);
   const adminId = await userId(ADMIN_EMAIL);
-  if (!hunterId || !adminId) throw new Error("Run `ALLOW_TEST_ACCOUNTS=1 npm run seed:e2e` first (needs the veteran researcher and the platform admin).");
+  if (!adminId) throw new Error("Run `ALLOW_TEST_ACCOUNTS=1 npm run seed:e2e` first (needs the platform admin).");
+  const hunterId = await ensureHunter();
   for (const company of COMPANIES) await seedCompany(company, hunterId, adminId);
 
   const issued = await step("issue last month's invoices", () =>

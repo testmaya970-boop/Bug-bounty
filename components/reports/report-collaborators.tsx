@@ -2,13 +2,14 @@
 
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "../ui/button";
+import { Button, IconButton } from "../ui/button";
 import { Input } from "../ui/form";
 import { EmptyState } from "../ui/feedback";
 import { SectionLabel } from "../ui/security-primitives";
 import { addReportCollaboratorAction, removeReportCollaboratorAction } from "../../actions/reports";
 import type { ReportCollaborator } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
+import { Trash } from "@phosphor-icons/react";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -41,9 +42,9 @@ function RemoveCollaboratorButton({ organizationId, programId, reportId, collabo
 
   return (
     <div className="text-right">
-      <Button variant="quiet" pending={pending} onClick={handleRemove} className="text-danger hover:bg-danger/10">
-        Remove
-      </Button>
+      <IconButton label="Remove" variant="quiet" pending={pending} onClick={handleRemove} className="text-danger [@media(hover:hover)_and_(pointer:fine)]:hover:bg-danger/10">
+        {!pending && <Trash aria-hidden="true" className="size-[18px]" />}
+      </IconButton>
       {error && (
         <p role="alert" className="mt-1 text-xs font-medium text-danger">
           {error}

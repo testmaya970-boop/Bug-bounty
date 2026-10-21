@@ -36,7 +36,7 @@ const VALID_SEVERITIES: ReportSeverity[] = ["none", "low", "medium", "high", "cr
  */
 export default async function OrganizationFindingsPage(props: {
   params: Promise<{ organizationId: string }>;
-  searchParams: Promise<{ program?: string; status?: string; severity?: string; assignee?: string }>;
+  searchParams: Promise<{ program?: string; status?: string; severity?: string; assignee?: string; q?: string; sort?: string }>;
 }) {
   return perfTimed("route: findings (total)", () => renderOrganizationFindingsPage(props));
 }
@@ -46,10 +46,10 @@ async function renderOrganizationFindingsPage({
   searchParams,
 }: {
   params: Promise<{ organizationId: string }>;
-  searchParams: Promise<{ program?: string; status?: string; severity?: string; assignee?: string }>;
+  searchParams: Promise<{ program?: string; status?: string; severity?: string; assignee?: string; q?: string; sort?: string }>;
 }) {
   const { organizationId } = await params;
-  const { program: programParam, status: statusParam, severity: severityParam, assignee: assigneeParam } = await searchParams;
+  const { program: programParam, status: statusParam, severity: severityParam, assignee: assigneeParam, q: queryParam, sort: sortParam } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/findings` as Route);
 
@@ -85,12 +85,16 @@ async function renderOrganizationFindingsPage({
   const severity: ReportSeverity | "all" = severityParam && VALID_SEVERITIES.includes(severityParam as ReportSeverity) ? (severityParam as ReportSeverity) : "all";
 
   const assignee = assigneeParam === "me" || assigneeParam === "unassigned" ? assigneeParam : "all";
+  const query = (queryParam ?? "").trim().slice(0, 100);
+  const sort = sortParam === "oldest" ? "oldest" : "newest";
   const { items: reports, nextCursor } = await perfTimed("findings: listReportsForOrganization", () =>
     listReportsForOrganization(organizationId, undefined, undefined, {
       programId: programId === "all" ? undefined : programId,
       status: status === "all" ? undefined : status,
       severity: severity === "all" ? undefined : severity,
       assignee: assignee === "all" ? undefined : assignee,
+      query: query || undefined,
+      sort,
     }),
   );
 
@@ -112,7 +116,7 @@ async function renderOrganizationFindingsPage({
             filter's results -- confirmed live via the Turn 8 E2E journey suite, which is
             what caught this. */}
         <OrganizationFindingsTable
-          key={`${programId}:${status}:${severity}:${assignee}`}
+          key={`${programId}:${status}:${severity}:${assignee}:${query}:${sort}`}
           organizationId={organizationId}
           initialReports={reports}
           initialNextCursor={nextCursor}
@@ -120,6 +124,8 @@ async function renderOrganizationFindingsPage({
           status={status}
           severity={severity}
           assignee={assignee}
+          query={query}
+          sort={sort}
           programOptions={programs.map((program) => ({ id: program.id, name: program.name }))}
         />
       </div>

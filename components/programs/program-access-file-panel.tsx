@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "../ui/button";
+import { Button, IconButton } from "../ui/button";
 import { Panel } from "../ui/feedback";
 import {
   getProgramAccessFileDownloadUrlAction,
@@ -11,6 +11,7 @@ import {
 } from "../../actions/program-access-file";
 import type { ProgramAccessFile } from "../../services/program-access-file";
 import { LocalTime } from "../ui/local-time";
+import { DownloadSimple, Trash } from "@phosphor-icons/react";
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -103,12 +104,12 @@ export function ProgramAccessFileEditor({ organizationId, programId, file }: { o
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button variant="secondary" onClick={handleDownload} pending={downloadPending}>
-              Download
-            </Button>
-            <Button variant="destructive" onClick={handleRemove} pending={removePending}>
-              Remove
-            </Button>
+            <IconButton label="Download" variant="secondary" onClick={handleDownload} pending={downloadPending}>
+              {!downloadPending && <DownloadSimple aria-hidden="true" className="size-[18px]" />}
+            </IconButton>
+            <IconButton label="Remove" variant="quiet" className="text-danger" onClick={handleRemove} pending={removePending}>
+              {!removePending && <Trash aria-hidden="true" className="size-[18px]" />}
+            </IconButton>
           </div>
         </div>
       ) : (
@@ -166,9 +167,9 @@ export function ProgramAccessFileNotice({ organizationId, programId, file }: { o
           <p className="truncate text-sm font-medium text-ink">{file.originalFilename}</p>
           <p className="mt-0.5 text-xs text-ink-muted">{formatBytes(file.sizeBytes)}</p>
         </div>
-        <Button variant="secondary" onClick={handleDownload} pending={pending}>
-          Download
-        </Button>
+        <IconButton label="Download" variant="secondary" onClick={handleDownload} pending={pending}>
+          {!pending && <DownloadSimple aria-hidden="true" className="size-[18px]" />}
+        </IconButton>
       </div>
       {error && (
         <p role="alert" className="text-sm font-medium text-danger">
