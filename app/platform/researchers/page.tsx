@@ -8,6 +8,8 @@ import { DeleteResearcherForm, ReactivateAccountForm, ReinstateResearcherForm, S
 import { isPlatformAdmin, listRestrictedAccountsForAdmin } from "../../../services/platform-operations";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { LocalTime } from "../../../components/ui/local-time";
+import { LiftRestrictionButton, PauseSubmissionsForm } from "../../../components/platform/submission-restrictions";
+import { listSubmissionRestrictionsForAdmin } from "../../../services/submission-signal";
 
 /**
  * A non-admin gets a real 404, not a "Permission denied" page -- same convention every
@@ -28,13 +30,43 @@ export default async function PlatformResearchersPage({ searchParams }: { search
   const admin = await isPlatformAdmin();
   if (!admin) notFound();
 
-  const restricted = await listRestrictedAccountsForAdmin(query);
+  const [restricted, paused] = await Promise.all([listRestrictedAccountsForAdmin(query), listSubmissionRestrictionsForAdmin()]);
 
   return (
     <AppShell title="Researcher suspension" user={user}>
       <div className="max-w-5xl space-y-6">
         <SectionLabel>Platform operations</SectionLabel>
         <p className="text-sm text-ink-muted">Suspend or reinstate a researcher's account platform-wide, across every organization and program.</p>
+
+        <section className="space-y-3" aria-labelledby="paused-heading">
+          <div>
+            <h2 id="paused-heading" className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Paused submissions</h2>
+            <p className="mt-1 text-sm text-ink-muted">Five invalid closes in a row pause a researcher for 7 days automatically. You can pause anyone by hand, or resume early.</p>
+          </div>
+          {paused.length === 0 ? (
+            <EmptyState title="Nobody is paused">Every researcher can submit within their daily limit.</EmptyState>
+          ) : (
+            <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
+              {paused.map((p) => (
+                <li key={p.id} className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-warning">
+                      {p.source === "automatic" ? "Paused automatically" : "Paused by an admin"} · until <LocalTime value={p.restrictedUntil} />
+                    </p>
+                    <p className="mt-1 break-words text-sm font-medium text-ink">{p.displayName}</p>
+                    <p className="mt-0.5 break-all text-sm text-ink-muted">
+                      @{p.username}
+                      {p.email && <> · {p.email}</>} · signal <span className="font-mono tabular-nums">{p.signal > 0 ? "+" : ""}{p.signal.toFixed(2)}</span> · {p.invalidCount} of {p.closedCount} closed invalid
+                    </p>
+                    <p className="mt-1 break-words text-sm text-ink">{p.reason}</p>
+                  </div>
+                  <LiftRestrictionButton restrictionId={p.id} name={p.displayName} />
+                </li>
+              ))}
+            </ul>
+          )}
+          <PauseSubmissionsForm />
+        </section>
 
         <SuspendResearcherForm />
         <DeleteResearcherForm />

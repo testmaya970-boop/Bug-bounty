@@ -46,6 +46,7 @@ export const E2E_ADMIN_EMAIL = "e2e.admin@unpatched.demo";
 export const E2E_INVITED_EMAIL = "e2e.invited@unpatched.demo";
 export const E2E_VETERAN_EMAIL = "e2e.veteran@unpatched.demo";
 export const E2E_NEWCOMER_EMAIL = "e2e.newcomer@unpatched.demo";
+export const E2E_FLAGGED_EMAIL = "e2e.flagged@unpatched.demo";
 // e2e/functional-cases.spec.ts changes this account's password and profile; every seed
 // run puts them back (resetSettingsAccount).
 export const E2E_SETTINGS_EMAIL = "e2e.settings@unpatched.demo";
@@ -778,6 +779,16 @@ async function main() {
   publicProgram = await ensureScopeAndActivate(admin.id, publicProgram, "api.e2e-public.example", "public");
   // e2e/discovery.spec.ts drafts a report here as the hunter (the veteran is near its sign-in limit).
   await tryStep(withActor(hunter.id, (client) => client.query("select public.join_public_program($1)", [publicProgram.id])), "join_public_program (hunter, public program)");
+  // e2e/submission-signal.spec.ts: a researcher whose submissions an admin pauses and resumes.
+  // Starts every run unpaused, with the normal "new researcher" cap (no override).
+  const flagged = await ensureUser(E2E_FLAGGED_EMAIL, "E2E Flagged Researcher", "e2e_flagged");
+  await withServiceRole((client) => client.query("update public.submission_restrictions set lifted_at = now() where user_id = $1 and lifted_at is null", [flagged.id]));
+  await tryStep(withActor(flagged.id, (client) => client.query("select public.join_public_program($1)", [publicProgram.id])), "join_public_program (flagged, public program)");
+  // The suite submits ~15 reports a run and the seed is re-run before every check, so the
+  // other test researchers get a high daily cap (202610210001); the flagged one keeps the real one.
+  await withServiceRole((client) =>
+    client.query("update public.users set submission_daily_cap_override = 1000 where email like 'e2e.%@unpatched.demo' and email <> $1", [E2E_FLAGGED_EMAIL]),
+  );
   // e2e/program-policy.spec.ts: a published policy (safe harbor, coordinated disclosure, SLA
   // targets) researchers must accept before submitting. Published once; later runs keep it.
   const publicPolicy = await withServiceRole((client) => client.query("select 1 from public.program_policy_versions where program_id = $1", [publicProgram.id]));
