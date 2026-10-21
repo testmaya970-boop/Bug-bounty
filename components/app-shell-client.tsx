@@ -51,6 +51,7 @@ import { Separator } from "./ui/feedback";
 import { NotificationBellDropdown } from "./notifications/notification-bell-dropdown";
 import { cn } from "../lib/cn";
 import { SIDEBAR_COOKIE } from "../lib/sidebar";
+import { popoverMotion } from "./ui/popover-motion";
 import { usePrefersReducedMotion } from "../lib/motion";
 import { SignOutForm } from "./auth/sign-out-form";
 import { MOCK_CTF_CHALLENGES } from "../lib/mock/ctf";
@@ -344,11 +345,10 @@ const NAV_LINK_BASE =
   "group/nav relative flex min-h-10 items-center gap-3 rounded-md text-sm transition-[background-color,color] duration-150 ease-out motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus";
 const NAV_LINK_ACTIVE = "bg-ink font-semibold text-canvas before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r-sm before:bg-action";
 const NAV_LINK_IDLE = `font-medium text-ink-muted ${HOVER}:bg-surface-muted ${HOVER}:text-ink`;
-// Collapsed rail: the label stays in the DOM (it is the link's accessible name) and doubles as
-// a flyout shown on hover or keyboard focus -- scaling from its left edge, toward the icon.
-const NAV_FLYOUT =
-  "pointer-events-none absolute left-full top-1/2 z-40 ml-3 -translate-y-1/2 origin-left scale-95 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-xs font-medium text-canvas opacity-0 shadow-md transition-[opacity,transform] duration-150 ease-out group-hover/nav:scale-100 group-hover/nav:opacity-100 group-focus-visible/nav:scale-100 group-focus-visible/nav:opacity-100 motion-reduce:scale-100";
-
+// Collapsed rail: the label stays in the DOM as the link's accessible name (sr-only); the
+// visible hover label is one fixed tooltip owned by AppShellClient, placed from the hovered
+// element's data-rail-label. A CSS flyout needed overflow:visible, which stopped the rail from
+// scrolling and cut off the lower nav on short screens.
 function navLinkClass(active: boolean, collapsed: boolean) {
   return cn(NAV_LINK_BASE, collapsed ? "mx-auto size-10 justify-center" : "px-2.5", active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE);
 }
@@ -366,13 +366,13 @@ function NavGroupLabel({ label, collapsed }: { label: string; collapsed: boolean
 }
 
 function NavLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
-  return <span className={collapsed ? NAV_FLYOUT : "min-w-0 flex-1 truncate"}>{label}</span>;
+  return <span className={collapsed ? "sr-only" : "min-w-0 flex-1 truncate"}>{label}</span>;
 }
 
 function NavLink({ item, active, collapsed, onClick }: { item: NavItem; active: boolean; collapsed: boolean; onClick: () => void }) {
   const Icon = item.icon;
   return (
-    <Link href={item.href} prefetch={false} onClick={onClick} aria-current={active ? "page" : undefined} className={navLinkClass(active, collapsed)}>
+    <Link href={item.href} prefetch={false} onClick={onClick} aria-current={active ? "page" : undefined} data-rail-label={item.label} className={navLinkClass(active, collapsed)}>
       <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-[18px] shrink-0", active ? "text-canvas" : "text-ink-muted group-hover/nav:text-ink")} />
       <NavLabel label={item.label} collapsed={collapsed} />
       {item.badge && !collapsed && <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", active ? "text-canvas/80" : "text-ink-muted")}>{item.badge}</span>}
@@ -423,6 +423,7 @@ function OrgNavGroup({ label, items: allItems, organizationId, role, path, colla
               prefetch={false}
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
+              data-rail-label={item.label}
               className={navLinkClass(active, collapsed)}
             >
               <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-[18px] shrink-0", active ? "text-canvas" : "text-ink-muted group-hover/nav:text-ink")} />
@@ -468,10 +469,10 @@ function OrganizationSwitcher({ organizations, currentOrganizationId, collapsed 
         type="button"
         onClick={onExpand}
         aria-label={`${current.name}: open the sidebar to switch organization`}
+        data-rail-label={current.name}
         className={`group/nav relative mx-auto flex size-10 items-center justify-center rounded-md border border-border font-[family-name:var(--font-display)] text-sm font-bold text-ink transition-colors duration-150 ease-out ${HOVER}:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`}
       >
         <span aria-hidden="true">{current.name.charAt(0).toUpperCase()}</span>
-        <span aria-hidden="true" className={NAV_FLYOUT}>{current.name}</span>
       </button>
     );
   }
@@ -498,8 +499,8 @@ function OrganizationSwitcher({ organizations, currentOrganizationId, collapsed 
         <CaretUpDown aria-hidden="true" className="size-3.5 shrink-0 text-ink-muted" />
       </button>
 
-      {open && (
-        <div role="menu" aria-label="Switch organization" className="glass-surface-raised motion-safe:animate-enter-rise absolute left-0 top-full z-30 mt-1 w-full min-w-56 rounded-md p-1 shadow-xl">
+      {(
+        <div role="menu" aria-label="Switch organization" aria-hidden={!open} className={cn("glass-surface-raised absolute left-0 top-full z-30 mt-1 w-full min-w-56 rounded-md p-1 shadow-xl", popoverMotion(open, "top-left"))}>
           {organizations.map((org) => (
             <button
               key={org.id}
@@ -696,8 +697,16 @@ export function AppShellClient({
   // cookie that AppShell reads on the server, so a reload paints the chosen width directly.
   const [collapsed, setCollapsed] = useState(initialSidebarCollapsed);
   const [instant, setInstant] = useState(false);
+  const [railTip, setRailTip] = useState<{ label: string; top: number; left: number } | null>(null);
+  const showRailTip = (target: EventTarget | null) => {
+    const el = (target as HTMLElement | null)?.closest<HTMLElement>("[data-rail-label]");
+    if (!el) return setRailTip(null);
+    const rect = el.getBoundingClientRect();
+    setRailTip({ label: el.dataset.railLabel ?? "", top: rect.top + rect.height / 2, left: rect.right + 12 });
+  };
   const toggleSidebar = useCallback((fromKeyboard = false) => {
     setInstant(fromKeyboard);
+    setRailTip(null);
     setCollapsed((was) => {
       document.cookie = `${SIDEBAR_COOKIE}=${was ? "open" : "collapsed"}; path=/; max-age=31536000; samesite=lax`;
       return !was;
@@ -780,9 +789,14 @@ export function AppShellClient({
         <aside
           id="desktop-sidebar"
           aria-label="Sidebar"
+          onPointerOver={collapsed ? (event) => showRailTip(event.target) : undefined}
+          onPointerLeave={() => setRailTip(null)}
+          onFocus={collapsed ? (event) => showRailTip(event.target) : undefined}
+          onBlur={() => setRailTip(null)}
+          onScroll={() => setRailTip(null)}
           className={cn(
-            "glass-surface sticky top-16 hidden h-[calc(100dvh-4rem)] flex-col gap-6 rounded-none border-y-0 border-l-0 py-3 lg:flex",
-            collapsed ? "overflow-visible px-2" : "overflow-y-auto px-3",
+            "glass-surface sticky top-16 hidden h-[calc(100dvh-4rem)] flex-col gap-6 overflow-y-auto overscroll-contain rounded-none border-y-0 border-l-0 py-3 lg:flex",
+            collapsed ? "px-2" : "px-3",
           )}
         >
           {/* Toggle sits beside the brand (top), never at the bottom where fixed overlays
@@ -795,7 +809,8 @@ export function AppShellClient({
               aria-controls="desktop-sidebar"
               aria-expanded={!collapsed}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={collapsed ? "Expand sidebar  [" : "Collapse sidebar  ["}
+              data-rail-label="Expand sidebar  ["
+              title={collapsed ? undefined : "Collapse sidebar  ["}
               className={`inline-flex size-10 shrink-0 items-center justify-center rounded-md text-ink-muted transition-[background-color,color] duration-150 ease-out ${HOVER}:bg-surface-muted ${HOVER}:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus active:scale-[0.97] motion-reduce:active:scale-100`}
             >
               {collapsed ? <CaretDoubleRight aria-hidden="true" className="size-[18px]" /> : <CaretDoubleLeft aria-hidden="true" className="size-[18px]" />}
@@ -803,6 +818,17 @@ export function AppShellClient({
           </div>
           <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} platformAdminNeedsMfa={platformAdminNeedsMfa} collapsed={collapsed} onExpand={() => toggleSidebar()} onNavigate={close} />
         </aside>
+        {/* The rail's hover/focus label. One element that moves between icons: the first one
+            fades in (150ms); moving to the next is instant, like a toolbar's tooltips. */}
+        {collapsed && railTip && (
+          <span
+            aria-hidden="true"
+            style={{ top: railTip.top, left: railTip.left }}
+            className="pointer-events-none fixed z-50 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-xs font-medium text-canvas shadow-md transition-opacity duration-150 ease-out starting:opacity-0 lg:block"
+          >
+            {railTip.label}
+          </span>
+        )}
 
         <AnimatePresence>
           {open && (
@@ -810,17 +836,20 @@ export function AppShellClient({
               className="fixed inset-0 z-30 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              exit={{ opacity: 0, transition: { duration: 0.2 } }}
+              transition={{ duration: 0.26 }}
             >
               {/* Mouse convenience only: hidden from assistive tech and the tab order so the drawer has one
                   "Close navigation" control (the X below; Escape also closes it). */}
               <button type="button" aria-hidden="true" tabIndex={-1} className="absolute inset-0 bg-black/60" onClick={close} />
+              {/* Slides from the screen edge on the iOS drawer curve, 260ms in, 200ms out. The
+                  full transform string (not Motion's x shorthand) keeps it on the GPU while the
+                  page is busy. Reduced motion: fade only. */}
               <motion.aside
-                initial={{ x: reducedMotion ? 0 : -24, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: reducedMotion ? 0 : -24, opacity: 0 }}
-                transition={{ duration: reducedMotion ? 0.12 : 0.18, ease: "easeOut" }}
+                initial={reducedMotion ? { opacity: 0 } : { transform: "translateX(-100%)" }}
+                animate={reducedMotion ? { opacity: 1 } : { transform: "translateX(0%)", transition: { duration: 0.26, ease: [0.32, 0.72, 0, 1] } }}
+                exit={reducedMotion ? { opacity: 0 } : { transform: "translateX(-100%)", transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] } }}
+                transition={{ duration: 0.15 }}
                 className="glass-surface relative flex h-full w-72 flex-col gap-6 rounded-none border-y-0 border-l-0 p-3 shadow-xl"
               >
                 <div className="flex items-center justify-between">
@@ -835,14 +864,9 @@ export function AppShellClient({
           )}
         </AnimatePresence>
 
-        <motion.main
-          id="main"
-          key={path}
-          initial={{ opacity: 0, y: reducedMotion ? 0 : 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: reducedMotion ? 0.15 : 0.4, ease: "easeOut" }}
-          className="min-w-0 p-4 sm:p-6 lg:p-8"
-        >
+        {/* No page-change animation: navigation happens tens of times a day, and a 400ms
+            fade on every click made a fast server feel slow (Emil Kowalski review). */}
+        <main id="main" className="min-w-0 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-[1440px]">
             <header className="mb-4 border-b border-border pb-3">
               {/* One h1 per page: under a section title (Settings) the child page owns it. */}
@@ -854,7 +878,7 @@ export function AppShellClient({
             </header>
             {children}
           </div>
-        </motion.main>
+        </main>
       </div>
     </div>
   );

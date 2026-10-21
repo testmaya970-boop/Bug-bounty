@@ -3,6 +3,7 @@
 import React, { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
+import { popoverMotion } from "./popover-motion";
 
 // Aligned to the exact same recipe as components/ui/tabs.tsx's URL-driven Tabs (shrink-0,
 // border-b-2, px-3 py-3, text-sm font-semibold, the identical active/hover/glow classes)
@@ -36,7 +37,7 @@ export function DropdownMenu({ label, menuLabel = "Menu", children }: { label: R
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
-  return <div ref={ref} className="relative inline-block"><button ref={triggerRef} type="button" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(!open)} className="min-h-11 rounded-md px-3 text-sm font-medium text-ink hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{label}</button>{open && <div id={menuId} role="group" aria-label={menuLabel} className="glass-surface-raised motion-safe:animate-enter-rise absolute right-0 z-30 mt-1 min-w-44 rounded-md p-1 shadow-xl">{children}</div>}</div>;
+  return <div ref={ref} className="relative inline-block"><button ref={triggerRef} type="button" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(!open)} className="min-h-11 rounded-md px-3 text-sm font-medium text-ink [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{label}</button><div id={menuId} role="group" aria-label={menuLabel} aria-hidden={!open} className={cn("glass-surface-raised absolute right-0 z-30 mt-1 min-w-44 rounded-md p-1 shadow-xl", popoverMotion(open, "top-right"))}>{children}</div></div>;
 }
 
 export function Dialog({ open, title, children, onClose }: { open: boolean; title: string; children: ReactNode; onClose: () => void }) {

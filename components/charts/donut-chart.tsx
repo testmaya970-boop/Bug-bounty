@@ -63,7 +63,7 @@ export function DonutChart({ data, centerLabel, className }: { data: DonutChartD
             strokeWidth={STROKE}
             strokeDasharray={revealed ? `${segment.dash} ${CIRCUMFERENCE - segment.dash}` : `0 ${CIRCUMFERENCE}`}
             strokeDashoffset={segment.offset}
-            className={cn(segment.tone.text, "transition-[stroke-dasharray] duration-500 ease-out motion-reduce:transition-none")}
+            className={segment.tone.text}
           />
         ))}
         <text x={SIZE / 2} y={SIZE / 2} textAnchor="middle" dominantBaseline="central" className="rotate-90 fill-ink font-mono text-2xl font-semibold tabular-nums" transform={`rotate(90 ${SIZE / 2} ${SIZE / 2})`}>

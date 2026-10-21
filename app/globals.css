@@ -264,10 +264,12 @@ code, pre, kbd, samp { font-family: var(--font-mono); }
   border: 1px solid var(--border);
   box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.12);
 }
-a:is(.glass-surface, .glass-surface-raised) { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+/* 2px over 160ms on the strong ease-out (was 4px, 200ms, built-in ease): cards are hovered
+   dozens of times a day, so the lift is a hint, not a jump. */
+a:is(.glass-surface, .glass-surface-raised) { transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1), border-color 160ms cubic-bezier(0.23, 1, 0.32, 1); }
 @media (hover: hover) and (pointer: fine) {
   a:is(.glass-surface, .glass-surface-raised):hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.12);
     border-color: rgba(238, 0, 0, 0.35);
   }

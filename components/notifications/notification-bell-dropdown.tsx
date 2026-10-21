@@ -11,6 +11,11 @@ import { emitNotificationRead, onNotificationRead } from "../../lib/notification
 import type { Notification } from "../../types/notifications";
 import { LocalTime } from "../ui/local-time";
 import { NOTIFICATION_LABELS } from "../../lib/notification-labels";
+import { popoverMotion } from "../ui/popover-motion";
+
+// The shell remounts on every page, so a pulse-on-mount fired on every navigation. Pulse only
+// when the count has gone up since this tab last showed it.
+const SEEN_KEY = "unpatched_unread_seen";
 
 
 const PREVIEW_COUNT = 6;
@@ -39,6 +44,16 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
   // double-decrements unreadCount. A plain ref, not state: purely a same-tick echo guard,
   // never rendered.
   const selfMarkedIds = useRef<Set<string>>(new Set());
+  const [pulse, setPulse] = useState(false);
+  useEffect(() => {
+    try {
+      const seen = Number(sessionStorage.getItem(SEEN_KEY) ?? "0");
+      if (unreadCount > seen) setPulse(true);
+      sessionStorage.setItem(SEEN_KEY, String(unreadCount));
+    } catch {
+      // Storage blocked: no pulse, the count itself is still shown.
+    }
+  }, [unreadCount]);
 
   useEffect(() => {
     function close(event: MouseEvent) {
@@ -125,24 +140,25 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
         aria-controls="recent-notifications"
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
         title="Notifications"
-        className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-muted transition-colors duration-150 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-muted transition-colors duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-hover [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <Bell aria-hidden="true" className="size-5" />
         {unreadCount > 0 && (
           // docs/decisions/0057: a bounded, 2-iteration glow-pulse on the unread count
           // itself -- the badge's real number is the signal; the pulse only draws a first
           // glance to it, it never substitutes for the count text.
-          <span aria-hidden="true" className="absolute right-1.5 top-1.5 inline-flex size-4 items-center justify-center rounded-full bg-action font-mono text-[9px] font-bold text-canvas motion-safe:animate-glow-pulse">
+          <span aria-hidden="true" className={cn("absolute right-1.5 top-1.5 inline-flex size-4 items-center justify-center rounded-full bg-action font-mono text-[9px] font-bold text-canvas", pulse && "motion-safe:animate-glow-pulse")}>
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
-      {open && (
+      {/* Always mounted so it can animate out; closed it is invisible and out of the tab order. */}
+      {(
         // A named group, not role="menu": it holds links and a button, not menuitems.
         // Phones: a fixed sheet pinned under the 4rem top bar, inset from both edges, so it
         // can never hang off the left edge the way a right-anchored w-80 did at 320/375px.
-        <div id="recent-notifications" role="group" aria-label="Recent notifications" className="motion-safe:animate-enter-rise fixed inset-x-2 top-16 z-30 rounded-md border border-border bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80">
+        <div id="recent-notifications" role="group" aria-label="Recent notifications" aria-hidden={!open} className={cn("fixed inset-x-2 top-16 z-30 rounded-md border border-border bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80", popoverMotion(open, "top-right"))}>
           <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
             <p className="text-sm font-semibold text-ink">Notifications</p>
             {unreadIds.length > 0 && (

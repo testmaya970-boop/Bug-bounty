@@ -37,7 +37,7 @@ export function BarChart({ data, className }: { data: BarChartDatum[]; className
           <span className="truncate text-ink-muted">{d.label}</span>
           <span className="h-2.5 min-w-0 overflow-hidden rounded-full bg-surface-muted">
             <span
-              className={cn("block h-full rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none", d.colorClassName ?? "bg-action")}
+              className={cn("block h-full rounded-full", d.colorClassName ?? "bg-action")}
               style={{ width: revealed ? `${Math.max(2, (d.value / max) * 100)}%` : "0%" }}
             />
           </span>
