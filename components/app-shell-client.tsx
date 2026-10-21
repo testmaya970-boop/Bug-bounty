@@ -43,6 +43,7 @@ import {
   Plus,
   Plug,
   Gear,
+  EnvelopeSimple,
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
 import { Avatar, DropdownMenu } from "./ui/navigation";
@@ -121,6 +122,7 @@ const PLATFORM_NAV: NavItem[] = [
   { href: "/platform/retests" as Route, label: "Retests", icon: ArrowsClockwise },
   { href: "/platform/needs-recovery" as Route, label: "Needs recovery", icon: Lifebuoy },
   { href: "/platform/errors" as Route, label: "Errors", icon: WarningOctagon },
+  { href: "/platform/engagement" as Route, label: "Engagement emails", icon: EnvelopeSimple },
   { href: "/platform/integrations" as Route, label: "Integrations", icon: Plug },
   { href: "/platform/audit-log" as Route, label: "Audit log", icon: Scroll },
 ];

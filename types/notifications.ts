@@ -6,7 +6,7 @@
  * docs/decisions/0017-notification-routing-and-delivery-foundation.md for why
  * `triage_activity`/`researcher_activity` were considered and rejected for this slice.
  */
-export type NotificationCategory = "report_activity" | "bounty_activity" | "platform_activity" | "billing_activity" | "program_activity";
+export type NotificationCategory = "report_activity" | "bounty_activity" | "platform_activity" | "billing_activity" | "program_activity" | "program_recommendations";
 
 /** The specific fact a notification records. Distinct from `NotificationCategory` --
  * category is the preference-grouping; notification_type is the specific event.
@@ -69,7 +69,10 @@ export type NotificationType =
   | "program_paused"
   | "program_resumed"
   | "program_closed"
-  | "program_scope_changed";
+  | "program_scope_changed"
+  // program_recommendations (202610210005): a newly public program matching an inactive
+  // researcher's hacking interests.
+  | "program_recommended";
 
 /**
  * The durable in-app record. Deliberately content-free beyond identifiers and the fact

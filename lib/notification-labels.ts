@@ -45,4 +45,5 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   program_resumed: "A program you take part in is accepting reports again",
   program_closed: "A program you take part in was closed",
   program_scope_changed: "The scope of a program you take part in changed",
+  program_recommended: "A new program matches what you hunt",
 };

@@ -165,6 +165,12 @@ export function createProgramNotificationHandler(notificationType: NotificationT
   return createEventRoutedHandler("public.route_program_notifications", notificationType);
 }
 
+/** "A new program matches what you hunt" (202610210005): a newly public program, to inactive
+ * researchers whose interests match. The router applies the platform's settings and opt-outs. */
+export function createRecommendationHandler() {
+  return createEventRoutedHandler("public.route_program_recommendations", "program_recommended");
+}
+
 /** Routers that take (event id, notification type) and re-verify provenance themselves. */
 function createEventRoutedHandler(routerRpc: string, notificationType: NotificationType) {
   return async function handleEventRoutedNotification(event: OutboxEvent): Promise<void> {

@@ -2,7 +2,7 @@ import { registerHandler } from "../registry";
 import { handleReportCreatedV1 } from "./report-created-v1";
 import { createReportOutcomeHandler } from "./reputation/report-outcome";
 import { handleBountyFinalizedV1 } from "./reputation/bounty-finalized-v1";
-import { createBillingNotificationHandler, createProgramNotificationHandler, createNotificationHandler, createPaymentNotificationHandler, createPlatformNotificationHandler } from "./notifications/notification-handler";
+import { createBillingNotificationHandler, createProgramNotificationHandler, createNotificationHandler, createPaymentNotificationHandler, createPlatformNotificationHandler, createRecommendationHandler } from "./notifications/notification-handler";
 import { handleJiraSync, JIRA_SYNC_EVENT_TYPES } from "./jira/jira-sync-handler";
 
 /** The complete handler registry for this slice. Importing this module (a side effect
@@ -98,5 +98,8 @@ registerHandler("scope.asset_updated", 1, createProgramNotificationHandler("prog
 registerHandler("scope.asset_removed", 1, createProgramNotificationHandler("program_scope_changed"));
 registerHandler("platform.program_launch_approved", 1, createProgramNotificationHandler("program_launch_approved"));
 registerHandler("platform.program_launch_rejected", 1, createProgramNotificationHandler("program_launch_rejected"));
+
+// Re-engagement (202610210005): a program became active and public.
+registerHandler("program.published", 1, createRecommendationHandler());
 
 for (const eventType of JIRA_SYNC_EVENT_TYPES) registerHandler(eventType, 1, handleJiraSync);

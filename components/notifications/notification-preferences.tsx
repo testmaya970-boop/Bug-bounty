@@ -12,6 +12,7 @@ const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   platform_activity: "Platform decisions",
   billing_activity: "Billing",
   program_activity: "Program changes",
+  program_recommendations: "New programs for you",
 };
 
 // What each side actually receives (enqueue_report_notification, 202609230002): the
@@ -23,6 +24,7 @@ const CATEGORY_DESCRIPTIONS: Record<AccountType, Partial<Record<NotificationCate
   researcher: {
     report_activity: "Status changes and new messages on reports you submitted.",
     bounty_activity: "A bounty was finalized for one of your reports. Always sent, like a payment receipt.",
+    program_recommendations: "When you haven't visited for a while, an email when a new public program matches your interests in Skills. At most one a week.",
   },
   organization: {
     report_activity: "New reports and researcher messages on the programs you work on.",

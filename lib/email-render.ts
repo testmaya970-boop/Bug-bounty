@@ -55,6 +55,26 @@ export function renderNotificationEmail(input: NotificationEmailInput): Rendered
     return { subject: sanitizeHeaderValue(`Unpatched: ${label}: ${organization}`), text: lines.join("\n") };
   }
 
+  if (input.notificationType === "program_recommended") {
+    // Re-engagement (202610210005): only to researchers who haven't been around for a while,
+    // only for programs matching interests they set themselves, at most weekly. Every one says
+    // why it was sent and how to stop them.
+    const lines = [
+      `Hello ${recipientName},`,
+      "",
+      `${organization} just opened a public program that matches the areas you said you like to hunt:`,
+      "",
+      `Program: ${program}`,
+      `Organization: ${organization}`,
+      "",
+      "Sign in to Unpatched to read its scope and rules, then join from the program page.",
+      "",
+      "You're getting this because you haven't visited in a while and this program matches your interests in Settings > Skills.",
+      "To stop these emails, turn off \"New programs for you\" in Settings > Notifications.",
+    ];
+    return { subject: sanitizeHeaderValue(`Unpatched: new program for you: ${program}`), text: lines.join("\n") };
+  }
+
   if (PROGRAM_TYPES.has(input.notificationType)) {
     // No report: the program and what changed (a scope summary written by the database).
     const lines = [`Hello ${recipientName},`, "", `${label}.`, "", `Program: ${program}`, `Organization: ${organization}`, `When: ${input.occurredAt}`];
