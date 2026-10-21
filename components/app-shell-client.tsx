@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Route } from "next";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   SquaresFour,
@@ -37,6 +37,8 @@ import {
   List,
   X,
   CaretUpDown,
+  CaretDoubleLeft,
+  CaretDoubleRight,
   Check,
   Plus,
   Plug,
@@ -48,6 +50,7 @@ import { IconButton } from "./ui/button";
 import { Separator } from "./ui/feedback";
 import { NotificationBellDropdown } from "./notifications/notification-bell-dropdown";
 import { cn } from "../lib/cn";
+import { SIDEBAR_COOKIE } from "../lib/sidebar";
 import { usePrefersReducedMotion } from "../lib/motion";
 import { SignOutForm } from "./auth/sign-out-form";
 import { MOCK_CTF_CHALLENGES } from "../lib/mock/ctf";
@@ -331,38 +334,48 @@ function HelpLink() {
   );
 }
 
-// Tactical Telemetry nav: uppercase JetBrains Mono (the brutalist skill's micro-typography
-// rule for navigation), and "you are here" marked by a hazard-red rail -- the one accent,
-// spent on the one vital state. Shared by NavLink and OrgNavGroup so the two nav zones can
-// never drift into two different styles again.
+// Nav (21 Oct redesign): the old all-uppercase mono items in [ BRACKETED ] groups gave every
+// line the same weight, so nothing led. Now: quiet sentence-case group labels, body-face
+// items, mono only for counts, and "you are here" as a solid ink block with a hazard-red
+// notch -- the brutal contrast spent on the one state that matters. Shared by NavLink and
+// OrgNavGroup so the two nav zones can never drift into two styles again.
+const HOVER = "[@media(hover:hover)_and_(pointer:fine)]:hover" as const;
 const NAV_LINK_BASE =
-  "flex min-h-10 items-center gap-2.5 border-l-2 py-2 pl-2.5 pr-2.5 font-mono text-xs uppercase tracking-[0.08em] transition-[background-color,border-color,color] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus";
-const NAV_LINK_ACTIVE = "border-action bg-surface-muted font-bold text-ink";
-const NAV_LINK_IDLE = "border-transparent font-medium text-ink-muted hover:bg-surface-hover hover:text-ink";
+  "group/nav relative flex min-h-10 items-center gap-3 rounded-md text-sm transition-[background-color,color] duration-150 ease-out motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus";
+const NAV_LINK_ACTIVE = "bg-ink font-semibold text-canvas before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r-sm before:bg-action";
+const NAV_LINK_IDLE = `font-medium text-ink-muted ${HOVER}:bg-surface-muted ${HOVER}:text-ink`;
+// Collapsed rail: the label stays in the DOM (it is the link's accessible name) and doubles as
+// a flyout shown on hover or keyboard focus -- scaling from its left edge, toward the icon.
+const NAV_FLYOUT =
+  "pointer-events-none absolute left-full top-1/2 z-40 ml-3 -translate-y-1/2 origin-left scale-95 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-xs font-medium text-canvas opacity-0 shadow-md transition-[opacity,transform] duration-150 ease-out group-hover/nav:scale-100 group-hover/nav:opacity-100 group-focus-visible/nav:scale-100 group-focus-visible/nav:opacity-100 motion-reduce:scale-100";
 
-function NavGroupLabel({ label }: { label: string }) {
-  return (
-    <p className="px-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-      <span aria-hidden="true">[ </span>
-      {label}
-      <span aria-hidden="true"> ]</span>
-    </p>
-  );
+function navLinkClass(active: boolean, collapsed: boolean) {
+  return cn(NAV_LINK_BASE, collapsed ? "mx-auto size-10 justify-center" : "px-2.5", active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE);
 }
 
-function NavLink({ item, active, onClick }: { item: NavItem; active: boolean; onClick: () => void }) {
+function NavGroupLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
+  if (collapsed) {
+    return (
+      <>
+        <p className="sr-only">{label}</p>
+        <div aria-hidden="true" className="mx-auto h-px w-6 bg-border" />
+      </>
+    );
+  }
+  return <p className="px-2.5 text-[11px] font-semibold text-ink-muted">{label}</p>;
+}
+
+function NavLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
+  return <span className={collapsed ? NAV_FLYOUT : "min-w-0 flex-1 truncate"}>{label}</span>;
+}
+
+function NavLink({ item, active, collapsed, onClick }: { item: NavItem; active: boolean; collapsed: boolean; onClick: () => void }) {
   const Icon = item.icon;
   return (
-    <Link
-      href={item.href}
-      prefetch={false}
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      className={cn(NAV_LINK_BASE, active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE)}
-    >
-      <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-4 shrink-0", active ? "text-ink" : "text-ink-muted")} />
-      <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      {item.badge && <span className={cn("shrink-0 font-mono text-[10px] font-semibold tabular-nums", active ? "text-ink" : "text-ink-muted/70")}>{item.badge}</span>}
+    <Link href={item.href} prefetch={false} onClick={onClick} aria-current={active ? "page" : undefined} className={navLinkClass(active, collapsed)}>
+      <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-[18px] shrink-0", active ? "text-canvas" : "text-ink-muted group-hover/nav:text-ink")} />
+      <NavLabel label={item.label} collapsed={collapsed} />
+      {item.badge && !collapsed && <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", active ? "text-canvas/80" : "text-ink-muted")}>{item.badge}</span>}
     </Link>
   );
 }
@@ -371,10 +384,10 @@ function NavLink({ item, active, onClick }: { item: NavItem; active: boolean; on
  * tracking than a normal heading -- never competing with the nav items themselves for
  * attention. Same treatment for every zone (RESEARCH/PRACTICE/RECORD/SYSTEM/Organization),
  * so the grouping reads as one consistent grammar, not five different label styles. */
-function NavGroup({ label, items, path, onNavigate }: { label: string; items: NavItem[]; path: string; onNavigate: () => void }) {
+function NavGroup({ label, items, path, collapsed, onNavigate }: { label: string; items: NavItem[]; path: string; collapsed: boolean; onNavigate: () => void }) {
   return (
     <div>
-      <NavGroupLabel label={label} />
+      <NavGroupLabel label={label} collapsed={collapsed} />
       <div className="mt-1.5 space-y-0.5">
         {items.map((item) => (
           // Exact match for "/" (every route starts with it -- a prefix match would keep
@@ -382,7 +395,7 @@ function NavGroup({ label, items, path, onNavigate }: { label: string; items: Na
           // parent lit (e.g. /platform/ctf-events/<id> keeps "CTF events" active), the same
           // exactMatch/prefixMatch split OrgNavGroup already uses -- AGENTS.md's "you are
           // here must never go dark on a sub-route" rule.
-          <NavLink key={`${item.href}-${item.label}`} item={item} active={item.href === "/" || item.href === "/platform" ? path === item.href : path === item.href || path.startsWith(`${item.href}/`)} onClick={onNavigate} />
+          <NavLink key={`${item.href}-${item.label}`} item={item} active={item.href === "/" || item.href === "/platform" ? path === item.href : path === item.href || path.startsWith(`${item.href}/`)} collapsed={collapsed} onClick={onNavigate} />
         ))}
       </div>
     </div>
@@ -392,12 +405,12 @@ function NavGroup({ label, items, path, onNavigate }: { label: string; items: Na
 /** Renders one org-side nav zone (Overview/Security/Insights/Organization), resolving
  * each item's href against the real, currently-selected organizationId -- never a static
  * href, since every one of these routes is org-scoped by definition. */
-function OrgNavGroup({ label, items: allItems, organizationId, role, path, onNavigate }: { label: string; items: OrgNavItem[]; organizationId: string; role?: OrganizationRole; path: string; onNavigate: () => void }) {
+function OrgNavGroup({ label, items: allItems, organizationId, role, path, collapsed, onNavigate }: { label: string; items: OrgNavItem[]; organizationId: string; role?: OrganizationRole; path: string; collapsed: boolean; onNavigate: () => void }) {
   const items = allItems.filter((item) => !item.roles || (role !== undefined && item.roles.includes(role)));
   if (items.length === 0) return null;
   return (
     <div>
-      <NavGroupLabel label={label} />
+      <NavGroupLabel label={label} collapsed={collapsed} />
       <div className="mt-1.5 space-y-0.5">
         {items.map((item) => {
           const href = item.href(organizationId);
@@ -410,10 +423,10 @@ function OrgNavGroup({ label, items: allItems, organizationId, role, path, onNav
               prefetch={false}
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
-              className={cn(NAV_LINK_BASE, active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE)}
+              className={navLinkClass(active, collapsed)}
             >
-              <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-4 shrink-0", active ? "text-ink" : "text-ink-muted")} />
-              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-[18px] shrink-0", active ? "text-canvas" : "text-ink-muted group-hover/nav:text-ink")} />
+              <NavLabel label={item.label} collapsed={collapsed} />
             </Link>
           );
         })}
@@ -431,7 +444,7 @@ function OrgNavGroup({ label, items: allItems, organizationId, role, path, onNav
  * that organization's own Overview route -- never a client-side state swap that could
  * leak stale data between organizations; the URL segment is, and remains, the only source
  * of "which organization" for every server-rendered org-scoped page. */
-function OrganizationSwitcher({ organizations, currentOrganizationId }: { organizations: OrganizationSummary[]; currentOrganizationId?: string }) {
+function OrganizationSwitcher({ organizations, currentOrganizationId, collapsed = false, onExpand }: { organizations: OrganizationSummary[]; currentOrganizationId?: string; collapsed?: boolean; onExpand?: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -446,6 +459,22 @@ function OrganizationSwitcher({ organizations, currentOrganizationId }: { organi
   }, []);
 
   if (!current) return null;
+
+  // Rail mode: the organization's initial; choosing it opens the sidebar so the full
+  // switcher has room, rather than squeezing a menu out of a 64px column.
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={onExpand}
+        aria-label={`${current.name}: open the sidebar to switch organization`}
+        className={`group/nav relative mx-auto flex size-10 items-center justify-center rounded-md border border-border font-[family-name:var(--font-display)] text-sm font-bold text-ink transition-colors duration-150 ease-out ${HOVER}:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`}
+      >
+        <span aria-hidden="true">{current.name.charAt(0).toUpperCase()}</span>
+        <span aria-hidden="true" className={NAV_FLYOUT}>{current.name}</span>
+      </button>
+    );
+  }
 
   function handleSwitch(organizationId: string) {
     setOpen(false);
@@ -503,7 +532,16 @@ function OrganizationSwitcher({ organizations, currentOrganizationId }: { organi
 
 /** compact: the phone header. Below 400px the wordmark hides and only the mark shows -- the
  * header measured 373px wide with it, overflowing a 320px screen by 41px (and 360px by 1px). */
-function SidebarBrand({ compact = false }: { compact?: boolean }) {
+function SidebarBrand({ compact = false, iconOnly = false }: { compact?: boolean; iconOnly?: boolean }) {
+  if (iconOnly) {
+    return (
+      <Link href="/" prefetch={false} aria-label="Unpatched home" className="mx-auto inline-flex size-10 items-center justify-center focus-visible:outline-2 focus-visible:outline-focus">
+        <span aria-hidden="true" className="inline-flex size-7 items-center justify-center rounded-md bg-action text-on-action">
+          <ShieldCheck weight="fill" className="size-4" />
+        </span>
+      </Link>
+    );
+  }
   return (
     <Link href="/" prefetch={false} aria-label="Unpatched home" className="flex items-center gap-2 px-1 focus-visible:outline-2 focus-visible:outline-focus">
       {/* shadow-[...var(--glow-action)] removed -- --glow-action no longer exists, see app/globals.css */}
@@ -546,6 +584,8 @@ function SidebarNav({
   hasResearcherParticipation,
   isPlatformAdmin,
   platformAdminNeedsMfa,
+  collapsed = false,
+  onExpand,
   onNavigate,
 }: {
   path: string;
@@ -554,6 +594,8 @@ function SidebarNav({
   hasResearcherParticipation: boolean;
   isPlatformAdmin: boolean;
   platformAdminNeedsMfa: boolean;
+  collapsed?: boolean;
+  onExpand?: () => void;
   onNavigate: () => void;
 }) {
   // A platform admin without MFA has no admin power yet (202610100001) and every other page
@@ -561,7 +603,7 @@ function SidebarNav({
   if (platformAdminNeedsMfa) {
     return (
       <nav aria-label="Primary navigation" className="space-y-5">
-        <NavGroup label="Platform admin" items={PLATFORM_MFA_SETUP_NAV} path={path} onNavigate={onNavigate} />
+        <NavGroup label="Platform admin" items={PLATFORM_MFA_SETUP_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
       </nav>
     );
   }
@@ -590,32 +632,32 @@ function SidebarNav({
     <nav aria-label="Primary navigation" className="space-y-5">
       {showResearcherZones && (
         <>
-          <NavGroup label="Research" items={RESEARCH_NAV} path={path} onNavigate={onNavigate} />
-          <NavGroup label="Practice" items={PRACTICE_NAV} path={path} onNavigate={onNavigate} />
-          <NavGroup label="Record" items={RECORD_NAV} path={path} onNavigate={onNavigate} />
+          <NavGroup label="Research" items={RESEARCH_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+          <NavGroup label="Practice" items={PRACTICE_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+          <NavGroup label="Record" items={RECORD_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
         </>
       )}
       {hasOrganization && (
         <div className="space-y-3">
-          <OrganizationSwitcher organizations={organizations} currentOrganizationId={currentOrganizationId} />
+          <OrganizationSwitcher organizations={organizations} currentOrganizationId={currentOrganizationId} collapsed={collapsed} onExpand={onExpand} />
           {resolvedOrgId && (
             <div className="space-y-5">
-              <OrgNavGroup label="Overview" items={ORG_OVERVIEW_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} onNavigate={onNavigate} />
-              <OrgNavGroup label="Security" items={ORG_SECURITY_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} onNavigate={onNavigate} />
-              <OrgNavGroup label="Insights" items={ORG_INSIGHTS_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} onNavigate={onNavigate} />
-              <OrgNavGroup label="Organization" items={ORG_ORGANIZATION_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} onNavigate={onNavigate} />
+              <OrgNavGroup label="Overview" items={ORG_OVERVIEW_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+              <OrgNavGroup label="Security" items={ORG_SECURITY_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+              <OrgNavGroup label="Insights" items={ORG_INSIGHTS_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+              <OrgNavGroup label="Organization" items={ORG_ORGANIZATION_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} collapsed={collapsed} onNavigate={onNavigate} />
             </div>
           )}
         </div>
       )}
       {isPlatformAdminOnly ? (
         <>
-          <NavGroup label="Platform admin" items={PLATFORM_NAV} path={path} onNavigate={onNavigate} />
-          <NavGroup label="System" items={PLATFORM_SYSTEM_NAV} path={path} onNavigate={onNavigate} />
+          <NavGroup label="Platform admin" items={PLATFORM_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+          <NavGroup label="System" items={PLATFORM_SYSTEM_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
         </>
       ) : (
         <>
-          <NavGroup label="System" items={SYSTEM_NAV} path={path} onNavigate={onNavigate} />
+          <NavGroup label="System" items={SYSTEM_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
         </>
       )}
     </nav>
@@ -633,6 +675,7 @@ export function AppShellClient({
   unreadNotificationCount,
   isPlatformAdmin,
   platformAdminNeedsMfa = false,
+  initialSidebarCollapsed = false,
 }: {
   title: string;
   titleIsSection?: boolean;
@@ -644,9 +687,34 @@ export function AppShellClient({
   unreadNotificationCount: number;
   isPlatformAdmin: boolean;
   platformAdminNeedsMfa?: boolean;
+  initialSidebarCollapsed?: boolean;
 }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  // Desktop sidebar: open (15.5rem) or an icon rail (4rem). A click animates the width; the
+  // "[" shortcut switches instantly (keyboard actions are never animated). Remembered in a
+  // cookie that AppShell reads on the server, so a reload paints the chosen width directly.
+  const [collapsed, setCollapsed] = useState(initialSidebarCollapsed);
+  const [instant, setInstant] = useState(false);
+  const toggleSidebar = useCallback((fromKeyboard = false) => {
+    setInstant(fromKeyboard);
+    setCollapsed((was) => {
+      document.cookie = `${SIDEBAR_COOKIE}=${was ? "open" : "collapsed"}; path=/; max-age=31536000; samesite=lax`;
+      return !was;
+    });
+  }, []);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "[" || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (!window.matchMedia("(min-width: 1024px)").matches) return;
+      event.preventDefault();
+      toggleSidebar(true);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [toggleSidebar]);
   const close = () => setOpen(false);
   // The mobile drawer is modal: Escape closes it, like every Dialog in this app.
   useEffect(() => {
@@ -697,13 +765,43 @@ export function AppShellClient({
         </div>
       </header>
 
-      <div className="lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
-        {/* Persistent desktop sidebar -- floating smoked glass, one step above the
-            atmospheric canvas rather than a flat opaque panel; the brand lives here at
-            the top on desktop, not duplicated in the top bar. */}
-        <aside className="glass-surface hidden min-h-[calc(100dvh-4rem)] flex-col gap-6 rounded-none border-y-0 border-l-0 p-3 lg:flex">
-          <SidebarBrand />
-          <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} platformAdminNeedsMfa={platformAdminNeedsMfa} onNavigate={close} />
+      {/* The column width is the one thing that moves: an on-screen morph, so ease-in-out at
+          200ms. Width animates here because a sidebar has no transform equivalent that keeps
+          the content column reflowing beside it. */}
+      <div
+        className={cn(
+          "lg:grid lg:transition-[grid-template-columns] lg:duration-200 lg:ease-in-out motion-reduce:transition-none",
+          instant && "lg:transition-none",
+          collapsed ? "lg:grid-cols-[4rem_minmax(0,1fr)]" : "lg:grid-cols-[15.5rem_minmax(0,1fr)]",
+        )}
+      >
+        {/* Sticky under the top bar, scrolling on its own when the nav is taller than the
+            screen, so the collapse control is always reachable. The rail lets flyouts escape. */}
+        <aside
+          id="desktop-sidebar"
+          aria-label="Sidebar"
+          className={cn(
+            "glass-surface sticky top-16 hidden h-[calc(100dvh-4rem)] flex-col gap-6 rounded-none border-y-0 border-l-0 py-3 lg:flex",
+            collapsed ? "overflow-visible px-2" : "overflow-y-auto px-3",
+          )}
+        >
+          {/* Toggle sits beside the brand (top), never at the bottom where fixed overlays
+              -- the dev badge, a chat widget -- would cover it. */}
+          <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>
+            <SidebarBrand iconOnly={collapsed} />
+            <button
+              type="button"
+              onClick={() => toggleSidebar()}
+              aria-controls="desktop-sidebar"
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar  [" : "Collapse sidebar  ["}
+              className={`inline-flex size-10 shrink-0 items-center justify-center rounded-md text-ink-muted transition-[background-color,color] duration-150 ease-out ${HOVER}:bg-surface-muted ${HOVER}:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus active:scale-[0.97] motion-reduce:active:scale-100`}
+            >
+              {collapsed ? <CaretDoubleRight aria-hidden="true" className="size-[18px]" /> : <CaretDoubleLeft aria-hidden="true" className="size-[18px]" />}
+            </button>
+          </div>
+          <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} platformAdminNeedsMfa={platformAdminNeedsMfa} collapsed={collapsed} onExpand={() => toggleSidebar()} onNavigate={close} />
         </aside>
 
         <AnimatePresence>

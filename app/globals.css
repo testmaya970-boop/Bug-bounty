@@ -11,6 +11,12 @@
   --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-open-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  /* Motion curves (Emil Kowalski review, 21 Oct): the built-in CSS easings are too weak to feel
+     intentional. Overriding --ease-out / --ease-in-out retunes every ease-out / ease-in-out
+     utility at once; ease-drawer is the iOS sheet curve for the sidebar and drawer. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --animate-enter-rise: enter-rise 0.22s ease-out both;
   --animate-enter-fade: enter-fade 0.22s ease-out both;
   --animate-hero-reveal: hero-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;

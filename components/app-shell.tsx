@@ -1,6 +1,7 @@
 import React from "react";
 import { cookies, headers } from "next/headers";
 import { AppShellClient } from "./app-shell-client";
+import { SIDEBAR_COOKIE } from "../lib/sidebar";
 import { listCurrentUserOrganizations } from "../services/organizations";
 import { countMyUnreadNotifications } from "../services/notifications";
 import { listMyProgramParticipations } from "../services/program-researchers";
@@ -86,6 +87,8 @@ export async function AppShell({
 
   const resolvedOrganizationId = organizationId ?? (user ? resolveLastOrganizationId((await cookies()).get(LAST_ORGANIZATION_COOKIE)?.value, organizations) : undefined);
   const platformAdminNeedsMfa = (await headers()).get(PLATFORM_ADMIN_NEEDS_MFA_HEADER) === "1";
+  // Read here so the first paint already has the right sidebar width (no flash of the open one).
+  const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed";
 
   return (
     <AppShellClient
@@ -98,6 +101,7 @@ export async function AppShell({
       unreadNotificationCount={unreadNotificationCount}
       isPlatformAdmin={isAdmin}
       platformAdminNeedsMfa={platformAdminNeedsMfa}
+      initialSidebarCollapsed={sidebarCollapsed}
     >
       {children}
     </AppShellClient>
