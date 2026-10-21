@@ -176,7 +176,9 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
             {loading ? (
               <p className="p-4 text-center text-sm text-ink-muted">Loading…</p>
             ) : notifications.length === 0 ? (
-              <p className="p-4 text-center text-sm text-ink-muted">No notifications yet.</p>
+              // Only once opened: the panel stays mounted (to animate out), and an empty-state line in
+              // the closed panel would duplicate the notification center's own text.
+              loaded ? <p className="p-4 text-center text-sm text-ink-muted">No notifications yet.</p> : null
             ) : (
               <ul className="divide-y divide-border">
                 {notifications.slice(0, PREVIEW_COUNT).map((notification) => {

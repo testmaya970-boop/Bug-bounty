@@ -6,7 +6,9 @@ import { getCurrentUser } from "../../lib/auth/current-user";
 
 export default async function ForgotPasswordPage() {
   const user = await getCurrentUser();
-  if (user) redirect("/organizations");
+  // Signed in already: home, which routes each account type to its own start page (a
+  // researcher used to be sent to /organizations).
+  if (user) redirect("/");
 
   return (
     <AuthLayout eyebrow="Unpatched" title="Reset your password" description="Enter your email and we'll send you a link to choose a new password.">

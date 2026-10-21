@@ -1,5 +1,6 @@
 import React from "react";
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 import { AuthLayout } from "../../components/auth/auth-layout";
 import { AudienceChoice } from "../../components/auth/audience-choice";
 import { getCurrentUser } from "../../lib/auth/current-user";
@@ -16,8 +17,10 @@ import { isSafeRedirect } from "../../lib/auth/safe-redirect";
  */
 export default async function SignUpPage({ searchParams }: { searchParams: Promise<{ redirectTo?: string }> }) {
   const user = await getCurrentUser();
-  if (user) redirect("/");
   const { redirectTo } = await searchParams;
+  // Already signed in (e.g. opened an invitation link, then chose "Create an account"): go
+  // straight on to where the link was headed instead of dropping it.
+  if (user) redirect(isSafeRedirect(redirectTo) ? (redirectTo as Route) : "/");
 
   return (
     <AuthLayout eyebrow="Unpatched" title="Create your Unpatched account" description="Choose which side of Unpatched you're joining.">

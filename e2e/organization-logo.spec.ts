@@ -50,7 +50,9 @@ test.describe.serial("organization logo", () => {
       await expect(page.getByText(/Replace logo/)).toBeVisible();
       await expectContained(page, preview, 48);
 
-      await page.goto("/programs");
+      // Searched, not page one: the directory is newest first and other organizations' programs
+      // (e.g. the showcase seed) can push this one past the first page.
+      await page.goto("/programs?q=E2E%20Journey%20Org");
       await page.getByRole("button", { name: "Grid view" }).click();
       const cardLogo = page.locator("main ul.grid > li").getByRole("img", { name: `${ORG} logo` }).first();
       await expectContained(page, cardLogo, 36);

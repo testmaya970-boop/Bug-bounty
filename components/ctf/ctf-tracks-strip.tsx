@@ -53,7 +53,7 @@ export function CtfTracksStrip({
                     <li key={challenge.id}>
                       <Link
                         prefetch={false}
-                        href={`/ctf/${challenge.id}` as Route}
+                        href={`/ctf/${challenge.slug}` as Route}
                         className="flex min-w-0 items-center gap-2 rounded-md border border-border px-2.5 py-2 text-sm hover:border-border-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                       >
                         {done ? (
@@ -87,7 +87,7 @@ export function CtfTracksStrip({
                 {next ? (
                   <Link
                     prefetch={false}
-                    href={`/ctf/${next.id}` as Route}
+                    href={`/ctf/${next.slug}` as Route}
                     className="inline-flex items-center gap-1 text-xs font-semibold text-action hover:text-action-hover"
                   >
                     {solved === 0 ? "Start the track" : "Continue the track"}

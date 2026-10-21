@@ -81,6 +81,16 @@ describe("classifyFailure: every submit_report error code maps to a calm, specif
     expect(result.banner).toBe("Too many requests. Try again shortly.");
   });
 
+  it("anti-abuse refusals (paused, daily limit, near-duplicate) show the database's own explanation", () => {
+    for (const [code, message] of [
+      ["SUBMISSIONS_PAUSED", "You can submit reports again on 28 Oct 2026 10:00 UTC. Your last 5 reports were closed as not applicable."],
+      ["DAILY_LIMIT", "You have used all 5 reports for today (new researcher). Valid reports raise your limit."],
+      ["NEAR_DUPLICATE", "You sent an almost identical report to this program on 21 Oct 2026. Add new details to that report instead."],
+    ]) {
+      expect(classifyFailure(code, message).banner).toBe(message);
+    }
+  });
+
   it("TARGET_NOT_ELIGIBLE (out of scope) attaches to the Target field, not a generic banner", () => {
     const result = classifyFailure("TARGET_NOT_ELIGIBLE", "This target is not currently eligible for this program.");
     expect(result.targetError).toBe("This target is not currently inside the program's scope.");

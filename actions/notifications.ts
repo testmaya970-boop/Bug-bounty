@@ -18,7 +18,8 @@ async function toResult<T>(promise: Promise<T>): Promise<ActionResult<T>> {
 }
 
 const uuidSchema = z.string().uuid();
-const categorySchema = z.enum(["report_activity"]);
+// The categories a user can switch off (set_notification_preference, 202610210005); the rest are mandatory.
+const categorySchema = z.enum(["report_activity", "program_recommendations"]);
 
 export async function markNotificationReadAction(notificationId: string) {
   const parsed = uuidSchema.safeParse(notificationId);

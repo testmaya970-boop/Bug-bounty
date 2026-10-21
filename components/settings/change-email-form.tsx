@@ -38,7 +38,13 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
       <Input label="Current email" value={currentEmail} disabled readOnly />
       <Input label="New email" type="email" autoComplete="email" required value={email} onChange={(event) => { setEmail(event.target.value); setSent(false); }} />
       <PasswordInput label="Current password" autoComplete="current-password" required value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); setSent(false); }} />
-      {sent && <Alert tone="success" title="Email changed">You now sign in with {changedTo}.</Alert>}
+      {/* The new address starts unconfirmed (services/account.ts changeMyEmail), and sign-in refuses an
+          unconfirmed address until its code is entered: say so, instead of "you now sign in with it". */}
+      {sent && (
+        <Alert tone="warning" title="Email changed. Confirm it at your next sign-in">
+          Your account now uses {changedTo}. The next time you sign in, choose <b>Resend code</b> on the sign-in page and enter the code we email to that address.
+        </Alert>
+      )}
       {error && (
         <p role="alert" className="text-sm font-medium text-danger">
           {error}

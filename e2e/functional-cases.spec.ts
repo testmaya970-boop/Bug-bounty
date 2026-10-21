@@ -184,7 +184,7 @@ test("program manager edits scope on the live program: add, edit, flip state, re
   await add.getByRole("button", { name: "Add scope entry" }).click();
   await expect(add).not.toBeVisible();
 
-  const card = page.getByText(target, { exact: true }).locator("xpath=ancestor::*[.//button[normalize-space()='Remove']][1]");
+  const card = page.getByText(target, { exact: true }).locator("xpath=ancestor::*[.//button[@aria-label='Remove']][1]");
   await card.getByRole("button", { name: "Edit" }).click();
   const edit = page.getByRole("dialog", { name: "Edit scope entry" });
   await edit.getByLabel("Description").fill("Edited by the functional cases");

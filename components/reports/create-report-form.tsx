@@ -146,6 +146,12 @@ export function classifyFailure(code: string, message: string): SubmitFailure {
       return { impactError: message };
     case "POLICY_NOT_ACKNOWLEDGED":
       return { policyError: "The program policy changed. Read and accept the current version before submitting." };
+    case "SUBMISSIONS_PAUSED":
+    case "DAILY_LIMIT":
+    case "NEAR_DUPLICATE":
+      // Anti-abuse rules (202610210001): the database message says exactly why and what to do
+      // (when submissions resume, how the limit grows, which earlier report to add to).
+      return { banner: message };
     case "INVALID_INPUT":
       // The server's own validation message (actions/reports.ts) -- specific and safe.
       return { banner: message };
