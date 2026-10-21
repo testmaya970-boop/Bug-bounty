@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Copy } from "@phosphor-icons/react";
+import { Check, Copy, WarningCircle } from "@phosphor-icons/react";
 import { Button } from "../ui/button";
 
 /** After an invitation is created: whether the email went out, and the link itself, shown
@@ -22,8 +22,11 @@ export function InvitationSentPanel({ email, inviteUrl, emailSent, onDone }: { e
 
   return (
     <div className="space-y-4">
-      <div role="status" className={`border-l-4 bg-surface-muted p-4 text-sm ${emailSent ? "border-success" : "border-warning"}`}>
-        <p className="font-semibold text-ink">{emailSent ? "Invitation sent" : "Invitation created, but the email didn't go out"}</p>
+      <div role="status" className={`rounded-md border p-4 text-sm ${emailSent ? "border-success/30 bg-success/5" : "border-warning/40 bg-warning/10"}`}>
+        <p className="flex items-center gap-2 font-semibold text-ink">
+          {emailSent ? <Check aria-hidden="true" className="size-4 text-success" /> : <WarningCircle aria-hidden="true" className="size-4 text-warning" />}
+          {emailSent ? "Invitation sent" : "Invitation created, but the email didn't go out"}
+        </p>
         <p className="mt-1 text-ink-muted">
           {emailSent ? <>We emailed {email}. You can also share the link below.</> : <>Share the link below with {email} yourself. It works the same way.</>}
         </p>
