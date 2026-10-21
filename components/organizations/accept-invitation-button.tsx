@@ -26,8 +26,8 @@ export function AcceptInvitationButton({ token }: { token: string }) {
         <Alert tone="success" title="Invitation accepted">
           You&apos;re now a member of this organization.
         </Alert>
-        <Link prefetch={false} href={`/organizations/${result.organizationId}/members` as Route} className="text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-          Go to organization members →
+        <Link prefetch={false} href={`/organizations/${result.organizationId}` as Route} className="text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+          Go to the organization →
         </Link>
       </div>
     );

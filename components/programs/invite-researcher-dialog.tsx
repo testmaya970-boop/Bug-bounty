@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import { InvitationSentPanel } from "../organizations/invitation-sent-panel";
 import { Dialog } from "../ui/navigation";
 import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/form";
@@ -14,6 +15,8 @@ const INVITATION_EXPIRY_DAYS = 7;
 export function InviteResearcherDialog({ organizationId, programId }: { organizationId: string; programId: string }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"form" | "confirm">("form");
+  // After sending: the link (shown once) and whether the email went out.
+  const [sent, setSent] = useState<{ inviteUrl: string; emailSent: boolean } | null>(null);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +25,7 @@ export function InviteResearcherDialog({ organizationId, programId }: { organiza
   function close() {
     setOpen(false);
     setStep("form");
+    setSent(null);
     setEmail("");
     setMessage("");
     setError(null);
@@ -46,7 +50,7 @@ export function InviteResearcherDialog({ organizationId, programId }: { organiza
         setStep("form");
         return;
       }
-      close();
+      setSent(result.data);
     });
   }
 
@@ -55,8 +59,10 @@ export function InviteResearcherDialog({ organizationId, programId }: { organiza
   return (
     <>
       <Button onClick={() => setOpen(true)}>Invite researcher</Button>
-      <Dialog open={open} title={step === "form" ? "Invite a researcher" : "Confirm invitation"} onClose={close}>
-        {step === "form" ? (
+      <Dialog open={open} title={sent ? "Invitation created" : step === "form" ? "Invite a researcher" : "Confirm invitation"} onClose={close}>
+        {sent ? (
+          <InvitationSentPanel email={email} inviteUrl={sent.inviteUrl} emailSent={sent.emailSent} onDone={close} />
+        ) : step === "form" ? (
           <form className="space-y-4" onSubmit={handleContinue}>
             <p className="text-sm text-ink-muted">The researcher does not need an existing Unpatched account. They will not gain any organization access.</p>
             <Input label="Email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} error={error ?? undefined} />

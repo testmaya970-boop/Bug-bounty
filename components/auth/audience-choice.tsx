@@ -10,14 +10,15 @@ import type { Route } from "next";
  * homepage and the neutral /sign-up fallback so the two choices are defined once, not
  * copy-pasted. See docs/decisions/0030-public-entry-and-two-sided-authentication.md.
  */
-export function AudienceChoice() {
+/** redirectTo: where to land after sign-up (an invitation link), already checked safe by the page. */
+export function AudienceChoice({ redirectTo }: { redirectTo?: string } = {}) {
   return (
     <div className="divide-y divide-border border-y border-border">
       <div className="py-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Researcher</p>
         <p className="mt-2 text-sm text-ink-muted">Find programs, submit vulnerabilities, and build a reputation backed by organization-confirmed outcomes. Never a score.</p>
         <Link prefetch={false}
-          href={"/researchers/sign-up" as Route}
+          href={`/researchers/sign-up${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ""}` as Route}
           className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           Continue as researcher <span aria-hidden="true">→</span>
@@ -27,7 +28,7 @@ export function AudienceChoice() {
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Organization</p>
         <p className="mt-2 text-sm text-ink-muted">Run programs, define scope, and triage reports through to a bounty decision, with a real audit trail at every step.</p>
         <Link prefetch={false}
-          href={"/organizations/sign-up" as Route}
+          href={`/organizations/sign-up${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ""}` as Route}
           className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           Continue as organization <span aria-hidden="true">→</span>

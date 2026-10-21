@@ -9,6 +9,10 @@ vi.mock("@/services/program-researchers", async () => {
 });
 vi.mock("@/lib/email-provider", () => ({ activeEmailProvider: { name: "test", send: vi.fn() } }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+// The email names the program and organization (21 Oct); those reads are mocked here.
+vi.mock("@/lib/auth/current-user", () => ({ getCurrentUser: vi.fn(async () => ({ id: "owner-1" })) }));
+vi.mock("@/services/programs", () => ({ getProgram: vi.fn(async () => ({ name: "Acme Web" })) }));
+vi.mock("@/services/organizations", () => ({ listCurrentUserOrganizations: vi.fn(async () => [{ id: "c3b1a9e4-4b7a-4c92-9b1a-6f2f1a1e2b31", name: "Acme" }]) }));
 // Links are built from the pinned public origin (APP_ORIGIN), never request headers or a fallback.
 vi.mock("@/lib/env", () => ({ getNativeEnv: () => ({ APP_ORIGIN: process.env.APP_ORIGIN ?? "https://app.example.test" }) }));
 
@@ -96,5 +100,17 @@ describe("inviteResearcherToProgram action: a real invitation must actually reac
 
     const [message] = mockedSend.mock.calls[0];
     expect(message.text).toContain(`https://unpatched.example/program-invitations/${REAL_INVITATION.token}`);
+  });
+  it("tells the inviter when the provider rejected the email, and names the program and organization (21 Oct audit)", async () => {
+    mockedInvite.mockResolvedValue(REAL_INVITATION);
+    mockedSend.mockResolvedValue({ success: false, permanent: true, error: "rejected" });
+
+    const result = await inviteResearcherToProgram(VALID_INPUT);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.emailSent).toBe(false);
+    expect(result.data.inviteUrl).toContain(`/program-invitations/${REAL_INVITATION.token}`);
+    expect(mockedSend.mock.calls[0][0].subject).toBe("Acme invited you to research Acme Web on Unpatched");
   });
 });

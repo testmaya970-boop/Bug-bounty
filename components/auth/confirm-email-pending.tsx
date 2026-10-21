@@ -30,7 +30,7 @@ const RESEND_COOLDOWN_SECONDS = 30;
  *    `resendConfirmationEmailAction` wraps resendConfirmationEmail, which issues a fresh
  *    code -- never a second, custom system.
  */
-export function ConfirmEmailPending({ email, emailIsSimulated }: { email: string; emailIsSimulated: boolean }) {
+export function ConfirmEmailPending({ email, emailIsSimulated, redirectTo }: { email: string; emailIsSimulated: boolean; redirectTo?: string }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
@@ -51,7 +51,7 @@ export function ConfirmEmailPending({ email, emailIsSimulated }: { email: string
     setError(null);
     setBusy("verify");
     startTransition(async () => {
-      const result = await verifySignupCodeAction({ email, code });
+      const result = await verifySignupCodeAction({ email, code, redirectTo });
       if (!result.ok) {
         setError(result.message);
         return;

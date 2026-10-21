@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import { InvitationSentPanel } from "./invitation-sent-panel";
 import { useRouter } from "next/navigation";
 import { Dialog } from "../ui/navigation";
 import { Button } from "../ui/button";
@@ -20,6 +21,8 @@ export function InviteMemberDialog({ organizationId, invitableRoles }: { organiz
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"form" | "confirm">("form");
+  // After sending: the link (shown once) and whether the email went out.
+  const [sent, setSent] = useState<{ inviteUrl: string; emailSent: boolean } | null>(null);
   const [email, setEmail] = useState("");
   // Least privilege by default: the list runs most- to least-powerful, and a quick
   // email + Send must never make someone an owner.
@@ -31,6 +34,7 @@ export function InviteMemberDialog({ organizationId, invitableRoles }: { organiz
   function close() {
     setOpen(false);
     setStep("form");
+    setSent(null);
     setEmail("");
     setMessage("");
     setError(null);
@@ -55,7 +59,7 @@ export function InviteMemberDialog({ organizationId, invitableRoles }: { organiz
         setStep("form");
         return;
       }
-      close();
+      setSent(result.data);
       router.refresh();
     });
   }
@@ -65,8 +69,10 @@ export function InviteMemberDialog({ organizationId, invitableRoles }: { organiz
   return (
     <>
       <Button onClick={() => setOpen(true)}>Invite member</Button>
-      <Dialog open={open} title={step === "form" ? "Invite a member" : "Confirm invitation"} onClose={close}>
-        {step === "form" ? (
+      <Dialog open={open} title={sent ? "Invitation created" : step === "form" ? "Invite a member" : "Confirm invitation"} onClose={close}>
+        {sent ? (
+          <InvitationSentPanel email={email} inviteUrl={sent.inviteUrl} emailSent={sent.emailSent} onDone={close} />
+        ) : step === "form" ? (
           <form className="space-y-4" onSubmit={handleContinue}>
             <Input label="Email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} error={error ?? undefined} />
             <Select label="Role" value={role} onChange={(event) => setRole(event.target.value as OrganizationRole)}>

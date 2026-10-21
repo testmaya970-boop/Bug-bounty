@@ -17,7 +17,10 @@ import { isBusinessEmail } from "../../lib/auth/business-email";
  * code is confirmed, see verifySignupCodeAction) and requires a work email; for
  * "researcher" it collects a name and username, carried through as the verification
  * challenge's metadata (see services/auth.ts's signUpWithPassword) -- docs/decisions/0050. */
-export function SignUpForm({ intent, emailIsSimulated }: { intent?: "researcher" | "organization"; emailIsSimulated: boolean }) {
+export function SignUpForm({ intent, emailIsSimulated, redirectTo }: { intent?: "researcher" | "organization"; emailIsSimulated: boolean; redirectTo?: string }) {
+  // Joining an organization that invited you: no new organization of your own is created
+  // (verifySignupCodeAction skips it when redirectTo is set), so its name isn't asked for.
+  const joiningByInvitation = intent === "organization" && Boolean(redirectTo?.startsWith("/invitations/"));
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -53,7 +56,7 @@ export function SignUpForm({ intent, emailIsSimulated }: { intent?: "researcher"
         intent,
         displayName: intent === "researcher" ? displayName || undefined : undefined,
         username: intent === "researcher" ? username || undefined : undefined,
-        companyName: intent === "organization" ? companyName || undefined : undefined,
+        companyName: intent === "organization" && !joiningByInvitation ? companyName || undefined : undefined,
       });
       // A returned "confirm_email" result means a real 6-digit code was emailed and we
       // show the code-entry step below; any other returned result is an error.
@@ -66,7 +69,7 @@ export function SignUpForm({ intent, emailIsSimulated }: { intent?: "researcher"
   }
 
   if (confirmEmail) {
-    return <ConfirmEmailPending email={confirmEmail} emailIsSimulated={emailIsSimulated} />;
+    return <ConfirmEmailPending email={confirmEmail} emailIsSimulated={emailIsSimulated} redirectTo={redirectTo} />;
   }
 
   const strength = passwordStrengthLabel(password);
@@ -87,7 +90,8 @@ export function SignUpForm({ intent, emailIsSimulated }: { intent?: "researcher"
             />
           </>
         )}
-        {intent === "organization" && <Input label="Organization name" autoComplete="organization" required value={companyName} onChange={(event) => setCompanyName(event.target.value)} maxLength={160} />}
+        {joiningByInvitation && <p className="text-sm text-ink-muted">You&apos;re joining the organization that invited you. Use the email address the invitation was sent to.</p>}
+        {intent === "organization" && !joiningByInvitation && <Input label="Organization name" autoComplete="organization" required value={companyName} onChange={(event) => setCompanyName(event.target.value)} maxLength={160} />}
         <Input
           label="Email"
           type="email"

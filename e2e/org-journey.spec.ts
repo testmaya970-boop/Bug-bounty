@@ -170,6 +170,9 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText(freshInviteEmail)).toBeVisible();
   await page.getByRole("button", { name: "Send invitation" }).click();
+  // The dialog now ends on the invitation link (shown once) and whether the email went out.
+  await expect(page.getByLabel("Invitation link")).toHaveValue(/\/program-invitations\/[A-Za-z0-9_-]+$/);
+  await page.getByRole("button", { name: "Done" }).click();
   await expect(page.getByRole("button", { name: "Invite researcher" })).toBeVisible(); // dialog closed, back to the trigger
   // The trigger button's own visibility doesn't guarantee the Dialog's backdrop overlay
   // (role="presentation", components/ui/navigation.tsx) has actually unmounted -- it can

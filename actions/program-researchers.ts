@@ -12,8 +12,10 @@ import {
   revokeResearcher as revokeResearcherService,
   suspendResearcher as suspendResearcherService,
 } from "@/services/program-researchers";
-import { activeEmailProvider } from "@/lib/email-provider";
-import { getNativeEnv } from "@/lib/env";
+import { invitationUrl, sendInvitationEmail } from "@/lib/invitation-email";
+import { getProgram } from "@/services/programs";
+import { listCurrentUserOrganizations } from "@/services/organizations";
+import { getCurrentUser } from "@/lib/auth/current-user";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
@@ -39,37 +41,33 @@ const inviteSchema = z.object({
   message: z.string().trim().max(500).optional(),
 });
 
-export async function inviteResearcherToProgram(input: z.infer<typeof inviteSchema>) {
+export async function inviteResearcherToProgram(input: z.infer<typeof inviteSchema>): Promise<ActionResult<{ inviteUrl: string; emailSent: boolean }>> {
   const parsed = inviteSchema.safeParse(input);
   if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
   const result = await toResult(inviteResearcherService(parsed.data));
-  if (result.ok) {
-    revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}`);
-    // invite_researcher_to_program only writes a program_invitations row -- it never sends
-    // anything to the invitee. A researcher who already has an Unpatched account with this
-    // email will pick it up via list_my_pending_program_invitations on /programs, but a
-    // net-new email has no other way to discover the invitation exists. This is a real,
-    // direct email send (not routed through the outbox/notifications tables -- those are
-    // shaped around a real reports row, which does not exist yet for an invitation, and
-    // widening that schema is a larger change than this fix warrants). Best-effort: a
-    // failed send never fails the invitation itself, which already succeeded and is real
-    // regardless of whether this email arrives.
-    // The pinned public origin (APP_ORIGIN), like every other emailed link.
-    const appUrl = getNativeEnv().APP_ORIGIN;
-    const acceptUrl = `${appUrl}/program-invitations/${result.data.token}`;
-    try {
-      await activeEmailProvider.send({
-        to: parsed.data.email,
-        subject: "You've been invited to research a program on Unpatched",
-        text: `You've been invited to submit security research to a program on Unpatched.${parsed.data.message ? `\n\nMessage from the organization: ${parsed.data.message}` : ""}\n\nAccept the invitation: ${acceptUrl}\n\nThis link expires in 7 days. If you don't already have an Unpatched account, you can create one with this email address before or after accepting.`,
-        idempotencyKey: result.data.invitation.id,
-      });
-    } catch {
-      // Best-effort delivery -- the invitation row itself is already real and committed;
-      // never surface an email-send failure as if the invitation failed.
-    }
-  }
-  return result;
+  if (!result.ok) return result;
+  revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}`);
+  // invite_researcher_to_program only writes the row; the email is sent here, directly (an
+  // invitation has no report, so it doesn't fit the outbox's report-shaped notifications).
+  // The send result is checked and returned with the link: a bounced email used to be
+  // reported as sent (invitation audit, 21 Oct).
+  const user = await getCurrentUser();
+  const [program, organizations] = await Promise.all([getProgram(parsed.data.programId), user ? listCurrentUserOrganizations(user.id) : Promise.resolve([])]);
+  const programName = program?.name ?? "a program";
+  const org = organizations.find((o) => o.id === parsed.data.organizationId)?.name ?? "An organization";
+  const inviteUrl = invitationUrl(`/program-invitations/${result.data.token}`);
+  const emailSent = await sendInvitationEmail({
+    to: parsed.data.email,
+    subject: `${org} invited you to research ${programName} on Unpatched`,
+    text: [
+      `${org} invited you to submit security research to its private program "${programName}" on Unpatched.`,
+      parsed.data.message ? `\nMessage from ${org}: ${parsed.data.message}` : "",
+      `\nAccept the invitation: ${inviteUrl}`,
+      "\nThis link expires in 7 days. If you don't have an Unpatched account yet, the link lets you create a researcher account with this email address, then accept.",
+    ].join("\n"),
+    idempotencyKey: result.data.invitation.id,
+  });
+  return { ok: true, data: { inviteUrl, emailSent } };
 }
 
 // organizationId/programId are optional -- present when a manager cancels from the

@@ -4,14 +4,17 @@ import { AuthLayout } from "../../../components/auth/auth-layout";
 import { SignUpForm } from "../../../components/auth/sign-up-form";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { activeEmailProvider } from "../../../lib/email-provider";
+import { isSafeRedirect } from "../../../lib/auth/safe-redirect";
 
-export default async function OrganizationSignUpPage() {
+export default async function OrganizationSignUpPage({ searchParams }: { searchParams: Promise<{ redirectTo?: string }> }) {
+  const { redirectTo: requested } = await searchParams;
+  const redirectTo = isSafeRedirect(requested) ? requested : undefined;
   const user = await getCurrentUser();
   if (user) redirect("/organizations");
 
   return (
     <AuthLayout eyebrow="Organization" title="Create your organization account" description="Create programs, define scope, and triage reports. You'll create your organization next." variant="organization">
-      <SignUpForm intent="organization" emailIsSimulated={activeEmailProvider.name === "dev"} />
+      <SignUpForm intent="organization" emailIsSimulated={activeEmailProvider.name === "dev"} redirectTo={redirectTo} />
     </AuthLayout>
   );
 }

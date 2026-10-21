@@ -99,7 +99,7 @@ export function SignInForm({ redirectTo }: { redirectTo?: string }) {
       </form>
       <p className="mt-6 border-t border-border pt-6 text-center text-sm text-ink-muted">
         New to Unpatched?{" "}
-        <Link prefetch={false} href={"/sign-up" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
+        <Link prefetch={false} href={`/sign-up${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ""}` as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-focus">
           Create an account →
         </Link>
       </p>
