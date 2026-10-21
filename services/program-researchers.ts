@@ -293,13 +293,22 @@ export async function listMyProgramParticipations(actorId?: string): Promise<Pro
   return rows.map(mapParticipationRow);
 }
 
+/** Invitations are also cancelled automatically when a program goes public (202610210004);
+ * the database message can't tell which, so the revoked case points at both ways forward. */
+function mapAcceptError(error: { message: string }): never {
+  if (error.message.startsWith("INVITATION_REVOKED")) {
+    throw new OrganizationServiceError("This invitation was cancelled. If the program is now public, you can join it from its page; otherwise ask the organization for a new invitation.", "INVITATION_REVOKED");
+  }
+  mapError(error);
+}
+
 export async function acceptProgramInvitation(token: string): Promise<ProgramResearcherRecord> {
   const actor = await getCurrentUser();
   let rows;
   try {
     rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<ResearcherRpcRow>(client, "public.accept_program_invitation", [hashInvitationToken(token)]));
   } catch (error) {
-    mapError(error as { message: string });
+    mapAcceptError(error as { message: string });
   }
   return mapResearcherRpcRow(rows[0]);
 }
@@ -310,7 +319,7 @@ export async function acceptProgramInvitationById(invitationId: string): Promise
   try {
     rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<ResearcherRpcRow>(client, "public.accept_program_invitation_by_id", [invitationId]));
   } catch (error) {
-    mapError(error as { message: string });
+    mapAcceptError(error as { message: string });
   }
   return mapResearcherRpcRow(rows[0]);
 }

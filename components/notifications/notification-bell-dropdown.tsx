@@ -18,7 +18,8 @@ import { popoverMotion } from "../ui/popover-motion";
 const SEEN_KEY = "unpatched_unread_seen";
 
 
-const PREVIEW_COUNT = 6;
+// The 10 most recent only; the full history is in /notifications ("View all").
+const PREVIEW_COUNT = 10;
 
 /**
  * A real dropdown over the header bell -- opens the signed-in user's own most recent

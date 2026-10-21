@@ -65,5 +65,6 @@ export async function listNotificationsPageAction(input: { cursor?: string }): P
  * capped smaller, so the dropdown never becomes a second, divergent notifications
  * implementation. */
 export async function listNotificationPreviewAction(): Promise<ActionResult<Page<Notification>>> {
-  return toResult(getMyNotifications(undefined, 6));
+  // The bell shows the 10 most recent; everything older lives in the notification center.
+  return toResult(getMyNotifications(undefined, 10));
 }
