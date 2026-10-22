@@ -45,7 +45,12 @@ test.describe.serial("payment features", () => {
     await expect(page.getByText("Alert saved.")).toBeVisible();
     await page.reload();
     await expect(page.getByText("Your balance is below this now.")).toBeVisible();
-    await page.getByLabel("Alert below (USD)").fill("");
+    // After a reload the form can re-render once hydration finishes and restore the saved
+    // value; clear until the field really is empty before saving.
+    await expect(async () => {
+      await page.getByLabel("Alert below (USD)").fill("");
+      await expect(page.getByLabel("Alert below (USD)")).toHaveValue("", { timeout: 1000 });
+    }).toPass();
     await page.getByLabel("Alert below (USD)").locator("xpath=ancestor::form").getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Alert turned off.")).toBeVisible();
 

@@ -227,7 +227,9 @@ test("owner: organization description saves and survives a reload", async ({ pag
 test("ctf: an empty or wrong flag is refused with a clear message", async ({ page }) => {
   await signIn(page);
   await page.goto("/ctf");
-  await page.locator('a[href^="/ctf/"]').first().click();
+  // An unsolved challenge: this account also solves some in e2e/ctf-hints.spec.ts, and a solved
+  // challenge has no flag form. Challenge cards only (not the tracks strip or event links).
+  await page.goto("/ctf/the-license-checker");
   await page.waitForURL(/\/ctf\/[^/?]+$/);
   await page.getByRole("button", { name: "Submit flag" }).click();
   await expect(page).toHaveURL(/\/ctf\/[^/?]+$/); // required field: nothing submitted
