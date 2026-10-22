@@ -76,6 +76,8 @@ test("latency budgets: org routes (launch.admin)", async ({ page }) => {
   await measure(page, "Engagements", `${orgPath}/programs`, 600);
   await measure(page, "Findings", `${orgPath}/findings`, 600);
   await measure(page, "Program inbox", `${programPath}/inbox`, 600);
+  // Added 22 Oct with the response-time metrics (one batched round; measured 358ms at 90d).
+  await measure(page, "Analytics", `${orgPath}/analytics`, 600);
 });
 
 test("latency budgets: researcher routes (launch.researcher)", async ({ page }) => {

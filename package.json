@@ -14,6 +14,7 @@
     "test": "vitest run tests/unit",
     "test:watch": "vitest tests/unit",
     "test:e2e": "playwright test",
+    "verify": "npm run check:authz && npm run test:db && npm test && npm audit --omit=dev --audit-level=high",
     "test:db": "node --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run --config vitest.db.config.ts",
     "ctf:artifacts": "tsx --env-file=.env.local scripts/ctf-artifacts/generate.mjs",
     "ctf:artifacts:verify": "tsx --env-file=.env.local scripts/ctf-artifacts/generate.mjs --verify",

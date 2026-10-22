@@ -48,6 +48,7 @@ Navigation Timing entry: **TTFB** (to first byte, ≈ server time on localhost),
 | Engagements | ≤0.6s | 63ms | 2ms | 38ms | 103ms | PASS |
 | Findings | ≤0.6s | 61ms | 3ms | 48ms | 112ms | PASS |
 | Program inbox | ≤0.6s | 77ms | 4ms | 48ms | 129ms | PASS |
+| Analytics (added 22 Oct) | ≤0.6s | 229ms server | 3ms | 124ms | 358ms | PASS |
 | Researcher home | ≤0.8s | 109ms | 5ms | 31ms | 145ms | PASS |
 | CTF | ≤1.0s | 66ms | 4ms | 65ms | 135ms | PASS |
 
