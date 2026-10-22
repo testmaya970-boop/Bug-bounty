@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { SectionLabel } from "../../../components/ui/security-primitives";
 import { BadgeGrid } from "../../../components/researchers/badge-grid";
 import { getPublicResearcherProfile, getResearcherBadges } from "../../../services/reputation";
+import { getResearcherCtfBadges } from "../../../services/ctf";
 import { focusAreaLabel, securityFocusLabel } from "../../../lib/researcher-identity-labels";
 
 /**
@@ -23,7 +24,7 @@ export default async function PublicResearcherProfilePage({ params }: { params: 
   const profile = await getPublicResearcherProfile(username);
   if (!profile) notFound();
 
-  const badges = await getResearcherBadges(profile.researcherId);
+  const [badges, ctfBadges] = await Promise.all([getResearcherBadges(profile.researcherId), getResearcherCtfBadges(profile.researcherId)]);
 
   return (
     <div className="min-h-dvh bg-canvas text-ink">
@@ -58,7 +59,7 @@ export default async function PublicResearcherProfilePage({ params }: { params: 
           </div>
         </div>
 
-        <BadgeGrid badges={badges} />
+        <BadgeGrid badges={badges} ctfBadges={ctfBadges} />
 
         {profile.biography && (
           <div className="mt-8 border-t border-border pt-6">

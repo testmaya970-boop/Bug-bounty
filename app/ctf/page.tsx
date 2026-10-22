@@ -9,7 +9,7 @@ import { ChallengeGrid } from "../../components/ctf/challenge-grid";
 import { CtfLeaderboardTable } from "../../components/ctf/ctf-leaderboard-table";
 import { CtfEventsList } from "../../components/ctf/ctf-events-list";
 import { getCurrentUser } from "../../lib/auth/current-user";
-import { getCtfLeaderboard, listMyCtfSolves } from "../../services/ctf";
+import { getCtfLeaderboard, getResearcherCtfBadges, listMyCtfSolves } from "../../services/ctf";
 import { listCtfEvents } from "../../services/ctf-events";
 import { perfTimed } from "../../lib/perf-trace";
 import {
@@ -39,7 +39,10 @@ async function renderCtfPage({ searchParams }: { searchParams: Promise<{ categor
   const { category: categoryParam, tab } = await searchParams;
   const initialCategory = categoryParam && VALID_CATEGORIES.has(categoryParam) ? (categoryParam as CtfCategoryId) : undefined;
   const activeTab = tab === "leaderboard" ? "leaderboard" : tab === "events" ? "events" : "challenges";
-  const solves = await perfTimed("CTF: listMyCtfSolves", () => listMyCtfSolves());
+  const [solves, badges] = await Promise.all([
+    perfTimed("CTF: listMyCtfSolves", () => listMyCtfSolves()),
+    perfTimed("CTF: getResearcherCtfBadges", () => getResearcherCtfBadges(user.id)),
+  ]);
   const solvedChallengeIds = new Set(solves.map((solve) => solve.challengeId));
   const totalPointsEarned = solves.reduce((sum, solve) => sum + solve.pointsAwarded, 0);
   // Only the Events tab needs the event list -- each tab fetches only what it renders.
@@ -60,7 +63,7 @@ async function renderCtfPage({ searchParams }: { searchParams: Promise<{ categor
           totalPointsEarned={totalPointsEarned}
         />
 
-        <CtfTracksStrip tracks={MOCK_CTF_TRACKS} challenges={MOCK_CTF_CHALLENGES} solvedChallengeIds={solvedChallengeIds} />
+        <CtfTracksStrip tracks={MOCK_CTF_TRACKS} challenges={MOCK_CTF_CHALLENGES} solvedChallengeIds={solvedChallengeIds} badgeTrackIds={new Set(badges.map((b) => b.trackId))} />
 
         <div className="flex gap-1 border-b border-border">
           <a

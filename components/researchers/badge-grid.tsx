@@ -4,6 +4,8 @@ import { SectionLabel } from "../ui/security-primitives";
 import { cn } from "../../lib/cn";
 import { badgeDescription, badgeName, tierLabel } from "../../lib/badge-labels";
 import type { ResearcherBadge } from "../../types/reputation";
+import type { CtfTrackBadge } from "../../services/ctf";
+import { LocalTime } from "../ui/local-time";
 
 // Reuses the existing success/warning/severity-high/severity-critical tone progression
 // every other tiered badge in this codebase already draws from (see DifficultyBadge in
@@ -24,8 +26,8 @@ const TIER_TONE: Record<ResearcherBadge["tier"], string> = {
  * for optional/derived data (the same reasoning the public profile's own biography
  * section already uses).
  */
-export function BadgeGrid({ badges }: { badges: ResearcherBadge[] }) {
-  if (badges.length === 0) return null;
+export function BadgeGrid({ badges, ctfBadges = [] }: { badges: ResearcherBadge[]; ctfBadges?: CtfTrackBadge[] }) {
+  if (badges.length === 0 && ctfBadges.length === 0) return null;
 
   return (
     <div className="border-t border-border pt-6">
@@ -42,6 +44,20 @@ export function BadgeGrid({ badges }: { badges: ResearcherBadge[] }) {
               <p className="mt-1 font-mono text-[11px] text-ink-muted">
                 {badge.currentValue.toLocaleString("en-US")}
                 {badge.nextThreshold !== null && ` · ${(badge.nextThreshold - badge.currentValue).toLocaleString("en-US")} more to next tier`}
+              </p>
+            </div>
+          </div>
+        ))}
+        {ctfBadges.map((badge) => (
+          <div key={badge.trackId} className="flex items-start gap-2.5 rounded-lg border border-border bg-surface p-3">
+            <Medal aria-hidden="true" weight="fill" className="mt-0.5 size-5 shrink-0 text-action" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">
+                {badge.label} <span className="font-semibold text-action">CTF track</span>
+              </p>
+              <p className="mt-0.5 text-xs text-ink-muted">Solved every challenge in the track.</p>
+              <p className="mt-1 font-mono text-[11px] text-ink-muted">
+                Earned <LocalTime value={badge.awardedAt} dateOnly />
               </p>
             </div>
           </div>

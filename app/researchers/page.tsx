@@ -19,6 +19,7 @@ import {
   getResearcherBadges,
 } from "../../services/reputation";
 import { listMyReports } from "../../services/reports";
+import { getResearcherCtfBadges } from "../../services/ctf";
 import { getCurrentUser } from "../../lib/auth/current-user";
 import { MAX_PAGE_SIZE } from "../../lib/pagination";
 import { YourPositionPanel } from "../../components/researchers/your-position-panel";
@@ -40,7 +41,7 @@ export default async function ResearchersPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirectTo=/researchers" as Route);
 
-  const [counts, severityCounts, ledgerPage, programCounts, myReportsPage, leaderboard, myPosition, badges] = await Promise.all([
+  const [counts, severityCounts, ledgerPage, programCounts, myReportsPage, leaderboard, myPosition, badges, ctfBadges] = await Promise.all([
     getMyReputationSummary(),
     getMyReputationSeverityCounts(user.id),
     getMyReputationLedger(user.id),
@@ -54,6 +55,7 @@ export default async function ResearchersPage() {
     getPublicLeaderboard(50),
     getMyLeaderboardPosition(),
     getResearcherBadges(user.id),
+    getResearcherCtfBadges(user.id),
   ]);
 
   const evidenceByReportId: Record<string, { title: string; programName: string }> = {};
@@ -80,7 +82,7 @@ export default async function ResearchersPage() {
           <>
             {myPosition && <YourPositionPanel position={myPosition} leaderScore={leaderScore} />}
             <LeaderboardTable rows={leaderboard} myResearcherId={user.id} />
-            <BadgeGrid badges={badges} />
+            <BadgeGrid badges={badges} ctfBadges={ctfBadges} />
           </>
         ) : !hasAnyHistory ? (
           // Leaderboard AND this researcher's own ledger are both empty -- a brand-new

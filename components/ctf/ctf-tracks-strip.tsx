@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { CheckCircle, ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { CheckCircle, ArrowRight, Medal } from "@phosphor-icons/react/dist/ssr";
 import { SectionLabel } from "../ui/security-primitives";
 import type { MockCtfChallenge, MockCtfTrack } from "../../lib/mock/ctf";
 
@@ -13,10 +13,13 @@ export function CtfTracksStrip({
   tracks,
   challenges,
   solvedChallengeIds,
+  badgeTrackIds,
 }: {
   tracks: MockCtfTrack[];
   challenges: MockCtfChallenge[];
   solvedChallengeIds: Set<string>;
+  /** Tracks whose stored badge (ctf_track_badges) the researcher holds. */
+  badgeTrackIds?: Set<string>;
 }) {
   if (tracks.length === 0) return null;
   const byId = new Map(challenges.map((c) => [c.id, c]));
@@ -93,6 +96,11 @@ export function CtfTracksStrip({
                     {solved === 0 ? "Start the track" : "Continue the track"}
                     <ArrowRight aria-hidden="true" className="size-3.5" />
                   </Link>
+                ) : badgeTrackIds?.has(track.id) ? (
+                  <p className="inline-flex items-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-2.5 py-1 text-xs font-semibold text-success">
+                    <Medal aria-hidden="true" weight="fill" className="size-4" />
+                    Badge earned: {track.label}
+                  </p>
                 ) : (
                   <p className="text-xs font-semibold text-success">
                     Track complete

@@ -23,6 +23,7 @@ const PUBLIC_BY_DESIGN = new Map([
   ["get_public_program", "a public program page"],
   ["get_public_researcher_profile", "opt-in public researcher profile"],
   ["get_researcher_badges", "badges shown on public profiles"],
+  ["get_researcher_ctf_badges", "CTF track badges shown on public profiles"],
   ["get_researcher_reputation_score", "score shown on public profiles"],
   ["list_ctf_events", "CTF events listing for signed-in researchers"],
   ["list_public_disclosures", "disclosed reports listing"],

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "../ui/form";
 import { Button } from "../ui/button";
 import { Alert } from "../ui/feedback";
@@ -18,6 +19,7 @@ import { LocalTime } from "../ui/local-time";
  * path back to re-submitting a flag for an already-solved challenge.
  */
 export function FlagSubmissionForm({ challenge, initialSolve }: { challenge: MockCtfChallenge; initialSolve: CtfSolve | null }) {
+  const router = useRouter();
   const [solve, setSolve] = useState(initialSolve);
   const [submission, setSubmission] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +39,8 @@ export function FlagSubmissionForm({ challenge, initialSolve }: { challenge: Moc
         return;
       }
       setSolve({ challengeId: challenge.id, pointsAwarded: result.data.alreadySolved ? challenge.points : result.data.pointsAwarded, solvedAt: new Date().toISOString() });
+      // Re-render the page: write-ups unlock and a completed track badge shows.
+      router.refresh();
     });
   }
 

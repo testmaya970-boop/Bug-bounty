@@ -7,8 +7,10 @@ import { Card, PermissionDenied } from "../../../components/ui/feedback";
 import { SectionLabel, MetadataPair } from "../../../components/ui/security-primitives";
 import { DifficultyBadge, CtfCategoryBadge } from "../../../components/ui/badge";
 import { FlagSubmissionForm } from "../../../components/ctf/flag-submission-form";
+import { CtfHintsPanel } from "../../../components/ctf/ctf-hints-panel";
+import { CtfWriteupsLocked, CtfWriteupsPanel } from "../../../components/ctf/ctf-writeups-panel";
 import { getCurrentUser } from "../../../lib/auth/current-user";
-import { getCtfSolveCounts, listMyCtfSolves } from "../../../services/ctf";
+import { getCtfSolveCounts, getCtfWriteups, listCtfHints, listMyCtfSolves } from "../../../services/ctf";
 import { findCtfChallengeBySlug, findCtfTrackById, MOCK_CTF_CATEGORY_META } from "../../../lib/mock/ctf";
 import { getCtfMaterial } from "../../../lib/ctf-material";
 
@@ -46,8 +48,10 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
   const track = challenge.trackId ? findCtfTrackById(challenge.trackId) : undefined;
   const categoryLabel = MOCK_CTF_CATEGORY_META[challenge.categoryId].label;
   const { embed: embeddedData, files: artifacts } = getCtfMaterial(challenge.id);
-  const [solves, solveCounts] = await Promise.all([listMyCtfSolves(), getCtfSolveCounts()]);
+  const [solves, solveCounts, hints] = await Promise.all([listMyCtfSolves(), getCtfSolveCounts(), listCtfHints(challenge.id)]);
   const existingSolve = solves.find((solve) => solve.challengeId === challenge.id) ?? null;
+  // get_ctf_writeups refuses non-solvers, so it is only asked once the solve is known.
+  const writeups = existingSolve ? await getCtfWriteups(challenge.id) : null;
 
   return (
     <AppShell title="CTF" user={user}>
@@ -102,19 +106,9 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
               </Card>
             )}
 
-            {challenge.hints.length > 0 && (
-              <Card className="p-5 sm:p-6">
-                <SectionLabel>Hints</SectionLabel>
-                <div className="mt-2 space-y-2">
-                  {challenge.hints.map((hint, index) => (
-                    <details key={index} className="rounded-md border border-border bg-surface-muted p-3">
-                      <summary className="cursor-pointer text-sm font-medium text-ink">Hint {index + 1}</summary>
-                      <p className="mt-2 text-sm text-ink-muted">{hint}</p>
-                    </details>
-                  ))}
-                </div>
-              </Card>
-            )}
+            <CtfHintsPanel challengeId={challenge.id} points={challenge.points} solved={existingSolve !== null} initialHints={hints} />
+
+            {writeups ? <CtfWriteupsPanel challengeId={challenge.id} writeups={writeups} /> : <CtfWriteupsLocked />}
           </div>
 
           <div className="mt-6 space-y-6 lg:sticky lg:top-24 lg:mt-0">

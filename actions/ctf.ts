@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
-import { submitCtfFlag, type SubmitCtfFlagResult } from "@/services/ctf";
+import { deleteMyCtfWriteup, publishCtfWriteup, submitCtfFlag, takeCtfHint, type SubmitCtfFlagResult } from "@/services/ctf";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
@@ -25,5 +25,47 @@ export async function submitCtfFlagAction(input: z.infer<typeof submitFlagSchema
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
     throw error;
+  }
+}
+
+function failure(error: unknown): { ok: false; code: string; message: string } {
+  if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
+  throw error;
+}
+
+const hintSchema = z.object({ challengeId: z.string().min(1).max(100), position: z.number().int().min(1).max(3) });
+
+/** Takes a hint; the database records it and lowers what a later solve awards. */
+export async function takeCtfHintAction(input: z.infer<typeof hintSchema>): Promise<ActionResult<{ position: number; cost: number; body: string }>> {
+  const parsed = hintSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: "That hint does not exist." };
+  try {
+    return { ok: true, data: await takeCtfHint(parsed.data.challengeId, parsed.data.position) };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+// Length and plain-text rules are enforced by publish_ctf_writeup; this only bounds the payload.
+const writeupSchema = z.object({ challengeId: z.string().min(1).max(100), body: z.string().max(4000, "Keep it under 2000 characters.") });
+
+export async function publishCtfWriteupAction(input: z.infer<typeof writeupSchema>): Promise<ActionResult<null>> {
+  const parsed = writeupSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check your write-up." };
+  try {
+    await publishCtfWriteup(parsed.data.challengeId, parsed.data.body);
+    return { ok: true, data: null };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function deleteCtfWriteupAction(input: { challengeId: string }): Promise<ActionResult<null>> {
+  if (typeof input?.challengeId !== "string" || !input.challengeId) return { ok: false, code: "INVALID_INPUT", message: "Unknown challenge." };
+  try {
+    await deleteMyCtfWriteup(input.challengeId);
+    return { ok: true, data: null };
+  } catch (error) {
+    return failure(error);
   }
 }

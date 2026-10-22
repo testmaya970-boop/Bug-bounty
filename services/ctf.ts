@@ -1,5 +1,5 @@
 import "server-only";
-import { withActorTransaction, withServiceRoleTransaction, callRpc } from "@/lib/db/pool";
+import { withActorTransaction, withPublicTransaction, withServiceRoleTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
 
@@ -101,4 +101,82 @@ export async function getCtfSolveCounts(): Promise<Map<string, number>> {
     mapError(error as { message: string });
   }
   return new Map(rows.map((r) => [r.challenge_id, Number(r.solves)]));
+}
+
+/** A challenge's hints: cost for every hint, text only for hints the caller has taken
+ * (list_ctf_hints -- the text never leaves the database before take_ctf_hint). */
+export type CtfHint = { position: number; cost: number; taken: boolean; body: string | null };
+
+export async function listCtfHints(challengeId: string): Promise<CtfHint[]> {
+  const actor = await getCurrentUser();
+  try {
+    const rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ hint_position: number; cost: number; taken: boolean; body: string | null }>(client, "public.list_ctf_hints", [challengeId]),
+    );
+    return rows.map((r) => ({ position: r.hint_position, cost: r.cost, taken: r.taken, body: r.body }));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+/** Takes a hint (idempotent). Its cost is subtracted from a later solve's points. */
+export async function takeCtfHint(challengeId: string, position: number): Promise<{ position: number; cost: number; body: string }> {
+  const actor = await getCurrentUser();
+  try {
+    const rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ hint_position: number; cost: number; body: string }>(client, "public.take_ctf_hint", [challengeId, position]),
+    );
+    return { position: rows[0].hint_position, cost: rows[0].cost, body: rows[0].body };
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+/** The official write-up plus solvers' own -- get_ctf_writeups refuses anyone who has not
+ * solved the challenge, so callers only ask once the page knows the caller solved it. */
+export type CtfWriteup = { id: string | null; official: boolean; author: string; body: string; publishedAt: string | null; mine: boolean };
+
+export async function getCtfWriteups(challengeId: string): Promise<CtfWriteup[]> {
+  const actor = await getCurrentUser();
+  try {
+    const rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ writeup_id: string | null; is_official: boolean; author_name: string; body: string; published_at: string | null; is_mine: boolean }>(client, "public.get_ctf_writeups", [challengeId]),
+    );
+    return rows.map((r) => ({ id: r.writeup_id, official: r.is_official, author: r.author_name, body: r.body, publishedAt: r.published_at, mine: r.is_mine }));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+export async function publishCtfWriteup(challengeId: string, body: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.publish_ctf_writeup", [challengeId, body]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+export async function deleteMyCtfWriteup(challengeId: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.delete_my_ctf_writeup", [challengeId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+/** Stored track badges (get_researcher_ctf_badges): self, or an opted-in public profile. */
+export type CtfTrackBadge = { trackId: string; label: string; awardedAt: string };
+
+export async function getResearcherCtfBadges(researcherId: string): Promise<CtfTrackBadge[]> {
+  const actor = await getCurrentUser();
+  try {
+    const rows = await withPublicTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ track_id: string; label: string; awarded_at: string }>(client, "public.get_researcher_ctf_badges", [researcherId]),
+    );
+    return rows.map((r) => ({ trackId: r.track_id, label: r.label, awardedAt: r.awarded_at }));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
 }
