@@ -14,6 +14,7 @@
     "test": "vitest run tests/unit",
     "test:watch": "vitest tests/unit",
     "test:e2e": "playwright test",
+    "test:db": "node --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run --config vitest.db.config.ts",
     "ctf:artifacts": "tsx --env-file=.env.local scripts/ctf-artifacts/generate.mjs",
     "ctf:artifacts:verify": "tsx --env-file=.env.local scripts/ctf-artifacts/generate.mjs --verify",
     "worker:outbox": "tsx --env-file=.env.local workers/outbox/run.ts",
