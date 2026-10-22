@@ -1,5 +1,6 @@
 import React from "react";
 import { OrganizationSla } from "../../../../components/organizations/organization-sla";
+import { OrganizationResponseTimes } from "../../../../components/organizations/organization-response-times";
 import { getOrganizationSlaSummary } from "../../../../services/program-policy";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -25,6 +26,7 @@ import {
   getOrganizationBountySpendSummary,
   getOrganizationProgramBountySpend,
   getOrganizationSeverityStatusBreakdown,
+  getOrganizationResponseMetrics,
   getOrganizationWeeklyBountySpend,
 } from "../../../../services/organization-analytics";
 import { getProgramResolutionPerformance, getProgramSeverityStatusBreakdown, getProgramWeeklyReportVolume } from "../../../../services/program-analytics";
@@ -109,7 +111,7 @@ export default async function OrganizationAnalyticsPage({
     );
   }
 
-  const [organizations, programs, severityStatusBreakdown, bountySpendSummary, weeklyBountySpend, programBountySpend, slaSummary, dashboard] = await Promise.all([
+  const [organizations, programs, severityStatusBreakdown, bountySpendSummary, weeklyBountySpend, programBountySpend, slaSummary, dashboard, responseMetrics] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listProgramsForOrganization(organizationId),
     getOrganizationSeverityStatusBreakdown(organizationId),
@@ -118,6 +120,7 @@ export default async function OrganizationAnalyticsPage({
     getOrganizationProgramBountySpend(organizationId),
     getOrganizationSlaSummary(organizationId),
     getOrganizationDashboard(organizationId, days),
+    getOrganizationResponseMetrics(organizationId, days),
   ]);
   const statusCounts = new Map<ReportStatus, number>();
   for (const cell of severityStatusBreakdown) statusCounts.set(cell.status, (statusCounts.get(cell.status) ?? 0) + cell.count);
@@ -251,6 +254,7 @@ export default async function OrganizationAnalyticsPage({
               </div>
             ) : (
               <div className="space-y-8">
+                <OrganizationResponseTimes data={responseMetrics} days={days} exportHref={`/organizations/${organizationId}/analytics/export?range=${days}`} />
                 <OrganizationSla rows={slaSummary} programNames={new Map(programs.map((program) => [program.id, program.name]))} />
                 <OrganizationBountySpend summary={bountySpendSummary} weeklySpend={weeklyBountySpend} />
               </div>

@@ -208,3 +208,74 @@ export type OrganizationTopResearcher = {
   lastSubmittedAt: string;
 };
 
+
+// Response-time (SLA) metrics and the report-level export dataset -- 202610220020. Hours,
+// snake_case kept on the jsonb wire shape like services/dashboards.ts.
+export type ResponseMetricKey = "first_response" | "triage" | "bounty" | "resolution";
+export type ResponseMetricStats = { median_hours: number | null; p90_hours: number | null; count: number; sla_met: number; sla_tracked: number };
+export type OrganizationResponseMetrics = {
+  since: string;
+  reports: number;
+  metrics: (ResponseMetricStats & { metric: ResponseMetricKey; benchmark_hours: number | null; benchmark_orgs: number })[];
+  programs: { program_id: string; name: string; reports: number; metrics: Record<ResponseMetricKey, ResponseMetricStats> }[];
+};
+
+export async function getOrganizationResponseMetrics(organizationId: string, days: number): Promise<OrganizationResponseMetrics> {
+  const actor = await getCurrentUser();
+  try {
+    const rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ get_organization_response_metrics: OrganizationResponseMetrics }>(client, "public.get_organization_response_metrics", [organizationId, days]),
+    );
+    return rows[0].get_organization_response_metrics;
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+export type ReportTiming = {
+  reportId: string;
+  submittedAt: string;
+  programName: string;
+  severity: string | null;
+  status: string;
+  firstResponseAt: string | null;
+  triagedAt: string | null;
+  bountyAmountMinorUnits: number | null;
+  bountyCurrency: string | null;
+  resolvedAt: string | null;
+};
+
+type ReportTimingRow = {
+  report_id: string;
+  submitted_at: string;
+  program_name: string;
+  severity: string | null;
+  status: string;
+  first_response_at: string | null;
+  triaged_at: string | null;
+  bounty_amount_minor_units: string | number | null;
+  bounty_currency: string | null;
+  resolved_at: string | null;
+};
+
+export async function listOrganizationReportTimings(organizationId: string, days: number): Promise<ReportTiming[]> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<ReportTimingRow>(client, "public.list_organization_report_timings", [organizationId, days]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((row) => ({
+    reportId: row.report_id,
+    submittedAt: row.submitted_at,
+    programName: row.program_name,
+    severity: row.severity,
+    status: row.status,
+    firstResponseAt: row.first_response_at,
+    triagedAt: row.triaged_at,
+    bountyAmountMinorUnits: row.bounty_amount_minor_units === null ? null : Number(row.bounty_amount_minor_units),
+    bountyCurrency: row.bounty_currency,
+    resolvedAt: row.resolved_at,
+  }));
+}

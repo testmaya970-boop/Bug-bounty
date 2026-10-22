@@ -5,18 +5,12 @@ import { canManageMembers } from "@/services/authorization";
 import { getActorMembership } from "@/services/organization-members";
 import { activityActionLabel } from "@/lib/organization-activity-labels";
 import { rangeDays } from "@/lib/viz";
+import { csvCell } from "@/lib/csv";
 
 // CSV export of the organization's audit log for the selected window. Same readers as the
 // page (owner / security_admin), and the query itself still runs under the audit log's own
 // row-level policy -- the role check here only turns a refusal into a clear 403.
 const MAX_ROWS = 20_000;
-
-function csvCell(value: unknown): string {
-  const text = value === null || value === undefined ? "" : typeof value === "string" ? value : JSON.stringify(value);
-  // Quote every cell; neutralise spreadsheet formula injection (=, +, -, @ at the start).
-  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
-  return `"${safe.replaceAll('"', '""')}"`;
-}
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ organizationId: string }> }) {
   const { organizationId } = await params;
