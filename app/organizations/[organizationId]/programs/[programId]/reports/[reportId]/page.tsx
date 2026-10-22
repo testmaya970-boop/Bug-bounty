@@ -22,6 +22,7 @@ import { BountyDecisionSection } from "../../../../../../../components/reports/b
 import { PaymentStatusSection } from "../../../../../../../components/reports/payment-status";
 import { OrganizationDisclosureDecisionPanel, ResearcherDisclosurePanel } from "../../../../../../../components/reports/report-disclosure";
 import { CvssSummary } from "../../../../../../../components/reports/cvss-summary";
+import { Cvss4Editor } from "../../../../../../../components/reports/cvss4-editor";
 import { ReportCollaboratorsPanel } from "../../../../../../../components/reports/report-collaborators";
 import { ReportRetestPanel } from "../../../../../../../components/reports/report-retest";
 import { ReportMediationPanel } from "../../../../../../../components/reports/report-mediation";
@@ -422,6 +423,7 @@ export default async function ReportDetailPage({
                 <div className="mt-5 space-y-4 border-t border-border pt-5">
                   <ReportAssigneeControl organizationId={organizationId} programId={programId} reportId={reportId} assigneeId={report.assigneeId} staff={assignableStaff} currentUserId={user.id} />
                   <SeverityControl organizationId={organizationId} programId={programId} reportId={reportId} currentSeverity={report.confirmedSeverity} currentCvssBaseScore={report.cvssBaseScore} locked={isFinal || bountyFinalized} lockReason={bountyFinalized && !isFinal ? "bounty" : "decision"} />
+                  <Cvss4Editor organizationId={organizationId} programId={programId} reportId={reportId} vector={report.cvss4Vector ?? null} score={report.cvss4Score ?? null} locked={isFinal || bountyFinalized} />
                   <TriageActionPanel organizationId={organizationId} programId={programId} reportId={reportId} status={report.status} allowedNext={allowedNext} />
                 </div>
               )}

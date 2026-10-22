@@ -38,6 +38,9 @@ export type ProgramSummary = {
   minValidReports?: number | null;
   /** open: anyone may join a public program; request: staff approve each researcher (202610220002). */
   joinMode?: "open" | "request";
+  /** Share of the bounty table paid for tier-2 / tier-3 assets (202610220006). */
+  bountyTier2Percent?: number;
+  bountyTier3Percent?: number;
   createdBy: string;
   createdByName: string;
   createdAt: string;

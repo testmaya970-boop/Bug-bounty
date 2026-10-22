@@ -314,6 +314,9 @@ export function BountyDecisionSection({
           </span>{" "}
           for {decision.severityAtCalculation} severity. This is a recommendation, not a final decision.
         </p>
+        {decision.assetTier && decision.assetTier > 1 && decision.tierPercent && decision.tierPercent < 100 && (
+          <p className="text-sm text-ink-muted">The report's asset is tier {decision.assetTier}, so the range is {decision.tierPercent}% of the program's bounty table.</p>
+        )}
         <div className="flex flex-wrap gap-2">
           {canCalculate && <CalculateBountyButton organizationId={organizationId} programId={programId} reportId={reportId} relabelAsRecalculate={true} />}
           {canFinalize && decision.currency && <FinalizeBountyDialog organizationId={organizationId} programId={programId} reportId={reportId} currency={decision.currency} />}

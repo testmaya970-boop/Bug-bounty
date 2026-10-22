@@ -88,6 +88,9 @@ export type Report = {
   researcherSeverity: ReportSeverity | null;
   cvssMetrics: CvssMetrics | null;
   cvssBaseScore: number | null;
+  /** CVSS 4.0 base vector and score (202610220006); null when not scored with v4. */
+  cvss4Vector?: string | null;
+  cvss4Score?: number | null;
   /** The staff member working this report (202610060011); null when unassigned. */
   assigneeId: string | null;
   assigneeName: string | null;

@@ -49,6 +49,7 @@ import { perfTimed } from "../../../../../lib/perf-trace";
 import type { ScopeState } from "../../../../../types/scope";
 import type { OrganizationResolutionPerformance, OrganizationSeverityStatusCount, OrganizationWeeklyReportVolume } from "../../../../../types/organization";
 import { LocalTime } from "../../../../../components/ui/local-time";
+import { BountyTiersPanel } from "../../../../../components/organizations/asset-tier-control";
 
 const SCOPE_FILTERS: { value: "all" | ScopeState; label: string }[] = [
   { value: "all", label: "All" },
@@ -743,6 +744,7 @@ async function renderProgramControlCenterPage({
             {program.programType !== "vdp" && (
               <Card className="p-5">
                 <BountyPolicySection policy={bountyPolicy} />
+                {canManageProgram && <BountyTiersPanel organizationId={organizationId} programId={programId} tier2Percent={program.bountyTier2Percent ?? 100} tier3Percent={program.bountyTier3Percent ?? 100} />}
               </Card>
             )}
           </div>

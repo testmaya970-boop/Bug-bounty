@@ -35,6 +35,7 @@ import {
   assignReport,
   saveMyReportDraft,
   deleteMyReportDraft,
+  setReportCvss4,
 } from "@/services/reports";
 import { getReportTimeline, type ReportTimelinePage } from "@/services/timeline";
 import { getActorMembership } from "@/services/organization-members";
@@ -45,6 +46,7 @@ import type { Page } from "@/types/pagination";
 import { verifyCaptcha } from "@/lib/integrations/captcha";
 import { getMySubmissionStanding } from "@/services/submission-signal";
 import { headers } from "next/headers";
+import { CVSS4_VECTOR_PATTERN, cvss4Score } from "@/lib/cvss4";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
@@ -283,6 +285,16 @@ const cvssMetricsSchema = z.object({
 });
 
 const severityActionSchema = reportActionBase.extend({ severity: severitySchema, cvss: cvssMetricsSchema.optional() });
+
+export async function setReportCvss4Action(input: { organizationId: string; programId: string; reportId: string; vector: string }): Promise<ActionResult<null>> {
+  const parsed = z.object({ organizationId: uuidSchema, programId: uuidSchema, reportId: uuidSchema, vector: z.string().regex(CVSS4_VECTOR_PATTERN, "That isn't a complete CVSS 4.0 base vector.") }).safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
+  const score = cvss4Score(parsed.data.vector);
+  if (score === null) return invalidInput("That CVSS 4.0 vector could not be scored.");
+  const result = await toResult<null>(setReportCvss4(parsed.data.reportId, parsed.data.vector, score).then(() => null));
+  if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
+  return result;
+}
 
 export async function setReportSeverityAction(input: z.infer<typeof severityActionSchema>): Promise<ActionResult<Report>> {
   const parsed = severityActionSchema.safeParse(input);

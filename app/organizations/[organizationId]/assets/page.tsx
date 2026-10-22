@@ -13,6 +13,7 @@ import { listProgramsForOrganization } from "../../../../services/programs";
 import { listOrganizationAssets } from "../../../../services/scope";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 import type { ProgramAssetType } from "../../../../types/scope";
+import { listAssetTiers } from "../../../../services/asset-tiers";
 
 const VALID_ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -51,11 +52,14 @@ export default async function OrganizationAssetsPage({
   const programId = programParam && programs.some((program) => program.id === programParam) ? programParam : "all";
   const assetType: ProgramAssetType | "all" = typeParam && VALID_ASSET_TYPES.includes(typeParam as ProgramAssetType) ? (typeParam as ProgramAssetType) : "all";
 
-  const { items: assets, nextCursor } = await listOrganizationAssets(organizationId, undefined, {
-    programId: programId === "all" ? undefined : programId,
-    assetType: assetType === "all" ? undefined : assetType,
-    includeRetired,
-  });
+  const [{ items: assets, nextCursor }, assetTiers] = await Promise.all([
+    listOrganizationAssets(organizationId, undefined, {
+      programId: programId === "all" ? undefined : programId,
+      assetType: assetType === "all" ? undefined : assetType,
+      includeRetired,
+    }),
+    actor.role === "billing_admin" ? Promise.resolve({ tiers: {}, canEdit: false }) : listAssetTiers(organizationId),
+  ]);
 
   return (
     <AppShell title="Assets" user={user} organizationId={organizationId}>
@@ -69,6 +73,8 @@ export default async function OrganizationAssetsPage({
         <OrganizationAssetsTable
           organizationId={organizationId}
           initialAssets={assets}
+          tiers={assetTiers.tiers}
+          canEditTier={assetTiers.canEdit}
           initialNextCursor={nextCursor}
           programId={programId}
           assetType={assetType}

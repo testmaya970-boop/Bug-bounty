@@ -30,7 +30,7 @@ import type { Page } from "@/types/pagination";
 export { OrganizationServiceError };
 
 const REPORT_SELECT_COLUMNS =
-  "r.id, r.program_id, r.organization_id, r.researcher_id, r.title, r.description, r.asset_type, r.target, r.display_target, r.matched_scope_entry_id, r.matched_scope_state, r.matched_target, r.status, r.confirmed_severity, r.duplicate_of_report_id, r.resolution_summary, r.weakness_type, r.impact, r.researcher_severity, r.cvss_attack_vector, r.cvss_attack_complexity, r.cvss_privileges_required, r.cvss_user_interaction, r.cvss_scope, r.cvss_confidentiality_impact, r.cvss_integrity_impact, r.cvss_availability_impact, r.cvss_base_score, r.submitted_at, r.created_at, r.updated_at, u.display_name as researcher_display_name, r.assignee_id, a.display_name as assignee_display_name";
+  "r.id, r.program_id, r.organization_id, r.researcher_id, r.title, r.description, r.asset_type, r.target, r.display_target, r.matched_scope_entry_id, r.matched_scope_state, r.matched_target, r.status, r.confirmed_severity, r.duplicate_of_report_id, r.resolution_summary, r.weakness_type, r.impact, r.researcher_severity, r.cvss_attack_vector, r.cvss_attack_complexity, r.cvss_privileges_required, r.cvss_user_interaction, r.cvss_scope, r.cvss_confidentiality_impact, r.cvss_integrity_impact, r.cvss_availability_impact, r.cvss_base_score, r.cvss4_vector, r.cvss4_score, r.submitted_at, r.created_at, r.updated_at, u.display_name as researcher_display_name, r.assignee_id, a.display_name as assignee_display_name";
 
 type ReportRow = {
   id: string;
@@ -61,6 +61,8 @@ type ReportRow = {
   cvss_integrity_impact: string | null;
   cvss_availability_impact: string | null;
   cvss_base_score: number | null;
+  cvss4_vector?: string | null;
+  cvss4_score?: string | number | null;
   submitted_at: string;
   created_at: string;
   updated_at: string;
@@ -115,6 +117,8 @@ function mapReportRow(row: ReportRow): Report {
     researcherSeverity: row.researcher_severity,
     cvssMetrics: mapCvssMetrics(row),
     cvssBaseScore: row.cvss_base_score,
+    cvss4Vector: row.cvss4_vector ?? null,
+    cvss4Score: row.cvss4_score == null ? null : Number(row.cvss4_score),
     assigneeId: row.assignee_id ?? null,
     assigneeName: row.assignee_display_name ?? null,
     submittedAt: row.submitted_at,
@@ -163,6 +167,17 @@ export async function submitReport(
  * security admin, or a program manager). A null result covers "does not exist" and
  * "exists but you have no access" identically, the same as every other detail read in
  * this codebase. */
+/** CVSS 4.0 (202610220006): the score is computed here from the vector (lib/cvss4), never taken
+ * from the client, and stored with it. */
+export async function setReportCvss4(reportId: string, vector: string, score: number): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.set_report_cvss4", [reportId, vector, score]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
 export async function getReport(reportId: string): Promise<Report | null> {
   const actor = await getCurrentUser();
   let rows;
