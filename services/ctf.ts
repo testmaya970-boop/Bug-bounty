@@ -59,7 +59,7 @@ export async function listCtfSolvesForActor(actorId: string): Promise<CtfSolve[]
 }
 
 /** A real row of the CTF leaderboard (get_ctf_leaderboard over ctf_solves). */
-export type CtfLeaderboardRow = { rank: number; researcherId: string; name: string; ctfPoints: number; challengesSolved: number; level: CtfLevel };
+export type CtfLeaderboardRow = { rank: number; researcherId: string; name: string; username: string | null; ctfPoints: number; challengesSolved: number; level: CtfLevel };
 export type CtfLevel = "Distinguished" | "Expert" | "Specialist" | "Practitioner" | "Apprentice";
 
 /** Level by standing among everyone ranked: top 10% Distinguished, and so on down. */
@@ -84,7 +84,8 @@ export async function getCtfLeaderboard(limit = 100): Promise<CtfLeaderboardRow[
   return rows.map((r) => ({
     rank: Number(r.rank),
     researcherId: r.researcher_id,
-    name: r.public_username ?? r.display_name,
+    name: r.display_name,
+    username: r.public_username,
     ctfPoints: Number(r.points),
     challengesSolved: Number(r.challenges_solved),
     level: ctfLevelFor(Number(r.rank), rows.length),

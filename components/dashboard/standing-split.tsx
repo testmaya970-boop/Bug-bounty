@@ -72,7 +72,10 @@ export function StandingSplit({
             visibleRows.map((row, index) => (
               <div key={row.researcherId ?? `anonymous-${index}`} className="flex items-center gap-3 py-1.5">
                 <span className="w-8 shrink-0 font-mono text-xs text-ink-muted">#{index + 1}</span>
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{row.publicUsername ?? row.displayName}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-ink">{row.displayName}</span>
+                  <span className="block truncate font-mono text-[11px] text-ink-muted">{row.publicUsername ? `@${row.publicUsername}` : "Private profile"}</span>
+                </span>
                 <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-ink">{row.score.toLocaleString("en-US")}</span>
               </div>
             ))

@@ -37,7 +37,7 @@ export function CtfLeaderboardTable({ rows, myResearcherId }: { rows: CtfLeaderb
     let filtered = rows;
     if (search.trim()) {
       const term = search.trim().toLowerCase();
-      filtered = filtered.filter((row) => row.name.toLowerCase().includes(term));
+      filtered = filtered.filter((row) => row.name.toLowerCase().includes(term) || row.username?.toLowerCase().includes(term));
     }
     if (levelFilter) filtered = filtered.filter((row) => row.level === levelFilter);
     return [...filtered].sort((a, b) => b[sortKey] - a[sortKey]);
@@ -69,7 +69,7 @@ export function CtfLeaderboardTable({ rows, myResearcherId }: { rows: CtfLeaderb
           type="text"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name"
+          placeholder="Search name or @username"
           className="min-h-10 min-w-0 flex-1 rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30 sm:max-w-56"
         />
         <label className="sr-only" htmlFor="ctf-leaderboard-level-filter">
@@ -155,6 +155,7 @@ export function CtfLeaderboardTable({ rows, myResearcherId }: { rows: CtfLeaderb
                       <p className="truncate text-sm font-semibold text-ink">{row.name}</p>
                       {isMe && <span className="shrink-0 rounded-full bg-action/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-action">You</span>}
                     </div>
+                    <p className="truncate font-mono text-[11px] text-ink-muted">{row.username ? `@${row.username}` : "No username yet"}</p>
                     <div className="relative mt-1.5 h-2 w-full max-w-md overflow-hidden rounded-full bg-surface-muted">
                       <div className="h-full rounded-full bg-action motion-safe:transition-[width] motion-safe:duration-150" style={{ width: `${distancePct}%`, opacity: Math.max(0.35, 1 - (row.rank - 1) * 0.045) }} />
                     </div>
