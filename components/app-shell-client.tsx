@@ -36,8 +36,8 @@ import {
   List,
   X,
   CaretUpDown,
-  CaretDoubleLeft,
-  CaretDoubleRight,
+  CaretUp,
+  CaretDown,
   Check,
   Plus,
   Plug,
@@ -331,34 +331,52 @@ function HelpLink() {
   );
 }
 
-// Nav (21 Oct redesign): the old all-uppercase mono items in [ BRACKETED ] groups gave every
-// line the same weight, so nothing led. Now: quiet sentence-case group labels, body-face
-// items, mono only for counts, and "you are here" as a solid ink block with a hazard-red
-// notch -- the brutal contrast spent on the one state that matters. Shared by NavLink and
-// OrgNavGroup so the two nav zones can never drift into two styles again.
+// Nav (22 Oct redesign, video-site guide layout on a navy panel): 14px regular labels, 24px
+// icons 24px from the label, a rounded tinted pill + medium weight for "you are here", and
+// sections split by hairlines under 16px titles. Rows and gaps scale with viewport height
+// (VH_ROW/VH_GAP) so every item fits without a scrollbar; long groups fold behind "Show more".
+// Shared by NavLink and OrgNavGroup so the two nav zones can never drift into two styles.
 const HOVER = "[@media(hover:hover)_and_(pointer:fine)]:hover" as const;
-const NAV_LINK_BASE =
-  "group/nav relative flex min-h-10 items-center gap-3 rounded-md text-sm transition-[background-color,color] duration-150 ease-out motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus";
-const NAV_LINK_ACTIVE = "bg-ink font-semibold text-canvas before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r-sm before:bg-action";
-const NAV_LINK_IDLE = `font-medium text-ink-muted ${HOVER}:bg-surface-muted ${HOVER}:text-ink`;
+const VH_ROW = "h-[clamp(1.5rem,4vh,2.5rem)]";
+const VH_GAP = "py-[clamp(0.125rem,0.8vh,0.75rem)]";
+const NAV_LINK_BASE = `group/nav relative flex ${VH_ROW} shrink-0 items-center gap-6 rounded-[10px] text-sm transition-[background-color,color] duration-150 ease-out motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`;
+const NAV_LINK_ACTIVE = "bg-surface-muted font-medium text-ink";
+const NAV_LINK_IDLE = `font-normal text-ink ${HOVER}:bg-surface-hover`;
+const NAV_ICON = "size-6 shrink-0";
+const navIconClass = (active: boolean) => cn(NAV_ICON, active ? "text-action" : "text-ink");
+// YouTube-style section block: a hairline above every section but the first.
+const NAV_SECTION = `border-t border-border ${VH_GAP} first:border-t-0 first:pt-0`;
 // Collapsed rail: the label stays in the DOM as the link's accessible name (sr-only); the
 // visible hover label is one fixed tooltip owned by AppShellClient, placed from the hovered
 // element's data-rail-label. A CSS flyout needed overflow:visible, which stopped the rail from
 // scrolling and cut off the lower nav on short screens.
 function navLinkClass(active: boolean, collapsed: boolean) {
-  return cn(NAV_LINK_BASE, collapsed ? "mx-auto size-10 justify-center" : "px-2.5", active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE);
+  return cn(NAV_LINK_BASE, collapsed ? "mx-auto w-10 justify-center" : "px-3", active ? NAV_LINK_ACTIVE : NAV_LINK_IDLE);
 }
 
-function NavGroupLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
-  if (collapsed) {
-    return (
-      <>
-        <p className="sr-only">{label}</p>
-        <div aria-hidden="true" className="mx-auto h-px w-6 bg-border" />
-      </>
-    );
-  }
-  return <p className="px-2.5 text-[11px] font-semibold text-ink-muted">{label}</p>;
+/** untitled: the first section reads without a title, as on the reference guide. */
+function NavGroupLabel({ label, collapsed, untitled = false }: { label: string; collapsed: boolean; untitled?: boolean }) {
+  if (collapsed || untitled) return <p className="sr-only">{label}</p>;
+  return <p className="flex h-[clamp(1.25rem,3.2vh,2.25rem)] items-center px-3 text-base font-semibold text-ink">{label}</p>;
+}
+
+/** Long groups show `limit` rows, then a "Show more" row; the active item is never hidden. */
+function useFold<T>(items: T[], limit: number | undefined, activeIndex: number) {
+  const [expanded, setExpanded] = useState(false);
+  const foldable = limit !== undefined && items.length > limit + 1 && activeIndex < limit;
+  const open = !foldable || expanded;
+  return { visible: open ? items : items.slice(0, limit), foldable, open, toggle: () => setExpanded((was) => !was) };
+}
+
+function ShowMoreRow({ open, collapsed, hiddenCount, onClick }: { open: boolean; collapsed: boolean; hiddenCount: number; onClick: () => void }) {
+  const label = open ? "Show less" : `Show ${hiddenCount} more`;
+  const Icon = open ? CaretUp : CaretDown;
+  return (
+    <button type="button" onClick={onClick} aria-expanded={open} data-rail-label={label} className={cn(navLinkClass(false, collapsed), "w-full text-left text-ink-muted")}>
+      <Icon aria-hidden="true" className={NAV_ICON} />
+      <NavLabel label={label} collapsed={collapsed} />
+    </button>
+  );
 }
 
 function NavLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
@@ -369,30 +387,32 @@ function NavLink({ item, active, collapsed, onClick }: { item: NavItem; active: 
   const Icon = item.icon;
   return (
     <Link href={item.href} prefetch={false} onClick={onClick} aria-current={active ? "page" : undefined} data-rail-label={item.label} className={navLinkClass(active, collapsed)}>
-      <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-[18px] shrink-0", active ? "text-canvas" : "text-ink-muted group-hover/nav:text-ink")} />
+      <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={navIconClass(active)} />
       <NavLabel label={item.label} collapsed={collapsed} />
-      {item.badge && !collapsed && <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", active ? "text-canvas/80" : "text-ink-muted")}>{item.badge}</span>}
+      {item.badge && !collapsed && <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">{item.badge}</span>}
     </Link>
   );
 }
 
-/** Section labels read as quiet system-zone markers -- smaller, lower-contrast, wider
- * tracking than a normal heading -- never competing with the nav items themselves for
- * attention. Same treatment for every zone (RESEARCH/PRACTICE/RECORD/SYSTEM/Organization),
- * so the grouping reads as one consistent grammar, not five different label styles. */
-function NavGroup({ label, items, path, collapsed, onNavigate }: { label: string; items: NavItem[]; path: string; collapsed: boolean; onNavigate: () => void }) {
+// Exact match for "/" (every route starts with it -- a prefix match would keep Dashboard lit
+// everywhere); prefix match for the rest so a sub-route keeps its parent lit (e.g.
+// /platform/ctf-events/<id> keeps "CTF events" active), the same exactMatch/prefixMatch split
+// OrgNavGroup already uses -- AGENTS.md's "you are here must never go dark on a sub-route" rule.
+function isActive(item: NavItem, path: string) {
+  return item.href === "/" || item.href === "/platform" ? path === item.href : path === item.href || path.startsWith(`${item.href}/`);
+}
+
+/** One nav section: a 16px title (none for the first), its rows, and "Show more" past `limit`. */
+function NavGroup({ label, items, path, collapsed, onNavigate, untitled, limit }: { label: string; items: NavItem[]; path: string; collapsed: boolean; onNavigate: () => void; untitled?: boolean; limit?: number }) {
+  const fold = useFold(items, limit, items.findIndex((item) => isActive(item, path)));
   return (
-    <div>
-      <NavGroupLabel label={label} collapsed={collapsed} />
-      <div className="mt-1.5 space-y-0.5">
-        {items.map((item) => (
-          // Exact match for "/" (every route starts with it -- a prefix match would keep
-          // Dashboard lit everywhere); prefix match for the rest so a sub-route keeps its
-          // parent lit (e.g. /platform/ctf-events/<id> keeps "CTF events" active), the same
-          // exactMatch/prefixMatch split OrgNavGroup already uses -- AGENTS.md's "you are
-          // here must never go dark on a sub-route" rule.
-          <NavLink key={`${item.href}-${item.label}`} item={item} active={item.href === "/" || item.href === "/platform" ? path === item.href : path === item.href || path.startsWith(`${item.href}/`)} collapsed={collapsed} onClick={onNavigate} />
+    <div className={NAV_SECTION}>
+      <NavGroupLabel label={label} collapsed={collapsed} untitled={untitled} />
+      <div className="flex flex-col">
+        {fold.visible.map((item) => (
+          <NavLink key={`${item.href}-${item.label}`} item={item} active={isActive(item, path)} collapsed={collapsed} onClick={onNavigate} />
         ))}
+        {fold.foldable && <ShowMoreRow open={fold.open} collapsed={collapsed} hiddenCount={items.length - (limit ?? 0)} onClick={fold.toggle} />}
       </div>
     </div>
   );
@@ -401,13 +421,13 @@ function NavGroup({ label, items, path, collapsed, onNavigate }: { label: string
 /** Renders one org-side nav zone (Overview/Security/Insights/Organization), resolving
  * each item's href against the real, currently-selected organizationId -- never a static
  * href, since every one of these routes is org-scoped by definition. */
-function OrgNavGroup({ label, items: allItems, organizationId, role, path, collapsed, onNavigate }: { label: string; items: OrgNavItem[]; organizationId: string; role?: OrganizationRole; path: string; collapsed: boolean; onNavigate: () => void }) {
+function OrgNavGroup({ label, items: allItems, organizationId, role, path, collapsed, onNavigate, untitled }: { label: string; items: OrgNavItem[]; organizationId: string; role?: OrganizationRole; path: string; collapsed: boolean; onNavigate: () => void; untitled?: boolean }) {
   const items = allItems.filter((item) => !item.roles || (role !== undefined && item.roles.includes(role)));
   if (items.length === 0) return null;
   return (
-    <div>
-      <NavGroupLabel label={label} collapsed={collapsed} />
-      <div className="mt-1.5 space-y-0.5">
+    <div className={NAV_SECTION}>
+      <NavGroupLabel label={label} collapsed={collapsed} untitled={untitled} />
+      <div className="flex flex-col">
         {items.map((item) => {
           const href = item.href(organizationId);
           const Icon = item.icon;
@@ -422,7 +442,7 @@ function OrgNavGroup({ label, items: allItems, organizationId, role, path, colla
               data-rail-label={item.label}
               className={navLinkClass(active, collapsed)}
             >
-              <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-[18px] shrink-0", active ? "text-canvas" : "text-ink-muted group-hover/nav:text-ink")} />
+              <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={navIconClass(active)} />
               <NavLabel label={item.label} collapsed={collapsed} />
             </Link>
           );
@@ -485,7 +505,7 @@ function OrganizationSwitcher({ organizations, currentOrganizationId, collapsed 
         onClick={() => setOpen(!open)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex min-h-11 w-full items-center gap-2 rounded-md border border-border px-2.5 text-left transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
+        className="flex h-[clamp(2.25rem,5.5vh,2.75rem)] w-full items-center gap-2 rounded-md border border-border px-2.5 text-left transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
       >
         <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", current.status === "active" ? "bg-success" : current.status === "suspended" ? "bg-danger" : "bg-ink-muted")} />
         <span className="min-w-0 flex-1">
@@ -529,16 +549,7 @@ function OrganizationSwitcher({ organizations, currentOrganizationId, collapsed 
 
 /** compact: the phone header. Below 400px the wordmark hides and only the mark shows -- the
  * header measured 373px wide with it, overflowing a 320px screen by 41px (and 360px by 1px). */
-function SidebarBrand({ compact = false, iconOnly = false }: { compact?: boolean; iconOnly?: boolean }) {
-  if (iconOnly) {
-    return (
-      <Link href="/" prefetch={false} aria-label="Unpatched home" className="mx-auto inline-flex size-10 items-center justify-center focus-visible:outline-2 focus-visible:outline-focus">
-        <span aria-hidden="true" className="inline-flex size-7 items-center justify-center rounded-md bg-action text-on-action">
-          <ShieldCheck weight="fill" className="size-4" />
-        </span>
-      </Link>
-    );
-  }
+function SidebarBrand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" prefetch={false} aria-label="Unpatched home" className="flex items-center gap-2 px-1 focus-visible:outline-2 focus-visible:outline-focus">
       {/* shadow-[...var(--glow-action)] removed -- --glow-action no longer exists, see app/globals.css */}
@@ -549,6 +560,31 @@ function SidebarBrand({ compact = false, iconOnly = false }: { compact?: boolean
     </Link>
   );
 }
+
+/** Who is signed in, at the top of the panel: name and the role this view is acting as.
+ * Links to the profile; the account menu (top bar) keeps settings and sign-out. */
+function SidebarUserCard({ user, roleLabel, collapsed = false, onNavigate }: { user: ShellUser; roleLabel: string; collapsed?: boolean; onNavigate: () => void }) {
+  return (
+    <Link
+      href={"/settings/profile" as Route}
+      prefetch={false}
+      onClick={onNavigate}
+      data-rail-label={`${user.displayName} · ${roleLabel}`}
+      className={cn(
+        `flex shrink-0 items-center gap-3 rounded-[10px] transition-colors duration-150 ease-out ${HOVER}:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`,
+        collapsed ? "mx-auto size-10 justify-center" : "px-2 py-[clamp(0.25rem,0.9vh,0.5rem)]",
+      )}
+    >
+      <Avatar name={user.displayName} tinted />
+      <span className={collapsed ? "sr-only" : "min-w-0 flex-1"}>
+        <span className="block truncate text-sm font-medium text-ink">{user.displayName}</span>
+        <span className="block truncate text-xs text-ink-muted">{roleLabel}</span>
+      </span>
+    </Link>
+  );
+}
+
+const ORG_ROLE_LABELS: Record<OrganizationRole, string> = { owner: "Owner", security_admin: "Security admin", program_manager: "Program manager", triager: "Triager", billing_admin: "Billing admin" };
 
 /**
  * Context-routing, not a role system (docs/decisions/0030 -- no persistent role column
@@ -599,8 +635,8 @@ function SidebarNav({
   // redirects to setup, so the only real destination is the setup step itself.
   if (platformAdminNeedsMfa) {
     return (
-      <nav aria-label="Primary navigation" className="space-y-5">
-        <NavGroup label="Platform admin" items={PLATFORM_MFA_SETUP_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+      <nav aria-label="Primary navigation">
+        <NavGroup label="Platform admin" items={PLATFORM_MFA_SETUP_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} untitled />
       </nav>
     );
   }
@@ -626,36 +662,37 @@ function SidebarNav({
   const showResearcherZones = !isOrganizationOnly && !isPlatformAdminOnly;
 
   return (
-    <nav aria-label="Primary navigation" className="space-y-5">
+    // Every section is a direct child, so NAV_SECTION's first: rule drops the first hairline.
+    <nav aria-label="Primary navigation">
       {showResearcherZones && (
         <>
-          <NavGroup label="Research" items={RESEARCH_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+          <NavGroup label="Research" items={RESEARCH_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} untitled />
           <NavGroup label="Practice" items={PRACTICE_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
           <NavGroup label="Record" items={RECORD_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
         </>
       )}
       {hasOrganization && (
-        <div className="space-y-3">
-          <OrganizationSwitcher organizations={organizations} currentOrganizationId={currentOrganizationId} collapsed={collapsed} onExpand={onExpand} />
+        <>
+          <div className={NAV_SECTION}>
+            <OrganizationSwitcher organizations={organizations} currentOrganizationId={currentOrganizationId} collapsed={collapsed} onExpand={onExpand} />
+          </div>
           {resolvedOrgId && (
-            <div className="space-y-5">
-              <OrgNavGroup label="Overview" items={ORG_OVERVIEW_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+            <>
+              <OrgNavGroup label="Overview" items={ORG_OVERVIEW_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} collapsed={collapsed} onNavigate={onNavigate} untitled />
               <OrgNavGroup label="Security" items={ORG_SECURITY_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} collapsed={collapsed} onNavigate={onNavigate} />
               <OrgNavGroup label="Insights" items={ORG_INSIGHTS_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} collapsed={collapsed} onNavigate={onNavigate} />
               <OrgNavGroup label="Organization" items={ORG_ORGANIZATION_NAV} organizationId={resolvedOrgId} role={resolvedOrgRole} path={path} collapsed={collapsed} onNavigate={onNavigate} />
-            </div>
+            </>
           )}
-        </div>
+        </>
       )}
       {isPlatformAdminOnly ? (
         <>
-          <NavGroup label="Platform admin" items={PLATFORM_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
+          <NavGroup label="Platform admin" items={PLATFORM_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} limit={7} />
           <NavGroup label="System" items={PLATFORM_SYSTEM_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
         </>
       ) : (
-        <>
-          <NavGroup label="System" items={SYSTEM_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
-        </>
+        <NavGroup label="System" items={SYSTEM_NAV} path={path} collapsed={collapsed} onNavigate={onNavigate} />
       )}
     </nav>
   );
@@ -738,6 +775,12 @@ export function AppShellClient({
   // literally instant transition, never full slide/translate motion, and never nothing
   // at all -- an abrupt hard cut is its own kind of jarring change).
   const reducedMotion = usePrefersReducedMotion();
+  const currentOrgRole = organizations.find((org) => org.id === currentOrganizationId)?.role;
+  const roleLabel = isPlatformAdmin
+    ? "Platform admin"
+    : currentOrgRole && (path.startsWith("/organizations/") || !hasResearcherParticipation)
+      ? ORG_ROLE_LABELS[currentOrgRole]
+      : "Researcher";
 
   return (
     <div className="relative min-h-dvh bg-canvas text-ink">
@@ -751,10 +794,23 @@ export function AppShellClient({
           background (docs/decisions/0062) rather than a flat opaque bar, so the warm
           gradient stays faintly visible as content scrolls beneath it. */}
       <header className="glass-surface sticky top-0 z-20 flex h-16 items-center gap-2 rounded-none border-x-0 border-t-0 px-3 sm:gap-3 sm:px-4 lg:px-6">
+        {/* Menu button + logo lead the bar, as on the reference guide: on phones it opens the
+            drawer, on desktop it folds the sidebar to its icon rail ("[" does the same). */}
         <IconButton label="Open navigation" variant="quiet" className="shrink-0 lg:hidden" onClick={() => setOpen(true)}>
           <List aria-hidden="true" className="size-5" />
         </IconButton>
-        <div className="lg:hidden">
+        <button
+          type="button"
+          onClick={() => toggleSidebar()}
+          aria-controls="desktop-sidebar"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={`${collapsed ? "Expand" : "Collapse"} sidebar  [`}
+          className={`hidden size-10 shrink-0 items-center justify-center rounded-full text-ink transition-colors duration-150 ease-out ${HOVER}:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus active:scale-[0.97] motion-reduce:active:scale-100 lg:inline-flex`}
+        >
+          <List aria-hidden="true" className="size-6" />
+        </button>
+        <div className="shrink-0 lg:w-44">
           <SidebarBrand compact />
         </div>
         {/* min-w-0: a flex child won't shrink below its content otherwise, and the search
@@ -777,11 +833,11 @@ export function AppShellClient({
         className={cn(
           "lg:grid lg:transition-[grid-template-columns] lg:duration-200 lg:ease-in-out motion-reduce:transition-none",
           instant && "lg:transition-none",
-          collapsed ? "lg:grid-cols-[4rem_minmax(0,1fr)]" : "lg:grid-cols-[15.5rem_minmax(0,1fr)]",
+          collapsed ? "lg:grid-cols-[4.5rem_minmax(0,1fr)]" : "lg:grid-cols-[15rem_minmax(0,1fr)]",
         )}
       >
-        {/* Sticky under the top bar, scrolling on its own when the nav is taller than the
-            screen, so the collapse control is always reachable. The rail lets flyouts escape. */}
+        {/* Sticky under the top bar. Rows scale with viewport height so the whole nav fits;
+            on a screen too short even for that it still scrolls, just without a scrollbar. */}
         <aside
           id="desktop-sidebar"
           aria-label="Sidebar"
@@ -791,27 +847,15 @@ export function AppShellClient({
           onBlur={() => setRailTip(null)}
           onScroll={() => setRailTip(null)}
           className={cn(
-            "glass-surface sticky top-16 hidden h-[calc(100dvh-4rem)] flex-col gap-6 overflow-y-auto overscroll-contain rounded-none border-y-0 border-l-0 py-3 lg:flex",
+            "nav-scope sticky top-16 hidden h-[calc(100dvh-4rem)] flex-col overflow-y-auto overscroll-contain bg-surface py-[clamp(0.375rem,1.2vh,0.75rem)] [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden",
             collapsed ? "px-2" : "px-3",
           )}
         >
-          {/* Toggle sits beside the brand (top), never at the bottom where fixed overlays
-              -- the dev badge, a chat widget -- would cover it. */}
-          <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>
-            <SidebarBrand iconOnly={collapsed} />
-            <button
-              type="button"
-              onClick={() => toggleSidebar()}
-              aria-controls="desktop-sidebar"
-              aria-expanded={!collapsed}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              data-rail-label="Expand sidebar  ["
-              title={collapsed ? undefined : "Collapse sidebar  ["}
-              className={`inline-flex size-10 shrink-0 items-center justify-center rounded-md text-ink-muted transition-[background-color,color] duration-150 ease-out ${HOVER}:bg-surface-muted ${HOVER}:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus active:scale-[0.97] motion-reduce:active:scale-100`}
-            >
-              {collapsed ? <CaretDoubleRight aria-hidden="true" className="size-[18px]" /> : <CaretDoubleLeft aria-hidden="true" className="size-[18px]" />}
-            </button>
-          </div>
+          {user && (
+            <div className="mb-[clamp(0.25rem,1vh,0.75rem)] border-b border-border pb-[clamp(0.25rem,1vh,0.75rem)]">
+              <SidebarUserCard user={user} roleLabel={roleLabel} collapsed={collapsed} onNavigate={close} />
+            </div>
+          )}
           <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} platformAdminNeedsMfa={platformAdminNeedsMfa} collapsed={collapsed} onExpand={() => toggleSidebar()} onNavigate={close} />
         </aside>
         {/* The rail's hover/focus label. One element that moves between icons: the first one
@@ -846,7 +890,7 @@ export function AppShellClient({
                 animate={reducedMotion ? { opacity: 1 } : { transform: "translateX(0%)", transition: { duration: 0.26, ease: [0.32, 0.72, 0, 1] } }}
                 exit={reducedMotion ? { opacity: 0 } : { transform: "translateX(-100%)", transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] } }}
                 transition={{ duration: 0.15 }}
-                className="glass-surface relative flex h-full w-72 flex-col gap-6 rounded-none border-y-0 border-l-0 p-3 shadow-xl"
+                className="nav-scope relative flex h-full w-72 flex-col gap-3 overflow-y-auto bg-surface p-3 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex items-center justify-between">
                   <SidebarBrand />
@@ -854,6 +898,11 @@ export function AppShellClient({
                     <X aria-hidden="true" className="size-5" />
                   </IconButton>
                 </div>
+                {user && (
+                  <div className="border-b border-border pb-3">
+                    <SidebarUserCard user={user} roleLabel={roleLabel} onNavigate={close} />
+                  </div>
+                )}
                 <SidebarNav path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} hasResearcherParticipation={hasResearcherParticipation} isPlatformAdmin={isPlatformAdmin} platformAdminNeedsMfa={platformAdminNeedsMfa} onNavigate={close} />
               </motion.aside>
             </motion.div>

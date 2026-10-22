@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, IconButton } from "../ui/button";
+import { IconButton } from "../ui/button";
 import { OrgLogo } from "../ui/org-logo";
 import { removeOrganizationLogoAction, uploadOrganizationLogoAction } from "../../actions/organization-logo";
 import { Trash } from "@phosphor-icons/react";

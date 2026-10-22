@@ -120,6 +120,18 @@
   --viz-grid: #eef0f3; --viz-axis: #c3c2b7;
 }
 
+/* The sidebar's navy panel (Oct 22 sidebar redesign). Same token names re-valued inside it,
+   so every nav component keeps using ink/surface/border and reads right on the dark ground.
+   Contrast on #0f1b2d: ink #eef2f7 ~15:1; ink-muted #a3b0c2 7.8:1; the red action icon is
+   a 3:1+ non-text mark, never body text here. */
+.nav-scope {
+  --canvas: #0f1b2d; --surface: #0f1b2d; --surface-raised: #17253b;
+  --surface-muted: rgba(255, 255, 255, 0.1); --surface-hover: rgba(255, 255, 255, 0.07);
+  --ink: #eef2f7; --ink-muted: #a3b0c2;
+  --border: rgba(255, 255, 255, 0.1); --border-strong: rgba(255, 255, 255, 0.18);
+  color: var(--ink);
+}
+
 /* netras.ai has a single light theme and no dark mode. .dark stays (layout.tsx still puts
    it on <html>) but resolves to the identical light palette -- no second theme. */
 .dark { color-scheme: light; }

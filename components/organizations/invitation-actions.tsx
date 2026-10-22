@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Button, IconButton } from "../ui/button";
+import { IconButton } from "../ui/button";
 import { cancelOrganizationInvitation, resendOrganizationInvitation } from "../../actions/organization-members";
 import type { OrganizationInvitationRecord } from "../../types/organization";
 import { ArrowClockwise, X } from "@phosphor-icons/react";
