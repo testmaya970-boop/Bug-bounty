@@ -10,7 +10,7 @@ import { determineDefaultDestination } from "@/lib/auth/default-destination";
 import { isBusinessEmail } from "@/lib/auth/business-email";
 import { perfTimed } from "@/lib/perf-trace";
 import { passwordProblem } from "@/lib/auth/password-policy";
-import { verifyCaptcha } from "@/lib/integrations/captcha";
+import { captchaConfig, verifyCaptcha } from "@/lib/integrations/captcha";
 import { headers } from "next/headers";
 
 export type AuthActionResult = { ok: true; status?: "confirm_email"; email?: string } | { ok: false; code: string; message: string };
@@ -83,9 +83,11 @@ export async function signUpAction(input: { email: string; password: string; int
   if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
 
   // Human check (lib/integrations/captcha.ts): sign-up is where account farms start.
-  const forwarded = (await headers()).get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? null;
-  if (!(await verifyCaptcha(input.captchaToken, forwarded))) {
-    return { ok: false, code: "CAPTCHA_REQUIRED", message: "Complete the human check, then try again." };
+  if (captchaConfig().provider !== "none") {
+    const forwarded = (await headers()).get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? null;
+    if (!(await verifyCaptcha(input.captchaToken, forwarded))) {
+      return { ok: false, code: "CAPTCHA_REQUIRED", message: "Complete the human check, then try again." };
+    }
   }
 
   // Defense in depth: SignUpForm already blocks a free-email-domain submission for

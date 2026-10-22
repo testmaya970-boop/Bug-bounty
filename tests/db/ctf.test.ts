@@ -86,7 +86,8 @@ describe("CTF write-ups", () => {
 
       await solve(db, author, "c-crypto-1");
       const official = await db.rows<{ is_official: boolean; body: string }>("select * from public.get_ctf_writeups('c-crypto-1')");
-      expect(official).toHaveLength(1);
+      // Other solvers' write-ups may exist (seeded E2E accounts keep theirs); count only the official one.
+      expect(official.filter((w) => w.is_official)).toHaveLength(1);
       expect(official[0].is_official).toBe(true);
 
       expect(await db.fails("select public.publish_ctf_writeup('c-crypto-1', 'too short')")).toMatch(/WRITEUP_TOO_SHORT/);
@@ -97,8 +98,8 @@ describe("CTF write-ups", () => {
 
       await solve(db, reader, "c-crypto-1");
       const seen = await db.rows<{ is_official: boolean; body: string; is_mine: boolean }>("select * from public.get_ctf_writeups('c-crypto-1')");
-      expect(seen.map((w) => w.is_official)).toEqual([true, false]);
-      expect(seen[1]).toMatchObject({ body: `${body} Edited.`, is_mine: false });
+      expect(seen[0].is_official).toBe(true);
+      expect(seen.find((w) => !w.is_official && w.body === `${body} Edited.`)).toMatchObject({ is_mine: false });
       // Direct table reads stay limited to one's own rows.
       expect(await db.rows("select * from public.ctf_writeups")).toHaveLength(0);
 
@@ -108,7 +109,8 @@ describe("CTF write-ups", () => {
       await db.as({ user: author });
       await db.query("select public.delete_my_ctf_writeup('c-crypto-1')");
       await db.as({ user: reader });
-      expect(await db.rows("select * from public.get_ctf_writeups('c-crypto-1')")).toHaveLength(1);
+      const after = await db.rows<{ body: string }>("select * from public.get_ctf_writeups('c-crypto-1')");
+      expect(after.some((w) => w.body === `${body} Edited.`)).toBe(false);
     });
   });
 

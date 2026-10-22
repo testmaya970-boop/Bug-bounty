@@ -43,7 +43,7 @@ import { listProgramMembers } from "@/services/programs";
 import { canCreateProgram } from "@/services/authorization";
 import type { CvssMetrics, Report, ReportCollaborator, ReportEvidence, ReportMediation, ReportMessage, ReportRetest, ReportSeverity, ReportStatus, ReportSummary } from "@/types/report";
 import type { Page } from "@/types/pagination";
-import { verifyCaptcha } from "@/lib/integrations/captcha";
+import { captchaConfig, verifyCaptcha } from "@/lib/integrations/captcha";
 import { getMySubmissionStanding } from "@/services/submission-signal";
 import { headers } from "next/headers";
 import { CVSS4_VECTOR_PATTERN, cvss4Score } from "@/lib/cvss4";
@@ -99,7 +99,7 @@ export async function submitReportAction(input: z.infer<typeof submitSchema> & {
   const user = await getCurrentUser();
   // New and limited-tier researchers prove they're human per report: that's where scripted
   // spam comes from. Trusted and standard researchers aren't asked (submission signal tiers).
-  const standing = user ? await getMySubmissionStanding() : null;
+  const standing = user && captchaConfig().provider !== "none" ? await getMySubmissionStanding() : null;
   if (standing && (standing.tier === "new" || standing.tier === "limited")) {
     const forwarded = (await headers()).get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? null;
     if (!(await verifyCaptcha(input.captchaToken, forwarded))) {
