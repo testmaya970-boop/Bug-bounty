@@ -19,6 +19,7 @@ import {
   listPendingDepositsForAdmin,
 } from "../../../services/billing";
 import { IssueInvoices } from "../../../components/platform/issue-invoices";
+import { IssueInvoiceNote } from "../../../components/documents/document-forms";
 import Link from "next/link";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { listCollusionSignalsForAdmin } from "../../../services/trust-signals";
@@ -263,6 +264,11 @@ export default async function PlatformPayoutsPage() {
               ))}
             </ul>
           )}
+          <div className="space-y-2 border-t border-border pt-4">
+            <h3 className="text-[13px] font-semibold text-ink">Credit and debit notes</h3>
+            <p className="text-[13px] text-ink-muted">Correct an issued invoice without changing it: a credit note for a refund or waiver, a debit note for an extra charge. The organization sees it in Billing documents.</p>
+            <IssueInvoiceNote invoices={invoices.map((inv) => ({ id: inv.id, label: `${inv.number}, ${inv.organizationName}, ${inv.currency} ${minorUnitsToDecimalString(inv.totalMinorUnits)}` }))} />
+          </div>
         </section>
       </div>
     </AppShell>

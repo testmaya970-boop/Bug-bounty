@@ -9,7 +9,7 @@
      Open Sans for body. --font-display is KEPT as a token (~100 `font-display` call sites)
      but now resolves to real Inter -- no separate faux-black display face. */
   --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-open-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   /* Motion curves (Emil Kowalski review, 21 Oct): the built-in CSS easings are too weak to feel
      intentional. Overriding --ease-out / --ease-in-out retunes every ease-out / ease-in-out
@@ -101,11 +101,15 @@
    finding never reads as a mere brand-red link); severity-high #c2410c 5.2:1 / 4.8:1;
    severity-medium #7a6b1a 5.3:1 / 4.9:1; severity-low = info; severity-none #4b5563 7.6:1.
    --accent-2 is now the near-black secondary fill (white text on it 19.8:1). */
+/* Oct 22 product-UI rebuild (Linear for navigation/sidebar/keyboard, GitHub for reports,
+   Stripe for finance, Wiz for posture, Datadog for platform ops): neutral cool grays with
+   quiet hairlines, Inter everywhere, and Unpatched red kept as the ONE accent. Contrast on
+   white: ink #16171a 18.4:1; ink-muted #62666d 5.8:1 (5.5:1 on #f7f7f8, the sidebar). */
 :root {
   color-scheme: light;
-  --canvas: #ffffff; --surface: #ffffff; --surface-muted: #f3f6f9; --surface-raised: #ffffff; --surface-hover: #fff5f5;
-  --ink: #0a0a0a; --ink-muted: #4b5563;
-  --border: #e5e7eb; --border-strong: #d1d5db;
+  --canvas: #ffffff; --surface: #ffffff; --surface-muted: #f2f2f4; --surface-raised: #ffffff; --surface-hover: #f6f6f7;
+  --ink: #16171a; --ink-muted: #62666d;
+  --border: #e6e6e9; --border-strong: #d2d3d8;
   --action: #ee0000; --action-hover: #c50000; --on-action: #ffffff; --focus: #ee0000;
   --accent-2: #0a0a0a; --on-accent-2: #ffffff;
   --info: #1d4ed8; --success: #15803d; --warning: #b45309; --danger: #c50000; --on-danger: #ffffff;
@@ -120,15 +124,11 @@
   --viz-grid: #eef0f3; --viz-axis: #c3c2b7;
 }
 
-/* The sidebar's navy panel (Oct 22 sidebar redesign). Same token names re-valued inside it,
-   so every nav component keeps using ink/surface/border and reads right on the dark ground.
-   Contrast on #0f1b2d: ink #eef2f7 ~15:1; ink-muted #a3b0c2 7.8:1; the red action icon is
-   a 3:1+ non-text mark, never body text here. */
+/* The sidebar panel (Linear-style): a step darker than the page, the active row a step
+   darker again. Same token names re-valued inside it, so nav components just use
+   surface/ink/border. The raised surface stays white for menus that open from it. */
 .nav-scope {
-  --canvas: #0f1b2d; --surface: #0f1b2d; --surface-raised: #17253b;
-  --surface-muted: rgba(255, 255, 255, 0.1); --surface-hover: rgba(255, 255, 255, 0.07);
-  --ink: #eef2f7; --ink-muted: #a3b0c2;
-  --border: rgba(255, 255, 255, 0.1); --border-strong: rgba(255, 255, 255, 0.18);
+  --surface: #f7f7f8; --surface-muted: #e9e9ec; --surface-hover: #efeff1; --surface-raised: #ffffff;
   color: var(--ink);
 }
 
@@ -225,7 +225,8 @@ body {
 }
 /* netras.ai's selection highlight: 18% red wash under #0a0a0a text. */
 ::selection { background: rgba(238, 0, 0, 0.18); color: #0a0a0a; }
-button, input, textarea, select { font: inherit; }
+/* In @layer base: unlayered, this beat every text-size utility on a button (they rendered 16px). */
+@layer base { button, input, textarea, select { font: inherit; } }
 code, pre, kbd, samp { font-family: var(--font-mono); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
 
@@ -248,8 +249,7 @@ code, pre, kbd, samp { font-family: var(--font-mono); }
    uppercase, no heavy display face. In @layer base (not unlayered) so it is a default
    only -- a component's own font-* or tracking-* utility class still wins. */
 @layer base {
-  h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.015em; }
-  h1 { font-weight: 800; }
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.011em; }
 }
 
 /* Shared soft-glass surface: a mostly-opaque tinted fill + a light backdrop blur + a
@@ -266,24 +266,23 @@ code, pre, kbd, samp { font-family: var(--font-mono); }
    In @layer components (through .elevation-shadow below) so a call site's own border-* or
    shadow-* utility wins over these defaults, as Tailwind intends. */
 @layer components {
+/* Oct 22: cards are flat hairline boxes (no resting shadow); only floating layers lift. */
 .glass-surface {
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .glass-surface-raised {
   background: var(--surface-raised);
   border: 1px solid var(--border);
-  box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 2px rgba(16, 17, 20, 0.04), 0 8px 24px -8px rgba(16, 17, 20, 0.14);
 }
 /* 2px over 160ms on the strong ease-out (was 4px, 200ms, built-in ease): cards are hovered
    dozens of times a day, so the lift is a hint, not a jump. */
 a:is(.glass-surface, .glass-surface-raised) { transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1), border-color 160ms cubic-bezier(0.23, 1, 0.32, 1); }
 @media (hover: hover) and (pointer: fine) {
   a:is(.glass-surface, .glass-surface-raised):hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.12);
-    border-color: rgba(238, 0, 0, 0.35);
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
   }
 }
 @media (prefers-reduced-motion: reduce) { a:is(.glass-surface, .glass-surface-raised):hover { transform: none; } }

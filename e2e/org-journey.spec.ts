@@ -400,7 +400,8 @@ test("org journey: researcher accepts an invitation, sees the finalized amount, 
   await page.getByRole("button", { name: "Accept" }).click();
   await expect(page.getByText(PRIVATE_PROGRAM_NAME)).not.toBeVisible();
 
-  // --- Now a participant, the private program is findable from the top-bar search (202610190001) --
+  // --- Now a participant, the private program is findable from the command menu's search (202610190001) --
+  await page.keyboard.press("Control+k");
   await page.getByRole("searchbox", { name: "Global search" }).fill(PRIVATE_PROGRAM_NAME);
   await page.getByRole("searchbox", { name: "Global search" }).press("Enter");
   await page.waitForURL(/\/search\?q=/);

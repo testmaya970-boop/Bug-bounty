@@ -50,3 +50,13 @@ export function parseDecimalToMinorUnits(input: string): number | null {
   const value = Number.parseInt(`${whole}${fraction}`, 10);
   return Number.isSafeInteger(value) ? value : null;
 }
+
+/** "INR 2,80,000.00" / "USD 5,000.00": grouped the way each currency is read (Indian lakh
+ * grouping for rupees), from the exact minor-unit string -- no floating point. */
+export function formatDocumentMoney(minor: number, currency: string): string {
+  const [whole, cents] = minorUnitsToDecimalString(minor).split(".");
+  const sign = whole.startsWith("-") ? "-" : "";
+  const digits = whole.replace("-", "");
+  const grouped = currency === "INR" && digits.length > 3 ? `${digits.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ",")},${digits.slice(-3)}` : digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${sign}${currency} ${grouped}.${cents}`;
+}

@@ -19,3 +19,4 @@ graphify-out/
 backups/
 .releases/
 .playwright-mcp/
+.arena/

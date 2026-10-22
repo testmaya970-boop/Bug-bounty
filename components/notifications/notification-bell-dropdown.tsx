@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useTransition } from "react";
+import React, { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { Bell } from "@phosphor-icons/react";
@@ -30,8 +30,13 @@ const PREVIEW_COUNT = 10;
  * work this session (docs/decisions/0055.1) -- never a full page reload to reflect the
  * user's own click.
  */
-export function NotificationBellDropdown({ initialUnreadCount }: { initialUnreadCount: number }) {
+/** align "left": the sidebar copy (Linear-style shell), whose panel opens rightward from a left-edge trigger. */
+export function NotificationBellDropdown({ initialUnreadCount, align = "right" }: { initialUnreadCount: number; align?: "left" | "right" }) {
+  const panelId = useId();
   const [open, setOpen] = useState(false);
+  // The sidebar copy scrolls (overflow-y), which would clip an absolute panel: it is pinned to
+  // the viewport at the trigger's position instead.
+  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
@@ -89,6 +94,10 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
 
   async function handleToggle() {
     const next = !open;
+    if (next && align === "left" && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setAnchor({ top: r.bottom + 6, left: Math.min(r.left, window.innerWidth - 336) });
+    }
     setOpen(next);
     if (next && !loaded) {
       setLoading(true);
@@ -138,17 +147,17 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
         type="button"
         onClick={handleToggle}
         aria-expanded={open}
-        aria-controls="recent-notifications"
+        aria-controls={panelId}
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
         title="Notifications"
-        className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-muted transition-colors duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-hover [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className={cn("relative inline-flex items-center justify-center rounded-md text-ink-muted", align === "left" ? "size-8" : "min-h-11 min-w-11", "transition-colors duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-hover [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus")}
       >
         <Bell aria-hidden="true" className="size-5" />
         {unreadCount > 0 && (
           // docs/decisions/0057: a bounded, 2-iteration glow-pulse on the unread count
           // itself -- the badge's real number is the signal; the pulse only draws a first
           // glance to it, it never substitutes for the count text.
-          <span aria-hidden="true" className={cn("absolute right-1.5 top-1.5 inline-flex size-4 items-center justify-center rounded-full bg-action font-mono text-[9px] font-bold text-canvas", pulse && "motion-safe:animate-glow-pulse")}>
+          <span aria-hidden="true" className={cn("absolute inline-flex", align === "left" ? "-right-0.5 -top-0.5" : "right-1.5 top-1.5", "size-4 items-center justify-center rounded-full bg-action font-mono text-[9px] font-bold text-on-action", pulse && "motion-safe:animate-glow-pulse")}>
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -159,7 +168,7 @@ export function NotificationBellDropdown({ initialUnreadCount }: { initialUnread
         // A named group, not role="menu": it holds links and a button, not menuitems.
         // Phones: a fixed sheet pinned under the 4rem top bar, inset from both edges, so it
         // can never hang off the left edge the way a right-anchored w-80 did at 320/375px.
-        <div id="recent-notifications" role="group" aria-label="Recent notifications" aria-hidden={!open} className={cn("fixed inset-x-2 top-16 z-30 rounded-md border border-border bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80", popoverMotion(open, "top-right"))}>
+        <div id={panelId} role="group" aria-label="Recent notifications" aria-hidden={!open} style={align === "left" && anchor ? { top: anchor.top, left: anchor.left } : undefined} className={cn("fixed z-40 rounded-lg border border-border bg-surface shadow-lg", align === "left" ? "w-80" : "inset-x-2 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80", popoverMotion(open, align === "left" ? "top-left" : "top-right"))}>
           <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
             <p className="text-sm font-semibold text-ink">Notifications</p>
             {unreadIds.length > 0 && (

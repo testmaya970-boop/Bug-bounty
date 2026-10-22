@@ -4,13 +4,13 @@ import React, { type InputHTMLAttributes, type TextareaHTMLAttributes, forwardRe
 import { cn } from "../../lib/cn";
 
 type FieldProps = { label: string; helperText?: string; error?: string; required?: boolean; className?: string };
-const inputClass = "min-h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70";
+const inputClass = "min-h-11 w-full rounded-md border border-border bg-surface px-3 text-[13px] [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:px-2.5 text-ink outline-none placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70";
 
 function FieldNote({ id, helperText, error }: { id: string; helperText?: string; error?: string }) {
   return <>{helperText && <p id={`${id}-help`} className="mt-1 text-xs text-ink-muted">{helperText}</p>}{error && <p id={`${id}-error`} role="alert" className="mt-1 text-xs font-medium text-danger">{error}</p>}</>;
 }
 
-export const Label = ({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) => <label className={cn("mb-1.5 block text-sm font-medium text-ink", className)} {...props} />;
+export const Label = ({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) => <label className={cn("mb-1 block text-[13px] font-medium text-ink", className)} {...props} />;
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & FieldProps>(function Input({ label, helperText, error, required, className, id: suppliedId, ...props }, ref) {
   const generatedId = useId(); const id = suppliedId ?? generatedId;

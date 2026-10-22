@@ -18,7 +18,7 @@ export function Tooltip({ label, children }: { label: string; children: ReactNod
 // A disclosure (button + aria-expanded/aria-controls + a named group of links), not an
 // ARIA menu: its contents are plain links and buttons, and role="menu" promises menuitems
 // and arrow-key navigation that a list of links does not have.
-export function DropdownMenu({ label, menuLabel = "Menu", children }: { label: ReactNode; menuLabel?: string; children: ReactNode }) {
+export function DropdownMenu({ label, menuLabel = "Menu", children, className, triggerClassName, align = "right" }: { label: ReactNode; menuLabel?: string; children: ReactNode; className?: string; triggerClassName?: string; align?: "left" | "right" }) {
   const menuId = useId();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -37,7 +37,7 @@ export function DropdownMenu({ label, menuLabel = "Menu", children }: { label: R
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
-  return <div ref={ref} className="relative inline-block"><button ref={triggerRef} type="button" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(!open)} className="min-h-11 rounded-md px-3 text-sm font-medium text-ink [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{label}</button><div id={menuId} role="group" aria-label={menuLabel} aria-hidden={!open} className={cn("glass-surface-raised absolute right-0 z-30 mt-1 min-w-44 rounded-md p-1 shadow-xl", popoverMotion(open, "top-right"))}>{children}</div></div>;
+  return <div ref={ref} className={cn("relative inline-block", className)}><button ref={triggerRef} type="button" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(!open)} className={cn("min-h-11 rounded-md px-3 text-sm font-medium text-ink [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus", triggerClassName)}>{label}</button><div id={menuId} role="group" aria-label={menuLabel} aria-hidden={!open} className={cn("glass-surface-raised absolute z-30 mt-1 min-w-44 rounded-md p-1 shadow-xl", align === "left" ? "left-0" : "right-0", popoverMotion(open, align === "left" ? "top-left" : "top-right"))}>{children}</div></div>;
 }
 
 export function Dialog({ open, title, children, onClose }: { open: boolean; title: string; children: ReactNode; onClose: () => void }) {
