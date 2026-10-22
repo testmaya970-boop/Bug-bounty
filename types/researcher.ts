@@ -1,7 +1,7 @@
 import type { ProgramStatus } from "./program";
 
 export type ProgramResearcherStatus = "active" | "suspended" | "revoked";
-export type ProgramAccessSource = "invitation" | "public";
+export type ProgramAccessSource = "invitation" | "public" | "request";
 
 /** A researcher's participation record for one program -- a third, separate
  * authorization domain from organization membership and program management. See

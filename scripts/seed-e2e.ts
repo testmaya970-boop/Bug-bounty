@@ -72,6 +72,8 @@ export const E2E_BILLING_ADMIN_EMAIL = "e2e.billing-admin@unpatched.demo";
 export const E2E_ORG_NAME = "E2E Journey Org";
 export const E2E_PUBLIC_PROGRAM_NAME = "E2E Public Program";
 export const E2E_PRIVATE_PROGRAM_NAME = "E2E Private Program";
+export const E2E_REQUEST_PROGRAM_NAME = "E2E Request Program";
+export const E2E_REQUESTER_EMAIL = "e2e.requester@unpatched.demo";
 
 // Turn 8b: e2e/notifications.spec.ts drives its own report through triage/accept/message
 // live, in a spec FILE Playwright can run in parallel with org-journey.spec.ts's own file
@@ -808,6 +810,17 @@ async function main() {
 
   let privateProgram = await ensureProgram(admin.id, org.id, E2E_PRIVATE_PROGRAM_NAME);
   privateProgram = await ensureScopeAndActivate(admin.id, privateProgram, "api.e2e-private.example", "private");
+
+  // e2e/request-to-join.spec.ts: a public program that reviews who joins (202610220002), and a
+  // researcher who asks. Reset every run: requests cleared, the researcher not yet a participant.
+  let requestProgram = await ensureProgram(admin.id, org.id, E2E_REQUEST_PROGRAM_NAME);
+  requestProgram = await ensureScopeAndActivate(admin.id, requestProgram, "api.e2e-request.example", "public");
+  const requester = await ensureUser(E2E_REQUESTER_EMAIL, "E2E Requester Researcher", "e2e_requester");
+  await withServiceRole(async (client) => {
+    await client.query("update public.programs set join_mode = 'request' where id = $1", [requestProgram.id]);
+    await client.query("update public.program_access_requests set status = 'withdrawn', decided_at = coalesce(decided_at, now()) where program_id = $1 and status in ('pending', 'declined')", [requestProgram.id]);
+    await client.query("delete from public.program_researchers where program_id = $1 and user_id = $2", [requestProgram.id, requester.id]);
+  });
   console.log("");
 
   // e2e/org-roles.spec.ts: one member per limited role. The manager and triager are
@@ -925,6 +938,7 @@ async function main() {
         organizationId: org.id,
         publicProgramId: publicProgram.id,
         privateProgramId: privateProgram.id,
+        requestProgramId: requestProgram.id,
         integrationsOrganizationId: integrations.organizationId,
         integrationsProgramId: integrations.programId,
         integrationsReportId: integrations.reportId,

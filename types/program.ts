@@ -36,6 +36,8 @@ export type ProgramSummary = {
   minSignal?: number | null;
   /** Public joins need at least this many valid reports; null = none. */
   minValidReports?: number | null;
+  /** open: anyone may join a public program; request: staff approve each researcher (202610220002). */
+  joinMode?: "open" | "request";
   createdBy: string;
   createdByName: string;
   createdAt: string;

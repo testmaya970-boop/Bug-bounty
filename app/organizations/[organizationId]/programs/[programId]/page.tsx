@@ -29,6 +29,8 @@ import { ProgramLifecycleControls } from "../../../../../components/programs/pro
 import { ProgramTeamPanel } from "../../../../../components/programs/program-team-panel";
 import { ProgramFocusAreasPanel } from "../../../../../components/programs/program-focus-areas-panel";
 import { JoinPublicProgramButton } from "../../../../../components/programs/join-public-program-button";
+import { AccessRequestsPanel, JoinModePanel, RequestToJoinPanel } from "../../../../../components/programs/program-access-request";
+import { getProgramJoinInfo, listProgramAccessRequests } from "../../../../../services/program-access";
 import { ProgramHealthSection } from "../../../../../components/programs/program-health-section";
 import { ProgramReportList } from "../../../../../components/reports/program-report-list";
 import { PrimaryActionPanel, RegistryList, SectionLabel } from "../../../../../components/ui/security-primitives";
@@ -250,7 +252,7 @@ async function renderProgramControlCenterPage({
     // slice (see docs/decisions/0041). So a genuinely public program still needs its own
     // check here: get_public_program is granted to `authenticated` too, and re-verifies
     // visibility/status server-side independently of anything this branch assumes.
-    const publicProgram = await getPublicProgram(programId);
+    const [publicProgram, joinInfo] = await Promise.all([getPublicProgram(programId), getProgramJoinInfo(programId)]);
     if (publicProgram && publicProgram.organizationId === organizationId) {
       // Staff of the owning organization land here too (billing admins, triagers of other
       // programs) -- they are not offered "Start researching": 202609280001 refuses it.
@@ -285,7 +287,7 @@ async function renderProgramControlCenterPage({
                 below the scope listing (see docs/decisions/0043). */}
             <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
-              <p className="mt-2 text-sm text-canvas/70">This program is open to the community.</p>
+              <p className="mt-2 text-sm text-canvas/70">{joinInfo?.joinMode === "request" ? "This program is public and reviews who joins." : "This program is open to the community."}</p>
               {publicProgram.programType === "vdp" && (
                 <p className="mt-2 text-sm text-canvas/70">This is a vulnerability-disclosure program: it does not pay bounties. Reports are still welcome and reviewed.</p>
               )}
@@ -296,9 +298,20 @@ async function renderProgramControlCenterPage({
                 // so it is never offered the button (it used to click through to a raw error).
                 <p className="mt-2 text-sm text-canvas/70">Organization accounts can&apos;t research programs. Researchers join from their own researcher account.</p>
               ) : publicProgram.status === "active" ? (
-                <div className="mt-4">
-                  <JoinPublicProgramButton organizationId={organizationId} programId={programId} />
-                </div>
+                <>
+                  {joinInfo && (joinInfo.minValidReports || joinInfo.minSignal != null) && (
+                    <p className="mt-2 text-sm text-canvas/70">
+                      To join on your own you need {[joinInfo.minValidReports ? `${joinInfo.minValidReports} valid reports` : null, joinInfo.minSignal != null ? `a signal of ${joinInfo.minSignal > 0 ? "+" : ""}${joinInfo.minSignal.toFixed(2)} or better` : null].filter(Boolean).join(" and ")}. Invited researchers aren&apos;t held to this.
+                    </p>
+                  )}
+                  {joinInfo?.joinMode === "request" ? (
+                    <RequestToJoinPanel organizationId={organizationId} programId={programId} info={joinInfo} />
+                  ) : (
+                    <div className="mt-4">
+                      <JoinPublicProgramButton organizationId={organizationId} programId={programId} />
+                    </div>
+                  )}
+                </>
               ) : (
                 <p className="mt-2 text-sm text-canvas/70">Reports cannot be submitted while this program is not active.</p>
               )}
@@ -378,7 +391,7 @@ async function renderProgramControlCenterPage({
   // both already known above. Collapsed into one Promise.all so the whole page pays for
   // exactly the slowest single query in this batch, not the sum of all of them.
   const policyPromise = getProgramPolicy(programId);
-  const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms, organizationMembers] =
+  const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations, accessRequests], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms, organizationMembers] =
     await perfTimed("program home: stage 2 (parallel batch)", () =>
       Promise.all([
         listActiveScopeEntries(programId),
@@ -389,7 +402,7 @@ async function renderProgramControlCenterPage({
         // Invitation-only read, deliberately separate from `program.description` --
         // see the same migration and getProgramAccessInstructions' own comment.
         getProgramAccessInstructions(programId),
-        canManageProgram ? Promise.all([listProgramResearchers(programId), listPendingProgramInvitations(programId)]) : Promise.resolve([[], []] as [ProgramResearcherRecord[], ProgramInvitationRecord[]]),
+        canManageProgram ? Promise.all([listProgramResearchers(programId), listPendingProgramInvitations(programId), listProgramAccessRequests(programId)]) : Promise.resolve([[], [], []] as [ProgramResearcherRecord[], ProgramInvitationRecord[], Awaited<ReturnType<typeof listProgramAccessRequests>>]),
         canManageProgram ? getProgramFocusAreas(programId) : Promise.resolve([]),
         // RLS already scopes this correctly per viewer: a manager sees every report for
         // the program, a researcher sees only their own (researcher_id = auth.uid()) --
@@ -587,9 +600,10 @@ async function renderProgramControlCenterPage({
         {canManageProgram && (
           <div className="space-y-3">
             <div>
-              <h2 className="text-base font-semibold text-ink">Track record</h2>
-              <p className="text-sm text-ink-muted">Ask researchers who join on their own for a proven record. People you invite are never blocked by this.</p>
+              <h2 className="text-base font-semibold text-ink">Who can join</h2>
+              <p className="text-sm text-ink-muted">Open, or by request with your team approving each researcher. Optionally ask researchers who join on their own for a proven record; people you invite or approve are never blocked by it.</p>
             </div>
+            <JoinModePanel organizationId={organizationId} programId={programId} joinMode={program.joinMode ?? "open"} />
             <ProgramTrackRecordPanel organizationId={organizationId} programId={programId} minSignal={program.minSignal ?? null} minValidReports={program.minValidReports ?? null} />
           </div>
         )}
@@ -685,6 +699,7 @@ async function renderProgramControlCenterPage({
               </div>
               <InviteResearcherDialog organizationId={organizationId} programId={programId} />
             </div>
+            <AccessRequestsPanel organizationId={organizationId} programId={programId} requests={accessRequests} />
             {pendingInvitations.length > 0 && <PendingProgramInvitationsPanel organizationId={organizationId} programId={programId} invitations={pendingInvitations} />}
             {researchers.length === 0 ? (
               <EmptyState title="No researchers are currently participating">Invite a researcher to get started.</EmptyState>

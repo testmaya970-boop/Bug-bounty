@@ -9,7 +9,6 @@ import { MarkdownTextarea } from "../ui/markdown-textarea";
 import { cn } from "../../lib/cn";
 import {
   acceptReportAction,
-  listReportsForProgramPageAction,
   markDuplicateAction,
   markInformativeAction,
   markNotApplicableAction,
@@ -23,6 +22,7 @@ import { reportStatusLabel } from "../../lib/report-status";
 import { useTriageStatus } from "./triage-status-rail";
 import type { CvssMetrics, ReportSeverity, ReportStatus } from "../../types/report";
 import { SEVERITY_LABEL, cvssSeverityMismatch } from "../../lib/cvss";
+import { suggestDuplicateReportsAction } from "../../actions/program-access";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -316,7 +316,7 @@ export function deriveDuplicateCandidates(reports: { id: string; title: string; 
   return reports.filter((report) => report.id !== currentReportId).map((report) => ({ id: report.id, title: report.title, displayTarget: report.displayTarget }));
 }
 
-function DuplicateTargetPicker({ programId, reportId, value, onChange }: { programId: string; reportId: string; value: string; onChange: (value: string) => void }) {
+function DuplicateTargetPicker({ reportId, value, onChange }: { reportId: string; value: string; onChange: (value: string) => void }) {
   const [candidates, setCandidates] = useState<DuplicateCandidate[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [useManualEntry, setUseManualEntry] = useState(false);
@@ -324,10 +324,12 @@ function DuplicateTargetPicker({ programId, reportId, value, onChange }: { progr
   useEffectOnce(() => {
     let cancelled = false;
     (async () => {
-      const result = await listReportsForProgramPageAction({ programId });
+      // Ranked by likeness across the whole program (suggest_duplicate_reports, 202610220002),
+      // same target first -- not just the first page of reports.
+      const result = await suggestDuplicateReportsAction({ reportId });
       if (cancelled) return;
       if (result.ok) {
-        setCandidates(deriveDuplicateCandidates(result.data.items, reportId));
+        setCandidates(deriveDuplicateCandidates(result.data.map((s) => ({ id: s.id, title: `${s.title} · ${Math.round(s.similarity * 100)}% alike${s.sameTarget ? ", same target" : ""}`, displayTarget: s.displayTarget })), reportId));
       } else {
         setCandidates([]);
         setUseManualEntry(true);
@@ -339,12 +341,12 @@ function DuplicateTargetPicker({ programId, reportId, value, onChange }: { progr
     };
   });
 
-  if (loading) return <p className="text-sm text-ink-muted">Loading this program's other reports…</p>;
+  if (loading) return <p className="text-sm text-ink-muted">Looking for similar earlier reports…</p>;
 
   if (useManualEntry || !candidates || candidates.length === 0) {
     return (
       <div className="space-y-2">
-        {candidates?.length === 0 && !useManualEntry && <p className="text-sm text-ink-muted">No other reports were found on this program's first page.</p>}
+        {candidates?.length === 0 && !useManualEntry && <p className="text-sm text-ink-muted">No earlier report in this program looks like this one.</p>}
         <Input label="Original report ID" required autoFocus value={value} onChange={(event) => onChange(event.target.value)} className="[&_input]:font-mono" />
       </div>
     );
@@ -416,7 +418,7 @@ export function MarkDuplicateDialog({ organizationId, programId, reportId }: Rep
       <Dialog open={open} title="Mark as a duplicate" onClose={close}>
         <form className="space-y-4" onSubmit={handleSubmit} noValidate>
           <p className="text-sm text-ink-muted">Pick the original report in this same program. This is a terminal state. It cannot be moved to another status afterward.</p>
-          {open && <DuplicateTargetPicker programId={programId} reportId={reportId} value={duplicateOfReportId} onChange={setDuplicateOfReportId} />}
+          {open && <DuplicateTargetPicker reportId={reportId} value={duplicateOfReportId} onChange={setDuplicateOfReportId} />}
           {error && <p className="text-sm text-danger">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={close} disabled={pending}>
