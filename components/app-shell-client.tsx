@@ -333,19 +333,19 @@ function HelpLink() {
 
 // Nav (22 Oct redesign, video-site guide layout on a navy panel): 14px regular labels, 24px
 // icons 24px from the label, a rounded tinted pill + medium weight for "you are here", and
-// sections split by hairlines under 16px titles. Rows and gaps scale with viewport height
-// (VH_ROW/VH_GAP) so every item fits without a scrollbar; long groups fold behind "Show more".
+// sections split by hairlines under 16px titles. Fixed reference-guide rhythm: 40px rows, 12px
+// section padding; long groups fold behind "Show more", and a very short screen scrolls without a scrollbar.
 // Shared by NavLink and OrgNavGroup so the two nav zones can never drift into two styles.
 const HOVER = "[@media(hover:hover)_and_(pointer:fine)]:hover" as const;
-const VH_ROW = "h-[clamp(1.5rem,4vh,2.5rem)]";
-const VH_GAP = "py-[clamp(0.125rem,0.8vh,0.75rem)]";
-const NAV_LINK_BASE = `group/nav relative flex ${VH_ROW} shrink-0 items-center gap-6 rounded-[10px] text-sm transition-[background-color,color] duration-150 ease-out motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`;
+const ROW = "h-10";
+const SECTION_GAP = "py-3";
+const NAV_LINK_BASE = `group/nav relative flex ${ROW} shrink-0 items-center gap-6 rounded-[10px] text-sm transition-[background-color,color] duration-150 ease-out motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`;
 const NAV_LINK_ACTIVE = "bg-surface-muted font-medium text-ink";
 const NAV_LINK_IDLE = `font-normal text-ink ${HOVER}:bg-surface-hover`;
 const NAV_ICON = "size-6 shrink-0";
 const navIconClass = (active: boolean) => cn(NAV_ICON, active ? "text-action" : "text-ink");
 // YouTube-style section block: a hairline above every section but the first.
-const NAV_SECTION = `border-t border-border ${VH_GAP} first:border-t-0 first:pt-0`;
+const NAV_SECTION = `border-t border-border ${SECTION_GAP} first:border-t-0 first:pt-0`;
 // Collapsed rail: the label stays in the DOM as the link's accessible name (sr-only); the
 // visible hover label is one fixed tooltip owned by AppShellClient, placed from the hovered
 // element's data-rail-label. A CSS flyout needed overflow:visible, which stopped the rail from
@@ -357,7 +357,7 @@ function navLinkClass(active: boolean, collapsed: boolean) {
 /** untitled: the first section reads without a title, as on the reference guide. */
 function NavGroupLabel({ label, collapsed, untitled = false }: { label: string; collapsed: boolean; untitled?: boolean }) {
   if (collapsed || untitled) return <p className="sr-only">{label}</p>;
-  return <p className="flex h-[clamp(1.25rem,3.2vh,2.25rem)] items-center px-3 text-base font-semibold text-ink">{label}</p>;
+  return <p className="px-3 pb-1 pt-1.5 text-base font-semibold text-ink">{label}</p>;
 }
 
 /** Long groups show `limit` rows, then a "Show more" row; the active item is never hidden. */
@@ -505,7 +505,7 @@ function OrganizationSwitcher({ organizations, currentOrganizationId, collapsed 
         onClick={() => setOpen(!open)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-[clamp(2.25rem,5.5vh,2.75rem)] w-full items-center gap-2 rounded-md border border-border px-2.5 text-left transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
+        className="flex min-h-11 w-full items-center gap-2 rounded-md border border-border px-2.5 text-left transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
       >
         <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", current.status === "active" ? "bg-success" : current.status === "suspended" ? "bg-danger" : "bg-ink-muted")} />
         <span className="min-w-0 flex-1">
@@ -572,7 +572,7 @@ function SidebarUserCard({ user, roleLabel, collapsed = false, onNavigate }: { u
       data-rail-label={`${user.displayName} · ${roleLabel}`}
       className={cn(
         `flex shrink-0 items-center gap-3 rounded-[10px] transition-colors duration-150 ease-out ${HOVER}:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`,
-        collapsed ? "mx-auto size-10 justify-center" : "px-2 py-[clamp(0.25rem,0.9vh,0.5rem)]",
+        collapsed ? "mx-auto size-10 justify-center" : "px-2 py-2",
       )}
     >
       <Avatar name={user.displayName} tinted />
@@ -847,12 +847,12 @@ export function AppShellClient({
           onBlur={() => setRailTip(null)}
           onScroll={() => setRailTip(null)}
           className={cn(
-            "nav-scope sticky top-16 hidden h-[calc(100dvh-4rem)] flex-col overflow-y-auto overscroll-contain bg-surface py-[clamp(0.375rem,1.2vh,0.75rem)] [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden",
+            "nav-scope sticky top-16 hidden h-[calc(100dvh-4rem)] flex-col overflow-y-auto overscroll-contain bg-surface py-3 [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden",
             collapsed ? "px-2" : "px-3",
           )}
         >
           {user && (
-            <div className="mb-[clamp(0.25rem,1vh,0.75rem)] border-b border-border pb-[clamp(0.25rem,1vh,0.75rem)]">
+            <div className="mb-3 border-b border-border pb-3">
               <SidebarUserCard user={user} roleLabel={roleLabel} collapsed={collapsed} onNavigate={close} />
             </div>
           )}
