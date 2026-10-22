@@ -5,6 +5,7 @@ import { SignUpForm } from "../../../components/auth/sign-up-form";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { activeEmailProvider } from "../../../lib/email-provider";
 import { isSafeRedirect } from "../../../lib/auth/safe-redirect";
+import { captchaConfig } from "../../../lib/integrations/captcha";
 
 export default async function ResearcherSignUpPage({ searchParams }: { searchParams: Promise<{ redirectTo?: string }> }) {
   const { redirectTo: requested } = await searchParams;
@@ -14,7 +15,7 @@ export default async function ResearcherSignUpPage({ searchParams }: { searchPar
 
   return (
     <AuthLayout eyebrow="Researcher" title="Create your researcher account" description="Find programs, submit vulnerabilities, and track your work." variant="researcher">
-      <SignUpForm intent="researcher" emailIsSimulated={activeEmailProvider.name === "dev"} redirectTo={redirectTo} />
+      <SignUpForm intent="researcher" emailIsSimulated={activeEmailProvider.name === "dev"} redirectTo={redirectTo} captcha={captchaConfig()} />
     </AuthLayout>
   );
 }

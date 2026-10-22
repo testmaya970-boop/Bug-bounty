@@ -42,6 +42,9 @@ import { listProgramMembers } from "@/services/programs";
 import { canCreateProgram } from "@/services/authorization";
 import type { CvssMetrics, Report, ReportCollaborator, ReportEvidence, ReportMediation, ReportMessage, ReportRetest, ReportSeverity, ReportStatus, ReportSummary } from "@/types/report";
 import type { Page } from "@/types/pagination";
+import { verifyCaptcha } from "@/lib/integrations/captcha";
+import { getMySubmissionStanding } from "@/services/submission-signal";
+import { headers } from "next/headers";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
@@ -87,11 +90,20 @@ const submitSchema = z.object({
   acknowledgedPolicyVersion: z.number().int().positive().nullable().optional(),
 });
 
-export async function submitReportAction(input: z.infer<typeof submitSchema>) {
+export async function submitReportAction(input: z.infer<typeof submitSchema> & { captchaToken?: string }) {
   const parsed = submitSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
 
   const user = await getCurrentUser();
+  // New and limited-tier researchers prove they're human per report: that's where scripted
+  // spam comes from. Trusted and standard researchers aren't asked (submission signal tiers).
+  const standing = user ? await getMySubmissionStanding() : null;
+  if (standing && (standing.tier === "new" || standing.tier === "limited")) {
+    const forwarded = (await headers()).get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? null;
+    if (!(await verifyCaptcha(input.captchaToken, forwarded))) {
+      return { ok: false as const, code: "CAPTCHA_REQUIRED", message: "Complete the human check above the Submit button, then try again." };
+    }
+  }
   try {
     const report = await withRequestLogging("report.submit", { actorId: user?.id, organizationId: parsed.data.organizationId }, () =>
       submitReport(

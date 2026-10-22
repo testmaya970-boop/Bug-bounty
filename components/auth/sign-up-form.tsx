@@ -10,6 +10,7 @@ import { Button } from "../ui/button";
 import { ConfirmEmailPending } from "./confirm-email-pending";
 import { signUpAction } from "../../actions/auth";
 import { isBusinessEmail } from "../../lib/auth/business-email";
+import { CaptchaField, type CaptchaClientConfig } from "./captcha-field";
 
 /** `intent` decides only which real, existing page a freshly-created account lands on --
  * see signUpAction's own comment. It never creates a role or an organization. For
@@ -17,7 +18,8 @@ import { isBusinessEmail } from "../../lib/auth/business-email";
  * code is confirmed, see verifySignupCodeAction) and requires a work email; for
  * "researcher" it collects a name and username, carried through as the verification
  * challenge's metadata (see services/auth.ts's signUpWithPassword) -- docs/decisions/0050. */
-export function SignUpForm({ intent, emailIsSimulated, redirectTo }: { intent?: "researcher" | "organization"; emailIsSimulated: boolean; redirectTo?: string }) {
+export function SignUpForm({ intent, emailIsSimulated, redirectTo, captcha = { provider: "none" } }: { intent?: "researcher" | "organization"; emailIsSimulated: boolean; redirectTo?: string; captcha?: CaptchaClientConfig }) {
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // Joining an organization that invited you: no new organization of your own is created
   // (verifySignupCodeAction skips it when redirectTo is set), so its name isn't asked for.
   const joiningByInvitation = intent === "organization" && Boolean(redirectTo?.startsWith("/invitations/"));
@@ -57,6 +59,7 @@ export function SignUpForm({ intent, emailIsSimulated, redirectTo }: { intent?: 
         displayName: intent === "researcher" ? displayName || undefined : undefined,
         username: intent === "researcher" ? username || undefined : undefined,
         companyName: intent === "organization" && !joiningByInvitation ? companyName || undefined : undefined,
+        captchaToken: captchaToken ?? undefined,
       });
       // A returned "confirm_email" result means a real 6-digit code was emailed and we
       // show the code-entry step below; any other returned result is an error.
@@ -125,6 +128,7 @@ export function SignUpForm({ intent, emailIsSimulated, redirectTo }: { intent?: 
             {error}
           </p>
         )}
+        <CaptchaField config={captcha} onToken={setCaptchaToken} />
         <Button type="submit" pending={pending} className="w-full justify-center">
           {pending ? "Creating account…" : "Create account"}
         </Button>

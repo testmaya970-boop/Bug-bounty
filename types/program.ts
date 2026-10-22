@@ -32,6 +32,10 @@ export type ProgramSummary = {
   engagementType: EngagementType;
   description: string | null;
   requiresKyc: boolean;
+  /** Public joins need at least this signal (-1..1); null = no requirement (202610220001). */
+  minSignal?: number | null;
+  /** Public joins need at least this many valid reports; null = none. */
+  minValidReports?: number | null;
   createdBy: string;
   createdByName: string;
   createdAt: string;

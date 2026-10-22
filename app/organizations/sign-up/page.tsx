@@ -5,6 +5,7 @@ import { SignUpForm } from "../../../components/auth/sign-up-form";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { activeEmailProvider } from "../../../lib/email-provider";
 import { isSafeRedirect } from "../../../lib/auth/safe-redirect";
+import { captchaConfig } from "../../../lib/integrations/captcha";
 
 export default async function OrganizationSignUpPage({ searchParams }: { searchParams: Promise<{ redirectTo?: string }> }) {
   const { redirectTo: requested } = await searchParams;
@@ -14,7 +15,7 @@ export default async function OrganizationSignUpPage({ searchParams }: { searchP
 
   return (
     <AuthLayout eyebrow="Organization" title="Create your organization account" description="Create programs, define scope, and triage reports. You'll create your organization next." variant="organization">
-      <SignUpForm intent="organization" emailIsSimulated={activeEmailProvider.name === "dev"} redirectTo={redirectTo} />
+      <SignUpForm intent="organization" emailIsSimulated={activeEmailProvider.name === "dev"} redirectTo={redirectTo} captcha={captchaConfig()} />
     </AuthLayout>
   );
 }

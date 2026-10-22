@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ackPolicy, fixture, inTx, newUser } from "./db";
+import { ackPolicy, adminSession, fixture, inTx, newUser, userId } from "./db";
 
 // Business rules enforced in the database (triggers and routers), checked end to end.
 
@@ -97,6 +97,58 @@ describe("program-match emails (202610210005)", () => {
       expect(first).not.toContain(other);
       expect(first).not.toContain(optedOut);
       expect(await publish()).not.toContain(idle); // weekly cap
+    });
+  });
+});
+
+describe("trust signals (202610220001)", () => {
+  it("a program's track-record requirement blocks public joins but not invitations", async () => {
+    await inTx(async (db) => {
+      await db.query("update public.programs set min_valid_reports = 3 where id = $1", [fixture.publicProgramId]);
+      const fresh = await newUser(db, "researcher");
+      await db.as({ user: fresh });
+      expect(await db.fails("select public.join_public_program($1)", [fixture.publicProgramId])).toMatch(/TRACK_RECORD_REQUIRED: this program asks for 3 valid reports \(you have 0\)/);
+      await db.query("reset role");
+      expect(await db.fails("insert into public.program_researchers (program_id, organization_id, user_id, status, source, joined_at) values ($1, $2, $3, 'active', 'invitation', now())", [fixture.publicProgramId, fixture.organizationId, fresh])).toBeNull();
+    });
+  });
+
+  it("the same report blasted to a third program in a day is refused", async () => {
+    await inTx(async (db) => {
+      const r = await newUser(db, "researcher");
+      await db.query("update public.users set submission_daily_cap_override = 100 where id = $1", [r]);
+      const programs = (await db.rows<{ id: string; target: string }>(
+        `select p.id, min(s.target) as target from public.programs p join public.program_scope_entries s on s.program_id = p.id and s.status = 'active' and s.scope_state = 'in_scope' and s.asset_type = 'domain'
+         where p.status = 'active' and p.visibility = 'public' and p.min_signal is null and p.min_valid_reports is null and not p.requires_kyc group by p.id limit 3`,
+      ));
+      expect(programs.length, "seed has 3 public programs with a domain in scope").toBe(3);
+      const text = "Reflected XSS in the search box: the q parameter is echoed into the page without encoding.";
+      const results: (string | null)[] = [];
+      for (const p of programs) {
+        await db.as({ user: r });
+        await db.query("select public.join_public_program($1)", [p.id]);
+        await db.query("select set_config('app.acknowledged_policy_version', coalesce((select version_number::text from public.program_policy_versions where program_id = $1 and superseded_at is null), ''), true)", [p.id]);
+        results.push(await db.fails("select public.submit_report($1, 'domain', $2, 'Reflected XSS in search', $3, 'cross_site_scripting', 'i', 'low')", [p.id, p.target, text]));
+      }
+      expect(results[0]).toBeNull();
+      expect(results[1]).toBeNull();
+      expect(results[2]).toMatch(/NEAR_DUPLICATE_BLAST/);
+    });
+  });
+
+  it("a researcher sharing a sign-in network with a paying organization's member is flagged for admins", async () => {
+    await inTx(async (db) => {
+      const admin = await userId(db, "e2e.platform-admin@unpatched.demo");
+      const owner = await userId(db, "e2e.admin@unpatched.demo");
+      const paid = await db.one<{ researcher_id: string }>("select researcher_id from public.payment_obligations where organization_id = $1 and status <> 'cancelled' limit 1", [fixture.organizationId]);
+      expect(paid, "seed has a payment obligation").toBeTruthy();
+      for (const u of [owner, paid.researcher_id]) {
+        await db.query("insert into public.sessions (id, user_id, token_hash, aal, ip) values (gen_random_uuid(), $1, 'fp-' || gen_random_uuid(), 'aal1', '203.0.113.77')", [u]);
+      }
+      const session = await adminSession(db, admin);
+      await db.as({ user: admin, session });
+      const flags = await db.rows<{ researcher_id: string; organization_id: string }>("select researcher_id, organization_id from public.list_collusion_signals_for_admin()");
+      expect(flags).toContainEqual(expect.objectContaining({ researcher_id: paid.researcher_id, organization_id: fixture.organizationId }));
     });
   });
 });

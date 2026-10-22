@@ -24,6 +24,7 @@ import { ProgramAccessInstructionsEditor, ProgramAccessInstructionsNotice } from
 import { ProgramAccessFileEditor, ProgramAccessFileNotice } from "../../../../../components/programs/program-access-file-panel";
 import { getProgramAccessFile } from "../../../../../services/program-access-file";
 import { ProgramKycPanel } from "../../../../../components/programs/program-kyc-panel";
+import { ProgramTrackRecordPanel } from "../../../../../components/programs/program-track-record-panel";
 import { ProgramLifecycleControls } from "../../../../../components/programs/program-lifecycle-controls";
 import { ProgramTeamPanel } from "../../../../../components/programs/program-team-panel";
 import { ProgramFocusAreasPanel } from "../../../../../components/programs/program-focus-areas-panel";
@@ -580,6 +581,16 @@ async function renderProgramControlCenterPage({
               <p className="text-sm text-ink-muted">Require a researcher to complete identity (KYC) verification before they can join or submit reports to this program.</p>
             </div>
             <ProgramKycPanel organizationId={organizationId} programId={programId} requiresKyc={program.requiresKyc} />
+          </div>
+        )}
+
+        {canManageProgram && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Track record</h2>
+              <p className="text-sm text-ink-muted">Ask researchers who join on their own for a proven record. People you invite are never blocked by this.</p>
+            </div>
+            <ProgramTrackRecordPanel organizationId={organizationId} programId={programId} minSignal={program.minSignal ?? null} minValidReports={program.minValidReports ?? null} />
           </div>
         )}
 

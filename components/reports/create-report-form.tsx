@@ -22,6 +22,7 @@ import type { ProgramAssetType } from "../../types/scope";
 import type { ReportSeverity, ReportWeaknessType } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
 import { Trash } from "@phosphor-icons/react";
+import { CaptchaField, type CaptchaClientConfig } from "../auth/captcha-field";
 
 const ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -146,9 +147,11 @@ export function classifyFailure(code: string, message: string): SubmitFailure {
       return { impactError: message };
     case "POLICY_NOT_ACKNOWLEDGED":
       return { policyError: "The program policy changed. Read and accept the current version before submitting." };
+    case "CAPTCHA_REQUIRED":
     case "SUBMISSIONS_PAUSED":
     case "DAILY_LIMIT":
     case "NEAR_DUPLICATE":
+    case "NEAR_DUPLICATE_BLAST":
       // Anti-abuse rules (202610210001): the database message says exactly why and what to do
       // (when submissions resume, how the limit grows, which earlier report to add to).
       return { banner: message };
@@ -220,6 +223,7 @@ export function CreateReportForm({
   policy = null,
   initialDraft = null,
   savedTemplates: initialSavedTemplates = [],
+  captcha = { provider: "none" },
 }: {
   organizationId: string;
   programId: string;
@@ -231,8 +235,11 @@ export function CreateReportForm({
   initialDraft?: DraftFields | null;
   /** The researcher's own templates from Settings > Report Templates. */
   savedTemplates?: ReportTemplate[];
+  /** Human check for new and limited-tier researchers (the page decides; the action re-checks). */
+  captcha?: CaptchaClientConfig;
 }) {
   const router = useRouter();
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [assetType, setAssetType] = useState<ProgramAssetType>("domain");
   const [target, setTarget] = useState("");
@@ -469,6 +476,7 @@ export function CreateReportForm({
         impact,
         researcherSeverity: researcherSeverity || undefined,
         acknowledgedPolicyVersion: policy && policyAccepted ? policy.versionNumber : null,
+        captchaToken: captchaToken ?? undefined,
       });
       if (!result.ok) {
         // Entered content is deliberately never cleared on failure -- the researcher
@@ -816,6 +824,12 @@ export function CreateReportForm({
                 Save template
               </Button>
             </div>
+          </div>
+        )}
+
+        {captcha.provider !== "none" && (
+          <div className="flex justify-end">
+            <CaptchaField config={captcha} onToken={setCaptchaToken} />
           </div>
         )}
 

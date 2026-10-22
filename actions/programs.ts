@@ -14,6 +14,7 @@ import {
   resumeProgram,
   setProgramFocusAreas,
   setProgramKycRequirement,
+  setProgramTrackRecordRequirement,
   setProgramVisibility,
   submitProgramForReview,
   unassignProgramMember,
@@ -148,6 +149,21 @@ export async function setProgramKycRequirementAction(input: { organizationId: st
   const parsed = setKycRequirementSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: "Check the form and try again." };
   const result = await toLifecycleResult(setProgramKycRequirement(parsed.data.programId, parsed.data.requiresKyc));
+  if (result.ok) revalidateProgramPaths(parsed.data.organizationId, parsed.data.programId);
+  return result;
+}
+
+const trackRecordSchema = z.object({
+  organizationId: z.string().uuid(),
+  programId: z.string().uuid(),
+  minSignal: z.number().min(-1, "Choose a signal between -1.00 and 1.00.").max(1, "Choose a signal between -1.00 and 1.00.").nullable(),
+  minValidReports: z.number().int().min(0, "Choose 0 or more valid reports.").max(1000, "Use 1000 or fewer.").nullable(),
+});
+
+export async function setProgramTrackRecordRequirementAction(input: z.infer<typeof trackRecordSchema>): Promise<ActionResult<ProgramSummary>> {
+  const parsed = trackRecordSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  const result = await toLifecycleResult(setProgramTrackRecordRequirement(parsed.data.programId, parsed.data.minSignal, parsed.data.minValidReports));
   if (result.ok) revalidateProgramPaths(parsed.data.organizationId, parsed.data.programId);
   return result;
 }

@@ -15,6 +15,7 @@ import { getMyReportDraft } from "../../../../../../../services/reports";
 import { listMyReportTemplates } from "../../../../../../../services/report-templates";
 import { getMySubmissionStanding } from "../../../../../../../services/submission-signal";
 import { SubmissionStandingPanel } from "../../../../../../../components/reports/submission-standing";
+import { captchaConfig } from "../../../../../../../lib/integrations/captcha";
 import type { DraftFields } from "../../../../../../../components/reports/create-report-form";
 import { getCurrentUser } from "../../../../../../../lib/auth/current-user";
 
@@ -84,7 +85,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
           </Alert>
         )}
         {standing && <SubmissionStandingPanel standing={standing} />}
-        <CreateReportForm organizationId={organizationId} programId={programId} programName={program.name} inScopeTargets={inScopeTargets} policy={policy} initialDraft={initialDraft} savedTemplates={savedTemplates} />
+        <CreateReportForm organizationId={organizationId} programId={programId} programName={program.name} inScopeTargets={inScopeTargets} policy={policy} initialDraft={initialDraft} savedTemplates={savedTemplates} captcha={standing && (standing.tier === "new" || standing.tier === "limited") ? captchaConfig() : { provider: "none" }} />
       </div>
     </AppShell>
   );

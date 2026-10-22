@@ -16,7 +16,7 @@ export { programStatusLabel } from "@/lib/program-status";
 // own dedicated, separately-authorized RPC (getProgramAccessInstructions below), never
 // riding along on a generic programs-row fetch every caller of getProgram/
 // listProgramsForOrganization shares.
-const PROGRAM_SELECT = `p.id, p.organization_id, p.name, p.status, p.visibility, p.program_type, p.engagement_type, p.description, p.requires_kyc, p.created_by, p.created_at, p.updated_at, u.display_name as creator_display_name`;
+const PROGRAM_SELECT = `p.id, p.organization_id, p.name, p.status, p.visibility, p.program_type, p.engagement_type, p.description, p.requires_kyc, p.min_signal, p.min_valid_reports, p.created_by, p.created_at, p.updated_at, u.display_name as creator_display_name`;
 
 type ProgramRow = {
   id: string;
@@ -28,6 +28,8 @@ type ProgramRow = {
   engagement_type: EngagementType;
   description: string | null;
   requires_kyc: boolean;
+  min_signal?: string | number | null;
+  min_valid_reports?: number | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -45,6 +47,8 @@ function mapProgramRow(row: ProgramRow): ProgramSummary {
     engagementType: row.engagement_type,
     description: row.description,
     requiresKyc: row.requires_kyc,
+    minSignal: row.min_signal == null ? null : Number(row.min_signal),
+    minValidReports: row.min_valid_reports ?? null,
     createdBy: row.created_by,
     createdByName: row.creator_display_name ?? "Unknown member",
     createdAt: row.created_at,
@@ -244,6 +248,20 @@ export async function setProgramVisibility(programId: string, visibility: "priva
 /** Independent of lifecycle status, mirroring setProgramVisibility -- an organization can
  * require identity verification before a researcher can join or submit to a specific
  * program. See db/migrations/202609050012_program_kyc_requirement.sql. */
+/** Track record a researcher needs to join this program publicly (202610220001). */
+export async function setProgramTrackRecordRequirement(programId: string, minSignal: number | null, minValidReports: number | null): Promise<ProgramSummary> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<Omit<ProgramRow, "creator_display_name">>(client, "public.set_program_track_record_requirement", [programId, minSignal, minValidReports]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return mapProgramRpcResult(rows[0]);
+}
+
 export async function setProgramKycRequirement(programId: string, requiresKyc: boolean): Promise<ProgramSummary> {
   const actor = await getCurrentUser();
   let rows;

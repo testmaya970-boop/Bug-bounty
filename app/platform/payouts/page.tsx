@@ -21,6 +21,7 @@ import {
 import { IssueInvoices } from "../../../components/platform/issue-invoices";
 import Link from "next/link";
 import { getCurrentUser } from "../../../lib/auth/current-user";
+import { listCollusionSignalsForAdmin } from "../../../services/trust-signals";
 import { DEPOSIT_METHOD_LABEL } from "../../../lib/billing-labels";
 import { minorUnitsToDecimalString } from "../../../lib/money";
 
@@ -34,11 +35,12 @@ export default async function PlatformPayoutsPage() {
   if (!user) redirect("/sign-in?redirectTo=/platform/payouts" as Route);
   if (!(await isPlatformAdmin())) notFound();
 
-  const [deposits, payouts, disputed, invoices] = await Promise.all([
+  const [deposits, payouts, disputed, invoices, collusion] = await Promise.all([
     listPendingDepositsForAdmin(),
     listManualPayoutsForAdmin(),
     listDisputedObligationsForAdmin(),
     listInvoices(null, 20),
+    listCollusionSignalsForAdmin(),
   ]);
   const now = new Date();
   const lastMonth = new Date(
@@ -90,6 +92,28 @@ export default async function PlatformPayoutsPage() {
             </ul>
           )}
         </section>
+
+        {collusion.length > 0 && (
+          <section className="space-y-3" aria-labelledby="collusion-heading">
+            <h2 id="collusion-heading" className="text-xs font-semibold uppercase tracking-wide text-warning">Possible collusion</h2>
+            <p className="text-sm text-ink-muted">
+              These researchers signed in from the same network as a member of an organization that awarded them. Shared offices, VPNs and universities are common innocent causes. Check before you send their payouts.
+            </p>
+            <ul className="divide-y divide-border rounded-lg border border-warning/40 bg-surface">
+              {collusion.map((c) => (
+                <li key={`${c.researcherId}-${c.organizationId}`} className="px-4 py-3 text-sm">
+                  <p className="break-words font-medium text-ink">
+                    {c.researcherName} <span className="font-normal text-ink-muted">and</span> {c.organizationName}
+                  </p>
+                  <p className="mt-0.5 break-all text-xs text-ink-muted">
+                    {c.researcherEmail ?? "no email"} · {c.sharedNetworks} shared network{c.sharedNetworks === 1 ? "" : "s"}, last <LocalTime value={c.lastShared} /> · {c.awards} award{c.awards === 1 ? "" : "s"} totalling{" "}
+                    <span className="font-mono tabular-nums">{c.currency} {minorUnitsToDecimalString(c.awardedMinorUnits)}</span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className="space-y-3">
           <SectionLabel>Payouts to send</SectionLabel>
