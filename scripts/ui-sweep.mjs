@@ -32,7 +32,7 @@ const MAX_PAGES = 90;
 
 const PUBLIC = ["/", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/researchers/sign-up", "/organizations/sign-up", "/help", "/safe-harbor", "/disclosures", "/programs", "/researchers", "/researchers/community", "/learn", "/ctf", "/coming-soon"];
 const SETTINGS = ["", "/profile", "/password", "/security", "/notifications", "/payments", "/api-tokens", "/calendar", "/collaboration", "/digital-agreements", "/external-services", "/feedback", "/invitations", "/recovery", "/report-templates", "/reputation", "/skills", "/subscriptions", "/swag", "/deactivate"].map((s) => `/settings${s}`);
-const SIGNED_IN = ["/", "/programs", "/reports", "/bounties", "/notifications", "/assistant", "/learn", "/ctf", "/organizations", ...SETTINGS];
+const SIGNED_IN = ["/", "/programs", "/reports", "/bounties", "/notifications", "/learn", "/ctf", "/organizations", ...SETTINGS];
 const ORG = ["", "/programs", "/findings", "/assets", "/activity", "/analytics", "/members", "/researchers", "/payments", "/settings"];
 const ROLES = {
   anonymous: { email: null, seeds: PUBLIC },

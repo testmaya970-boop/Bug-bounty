@@ -20,7 +20,6 @@ import {
   Bell,
   Question,
   HourglassMedium,
-  ChatCircleDots,
   Pulse,
   ChartLineUp,
   ClipboardText,
@@ -134,15 +133,10 @@ const SYSTEM_NAV: NavItem[] = [
   // rather than a dead link (matches HackerOne's own reference nav, which documents
   // "Coming Soon" as its own destination).
   { href: "/coming-soon" as Route, label: "Coming Soon", icon: HourglassMedium },
-  // Item 15 of the 15-point nav map (Turn 6, phase/9-ia) -- same honest-stub posture as
-  // Coming Soon above: no chat, no model, just what's real (a waitlist signup). See
-  // app/hai/page.tsx's own comment.
-  { href: "/assistant" as Route, label: "Assistant", icon: ChatCircleDots },
 ];
 
 // A platform-admin-only account (isPlatformAdminOnly below) has no researcher/org context
-// for "Coming Soon" or "Assistant" to mean anything -- both are researcher-facing feature
-// previews, confirmed live to have zero relevance to an admin-only sidebar. Notifications
+// for "Coming Soon" to mean anything -- it is a researcher-facing feature preview, confirmed live to have zero relevance to an admin-only sidebar. Notifications
 // stays (platform-admin actions -- approvals, rejections -- generate real notifications
 // too), just narrowed to the one real destination for this context.
 const PLATFORM_SYSTEM_NAV: NavItem[] = [{ href: "/notifications" as Route, label: "Notifications", icon: Bell }];

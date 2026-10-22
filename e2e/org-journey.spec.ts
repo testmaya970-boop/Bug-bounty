@@ -391,7 +391,7 @@ test("nav de-duplication: every one of the nine org routes highlights exactly on
   await signOut(page);
 });
 
-test("org journey: researcher accepts an invitation, sees the finalized amount, gets notified, and reaches the Assistant", async ({ page }) => {
+test("org journey: researcher accepts an invitation, sees the finalized amount, and gets notified", async ({ page }) => {
   await signIn(page, INVITED_EMAIL);
 
   // --- Accept the (seeded) pending private-program invitation via the real accept flow --
@@ -432,11 +432,6 @@ test("org journey: researcher accepts an invitation, sees the finalized amount, 
   await page.goto("/reports");
   await expect(page.getByText("Preview")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /E2E seed:/ }).first()).toBeVisible();
-
-  // --- Hai reachable, honest stub, real waitlist join -----------------------------------
-  await page.getByRole("link", { name: "Assistant", exact: true }).click();
-  await expect(page.getByRole("heading", { name: /Unpatched Assistant, a co-pilot for triage/ })).toBeVisible();
-  await expect(page.getByText(/Nothing is built yet/)).toBeVisible();
 
   await signOut(page);
 });
