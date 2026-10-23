@@ -75,6 +75,8 @@ export async function newUser(db: Db, type: "researcher" | "organization", tag =
   await db.query("reset role");
   const u = await db.one<{ id: string }>("select id from public.create_user($1, 'x', $2, $3)", [`dbtest.${tag}@unpatched.demo`, `DB Test ${tag}`, `dbtest_${tag}`]);
   await db.query("update public.users set email_verified_at = now(), account_type = $2 where id = $1", [u.id, type]);
+  // Researchers must have a verified identity to submit reports (202610230008).
+  if (type === "researcher") await db.query("insert into public.researcher_kyc (user_id, passport_status) values ($1, 'verified')", [u.id]);
   return u.id;
 }
 

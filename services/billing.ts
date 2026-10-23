@@ -20,6 +20,8 @@ export type OrganizationDeposit = {
   payerReference: string;
   status: "pending" | "confirmed" | "rejected" | "failed";
   reviewNote: string | null;
+  /** What the payer was charged (amount + processing fee) for an online payment. */
+  chargedMinorUnits: number | null;
   /** Card deposits only: who took the card (sandbox | razorpay | stripe). */
   provider: string | null;
   createdAt: string;
@@ -49,10 +51,10 @@ export async function getOrganizationBalances(organizationId: string): Promise<O
 
 /** Read under RLS: finance roles of the organization only. */
 export async function listOrganizationDeposits(organizationId: string): Promise<OrganizationDeposit[]> {
-  type Row = { id: string; currency: string; amount_minor_units: string; method: DepositMethod; payer_reference: string; status: OrganizationDeposit["status"]; review_note: string | null; provider: string | null; created_at: string };
+  type Row = { id: string; currency: string; amount_minor_units: string; method: DepositMethod; payer_reference: string; status: OrganizationDeposit["status"]; review_note: string | null; provider: string | null; charged_minor_units: string | null; created_at: string };
   const result = await asActor((client) =>
     client.query<Row>(
-      "select id, currency, amount_minor_units, method, payer_reference, status, review_note, provider, created_at from public.organization_deposits where organization_id = $1 order by created_at desc limit 50",
+      "select id, currency, amount_minor_units, method, payer_reference, status, review_note, provider, charged_minor_units, created_at from public.organization_deposits where organization_id = $1 order by created_at desc limit 50",
       [organizationId],
     ),
   );
@@ -64,6 +66,7 @@ export async function listOrganizationDeposits(organizationId: string): Promise<
     payerReference: r.payer_reference,
     status: r.status,
     reviewNote: r.review_note,
+    chargedMinorUnits: r.charged_minor_units === null ? null : Number(r.charged_minor_units),
     provider: r.provider,
     createdAt: new Date(r.created_at).toISOString(),
   }));

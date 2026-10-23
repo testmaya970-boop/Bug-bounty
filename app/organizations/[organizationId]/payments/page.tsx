@@ -26,9 +26,7 @@ import { listCurrentUserOrganizations } from "../../../../services/organizations
 import { listPaymentLedgerForBilling } from "../../../../services/payments";
 import {
   cardFundingOptions,
-  fundingReference,
   getBillingProfile,
-  getFundingInstructions,
   getOrganizationBalances,
   listBalanceAlerts,
   listInvoices,
@@ -183,12 +181,7 @@ export default async function OrganizationPaymentsPage({
           </p>
           <div className="flex flex-wrap gap-2">
             <HowPayingWorks routes={payoutRoutes} />
-            <AddFunds
-              organizationId={organizationId}
-              instructions={getFundingInstructions()}
-              reference={fundingReference(organizationId)}
-              cardOptions={cardFundingOptions()}
-            />
+            <AddFunds organizationId={organizationId} cardOptions={cardFundingOptions()} />
           </div>
         </div>
         {cardReturn === "done" && (
@@ -399,7 +392,7 @@ export default async function OrganizationPaymentsPage({
                   </span>
                   <span className="text-ink-muted">
                     {DEPOSIT_METHOD_LABEL[d.method]}
-                    {d.method !== "card" && (
+                    {d.method !== "card" ? (
                       <>
                         {" "}
                         ·{" "}
@@ -407,6 +400,9 @@ export default async function OrganizationPaymentsPage({
                           {d.payerReference}
                         </span>
                       </>
+                    ) : (
+                      // The provider's own confirmation: method and payment reference.
+                      d.status === "confirmed" && d.reviewNote && <> · {d.reviewNote}</>
                     )}
                   </span>
                   <span

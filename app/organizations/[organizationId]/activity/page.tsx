@@ -20,8 +20,8 @@ import { rangeDays } from "../../../../lib/viz";
  * Audit log: every change made in the organization -- scope added, edited or removed, programs
  * changed, members and researchers added or removed, billing -- with who, when and exactly what
  * changed (before → after), filterable by category, text and dates. Owner / security admin only
- * (audit_logs' read policy; search_organization_audit_log checks the same). The activity charts
- * for the selected window sit below the log.
+ * (audit_logs' read policy; search_organization_audit_log checks the same). The overview charts
+ * for the selected window come first, the log below them.
  */
 export default async function OrganizationActivityPage({ params, searchParams }: { params: Promise<{ organizationId: string }>; searchParams: Promise<Search> }) {
   return perfTimed("route: activity (total)", () => renderActivityPage(params, searchParams));
@@ -65,7 +65,9 @@ async function renderActivityPage(paramsPromise: Promise<{ organizationId: strin
 
         <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
-        <div>
+        <ActivityDashboard data={dashboard} days={days} organizationId={organizationId} />
+
+        <div className="border-t border-border pt-6">
           <h2 id="audit-log" className="text-[15px] font-semibold text-ink">
             Every change, newest first
           </h2>
@@ -73,9 +75,6 @@ async function renderActivityPage(paramsPromise: Promise<{ organizationId: strin
         </div>
         <AuditLogTable basePath={`/organizations/${organizationId}/activity`} filters={filters} entries={log.items} next={log.next} />
 
-        <div className="border-t border-border pt-6">
-          <ActivityDashboard data={dashboard} days={days} organizationId={organizationId} />
-        </div>
       </div>
     </AppShell>
   );

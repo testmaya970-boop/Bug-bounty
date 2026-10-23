@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { ClientErrorListener } from "../components/client-error-listener";
 import { TimeZoneProvider } from "../components/ui/local-time";
@@ -10,8 +10,8 @@ import { TIME_ZONE_COOKIE, isValidTimeZone } from "../lib/format-date";
 // Open Sans 400-700 for body/UI, plus JetBrains Mono for code/data. All loaded as CSS
 // variables here, once, at the root -- consumed via globals.css's --font-display/
 // --font-sans/--font-mono tokens (@theme inline), never re-imported per component.
-// Inter for everything (Oct 22, Linear-style UI): one face, 400-800, tight at small sizes.
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-inter", display: "swap" });
+// Nunito Sans for everything (Oct 23, matching comolho.com's type): body and bold headings in one face.
+const nunito = Nunito_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-nunito", display: "swap" });
 // JetBrains Mono: every existing `font-mono` call site (targets, report/org ids, CVSS
 // scores, bounty figures) previously fell through to Tailwind's default mono stack, which
 // resolves to whatever system monospace font the visitor's OS happens to have -- never a
@@ -64,7 +64,7 @@ async function viewerTimeZone(): Promise<string | null> {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const timeZone = await viewerTimeZone();
   return (
-    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`dark ${nunito.variable} ${jetbrainsMono.variable}`}>
       <body>
         <TimeZoneProvider initialZone={timeZone}>{children}</TimeZoneProvider>
         <ClientErrorListener />

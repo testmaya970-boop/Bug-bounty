@@ -11,7 +11,7 @@ import { Separator } from "../ui/feedback";
 import { cn } from "../../lib/cn";
 import type { ProgramStatus, ProgramType } from "../../types/program";
 
-export type ProgramSection = "overview" | "reports" | "inbox" | "researchers" | "scope";
+export type ProgramSection = "overview" | "reports" | "inbox" | "researchers" | "scope" | "settings";
 
 export type ProgramSwitcherEntry = { id: string; name: string; status: ProgramStatus };
 
@@ -143,6 +143,8 @@ export function ProgramHeader({
     ...(canManage ? [{ id: "researchers" as const, label: "Researchers", href: `${base}#researchers` as Route }] : []),
     ...(canWorkReports ? [{ id: "inbox" as const, label: "Inbox", href: `${base}/inbox` as Route }] : []),
     ...(canWorkReports ? [{ id: "reports" as const, label: "Reports", href: `${base}/reports` as Route }] : []),
+    // Settings (Oct 23): status, team, visibility, joining and abuse rules, access files.
+    ...(canManage ? [{ id: "settings" as const, label: "Settings", href: `${base}/settings` as Route }] : []),
   ];
 
   return (

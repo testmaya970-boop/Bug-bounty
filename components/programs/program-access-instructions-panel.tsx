@@ -41,11 +41,11 @@ export function ProgramAccessInstructionsEditor({ organizationId, programId, acc
     <Panel className="space-y-4 p-5">
       <Textarea
         label="Access instructions"
-        helperText="Only shown to you and researchers already authorized on this program -- never public. Use this for VPN setup, a required contact, or anything else a researcher needs to actually reach the target."
+        helperText="Shown only to researchers you've let in."
         value={value}
         onChange={(event) => setValue(event.target.value)}
         maxLength={5000}
-        placeholder="e.g. Connect to the test VPN before scanning -- request access at security@example.com with your Unpatched username. Credentials are issued within one business day."
+        placeholder="e.g. Connect to the test VPN first. Ask security@example.com for credentials."
       />
       <Button variant="secondary" onClick={handleSave} pending={pending}>
         Save access instructions

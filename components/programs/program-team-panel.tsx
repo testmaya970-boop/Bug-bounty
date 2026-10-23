@@ -71,10 +71,6 @@ export function ProgramTeamPanel({
       <Panel className="space-y-4 p-5">
         <div>
           <SectionLabel>Program team</SectionLabel>
-          <p className="mt-1 text-sm text-ink-muted">
-            Program Managers and Triagers only see the programs they are
-            assigned to. Owners and Security Admins already reach every program.
-          </p>
         </div>
 
         {members.length === 0 ? (
@@ -157,8 +153,7 @@ export function ProgramTeamPanel({
           </div>
         ) : (
           <p className="text-xs text-ink-muted">
-            Everyone with the Program Manager or Triager role is already on this
-            program. Invite more from Members.
+            Everyone eligible is already on this program.
           </p>
         )}
 

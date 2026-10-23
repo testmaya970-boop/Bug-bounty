@@ -128,3 +128,12 @@ test("private pilot: suggested researchers are invited by username and their ema
   await pending.getByRole("button", { name: "Cancel invitation" }).click();
   await expect(pending).toHaveCount(0);
 });
+
+test("identity first: a researcher without verified KYC can't open the report form", async ({ page }) => {
+  const fx = JSON.parse(readFileSync("e2e/.seed-fixture.json", "utf-8")) as { organizationId: string; publicProgramId: string };
+  await signIn(page, "e2e.unverified@unpatched.demo");
+  await page.goto(`/organizations/${fx.organizationId}/programs/${fx.publicProgramId}/reports/new`);
+  await expect(page.getByRole("heading", { name: "Verify your identity to submit reports" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Verify identity" })).toHaveAttribute("href", "/settings/identity");
+  await expect(page.getByRole("button", { name: "Submit report" })).toHaveCount(0);
+});

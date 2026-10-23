@@ -1,13 +1,10 @@
 "use client";
 
-import React, { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useTransition } from "react";
 import { Button, IconButton } from "../ui/button";
-import { Select, Textarea } from "../ui/form";
 import { SectionLabel } from "../ui/security-primitives";
-import { addOrganizationEvidenceAction, addResearcherEvidenceAction } from "../../actions/reports";
-import { getEvidenceDownloadUrlAction, uploadOrganizationFileEvidenceAction, uploadResearcherFileEvidenceAction } from "../../actions/report-file-evidence";
-import type { ReportEvidence, ReportEvidenceType, ReportVisibility } from "../../types/report";
+import { getEvidenceDownloadUrlAction } from "../../actions/report-file-evidence";
+import type { ReportEvidence, ReportEvidenceType } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
 import { DownloadSimple } from "@phosphor-icons/react";
 
@@ -137,101 +134,6 @@ export function ReportEvidenceSection({ evidence, showInternal, organizationId, 
 export type TextualEvidenceType = Exclude<ReportEvidenceType, "file">;
 export const EVIDENCE_TYPES: TextualEvidenceType[] = ["text", "code", "url", "log"];
 
-export function ResearcherEvidenceComposer({ organizationId, programId, reportId }: ReportRef) {
-  const router = useRouter();
-  const [evidenceType, setEvidenceType] = useState<TextualEvidenceType>("text");
-  const [content, setContent] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (pending) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await addResearcherEvidenceAction({ organizationId, programId, reportId, evidenceType, content });
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      setContent("");
-      router.refresh();
-    });
-  }
-
-  return (
-    <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-      <Select label="Type" value={evidenceType} onChange={(event) => setEvidenceType(event.target.value as TextualEvidenceType)} className="max-w-xs">
-        {EVIDENCE_TYPES.map((type) => (
-          <option key={type} value={type}>
-            {EVIDENCE_TYPE_LABELS[type]}
-          </option>
-        ))}
-      </Select>
-      <Textarea label="Content" required value={content} onChange={(event) => setContent(event.target.value)} maxLength={20000} className="[&_textarea]:font-mono" error={error ?? undefined} />
-      <div className="flex justify-end">
-        <Button type="submit" pending={pending}>
-          Add evidence
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-export function OrganizationEvidenceComposer({ organizationId, programId, reportId }: ReportRef) {
-  const router = useRouter();
-  const [evidenceType, setEvidenceType] = useState<TextualEvidenceType>("text");
-  const [content, setContent] = useState("");
-  const [visibility, setVisibility] = useState<ReportVisibility>("researcher_visible");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (pending) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await addOrganizationEvidenceAction({ organizationId, programId, reportId, evidenceType, content, visibility });
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      setContent("");
-      router.refresh();
-    });
-  }
-
-  return (
-    <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-      <div className="flex flex-wrap gap-3">
-        <Select label="Type" value={evidenceType} onChange={(event) => setEvidenceType(event.target.value as TextualEvidenceType)} className="max-w-xs">
-          {EVIDENCE_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {EVIDENCE_TYPE_LABELS[type]}
-            </option>
-          ))}
-        </Select>
-        <Select label="Visible to" value={visibility} onChange={(event) => setVisibility(event.target.value as ReportVisibility)} className="max-w-xs">
-          <option value="researcher_visible">Researcher and organization</option>
-          <option value="internal">Internal only</option>
-        </Select>
-      </div>
-      <Textarea label="Content" required value={content} onChange={(event) => setContent(event.target.value)} maxLength={20000} className="[&_textarea]:font-mono" error={error ?? undefined} />
-      <div className="flex justify-end">
-        <Button type="submit" pending={pending}>
-          Add evidence
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-/** A native `<input type="file">` has no built-in way to clear a chosen file short of
- * picking a different one -- confirmed live as a real gap: choosing the wrong file, then
- * wanting to deselect it before staging it, had no control to do that with. `selectedName`
- * is lifted into the parent (rather than read imperatively off the ref on click) so this
- * component can render its own "Clear" action and re-render the moment a file is chosen,
- * without either composer needing its own copy of this same file-cleared-vs-chosen state. */
 export function FileField({
   inputRef,
   error,
@@ -277,106 +179,5 @@ export function FileField({
         </p>
       )}
     </div>
-  );
-}
-
-export function ResearcherFileEvidenceComposer({ organizationId, programId, reportId }: ReportRef) {
-  const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedName, setSelectedName] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function clearFile() {
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    setSelectedName(null);
-  }
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (pending) return;
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
-      setError("Choose a file to upload.");
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setError("File must be 10 MB or smaller.");
-      return;
-    }
-    setError(null);
-    startTransition(async () => {
-      const result = await uploadResearcherFileEvidenceAction({ organizationId, programId, reportId, file });
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      clearFile();
-      router.refresh();
-    });
-  }
-
-  return (
-    <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-      <FileField inputRef={fileInputRef} error={error ?? undefined} selectedName={selectedName} onClear={clearFile} onFileChange={(name) => setSelectedName(name)} />
-      <div className="flex justify-end">
-        <Button type="submit" pending={pending}>
-          Upload file
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-export function OrganizationFileEvidenceComposer({ organizationId, programId, reportId }: ReportRef) {
-  const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedName, setSelectedName] = useState<string | null>(null);
-  const [visibility, setVisibility] = useState<ReportVisibility>("researcher_visible");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function clearFile() {
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    setSelectedName(null);
-  }
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (pending) return;
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
-      setError("Choose a file to upload.");
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setError("File must be 10 MB or smaller.");
-      return;
-    }
-    setError(null);
-    startTransition(async () => {
-      const result = await uploadOrganizationFileEvidenceAction({ organizationId, programId, reportId, file, visibility });
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      clearFile();
-      router.refresh();
-    });
-  }
-
-  return (
-    <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-      <Select label="Visible to" value={visibility} onChange={(event) => setVisibility(event.target.value as ReportVisibility)} className="max-w-xs">
-        <option value="researcher_visible">Researcher and organization</option>
-        <option value="internal">Internal only</option>
-      </Select>
-      <FileField inputRef={fileInputRef} error={error ?? undefined} selectedName={selectedName} onClear={clearFile} onFileChange={(name) => setSelectedName(name)} />
-      <div className="flex justify-end">
-        <Button type="submit" pending={pending}>
-          Upload file
-        </Button>
-      </div>
-    </form>
   );
 }

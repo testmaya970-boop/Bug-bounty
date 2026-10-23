@@ -15,29 +15,24 @@ import { InviteResearcherDialog } from "../../../../../components/programs/invit
 import { ResearcherTable } from "../../../../../components/programs/researcher-table";
 import { PendingProgramInvitationsPanel } from "../../../../../components/programs/pending-program-invitations-panel";
 import { BountyPolicySection, CreateBountyPolicyDialog } from "../../../../../components/programs/bounty-policy";
-import { ProgramVisibilityPanel } from "../../../../../components/programs/program-visibility-panel";
 import { ProgramPolicySummary } from "../../../../../components/programs/program-policy";
 import { PublishProgramPolicyDialog } from "../../../../../components/programs/program-policy-editor";
 import { getProgramPolicy } from "../../../../../services/program-policy";
 import { PublicProgramTerms } from "../../../../../components/programs/public-program-terms";
-import { ProgramAccessInstructionsEditor, ProgramAccessInstructionsNotice } from "../../../../../components/programs/program-access-instructions-panel";
-import { ProgramAccessFileEditor, ProgramAccessFileNotice } from "../../../../../components/programs/program-access-file-panel";
 import { getProgramAccessFile } from "../../../../../services/program-access-file";
-import { ProgramKycPanel } from "../../../../../components/programs/program-kyc-panel";
-import { ProgramTrackRecordPanel } from "../../../../../components/programs/program-track-record-panel";
-import { ProgramLifecycleControls } from "../../../../../components/programs/program-lifecycle-controls";
-import { ProgramTeamPanel } from "../../../../../components/programs/program-team-panel";
-import { ProgramFocusAreasPanel } from "../../../../../components/programs/program-focus-areas-panel";
 import { JoinPublicProgramButton } from "../../../../../components/programs/join-public-program-button";
-import { AccessRequestsPanel, JoinModePanel, RequestToJoinPanel } from "../../../../../components/programs/program-access-request";
+import { AccessRequestsPanel, RequestToJoinPanel } from "../../../../../components/programs/program-access-request";
 import { getProgramJoinInfo, listProgramAccessRequests } from "../../../../../services/program-access";
 import { ProgramHealthSection } from "../../../../../components/programs/program-health-section";
 import { ProgramReportList } from "../../../../../components/reports/program-report-list";
 import { PrimaryActionPanel, RegistryList, SectionLabel } from "../../../../../components/ui/security-primitives";
+import { ProgramAccessInstructionsNotice } from "../../../../../components/programs/program-access-instructions-panel";
+import { ProgramAccessFileNotice } from "../../../../../components/programs/program-access-file-panel";
+import { ProgramLifecycleControls } from "../../../../../components/programs/program-lifecycle-controls";
 import { ProgramHeader } from "../../../../../components/programs/program-header";
 import { canCreateProgram } from "../../../../../services/authorization";
-import { getActorMembership, listOrganizationMembers } from "../../../../../services/organization-members";
-import { getProgram, getProgramAccessInstructions, getProgramFocusAreas, getPublicProgram, listProgramMembers, listProgramsForOrganization, listPublicProgramScope } from "../../../../../services/programs";
+import { getActorMembership } from "../../../../../services/organization-members";
+import { getProgram, getProgramAccessInstructions, getPublicProgram, listProgramMembers, listProgramsForOrganization, listPublicProgramScope } from "../../../../../services/programs";
 import { getProgramResolutionPerformance, getProgramSeverityStatusBreakdown, getProgramWeeklyReportVolume } from "../../../../../services/program-analytics";
 import { listActiveScopeEntries } from "../../../../../services/scope";
 import { getMyParticipation, listMyProgramParticipations, listPendingProgramInvitations, listProgramResearchers, suggestProgramResearchers, type SuggestedResearcher } from "../../../../../services/program-researchers";
@@ -393,7 +388,7 @@ async function renderProgramControlCenterPage({
   // both already known above. Collapsed into one Promise.all so the whole page pays for
   // exactly the slowest single query in this batch, not the sum of all of them.
   const policyPromise = getProgramPolicy(programId);
-  const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations, accessRequests, suggestedResearchers], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms, organizationMembers] =
+  const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations, accessRequests, suggestedResearchers], { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms] =
     await perfTimed("program home: stage 2 (parallel batch)", () =>
       Promise.all([
         listActiveScopeEntries(programId),
@@ -408,7 +403,6 @@ async function renderProgramControlCenterPage({
         canManageProgram
           ? Promise.all([listProgramResearchers(programId), listPendingProgramInvitations(programId), listProgramAccessRequests(programId), program.visibility === "private" && program.status !== "closed" ? suggestProgramResearchers(programId) : Promise.resolve([] as SuggestedResearcher[])])
           : Promise.resolve([[], [], [], []] as [ProgramResearcherRecord[], ProgramInvitationRecord[], Awaited<ReturnType<typeof listProgramAccessRequests>>, SuggestedResearcher[]]),
-        canManageProgram ? getProgramFocusAreas(programId) : Promise.resolve([]),
         // RLS already scopes this correctly per viewer: a manager sees every report for
         // the program, a researcher sees only their own (researcher_id = auth.uid()) --
         // the same query, deliberately, rather than two different reads for the same
@@ -437,7 +431,6 @@ async function renderProgramControlCenterPage({
         canManageProgram ? listProgramsForOrganization(organizationId) : Promise.resolve([]),
         // Program team panel's assignable people (202609250012) -- org admins only, the
         // only role allowed to assign.
-        isOrgAdmin ? listOrganizationMembers(organizationId) : Promise.resolve([]),
       ]),
     );
   const policy = await policyPromise;
@@ -501,29 +494,12 @@ async function renderProgramControlCenterPage({
             </p>
           )
         )}
-        {isProgramManager && <p className="text-sm text-ink-muted">You manage this program.</p>}
-
-        {canManageProgram && <ProgramLifecycleControls organizationId={organizationId} programId={programId} status={program.status} />}
-        {isOrgAdmin && (
-          <ProgramTeamPanel
-            organizationId={organizationId}
-            programId={programId}
-            // Only assigned Program Managers/Triagers: owners and security admins reach every
-            // program anyway (a creator's own manager row is not a team assignment).
-            members={members.filter((pm) => organizationMembers.some((m) => m.userId === pm.userId && (m.role === "program_manager" || m.role === "triager")))}
-            candidates={organizationMembers
-              .filter((m) => m.status === "active" && (m.role === "program_manager" || m.role === "triager") && !members.some((pm) => pm.userId === m.userId))
-              .map((m) => ({ userId: m.userId, displayName: m.displayName, email: m.email, role: m.role as "program_manager" | "triager" }))}
-          />
-        )}
-        {canManageProgram && program.status === "review" && (
-          <p className="text-sm text-ink-muted">
-            Awaiting platform review before this program can go active. A platform administrator will approve or send it back to draft with feedback.
-          </p>
-        )}
+        {/* A draft's next step stays here; pausing and closing live in Settings. */}
+        {canManageProgram && program.status === "draft" && <ProgramLifecycleControls organizationId={organizationId} programId={programId} status={program.status} />}
+        {canManageProgram && program.status === "review" && <p className="text-sm text-ink-muted">Awaiting platform review: Unpatched checks it before it goes live.</p>}
         {canManageProgram && program.status === "suspended" && (
           <p role="status" className="text-sm font-medium text-danger">
-            Suspended by the platform. This program is hidden from researchers and not accepting new reports. Existing reports can still be triaged. Contact platform support to have it reinstated.
+            Suspended by the platform: hidden from researchers. Contact support to reinstate it.
           </p>
         )}
 
@@ -564,63 +540,6 @@ async function renderProgramControlCenterPage({
             <ProgramAccessInstructionsNotice accessInstructions={accessInstructions} />
             <ProgramAccessFileNotice organizationId={organizationId} programId={programId} file={accessFile} />
           </>
-        )}
-
-        {canManageProgram && (
-          <div className="space-y-3">
-            <div>
-              <h2 className="text-base font-semibold text-ink">Access instructions</h2>
-              <p className="text-sm text-ink-muted">How an authorized researcher actually reaches your targets -- VPN setup, a required contact, anything beyond scope. Never shown publicly.</p>
-              {program.visibility === "public" && (
-                <p className="mt-1 text-sm font-medium text-warning">
-                  This program is public -- anyone can self-enroll with no invitation. Access instructions and files are hidden from researchers while this program stays public.
-                </p>
-              )}
-            </div>
-            <ProgramAccessInstructionsEditor organizationId={organizationId} programId={programId} accessInstructions={accessInstructions} />
-            <ProgramAccessFileEditor organizationId={organizationId} programId={programId} file={accessFile} />
-          </div>
-        )}
-
-        {canManageProgram && (
-          <div className="space-y-3">
-            <div>
-              <h2 className="text-base font-semibold text-ink">Public discovery</h2>
-              <p className="text-sm text-ink-muted">Independent of this program&rsquo;s status. Only takes effect once the program is Active or Paused.</p>
-            </div>
-            <ProgramVisibilityPanel organizationId={organizationId} programId={programId} visibility={program.visibility} description={program.description} />
-          </div>
-        )}
-
-        {canManageProgram && (
-          <div className="space-y-3">
-            <div>
-              <h2 className="text-base font-semibold text-ink">Identity verification</h2>
-              <p className="text-sm text-ink-muted">Require a researcher to complete identity (KYC) verification before they can join or submit reports to this program.</p>
-            </div>
-            <ProgramKycPanel organizationId={organizationId} programId={programId} requiresKyc={program.requiresKyc} />
-          </div>
-        )}
-
-        {canManageProgram && (
-          <div className="space-y-3">
-            <div>
-              <h2 className="text-base font-semibold text-ink">Who can join</h2>
-              <p className="text-sm text-ink-muted">Open, or by request with your team approving each researcher. Optionally ask researchers who join on their own for a proven record; people you invite or approve are never blocked by it.</p>
-            </div>
-            <JoinModePanel organizationId={organizationId} programId={programId} joinMode={program.joinMode ?? "open"} />
-            <ProgramTrackRecordPanel organizationId={organizationId} programId={programId} minSignal={program.minSignal ?? null} minValidReports={program.minValidReports ?? null} />
-          </div>
-        )}
-
-        {canManageProgram && (
-          <div className="space-y-3">
-            <div>
-              <h2 className="text-base font-semibold text-ink">Researcher recommendations</h2>
-              <p className="text-sm text-ink-muted">Tag this program so it's recommended to researchers with matching declared interests.</p>
-            </div>
-            <ProgramFocusAreasPanel organizationId={organizationId} programId={programId} focusAreas={focusAreas} />
-          </div>
         )}
 
         <div id="scope" className="scroll-mt-20 space-y-3">

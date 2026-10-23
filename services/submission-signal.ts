@@ -106,3 +106,15 @@ export async function liftSubmissionRestriction(restrictionId: string): Promise<
     mapError(error as { message: string });
   }
 }
+
+/** Whether the signed-in researcher has a verified identity, required to submit (202610230008). */
+export async function isMyIdentityVerified(): Promise<boolean> {
+  const actor = await getCurrentUser();
+  if (!actor) return false;
+  try {
+    const rows = await withActorTransaction(actor.id, (client) => callRpc<{ am_i_identity_verified: boolean }>(client, "public.am_i_identity_verified"));
+    return rows[0]?.am_i_identity_verified === true;
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}

@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import type { Route } from "next";
 import { AppShell } from "../../../../../components/app-shell";
 import { PermissionDenied } from "../../../../../components/ui/feedback";
-import { SectionLabel } from "../../../../../components/ui/security-primitives";
 import { CardSandboxActions } from "../../../../../components/organizations/card-sandbox-actions";
 import { canManagePayments } from "../../../../../services/authorization";
 import { getActorMembership } from "../../../../../services/organization-members";
@@ -52,30 +51,25 @@ export default async function CardSandboxPage({
   if (!deposit) notFound();
 
   return (
-    <AppShell title="Card payment" user={user} organizationId={organizationId}>
-      <div className="max-w-lg space-y-5 rounded-lg border border-dashed border-warning bg-surface p-6">
-        <div>
-          <SectionLabel>Sandbox card checkout</SectionLabel>
-          <p className="mt-1 text-sm text-ink-muted">
-            In production this is the card provider&apos;s own payment page.
-            Here you decide the outcome; no card is charged.
-          </p>
+    <AppShell title="Checkout" user={user} organizationId={organizationId}>
+      <div className="mx-auto max-w-sm space-y-5 rounded-xl border border-border bg-surface p-6">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-ink">Unpatched checkout</p>
+          <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-semibold text-warning">Test mode</span>
         </div>
-        <p className="font-mono text-2xl font-semibold tabular-nums text-ink">
-          {deposit.currency}{" "}
-          {minorUnitsToDecimalString(deposit.amountMinorUnits)}
-        </p>
-        {deposit.status === "pending" ? (
-          <CardSandboxActions
-            organizationId={organizationId}
-            reference={deposit.payerReference}
-          />
-        ) : (
-          <p className="text-sm text-ink-muted">
-            This payment is already{" "}
-            {deposit.status === "confirmed" ? "confirmed" : "closed"}.
+        <div>
+          <p className="text-xs text-ink-muted">Amount to pay</p>
+          <p className="text-3xl font-bold tabular-nums text-ink">
+            {deposit.currency} {minorUnitsToDecimalString(deposit.chargedMinorUnits ?? deposit.amountMinorUnits)}
           </p>
+          <p className="mt-1 text-xs text-ink-muted">Adds {deposit.currency} {minorUnitsToDecimalString(deposit.amountMinorUnits)} to your balance</p>
+        </div>
+        {deposit.status === "pending" ? (
+          <CardSandboxActions organizationId={organizationId} reference={deposit.payerReference} currency={deposit.currency === "USD" ? "USD" : "INR"} />
+        ) : (
+          <p className="text-sm text-ink-muted">This payment is already {deposit.status === "confirmed" ? "complete" : "closed"}.</p>
         )}
+        <p className="text-[11px] text-ink-muted">Test mode stands in for the payment provider&apos;s page. No money moves.</p>
       </div>
     </AppShell>
   );

@@ -114,12 +114,20 @@ async function userId(email: string): Promise<string | null> {
   return (await asService((c) => one<{ id: string } | undefined>(c, "select id from public.users where email = $1", [email])))?.id ?? null;
 }
 
+/** Researchers must have a verified identity to submit (202610230008). */
+const verifyIdentity = (id: string) =>
+  asService((c) => c.query("insert into public.researcher_kyc (user_id, passport_status) values ($1, 'verified') on conflict (user_id) do update set passport_status = 'verified'", [id]));
+
 async function ensureHunter(): Promise<string> {
   const existing = await userId(HUNTER_EMAIL);
-  if (existing) return existing;
+  if (existing) {
+    await verifyIdentity(existing);
+    return existing;
+  }
   const hash = await argon2.hash(PASSWORD, { type: argon2.argon2id });
   const created = await asService((c) => one<{ id: string }>(c, "select * from public.create_user($1, $2, $3, $4)", [HUNTER_EMAIL, hash, "Showcase Hunter", "showcase_hunter"]));
   await asService((c) => c.query("update public.users set email_verified_at = now(), account_type = 'researcher', submission_daily_cap_override = 1000 where id = $1", [created.id]));
+  await verifyIdentity(created.id);
   return created.id;
 }
 
@@ -240,6 +248,7 @@ async function seedTaxResearcher(r: TaxResearcher, adminId: string): Promise<voi
     id = created.id;
   }
   const researcherId = id;
+  await verifyIdentity(researcherId);
   // Everything a payout needs: residence, bank details, a verified tax form (and PAN in India).
   await step("tax residence", () => asUser(researcherId, (c) => c.query("select public.set_my_tax_residence($1)", [r.country])));
   await step("bank details", () => asUser(researcherId, (c) => c.query("select public.upsert_my_payout_details('bank_transfer', $1, $2, $3)", [r.name, "123456789012", r.country === "IN" ? "HDFC0001234" : "021000021"])));

@@ -1,17 +1,10 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "../ui/button";
-import { Select } from "../ui/form";
-import { MarkdownTextarea } from "../ui/markdown-textarea";
+import React from "react";
 import { SectionLabel } from "../ui/security-primitives";
 import { Markdown } from "../ui/markdown";
-import { postOrganizationMessageAction, postResearcherMessageAction } from "../../actions/reports";
-import type { ReportMessage, ReportVisibility } from "../../types/report";
+import type { ReportMessage } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
-
-type ReportRef = { organizationId: string; programId: string; reportId: string };
 
 /** One message as a conversation comment (GitHub-style, Oct 22): a header bar with the
  * author, their side and when, the body below. Internal notes get a warning-tinted bar so
@@ -68,75 +61,3 @@ export function ReportCommunication({ messages, showInternal }: { messages: Repo
     </div>
   );
 }
-
-export function ResearcherMessageComposer({ organizationId, programId, reportId }: ReportRef) {
-  const router = useRouter();
-  const [body, setBody] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (pending) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await postResearcherMessageAction({ organizationId, programId, reportId, body });
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      setBody("");
-      router.refresh();
-    });
-  }
-
-  return (
-    <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-      <MarkdownTextarea label="Message to the organization" required value={body} onChange={setBody} maxLength={5000} rows={5} error={error ?? undefined} />
-      <div className="flex justify-end">
-        <Button type="submit" pending={pending}>
-          Send message
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-export function OrganizationMessageComposer({ organizationId, programId, reportId }: ReportRef) {
-  const router = useRouter();
-  const [body, setBody] = useState("");
-  const [visibility, setVisibility] = useState<ReportVisibility>("researcher_visible");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (pending) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await postOrganizationMessageAction({ organizationId, programId, reportId, body, visibility });
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      setBody("");
-      router.refresh();
-    });
-  }
-
-  return (
-    <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-      <MarkdownTextarea label="Message" required value={body} onChange={setBody} maxLength={5000} rows={5} error={error ?? undefined} />
-      <Select label="Visible to" value={visibility} onChange={(event) => setVisibility(event.target.value as ReportVisibility)} className="max-w-xs">
-        <option value="researcher_visible">Researcher and organization</option>
-        <option value="internal">Internal only</option>
-      </Select>
-      <div className="flex justify-end">
-        <Button type="submit" pending={pending}>
-          Send message
-        </Button>
-      </div>
-    </form>
-  );
-}
-

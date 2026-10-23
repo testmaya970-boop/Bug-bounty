@@ -28,15 +28,15 @@ test.describe.serial("payment features", () => {
     await page.getByRole("button", { name: "Add funds" }).click();
     const dialog = page.getByRole("dialog", { name: "Add funds" });
     await dialog.getByRole("radio", { name: "USD" }).click();
-    await dialog.getByRole("radio", { name: "Card" }).click();
-    await dialog.getByLabel("Amount to add (USD)").fill("100");
-    await expect(dialog.getByText("USD 103.00")).toBeVisible();
-    await dialog.getByRole("button", { name: "Pay by card" }).click();
+    await dialog.getByLabel("Amount (USD)").fill("100");
+    await expect(dialog.getByText("USD 103.00")).toBeVisible(); // amount + payment processing, before paying
+    await dialog.getByRole("button", { name: "Add funds" }).click();
     await page.waitForURL(/\/payments\/card-sandbox\?ref=card_/);
-    await expect(page.getByText("USD 100.00")).toBeVisible();
-    await page.getByRole("button", { name: "Approve payment" }).click();
+    await expect(page.getByText("Adds USD 100.00 to your balance")).toBeVisible();
+    await page.getByRole("radio", { name: /Card/ }).click();
+    await page.getByRole("button", { name: "Pay", exact: true }).click();
     await page.waitForURL(/\/payments\?card=done/);
-    await expect(page.getByRole("listitem").filter({ hasText: "Card" }).filter({ hasText: "USD 100.00" }).getByText("Confirmed").first()).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: /Paid by Card · pay_/ }).filter({ hasText: "USD 100.00" }).getByText("Confirmed").first()).toBeVisible();
 
     // Low-balance alert above the balance fires at once; then turned off again.
     const usdAlert = page.getByLabel("Alert below (USD)");

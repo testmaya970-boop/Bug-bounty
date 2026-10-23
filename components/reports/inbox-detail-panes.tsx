@@ -7,7 +7,7 @@ import { EmptyState } from "../ui/feedback";
 import { Markdown } from "../ui/markdown";
 import { InboxTimeline } from "./inbox-timeline";
 import { InboxTriageControls } from "./inbox-triage-controls";
-import { OrganizationMessageComposer } from "./report-communication";
+import { ReportComposer } from "./report-composer";
 import { reportNextActionLabel, reportStatusMeaning, REPORT_STATUS_TRANSITIONS } from "../../lib/report-status";
 import { getReport } from "../../services/reports";
 import { getReportTimeline } from "../../services/timeline";
@@ -231,15 +231,10 @@ function InboxRightPane({
         />
       </div>
 
-      {/* OrganizationMessageComposer's own "Visible to" select defaults to
-          "Researcher and organization" -- switch it to "Internal only" to post a
-          team-only note the researcher never sees. The composer itself (not a second,
-          internal-only-only variant) is reused verbatim so a triager who actually wants to
-          reply TO the researcher from this same panel isn't forced back to the full report
-          page to do it. */}
+      {/* The same composer as the report page: a comment, attachments, and one "Visible to"
+          (switch to an internal note for the team only). */}
       <div className="border-t border-border pt-4">
-        <p className="mb-2 text-sm font-medium text-ink">Add a comment</p>
-        <OrganizationMessageComposer organizationId={organizationId} programId={programId} reportId={report.id} />
+        <ReportComposer organizationId={organizationId} programId={programId} reportId={report.id} side="organization" />
       </div>
     </div>
   );

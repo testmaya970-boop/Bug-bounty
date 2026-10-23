@@ -84,8 +84,8 @@ test("org posts a message on a report -> researcher is notified (bell, /notifica
   // OrganizationMessageComposer defaults to "researcher_visible" -- no need to touch the
   // visibility select for this message to actually reach the researcher.
   const orgMessageBody = `E2E notifications walk: org message ${Date.now()}`;
-  await page.getByLabel("Message").fill(orgMessageBody);
-  await page.getByRole("button", { name: "Send message" }).click();
+  await page.getByLabel("Add a comment").fill(orgMessageBody);
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
   await expect(page.getByText(orgMessageBody)).toBeVisible();
 
   // The admin triggered all three events (triage_started, accepted, message_posted) --
@@ -120,8 +120,8 @@ test("org posts a message on a report -> researcher is notified (bell, /notifica
   await page.getByRole("link", { name: NOTIF_REPORT_TITLE }).click();
   await page.waitForURL(/\/reports\/[0-9a-f-]{36}$/);
   const researcherMessageBody = `E2E notifications walk: researcher message ${Date.now()}`;
-  await page.getByLabel("Message to the organization").fill(researcherMessageBody);
-  await page.getByRole("button", { name: "Send message" }).click();
+  await page.getByLabel("Add a comment for the organization").fill(researcherMessageBody);
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
   await expect(page.getByText(researcherMessageBody)).toBeVisible();
 
   await page.reload();

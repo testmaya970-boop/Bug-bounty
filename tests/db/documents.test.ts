@@ -245,3 +245,22 @@ describe("invite by username (202610230006)", () => {
     });
   });
 });
+
+describe("identity before reporting (202610230008)", () => {
+  it("refuses a report from a researcher with no verified identity, on every path", async () => {
+    await inTx(async (db) => {
+      const r = await newUser(db, "researcher");
+      await db.query("delete from public.researcher_kyc where user_id = $1", [r]);
+      await db.as({ user: r });
+      expect((await db.one<{ v: boolean }>("select public.am_i_identity_verified() as v")).v).toBe(false);
+      await db.query("select public.join_public_program($1)", [fixture.publicProgramId]);
+      await db.query(
+        "select set_config('app.acknowledged_policy_version', coalesce((select version_number::text from public.program_policy_versions where program_id = $1 and superseded_at is null), ''), true)",
+        [fixture.publicProgramId],
+      );
+      expect(
+        await db.fails("select public.submit_report($1, 'domain', 'api.e2e-public.example', 'Unverified', 'A finding from an unverified account long enough to pass checks', 'cross_site_scripting', 'i', 'low')", [fixture.publicProgramId]),
+      ).toMatch(/KYC_REQUIRED/);
+    });
+  });
+});

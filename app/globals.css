@@ -8,8 +8,8 @@
   /* Netras type system (netras.ai's own Google Fonts link): Inter 600/700/800 for headings,
      Open Sans for body. --font-display is KEPT as a token (~100 `font-display` call sites)
      but now resolves to real Inter -- no separate faux-black display face. */
-  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   /* Motion curves (Emil Kowalski review, 21 Oct): the built-in CSS easings are too weak to feel
      intentional. Overriding --ease-out / --ease-in-out retunes every ease-out / ease-in-out
@@ -249,7 +249,8 @@ code, pre, kbd, samp { font-family: var(--font-mono); }
    uppercase, no heavy display face. In @layer base (not unlayered) so it is a default
    only -- a component's own font-* or tracking-* utility class still wins. */
 @layer base {
-  h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.011em; }
+  /* comolho.com-style headings: Nunito Sans bold, no negative tracking. */
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0; }
 }
 
 /* Shared soft-glass surface: a mostly-opaque tinted fill + a light backdrop blur + a

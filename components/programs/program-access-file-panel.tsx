@@ -87,13 +87,7 @@ export function ProgramAccessFileEditor({ organizationId, programId, file }: { o
 
   return (
     <Panel className="space-y-4 p-5">
-      <p className="text-sm text-ink-muted">
-        Optional: upload one file (a VPN config, a setup PDF) instead of or alongside written instructions. Downloadable by any currently active researcher on this program.
-      </p>
-      <p className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-ink-muted">
-        <span className="font-semibold text-ink">A single shared file cannot be revoked per-researcher.</span> Once someone downloads it, removing their access here does not invalidate the
-        copy they already have. If that matters for this file&rsquo;s contents, rotate the underlying credential (e.g. the VPN server&rsquo;s shared key) whenever you revoke a researcher.
-      </p>
+      <p className="text-sm text-ink-muted">Optional file, like a VPN config. Rotate its secrets when you remove a researcher.</p>
 
       {file ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface-muted p-3">
@@ -127,7 +121,7 @@ export function ProgramAccessFileEditor({ organizationId, programId, file }: { o
           {file ? "Replace file" : "Upload file"}
         </Button>
       </form>
-      <p className="text-xs text-ink-muted">Up to 10 MB. Downloaded as a file, never previewed or executed.</p>
+      <p className="text-xs text-ink-muted">Up to 10 MB.</p>
 
       {error && (
         <p role="alert" className="text-sm font-medium text-danger">

@@ -33,12 +33,12 @@ test("owner assigns a program team: the panel lists assignable people and assign
   const { organizationId, publicProgramId, privateProgramId } = fixture();
   await signIn(page, "e2e.admin@unpatched.demo");
 
-  await page.goto(`/organizations/${organizationId}/programs/${publicProgramId}`);
+  await page.goto(`/organizations/${organizationId}/programs/${publicProgramId}/settings`);
   const team = page.getByRole("region", { name: "Program team" });
   await expect(team.getByText("E2E Program Manager", { exact: true })).toBeVisible();
   await expect(team.getByText("E2E Triager", { exact: true })).toBeVisible();
 
-  await page.goto(`/organizations/${organizationId}/programs/${privateProgramId}`);
+  await page.goto(`/organizations/${organizationId}/programs/${privateProgramId}/settings`);
   const privateTeam = page.getByRole("region", { name: "Program team" });
   await expect(privateTeam.getByText("No one is assigned yet.")).toBeVisible();
   await privateTeam.getByLabel("Assign a team member").selectOption({ label: "E2E Triager (Triager)" });
@@ -77,7 +77,7 @@ test("triager: works assigned-program reports, cannot manage the program or see 
     await page.getByRole("link", { name: /View full report/ }).click();
   }
   await page.waitForURL(/\/reports\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole("textbox", { name: "Message", exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Add a comment", exact: true })).toBeVisible();
   // Calculating a recommendation is triage work (calculate_bounty_recommendation takes the
   // triage lock); deciding the amount is not.
   await expect(page.getByRole("button", { name: /Finalize bounty/ })).toHaveCount(0);

@@ -10,14 +10,9 @@ import { ReportAssigneeControl } from "../../../../../../../components/reports/r
 import { ReportStatusHistory } from "../../../../../../../components/reports/report-status-history";
 import { LiveSeverityBadge, LiveStatusBadge, LiveStatusMeaning, TriageStatusRailProvider } from "../../../../../../../components/reports/triage-status-rail";
 import { ReportActivity } from "../../../../../../../components/reports/report-activity";
-import { OrganizationMessageComposer, ReportCommunication, ResearcherMessageComposer } from "../../../../../../../components/reports/report-communication";
-import {
-  OrganizationEvidenceComposer,
-  OrganizationFileEvidenceComposer,
-  ReportEvidenceSection,
-  ResearcherEvidenceComposer,
-  ResearcherFileEvidenceComposer,
-} from "../../../../../../../components/reports/report-evidence";
+import { ReportCommunication } from "../../../../../../../components/reports/report-communication";
+import { ReportComposer } from "../../../../../../../components/reports/report-composer";
+import { ReportEvidenceSection } from "../../../../../../../components/reports/report-evidence";
 import { BountyDecisionSection } from "../../../../../../../components/reports/bounty-decision";
 import { PaymentStatusSection } from "../../../../../../../components/reports/payment-status";
 import { OrganizationDisclosureDecisionPanel, ResearcherDisclosurePanel } from "../../../../../../../components/reports/report-disclosure";
@@ -342,34 +337,12 @@ export default async function ReportDetailPage({
               <div>
                 <ReportCommunication messages={messages} showInternal={canTriage} />
               </div>
-              {isOwnReport && (
-                <div className="mt-5 border-t border-border pt-5">
-                  <ResearcherMessageComposer organizationId={organizationId} programId={programId} reportId={reportId} />
-                </div>
-              )}
-              {canTriage && (
-                <div className="mt-5 border-t border-border pt-5">
-                  <OrganizationMessageComposer organizationId={organizationId} programId={programId} reportId={reportId} />
-                </div>
-              )}
             </TimelineItem>
 
             <TimelineItem icon={Paperclip} title="Evidence">
               <div>
                 <ReportEvidenceSection evidence={evidence} showInternal={canTriage} organizationId={organizationId} programId={programId} reportId={reportId} />
               </div>
-              {isOwnReport && (
-                <div className="mt-5 space-y-5 border-t border-border pt-5">
-                  <ResearcherEvidenceComposer organizationId={organizationId} programId={programId} reportId={reportId} />
-                  <ResearcherFileEvidenceComposer organizationId={organizationId} programId={programId} reportId={reportId} />
-                </div>
-              )}
-              {canTriage && (
-                <div className="mt-5 space-y-5 border-t border-border pt-5">
-                  <OrganizationEvidenceComposer organizationId={organizationId} programId={programId} reportId={reportId} />
-                  <OrganizationFileEvidenceComposer organizationId={organizationId} programId={programId} reportId={reportId} />
-                </div>
-              )}
             </TimelineItem>
 
             {!canTriage && (
@@ -381,6 +354,11 @@ export default async function ReportDetailPage({
             {canTriage && auditEvents.length > 0 && (
               <TimelineItem icon={ClockCounterClockwise} title="Decision history">
                 <ReportActivity events={auditEvents} actorNames={actorNames} />
+              </TimelineItem>
+            )}
+            {(isOwnReport || canTriage) && (
+              <TimelineItem icon={ChatCircleText} title="Add to this report">
+                <ReportComposer organizationId={organizationId} programId={programId} reportId={reportId} side={canTriage ? "organization" : "researcher"} />
               </TimelineItem>
             )}
             </div>

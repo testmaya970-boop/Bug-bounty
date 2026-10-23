@@ -13,7 +13,8 @@ import { listActiveScopeEntries } from "../../../../../../../services/scope";
 import { getProgramPolicy } from "../../../../../../../services/program-policy";
 import { getMyReportDraft } from "../../../../../../../services/reports";
 import { listMyReportTemplates } from "../../../../../../../services/report-templates";
-import { getMySubmissionStanding } from "../../../../../../../services/submission-signal";
+import { getMySubmissionStanding, isMyIdentityVerified } from "../../../../../../../services/submission-signal";
+import Link from "next/link";
 import { SubmissionStandingPanel } from "../../../../../../../components/reports/submission-standing";
 import { captchaConfig } from "../../../../../../../lib/integrations/captcha";
 import type { DraftFields } from "../../../../../../../components/reports/create-report-form";
@@ -46,6 +47,22 @@ export default async function NewReportPage({ params }: { params: Promise<{ orga
     return (
       <AppShell title="Report a vulnerability" user={user} organizationId={organizationId}>
         <EmptyState title="This program is not currently accepting reports">Its status is {program.status}. Check back later, or contact the program if you believe this is a mistake.</EmptyState>
+      </AppShell>
+    );
+  }
+
+  // Identity first (202610230008): the database refuses a report from an unverified researcher,
+  // so say so before they write one.
+  if (!(await isMyIdentityVerified())) {
+    return (
+      <AppShell title="Report a vulnerability" user={user} organizationId={organizationId}>
+        <div className="mx-auto max-w-xl rounded-xl border border-border bg-surface p-6">
+          <h2 className="text-lg font-bold text-ink">Verify your identity to submit reports</h2>
+          <p className="mt-2 text-sm text-ink-muted">Every researcher on Unpatched verifies their identity once, with a PAN, Aadhaar or passport. It keeps programs safe from fake accounts and lets you get paid.</p>
+          <Link prefetch={false} href={"/settings/identity" as Route} className="mt-4 inline-flex h-9 items-center rounded-md bg-action px-4 text-sm font-semibold text-on-action hover:bg-action-hover">
+            Verify identity
+          </Link>
+        </div>
       </AppShell>
     );
   }

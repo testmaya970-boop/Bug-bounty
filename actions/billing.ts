@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
@@ -85,7 +86,7 @@ export async function startCardDepositAction(input: z.infer<typeof cardSchema>):
   }
 }
 
-const sandboxSchema = z.object({ organizationId: z.string().uuid(), reference: z.string().regex(/^card_[0-9a-f]{32}$/), outcome: z.enum(["confirmed", "failed"]) });
+const sandboxSchema = z.object({ organizationId: z.string().uuid(), reference: z.string().regex(/^card_[0-9a-f]{32}$/), outcome: z.enum(["confirmed", "failed"]), method: z.enum(["UPI", "Card", "Net banking", "ACH"]).optional() });
 
 /** The sandbox checkout's Approve / Decline. Sandbox only, and only for a deposit the caller
  * can already read under RLS (a finance role of that organization). */
@@ -95,7 +96,9 @@ export async function completeSandboxCardAction(input: z.infer<typeof sandboxSch
   // Never let this page settle a real provider's payment: only a sandbox deposit qualifies.
   const deposit = (await listOrganizationDeposits(parsed.data.organizationId)).find((d) => d.method === "card" && d.provider === "sandbox" && d.payerReference === parsed.data.reference);
   if (!deposit || selectCardProvider(deposit.currency as "INR" | "USD")?.name !== "sandbox") return { ok: false, code: "NOT_FOUND", message: "That card payment wasn't found." };
-  const result = await run(completeCardDeposit(parsed.data.reference, parsed.data.outcome, parsed.data.outcome === "failed" ? "Declined in the card sandbox" : undefined));
+  // Like a real gateway: the method chosen on the checkout page and the provider's own payment id.
+  const paymentId = `pay_${randomUUID().replace(/-/g, "").slice(0, 14).toUpperCase()}`;
+  const result = await run(completeCardDeposit(parsed.data.reference, parsed.data.outcome, parsed.data.outcome === "failed" ? "Payment declined" : `Paid by ${parsed.data.method ?? "Card"} · ${paymentId}`));
   if (result.ok) revalidatePath(`/organizations/${parsed.data.organizationId}/payments`);
   return result;
 }

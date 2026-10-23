@@ -56,14 +56,14 @@ export function ProgramLifecycleControls({ organizationId, programId, status }: 
     active: [
       {
         label: "Pause program",
-        description: "Temporarily stop accepting new reports. Existing reports are unaffected.",
+        description: "Stop new reports for now.",
         variant: "secondary",
         requiresConfirmation: true,
         run: () => pauseProgramAction({ organizationId, programId }),
       },
       {
         label: "Close program",
-        description: "Permanently stop accepting new reports. This cannot be undone.",
+        description: "Stop new reports for good.",
         variant: "destructive",
         requiresConfirmation: true,
         run: () => closeProgramAction({ organizationId, programId }),
@@ -72,13 +72,13 @@ export function ProgramLifecycleControls({ organizationId, programId, status }: 
     paused: [
       {
         label: "Resume program",
-        description: "Start accepting new reports again.",
+        description: "Accept new reports again.",
         variant: "primary",
         run: () => resumeProgramAction({ organizationId, programId }),
       },
       {
         label: "Close program",
-        description: "Permanently stop accepting new reports. This cannot be undone.",
+        description: "Stop new reports for good.",
         variant: "destructive",
         requiresConfirmation: true,
         run: () => closeProgramAction({ organizationId, programId }),

@@ -1,14 +1,9 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { OrganizationMessageComposer, ReportCommunication, ResearcherMessageComposer } from "../../components/reports/report-communication";
-import {
-  OrganizationEvidenceComposer,
-  OrganizationFileEvidenceComposer,
-  ReportEvidenceSection,
-  ResearcherEvidenceComposer,
-  ResearcherFileEvidenceComposer,
-} from "../../components/reports/report-evidence";
+import { ReportCommunication } from "../../components/reports/report-communication";
+import { ReportComposer } from "../../components/reports/report-composer";
+import { ReportEvidenceSection } from "../../components/reports/report-evidence";
 import type { ReportEvidence, ReportMessage } from "../../types/report";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
@@ -60,21 +55,6 @@ describe("ReportCommunication: visibility is a structural separation, never a mi
   });
 });
 
-describe("Message composers", () => {
-  it("ResearcherMessageComposer has no visibility control -- a researcher can never choose internal", () => {
-    const html = renderToStaticMarkup(<ResearcherMessageComposer {...REF} />);
-    expect(html).toContain("Message to the organization");
-    expect(html).not.toContain("Internal only");
-    expect(html).not.toContain("<select");
-  });
-
-  it("OrganizationMessageComposer offers a visibility choice", () => {
-    const html = renderToStaticMarkup(<OrganizationMessageComposer {...REF} />);
-    expect(html).toContain("Visible to");
-    expect(html).toContain("Internal only");
-    expect(html).toContain("Researcher and organization");
-  });
-});
 
 const NO_FILE_FIELDS = { objectKey: null, originalFilename: null, contentType: null, sizeBytes: null, sha256: null };
 
@@ -144,35 +124,20 @@ describe("ReportEvidenceSection: same structural visibility separation as commun
   });
 });
 
-describe("Evidence composers", () => {
-  it("ResearcherEvidenceComposer offers every textual DOMAIN.md evidence type but no visibility control", () => {
-    const html = renderToStaticMarkup(<ResearcherEvidenceComposer {...REF} />);
-    for (const label of ["Text", "Code", "URL", "Log"]) expect(html).toContain(label);
-    expect(html).not.toContain("Visible to");
+
+describe("Report composer (one form: comment, attachments, one visibility)", () => {
+  it("a researcher gets a comment box and attachments, never a visibility choice", () => {
+    const html = renderToStaticMarkup(<ReportComposer {...REF} side="researcher" />);
+    expect(html).toContain("Add a comment for the organization");
+    expect(html).toContain("Attach files");
+    expect(html).not.toContain("Internal note");
+    expect(html).not.toContain("<select");
   });
 
-  it("OrganizationEvidenceComposer offers both type and visibility", () => {
-    const html = renderToStaticMarkup(<OrganizationEvidenceComposer {...REF} />);
-    expect(html).toContain("Visible to");
-    expect(html).toContain("Internal only");
-  });
-
-  it("ResearcherFileEvidenceComposer offers a real file input, a size hint, and no visibility control", () => {
-    const html = renderToStaticMarkup(<ResearcherFileEvidenceComposer {...REF} />);
-    expect(html).toMatch(/type="file"/);
-    expect(html).toContain("Up to 10 MB");
-    expect(html).not.toContain("Visible to");
-  });
-
-  it("ResearcherFileEvidenceComposer shows no Clear button before any file is chosen -- the button only appears once a file is actually selected (verified live in a real browser; a native file input cannot be programmatically populated in a static/jsdom render)", () => {
-    const html = renderToStaticMarkup(<ResearcherFileEvidenceComposer {...REF} />);
-    expect(html).not.toContain(">Clear<");
-  });
-
-  it("OrganizationFileEvidenceComposer offers a file input and a visibility choice", () => {
-    const html = renderToStaticMarkup(<OrganizationFileEvidenceComposer {...REF} />);
-    expect(html).toMatch(/type="file"/);
-    expect(html).toContain("Visible to");
-    expect(html).toContain("Internal only");
+  it("the organization gets exactly one visibility choice for the comment and its files", () => {
+    const html = renderToStaticMarkup(<ReportComposer {...REF} side="organization" />);
+    expect(html.match(/<select/g)?.length).toBe(1);
+    expect(html).toContain("Internal note (team only)");
+    expect(html).toContain("Visible to the researcher");
   });
 });

@@ -232,16 +232,28 @@ async function ensurePlatformAdmin(email: string, displayName: string, username:
   return user;
 }
 
+// Every researcher must have a verified identity to submit (202610230008). Test accounts get
+// a verified passport on file, except the one account that exists to test that gate.
+const E2E_UNVERIFIED_EMAIL = "e2e.unverified@unpatched.demo";
+async function verifyIdentity(userId: string, email: string) {
+  if (email === E2E_UNVERIFIED_EMAIL) return;
+  await withServiceRole((client) =>
+    client.query("insert into public.researcher_kyc (user_id, passport_status) values ($1, 'verified') on conflict (user_id) do update set passport_status = 'verified'", [userId]),
+  );
+}
+
 async function ensureUser(email: string, displayName: string, username: string): Promise<UserRow> {
   const existing = await findUserByEmail(email);
   if (existing) {
     await resetMfa(existing.id);
+    await verifyIdentity(existing.id, email);
     console.log(`User ${email} already exists.`);
     return existing;
   }
   const passwordHash = await argon2.hash(E2E_PASSWORD, { type: argon2.argon2id });
   const created = await withServiceRole((client) => callRpc<UserRow>(client, "public.create_user", [email, passwordHash, displayName, username]));
   await withServiceRole((client) => client.query("update public.users set email_verified_at = now() where id = $1", [created.id]));
+  await verifyIdentity(created.id, email);
   console.log(`Created user ${email}.`);
   return created;
 }
@@ -768,6 +780,9 @@ async function main() {
   await resetSettingsAccount(await ensureUser(E2E_SETTINGS_EMAIL, "E2E Settings Researcher", "e2e_settings"));
   await resetSettingsAccount(await ensureUser(E2E_PASSWORD_CASE_EMAIL, "E2E Settings Researcher", "e2e_password"));
   const hunter = await ensureUser(E2E_HUNTER_EMAIL, "E2E Hunter Researcher", "e2e_hunter");
+  // e2e/documents.spec.ts: a researcher with no verified identity, kept that way every run.
+  const unverified = await ensureUser(E2E_UNVERIFIED_EMAIL, "E2E Unverified Researcher", "e2e_unverified");
+  await withServiceRole((client) => client.query("delete from public.researcher_kyc where user_id = $1", [unverified.id]));
   const platformAdmin = await ensurePlatformAdmin(E2E_PLATFORM_ADMIN_EMAIL, "E2E Platform Admin", "e2e_platform_admin");
   await ensurePlatformAdmin(E2E_PLATFORM_ADMIN_2_EMAIL, "E2E Platform Admin 2", "e2e_platform_admin_2");
   const launchAdmin = await ensureUser(E2E_LAUNCH_ADMIN_EMAIL, "E2E Launch Admin", "e2e_launch_admin");
@@ -781,6 +796,7 @@ async function main() {
   publicProgram = await ensureScopeAndActivate(admin.id, publicProgram, "api.e2e-public.example", "public");
   // e2e/discovery.spec.ts drafts a report here as the hunter (the veteran is near its sign-in limit).
   await tryStep(withActor(hunter.id, (client) => client.query("select public.join_public_program($1)", [publicProgram.id])), "join_public_program (hunter, public program)");
+  await tryStep(withActor(unverified.id, (client) => client.query("select public.join_public_program($1)", [publicProgram.id])), "join_public_program (unverified, public program)");
   // e2e/submission-signal.spec.ts: a researcher whose submissions an admin pauses and resumes.
   // Starts every run unpaused, with the normal "new researcher" cap (no override).
   const flagged = await ensureUser(E2E_FLAGGED_EMAIL, "E2E Flagged Researcher", "e2e_flagged");

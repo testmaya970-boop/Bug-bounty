@@ -52,8 +52,11 @@ test("launch journey: org creates + submits engagement, platform admin activates
   const programPath = new URL(page.url()).pathname;
   await expect(page.getByRole("heading", { name: programName })).toBeVisible();
 
+  // Visibility lives in the program's Settings tab (Oct 23).
+  await page.getByRole("navigation", { name: "Program sections" }).getByRole("link", { name: "Settings" }).click();
   await page.getByRole("switch", { name: /^Private:/ }).click();
   await expect(page.getByText(/Public: researchers can discover this program/)).toBeVisible();
+  await page.getByRole("navigation", { name: "Program sections" }).getByRole("link", { name: "Overview" }).click();
 
   await page.getByRole("button", { name: "Add scope" }).click();
   await page.getByRole("textbox", { name: "Target" }).fill(scopeTarget);
@@ -99,6 +102,8 @@ test("launch journey: org creates + submits engagement, platform admin activates
   await page.getByLabel("Description").fill(
     [
       `Found on ${programName} (run ${stamp}).`,
+      // Enough run-specific text that repeated runs never read as the same report (similarity < 0.85).
+      `Environment ${stamp}: ${Array.from({ length: 24 }, () => Math.random().toString(36).slice(2, 8)).join(" ")}.`,
       `1. Sign in as customer A (${stamp}-a) and open Billing -> Invoices.`,
       `2. Capture \`GET /v1/invoices/${invoice}\` in a proxy.`,
       `3. Replay it with customer A's token but invoice id ${invoice + 1}, owned by customer ${stamp}-b.`,
