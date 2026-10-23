@@ -96,7 +96,7 @@ export default async function PlatformPayoutsPage() {
 
         {collusion.length > 0 && (
           <section className="space-y-3" aria-labelledby="collusion-heading">
-            <h2 id="collusion-heading" className="text-xs font-semibold uppercase tracking-wide text-warning">Possible collusion</h2>
+            <h2 id="collusion-heading" className="text-xs font-semibold text-warning">Possible collusion</h2>
             <p className="text-sm text-ink-muted">
               These researchers signed in from the same network as a member of an organization that awarded them. Shared offices, VPNs and universities are common innocent causes. Check before you send their payouts.
             </p>

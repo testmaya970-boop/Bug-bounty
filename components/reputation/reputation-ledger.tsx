@@ -28,7 +28,7 @@ function LedgerRow({ entry, evidence }: { entry: ReputationLedgerEntry; evidence
   return (
     <li className="flex items-start justify-between gap-4 p-4 motion-safe:animate-enter-rise">
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{reputationFactTypeEventLabel(entry.factType)}</p>
+        <p className="text-xs font-semibold text-ink-muted">{reputationFactTypeEventLabel(entry.factType)}</p>
         <Link prefetch={false}
           href={reportHref}
           className="mt-0.5 block truncate text-sm font-semibold text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"

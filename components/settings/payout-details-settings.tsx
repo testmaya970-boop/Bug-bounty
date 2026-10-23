@@ -165,7 +165,7 @@ export function TaxFormSettings({ initial }: { initial: PayoutDetailsSummary }) 
           <p className="mt-1 text-sm text-ink-muted">Required before a bounty payout can be released.</p>
         </div>
         {initial.taxFormStatus !== "not_submitted" && (
-          <span className="shrink-0 rounded-full border border-border-strong px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">{initial.taxFormStatus}</span>
+          <span className="shrink-0 rounded-full border border-border-strong px-2 py-0.5 text-xs font-semibold text-ink-muted">{initial.taxFormStatus}</span>
         )}
       </div>
 

@@ -31,7 +31,7 @@ function Party({ title, party }: { title: string; party: InvoiceParty }) {
       .join(", ");
   return (
     <div className="min-w-0">
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+      <p className="text-xs font-semibold text-ink-muted">
         {title}
       </p>
       <p className="mt-1 font-semibold text-ink">{party.name}</p>
@@ -116,7 +116,7 @@ export default async function InvoicePage({
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[34rem] text-left">
-              <thead className="border-b border-border text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              <thead className="border-b border-border text-xs font-semibold text-ink-muted">
                 <tr>
                   <th scope="col" className="py-2 pr-3">
                     Platform fee on

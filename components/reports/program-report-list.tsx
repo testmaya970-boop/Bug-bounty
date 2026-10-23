@@ -1,15 +1,11 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import Link from "next/link";
-import type { Route } from "next";
-import { Card } from "../ui/feedback";
 import { Button } from "../ui/button";
 import { ErrorState } from "../ui/feedback";
-import { StatusBadge, SeverityBadge } from "../ui/badge";
 import { listReportsForProgramPageAction } from "../../actions/reports";
-import type { Report } from "../../types/report";
-import { LocalTime } from "../ui/local-time";
+import type { Report } from "../../types/report";
+import { IssueList } from "./issue-list";
 
 /** A researcher's own reports for one program -- keyset-paginated (see
  * docs/decisions/0018's Page<T> contract), the same "first page server-rendered, load
@@ -38,23 +34,7 @@ export function ProgramReportList({ organizationId, programId, initialReports, i
 
   return (
     <div className="space-y-4">
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {reports.map((report) => (
-          <li key={report.id}>
-            <Card className="p-5">
-              <Link prefetch={false} href={`/organizations/${organizationId}/programs/${programId}/reports/${report.id}` as Route} className="rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-                <h3 className="text-base font-semibold text-ink">{report.title}</h3>
-              </Link>
-              <p className="mt-2 break-all font-mono text-xs text-ink-muted">{report.displayTarget}</p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <StatusBadge status={report.status} />
-                {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
-              </div>
-              <p className="mt-3 text-xs text-ink-muted">Updated <LocalTime value={report.updatedAt} /></p>
-            </Card>
-          </li>
-        ))}
-      </ul>
+      <IssueList reports={reports.map((r) => ({ ...r, organizationId, programId, at: r.updatedAt, atLabel: "updated" }))} />
 
       {loadError && <ErrorState>{loadError}</ErrorState>}
 

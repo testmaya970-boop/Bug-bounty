@@ -25,14 +25,14 @@ export function CtfHero({
       <div className="rounded-lg border border-border bg-surface p-4">
         <div className="flex items-center justify-between gap-2">
           <SectionLabel>Challenges</SectionLabel>
-          <span className="rounded-full border border-border-strong px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-ink-muted">Fixed set</span>
+          <span className="rounded-full border border-border-strong px-1.5 py-0.5 font-mono text-[9px] font-semibold text-ink-muted">Fixed set</span>
         </div>
         <p className="mt-1.5 font-mono text-2xl font-semibold tabular-nums text-ink">{totalChallenges}</p>
       </div>
       <div className="rounded-lg border border-border bg-surface p-4">
         <div className="flex items-center justify-between gap-2">
           <SectionLabel>Points available</SectionLabel>
-          <span className="rounded-full border border-border-strong px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-ink-muted">Fixed set</span>
+          <span className="rounded-full border border-border-strong px-1.5 py-0.5 font-mono text-[9px] font-semibold text-ink-muted">Fixed set</span>
         </div>
         <p className="mt-1.5 font-mono text-2xl font-semibold tabular-nums text-ink">{totalPointsAvailable.toLocaleString("en-US")}</p>
       </div>

@@ -33,7 +33,7 @@ const MARKDOWN_COMPONENTS: Components = {
       <table className="min-w-full divide-y divide-border border border-border text-sm">{children}</table>
     </div>
   ),
-  th: ({ children }) => <th className="border-b border-border bg-surface-muted px-2 py-1 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted">{children}</th>,
+  th: ({ children }) => <th className="border-b border-border bg-surface-muted px-2 py-1 text-left text-xs font-semibold text-ink-muted">{children}</th>,
   td: ({ children }) => <td className="border-b border-border px-2 py-1 text-ink">{children}</td>,
   code: ({ className, children }) => {
     // remark treats an inline `code` span and a fenced ``` block identically at the

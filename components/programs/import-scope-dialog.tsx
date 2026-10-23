@@ -147,7 +147,7 @@ export function ImportScopeDialog({ organizationId, programId }: { organizationI
                   </p>
                   <div className="max-h-64 overflow-y-auto rounded-md border border-border">
                     <table className="w-full text-left text-sm">
-                      <thead className="border-b border-border bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                      <thead className="border-b border-border bg-surface-muted text-xs font-semibold text-ink-muted">
                         <tr>
                           <th className="px-3 py-2">Row</th>
                           <th className="px-3 py-2">Target</th>
@@ -194,7 +194,7 @@ export function ImportScopeDialog({ organizationId, programId }: { organizationI
               </p>
               <div className="max-h-64 overflow-y-auto rounded-md border border-border">
                 <table className="w-full text-left text-sm">
-                  <thead className="border-b border-border bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  <thead className="border-b border-border bg-surface-muted text-xs font-semibold text-ink-muted">
                     <tr>
                       <th className="px-3 py-2">Row</th>
                       <th className="px-3 py-2">Target</th>

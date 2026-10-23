@@ -108,7 +108,7 @@ export function DisclosureFeed({ disclosures }: { disclosures: PublicDisclosure[
               <li key={disclosure.reportId} className="p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{disclosure.organizationName}</p>
+                    <p className="font-mono text-[11px] font-semibold text-ink-muted">{disclosure.organizationName}</p>
                     <a href={`/disclosures/${disclosure.reportId}`} className="mt-0.5 block font-semibold text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-focus">
                       {disclosure.publishedTitle ?? "Untitled report"}
                     </a>

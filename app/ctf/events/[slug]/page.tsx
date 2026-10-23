@@ -59,7 +59,7 @@ export default async function CtfEventDetailPage({ params }: { params: Promise<{
 
         <div className="border-2 border-ink p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide ${status.tone}`}>
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold ${status.tone}`}>
               {event.effectiveStatus === "active" && <span aria-hidden="true" className="size-1.5 animate-pulse rounded-full bg-success" />}
               {status.label}
             </span>
@@ -132,7 +132,7 @@ export default async function CtfEventDetailPage({ params }: { params: Promise<{
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2">
                             <span className="truncate text-sm font-medium text-ink">{row.publicUsername ?? row.displayName}</span>
-                            {isMe && <span className="shrink-0 rounded-full bg-action/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-action">You</span>}
+                            {isMe && <span className="shrink-0 rounded-full bg-action/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-action">You</span>}
                           </span>
                           <span className="font-mono text-[11px] text-ink-muted">
                             {row.challengesSolved} {row.challengesSolved === 1 ? "solve" : "solves"}

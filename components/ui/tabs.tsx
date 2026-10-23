@@ -50,7 +50,7 @@ export function Tabs({ items, active, className }: { items: TabItem[]; active: s
               onClick={(event) => handleClick(event, item)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 font-mono text-xs font-bold uppercase tracking-[0.08em] transition-[color,border-color,opacity] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
+                "flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-[color,border-color,opacity] duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
                 isActive ? "border-action text-ink" : "border-transparent text-ink-muted hover:text-ink",
                 isPending && item.key !== optimisticActive && "opacity-60",
               )}

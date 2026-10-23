@@ -20,6 +20,12 @@ const PROGRAM_STATUS = [
   { key: "closed", label: "Closed" },
 ];
 
+const MONITOR = {
+  ok: { label: "OK", chip: "bg-success/15 text-success", tile: "border-border bg-surface hover:border-border-strong" },
+  warn: { label: "WARN", chip: "bg-warning/15 text-warning", tile: "border-warning/40 bg-warning/5 hover:border-warning" },
+  alert: { label: "ALERT", chip: "bg-danger text-on-danger", tile: "border-danger/40 bg-danger/5 hover:border-danger" },
+};
+
 /**
  * The platform operator's overview: what needs a person now (launch reviews, KYC,
  * mediations, errors -- each linking to its queue), then platform health over the window:
@@ -43,22 +49,34 @@ export function PlatformDashboard({ data, days }: { data: Data; days: number }) 
     { label: "Errors (24h)", value: t.errors_24h, href: "/platform/errors" },
   ];
 
+  const monitors = queues.map((q) => ({ ...q, state: (q.value === 0 ? "ok" : q.href === "/platform/errors" ? "alert" : "warn") as keyof typeof MONITOR }));
+
   return (
     <div className="space-y-6">
+      {/* Queues as monitors (Datadog-style): each has a state, never just a number -- OK when
+          empty, Warn when work is waiting, Alert for errors in the last 24 hours. */}
       <section aria-labelledby="queues">
-        <h2 id="queues" className="text-sm font-semibold text-ink">
-          Needs attention
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="queues" className="text-[13px] font-semibold text-ink">
+            Monitors
+          </h2>
+          <p className="text-xs text-ink-muted">
+            {(["ok", "warn", "alert"] as const).map((st) => `${monitors.filter((m) => m.state === st).length} ${MONITOR[st].label}`).join(" · ")}
+          </p>
+        </div>
         <ul className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {queues.map((q) => (
+          {monitors.map((q) => (
             <li key={q.label}>
               <Link
                 prefetch={false}
                 href={q.href as Route}
-                className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                className={`block rounded-lg border px-4 py-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${MONITOR[q.state].tile}`}
               >
-                <span className="text-sm text-ink-muted">{q.label}</span>
-                <span className={`text-xl font-semibold ${q.value > 0 ? "text-ink" : "text-ink-muted"}`}>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] text-ink">{q.label}</span>
+                  <span className={`rounded px-1.5 py-px text-[10px] font-bold ${MONITOR[q.state].chip}`}>{MONITOR[q.state].label}</span>
+                </span>
+                <span className="mt-1 block text-2xl font-semibold tracking-tight tabular-nums text-ink">
                   {q.value}
                   <span className="sr-only"> -- open queue</span>
                 </span>

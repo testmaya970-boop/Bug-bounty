@@ -43,14 +43,14 @@ export default async function NeedsRecoveryPage() {
           <div className="space-y-10">
             {outboxEvents.length > 0 && (
               <section aria-labelledby="needs-recovery-outbox">
-                <h2 id="needs-recovery-outbox" className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <h2 id="needs-recovery-outbox" className="text-xs font-semibold text-ink-muted">
                   Outbox
                 </h2>
                 <ul className="mt-2 divide-y divide-border rounded-lg border border-border bg-surface">
                   {outboxEvents.map((event) => (
                     <li key={event.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">Dead lettered · <LocalTime value={event.processedAt ?? event.occurredAt} /></p>
+                        <p className="text-xs font-semibold text-danger">Dead lettered · <LocalTime value={event.processedAt ?? event.occurredAt} /></p>
                         <p className="mt-1 text-sm font-medium text-ink">{event.eventType}</p>
                         <p className="mt-0.5 text-sm text-ink-muted">{event.organizationName}</p>
                         <p className="mt-1 text-xs text-ink-muted">
@@ -67,14 +67,14 @@ export default async function NeedsRecoveryPage() {
 
             {notificationDeliveries.length > 0 && (
               <section aria-labelledby="needs-recovery-notifications">
-                <h2 id="needs-recovery-notifications" className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <h2 id="needs-recovery-notifications" className="text-xs font-semibold text-ink-muted">
                   Notifications
                 </h2>
                 <ul className="mt-2 divide-y divide-border rounded-lg border border-border bg-surface">
                   {notificationDeliveries.map((delivery) => (
                     <li key={delivery.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">Delivery failed permanently · <LocalTime value={delivery.updatedAt} /></p>
+                        <p className="text-xs font-semibold text-danger">Delivery failed permanently · <LocalTime value={delivery.updatedAt} /></p>
                         <p className="mt-1 text-sm font-medium text-ink">{delivery.notificationType}</p>
                         <p className="mt-0.5 text-sm text-ink-muted">
                           {delivery.organizationName} / {delivery.programName}
@@ -90,14 +90,14 @@ export default async function NeedsRecoveryPage() {
 
             {paymentAttempts.length > 0 && (
               <section aria-labelledby="needs-recovery-payments">
-                <h2 id="needs-recovery-payments" className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <h2 id="needs-recovery-payments" className="text-xs font-semibold text-ink-muted">
                   Payments
                 </h2>
                 <ul className="mt-2 divide-y divide-border rounded-lg border border-border bg-surface">
                   {paymentAttempts.map((attempt) => (
                     <li key={attempt.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-danger">
+                        <p className="text-xs font-semibold text-danger">
                           {attempt.failureCode === "STALE_PROVIDER" ? "No result from the provider" : "Payment attempt failed"} · <LocalTime value={attempt.completedAt ?? attempt.startedAt} />
                         </p>
                         <p className="mt-1 text-sm font-medium text-ink">{attempt.organizationName}</p>

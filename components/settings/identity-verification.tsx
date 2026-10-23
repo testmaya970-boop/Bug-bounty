@@ -31,7 +31,7 @@ export function IdentityStartButtons({ regions }: { regions: { region: "IN" | "G
             }
           >
             {REGION_LABEL[region]}
-            {mode === "sandbox" && <span className="ml-2 rounded bg-warning/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-warning">Sandbox</span>}
+            {mode === "sandbox" && <span className="ml-2 rounded bg-warning/15 px-1.5 py-0.5 text-[10px] font-semibold text-warning">Sandbox</span>}
           </Button>
         ))}
       </div>

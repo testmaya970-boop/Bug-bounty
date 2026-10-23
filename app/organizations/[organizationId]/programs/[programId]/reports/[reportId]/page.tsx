@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { AppShell } from "../../../../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../../../../components/ui/navigation";
-import { Alert, Card, PermissionDenied } from "../../../../../../../components/ui/feedback";
+import { Alert, PermissionDenied } from "../../../../../../../components/ui/feedback";
 import { AssetTypeBadge, SeverityBadge, StatusBadge } from "../../../../../../../components/ui/badge";
 import { SeverityControl, TriageActionPanel } from "../../../../../../../components/reports/triage-actions";
 import { ReportAssigneeControl } from "../../../../../../../components/reports/report-assignee";
@@ -43,6 +43,31 @@ import { reportStatusMeaning, reportNextActionLabel, researcherNextActionLabel, 
 import { weaknessTypeLabel } from "../../../../../../../lib/report-weakness-labels";
 import { getResearcherBiography } from "../../../../../../../services/researcher-profiles";
 import { LocalTime } from "../../../../../../../components/ui/local-time";
+import { ChatCircleText, ClockCounterClockwise, Paperclip, UsersThree } from "@phosphor-icons/react/dist/ssr";
+
+// Report layout (Oct 22, GitHub-style conversation): the submission is the opening comment,
+// everything after it hangs off one vertical timeline, and the decision lives in a
+// borderless sidebar of stacked sections.
+function TimelineItem({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
+  return (
+    <section className="relative pl-11">
+      <span aria-hidden="true" className="absolute left-0 top-0 inline-flex size-8 items-center justify-center rounded-full border border-border bg-surface text-ink-muted">
+        <Icon className="size-4" />
+      </span>
+      <h2 className="flex h-8 items-center text-[13px] font-semibold text-ink">{title}</h2>
+      <div className="mt-2">{children}</div>
+    </section>
+  );
+}
+
+function RailSection({ title, children, className = "" }: { title?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`border-b border-border py-4 first:pt-0 last:border-0 ${className}`}>
+      {title && <h2 className="mb-2 text-xs font-semibold text-ink-muted">{title}</h2>}
+      {children}
+    </section>
+  );
+}
 
 export default async function ReportDetailPage({
   params,
@@ -193,22 +218,33 @@ export default async function ReportDetailPage({
             deliberately not a dark inversion, since StatusBadge/SeverityBadge's semantic
             colors are tuned for a light surface and would lose contrast on bg-ink (see
             docs/decisions/0043). */}
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border-2 border-ink bg-surface px-4 py-3.5 sm:px-5">
-          <AssetTypeBadge assetType={report.assetType} />
-          <span className="break-all font-mono text-sm font-medium text-ink">{report.displayTarget}</span>
-          <span className="text-ink-muted">·</span>
-          {canTriage ? (
-            <>
-              <LiveStatusBadge />
-              <LiveSeverityBadge />
-            </>
-          ) : (
-            <>
-              <StatusBadge status={report.status} />
-              {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
-            </>
-          )}
-        </div>
+        {/* Issue-style header: the title and its short id, then status, who opened it and the
+            target (the single most important fact for a triager) on one line. */}
+        <header className="space-y-3 border-b border-border pb-4">
+          <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+            {report.title} <span className="font-normal text-ink-muted">#{report.id.slice(0, 8)}</span>
+          </h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
+            {canTriage ? (
+              <>
+                <LiveStatusBadge />
+                <LiveSeverityBadge />
+              </>
+            ) : (
+              <>
+                <StatusBadge status={report.status} />
+                {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
+              </>
+            )}
+            <span className="text-ink-muted">
+              <span className="font-semibold text-ink">{isOwnReport ? "You" : report.researcherName}</span> submitted this report <LocalTime value={report.submittedAt} /> · {messages.length} {messages.length === 1 ? "message" : "messages"}
+            </span>
+            <span className="flex min-w-0 items-center gap-2">
+              <AssetTypeBadge assetType={report.assetType} />
+              <span className="break-all font-mono text-xs text-ink">{report.displayTarget}</span>
+            </span>
+          </div>
+        </header>
 
         {/* Main column: what the researcher submitted, then the supporting record built on
             top of it (communication, evidence, history) — reading order matches how a
@@ -221,7 +257,14 @@ export default async function ReportDetailPage({
                 a boxed card — nothing here is ever rewritten by triage (submitted_at,
                 target, scope match, and text are exactly what was submitted). See
                 docs/decisions/0009-report-triage-state-machine.md and 0043. */}
-            <div className="border-b-2 border-border pb-6">
+            <div className="overflow-hidden rounded-lg border border-border bg-surface">
+              <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-hover px-4 py-2 text-[13px]">
+                <span aria-hidden="true" className="inline-flex size-5 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-canvas">{report.researcherName.trim().charAt(0).toUpperCase() || "?"}</span>
+                <span className="font-semibold text-ink">{isOwnReport ? "You" : report.researcherName}</span>
+                <span className="text-ink-muted">submitted <LocalTime value={report.submittedAt} /></span>
+                <span className="ml-auto rounded-full border border-border px-2 py-px text-[11px] font-medium text-ink-muted">Author</span>
+              </div>
+              <div className="p-4 sm:p-5">
               <SectionLabel>Submitted by researcher</SectionLabel>
               <div className="mt-3 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <MetadataPair label="Researcher" value={isOwnReport ? "You" : report.researcherName} />
@@ -266,7 +309,11 @@ export default async function ReportDetailPage({
                 </div>
               )}
               {report.cvssMetrics && report.cvssBaseScore !== null && <CvssSummary metrics={report.cvssMetrics} baseScore={report.cvssBaseScore} confirmedSeverity={report.confirmedSeverity} />}
+              </div>
             </div>
+
+            {/* Everything after the submission hangs off one timeline line. */}
+            <div className="relative space-y-6 before:absolute before:bottom-0 before:left-4 before:top-0 before:w-px before:bg-border">
 
             {/* Collaborators: visible to the submitter, any listed collaborator, and
                 program staff -- RLS on report_collaborators already gates who can reach
@@ -275,7 +322,7 @@ export default async function ReportDetailPage({
                 submitter gets the manage actions (add/remove) -- a collaborator sees the
                 same list read-only. See docs/decisions/0064-report-collaboration-scope.md. */}
             {(isOwnReport || canTriage || collaborators.length > 0) && (
-              <Card className="p-5 sm:p-6">
+              <TimelineItem icon={UsersThree} title="Collaborators">
                 <ReportCollaboratorsPanel
                   organizationId={organizationId}
                   programId={programId}
@@ -285,15 +332,14 @@ export default async function ReportDetailPage({
                   canManage={isOwnReport}
                   locked={report.status !== "new" && report.status !== "triaging"}
                 />
-              </Card>
+              </TimelineItem>
             )}
 
             {/* Communication is supporting data, never an edit to the researcher's claim or
                 the organization's decision — its own card, its own visibility rules. See
                 docs/decisions/0010-report-evidence-and-communication.md. */}
-            <Card className="p-5 sm:p-6">
-              <SectionLabel>Communication</SectionLabel>
-              <div className="mt-3">
+            <TimelineItem icon={ChatCircleText} title="Communication">
+              <div>
                 <ReportCommunication messages={messages} showInternal={canTriage} />
               </div>
               {isOwnReport && (
@@ -306,11 +352,10 @@ export default async function ReportDetailPage({
                   <OrganizationMessageComposer organizationId={organizationId} programId={programId} reportId={reportId} />
                 </div>
               )}
-            </Card>
+            </TimelineItem>
 
-            <Card className="p-5 sm:p-6">
-              <SectionLabel>Evidence</SectionLabel>
-              <div className="mt-3">
+            <TimelineItem icon={Paperclip} title="Evidence">
+              <div>
                 <ReportEvidenceSection evidence={evidence} showInternal={canTriage} organizationId={organizationId} programId={programId} reportId={reportId} />
               </div>
               {isOwnReport && (
@@ -325,25 +370,20 @@ export default async function ReportDetailPage({
                   <OrganizationFileEvidenceComposer organizationId={organizationId} programId={programId} reportId={reportId} />
                 </div>
               )}
-            </Card>
+            </TimelineItem>
 
             {!canTriage && (
-              <Card className="p-5 sm:p-6">
-                <SectionLabel>History</SectionLabel>
-                <div className="mt-3">
-                  <ReportStatusHistory events={statusHistory} />
-                </div>
-              </Card>
+              <TimelineItem icon={ClockCounterClockwise} title="History">
+                <ReportStatusHistory events={statusHistory} />
+              </TimelineItem>
             )}
 
             {canTriage && auditEvents.length > 0 && (
-              <Card className="p-5 sm:p-6">
-                <SectionLabel>Decision history</SectionLabel>
-                <div className="mt-3">
-                  <ReportActivity events={auditEvents} actorNames={actorNames} />
-                </div>
-              </Card>
+              <TimelineItem icon={ClockCounterClockwise} title="Decision history">
+                <ReportActivity events={auditEvents} actorNames={actorNames} />
+              </TimelineItem>
             )}
+            </div>
           </div>
 
           {/* Contextual rail: the organization's decision and its financial consequences --
@@ -351,11 +391,11 @@ export default async function ReportDetailPage({
               so "what was submitted" and "what was decided" are never visually continuous.
               Sticky on desktop so the current status/action stays visible while reading a
               long communication or evidence history. */}
-          <div className="mt-6 space-y-6 lg:sticky lg:top-24 lg:mt-0">
+          <div className="mt-6 lg:sticky lg:top-16 lg:mt-0">
             {/* Once the report has no legal outgoing transition, this becomes the
                 organization's FINAL decision — the eyebrow label and severity control both
                 reflect that. See docs/decisions/0012-report-resolution-and-classification.md. */}
-            <Card className="border-l-4 border-l-action p-5 sm:p-6">
+            <RailSection>
               <SectionLabel>{isFinal ? "Final decision" : "Triage"}</SectionLabel>
               {canTriage ? (
                 <>
@@ -445,34 +485,34 @@ export default async function ReportDetailPage({
                   <MetadataPair label="Last updated" value=<LocalTime value={report.updatedAt} /> />
                 </div>
               )}
-            </Card>
+            </RailSection>
 
             {/* Bounty is a separate decision layered on top of the final report decision --
                 never a property of the report row itself. See
                 docs/decisions/0013-bounty-decision-engine.md. */}
             {sla && (
-              <Card className="p-5 sm:p-6">
+              <RailSection>
                 <SectionLabel>Response targets</SectionLabel>
                 <div className="mt-3">
                   <ReportSlaPanel sla={sla} />
                 </div>
-              </Card>
+              </RailSection>
             )}
 
             {(isOwnReport || canTriage) && (
-              <Card className="p-5 sm:p-6">
+              <RailSection>
                 <SectionLabel>Bounty</SectionLabel>
                 <div className="mt-3">
                   <BountyDecisionSection decision={bountyDecision} canCalculate={canTriage} reportIsFinal={isFinal} canFinalize={canFinalizeBounty} organizationId={organizationId} programId={programId} reportId={reportId} />
                 </div>
-              </Card>
+              </RailSection>
             )}
 
             {/* A finalized bounty decision is not a payment — separate card, separate data,
                 separate authorization. Renders only once there is something real to say
                 about payment. See docs/decisions/0014-payment-ledger-and-payout-orchestration.md. */}
             {(isOwnReport || canTriage) && bountyDecision?.state === "finalized" && bountyDecision.currency && bountyDecision.finalAmountMinorUnits !== null && (
-              <Card className="p-5 sm:p-6">
+              <RailSection>
                 <SectionLabel>Payment</SectionLabel>
                 <div className="mt-3">
                   <PaymentStatusSection
@@ -489,7 +529,7 @@ export default async function ReportDetailPage({
                     reportId={reportId}
                   />
                 </div>
-              </Card>
+              </RailSection>
             )}
 
             {/* Disclosure is only offered once the organization has reached a final
@@ -499,14 +539,14 @@ export default async function ReportDetailPage({
                 once a request actually exists. See
                 supabase/migrations/202609030001_report_disclosure_workflow.sql. */}
             {isOwnReport && (report.status === "resolved" || disclosure) && (
-              <Card className="p-5 sm:p-6">
+              <RailSection>
                 <ResearcherDisclosurePanel reportId={reportId} reportTitle={report.title} initialDisclosure={disclosure} />
-              </Card>
+              </RailSection>
             )}
             {canTriage && disclosure && (
-              <Card className="p-5 sm:p-6">
+              <RailSection>
                 <OrganizationDisclosureDecisionPanel reportId={reportId} disclosure={disclosure} canDecide={canFinalizeBounty} />
-              </Card>
+              </RailSection>
             )}
 
             {/* Retest: real, narrowly-scoped, never reopens the report's own status --
@@ -514,9 +554,9 @@ export default async function ReportDetailPage({
                 actually claimed), matching request_report_retest's own server-side gate.
                 See docs/decisions/0075, supabase/migrations/202609050005_report_retest.sql. */}
             {report.status === "resolved" && (isOwnReport || canTriage) && (
-              <Card className="p-5 sm:p-6">
+              <RailSection>
                 <ReportRetestPanel organizationId={organizationId} programId={programId} reportId={reportId} retests={retests} canRequest={isOwnReport} canDecide={canTriage} canEscalate={isOwnReport} />
-              </Card>
+              </RailSection>
             )}
 
             {/* Mediation: a researcher-initiated dispute over any terminal outcome --
@@ -524,9 +564,9 @@ export default async function ReportDetailPage({
                 platform-level adjudicator exists yet. See docs/decisions/0075,
                 supabase/migrations/202609050006_report_mediation.sql. */}
             {isFinal && (isOwnReport || canTriage) && (
-              <Card className="p-5 sm:p-6">
+              <RailSection>
                 <ReportMediationPanel organizationId={organizationId} programId={programId} reportId={reportId} mediations={mediations} canOpen={isOwnReport} canResolve={canTriage} />
-              </Card>
+              </RailSection>
             )}
           </div>
         </div>

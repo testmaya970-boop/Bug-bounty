@@ -179,7 +179,7 @@ export default async function OrganizationAnalyticsPage({
                 </div>
                 <div className="overflow-x-auto rounded-lg border border-border">
                   <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
-                    <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-ink-muted">
+                    <thead className="border-b border-border bg-surface-muted text-xs text-ink-muted">
                       <tr>
                         {["Program", "Status", "Open", "Aging 60+ days", "Unresolved high/critical", "Awarded"].map((header) => (
                           <th key={header} scope="col" className="px-4 py-3 font-semibold">

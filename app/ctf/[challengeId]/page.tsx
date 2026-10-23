@@ -90,9 +90,9 @@ export default async function CtfChallengeDetailPage({ params }: { params: Promi
                       >
                         <span className="min-w-0">
                           <span className="block truncate font-mono text-sm font-semibold text-ink">{artifact.name}</span>
-                          <span className="block font-mono text-[11px] uppercase tracking-wide text-ink-muted">{formatBytes(artifact.size)}</span>
+                          <span className="block font-mono text-[11px] text-ink-muted">{formatBytes(artifact.size)}</span>
                         </span>
-                        <span className="shrink-0 rounded-full border border-border-strong px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-action">Download</span>
+                        <span className="shrink-0 rounded-full border border-border-strong px-2 py-0.5 font-mono text-[10px] font-semibold text-action">Download</span>
                       </a>
                     ))}
                   </div>

@@ -55,7 +55,7 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
           {activePrograms.length > 0 && (
             <div className="p-5">
               <div className="flex items-baseline justify-between gap-3">
-                <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Your active work</p>
+                <p className="font-mono text-[11px] font-semibold text-ink-muted">Your active work</p>
                 {activePrograms.length > ACTIVE_WORK_LIMIT && (
                   <Link prefetch={false} href={"/programs?tab=mine" as Route} className="text-xs font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                     View all {activePrograms.length}
@@ -74,7 +74,7 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
                         <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-success" />
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-medium text-ink">{participation.programName}</span>
-                          <span className="block text-xs uppercase tracking-wide text-ink-muted">{participation.organizationName}</span>
+                          <span className="block text-xs text-ink-muted">{participation.organizationName}</span>
                         </span>
                       </span>
                       <span aria-hidden="true" className="shrink-0 text-sm text-action">
@@ -88,7 +88,7 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
           )}
 
           <div className={cn("p-5", activePrograms.length > 0 && "border-t border-border")}>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Featured programs</p>
+            <p className="font-mono text-[11px] font-semibold text-ink-muted">Featured programs</p>
             <ul className="mt-2.5 space-y-1">
               {featuredPrograms.map((program) => (
                 <li key={program.id}>
@@ -99,7 +99,7 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-ink">{program.name}</span>
-                      <span className="block text-xs uppercase tracking-wide text-ink-muted">{program.organizationName}</span>
+                      <span className="block text-xs text-ink-muted">{program.organizationName}</span>
                     </span>
                     <span className="shrink-0 font-mono text-xs font-semibold text-ink">{formatBountyRange(program.bountyMinMinorUnits, program.bountyMaxMinorUnits, program.bountyCurrency)}</span>
                   </Link>
@@ -110,7 +110,7 @@ export function OperationalGrid({ activePrograms, featuredPrograms, challenges }
         </div>
 
         <div className="rounded-xl bg-surface-muted p-5">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Challenge spotlight</p>
+          <p className="font-mono text-[11px] font-semibold text-ink-muted">Challenge spotlight</p>
           <ul className="mt-2.5 space-y-2">
             {challenges.map((challenge) => (
               <li key={challenge.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface p-3 shadow-sm">

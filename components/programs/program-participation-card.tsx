@@ -38,11 +38,11 @@ export function ProgramParticipationCard({ participation }: { participation: Pro
               distinguish them — a real ambiguity, not a decorative one (see
               docs/decisions/0043). A tiny eyebrow above each names which fact it is. */}
           <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-0 sm:block">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted/70">Your access</p>
+            <p className="text-[10px] font-semibold text-ink-muted/70">Your access</p>
             <ResearcherStatusBadge status={participation.status} />
           </div>
           <div className="mt-2 sm:mt-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted/70">Program</p>
+            <p className="text-[10px] font-semibold text-ink-muted/70">Program</p>
             <ProgramStatusBadge status={participation.programStatus} />
           </div>
           <p className="mt-2 text-sm font-medium text-action sm:mt-0">{isActionable ? "View" : "View history"}</p>

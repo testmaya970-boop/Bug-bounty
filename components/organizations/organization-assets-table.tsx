@@ -119,7 +119,7 @@ export function OrganizationAssetsTable({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
             <caption className="sr-only">Asset inventory</caption>
-            <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-ink-muted">
+            <thead className="border-b border-border bg-surface-muted text-xs text-ink-muted">
               <tr>
                 <th scope="col" className="min-w-[18rem] px-4 py-3 font-semibold">Asset</th>
                 <th scope="col" className="px-4 py-3 font-semibold">Tier</th>

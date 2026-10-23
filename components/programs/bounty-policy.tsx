@@ -26,7 +26,7 @@ export function BountyPolicySection({ policy }: { policy: BountyPolicy | null })
         Version {policy.versionNumber} &middot; {policy.currency}
       </p>
       <table className="mt-3 w-full max-w-md text-left text-sm">
-        <thead className="text-xs uppercase tracking-wide text-ink-muted">
+        <thead className="text-xs text-ink-muted">
           <tr>
             <th scope="col" className="py-1 pr-3 font-semibold">
               Severity
@@ -190,7 +190,7 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
           <div className="space-y-4">
             <p className="text-sm text-ink-muted">This will become the program's effective bounty policy immediately.</p>
             <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-ink-muted">
+              <thead className="text-xs text-ink-muted">
                 <tr>
                   <th scope="col" className="py-1 pr-3 font-semibold">
                     Severity

@@ -66,7 +66,7 @@ export default async function PlatformCtfEventsPage() {
                       <span className="block text-sm font-medium text-ink">{event.name}</span>
                       <span className="block font-mono text-[11px] text-ink-muted">@{event.slug}</span>
                     </span>
-                    <span className={`font-mono text-[11px] font-semibold uppercase tracking-wide ${STATUS_TONE[event.effectiveStatus]}`}>{event.effectiveStatus}</span>
+                    <span className={`font-mono text-[11px] font-semibold ${STATUS_TONE[event.effectiveStatus]}`}>{event.effectiveStatus}</span>
                     <span className="font-mono text-[11px] text-ink-muted">{event.challengeCount} challenges</span>
                     <span className="font-mono text-[11px] text-ink-muted">{event.solverCount} solvers</span>
                     <span className="w-full font-mono text-[11px] text-ink-muted sm:w-auto">

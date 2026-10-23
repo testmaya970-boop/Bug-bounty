@@ -39,12 +39,12 @@ export function BountyTrackRecord({ obligations }: { obligations: MyPaymentOblig
         <SectionLabel>Verified earnings</SectionLabel>
         <dl className="mt-3 flex flex-wrap gap-x-10 gap-y-4">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Bounties paid</dt>
+            <dt className="text-xs font-semibold text-ink-muted">Bounties paid</dt>
             <dd className="mt-0.5 text-2xl font-semibold tabular-nums text-ink">{paidCount}</dd>
           </div>
           {paidByCurrency.map(({ currency, amountMinorUnits }) => (
             <div key={`paid-${currency}`}>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Total paid ({currency})</dt>
+              <dt className="text-xs font-semibold text-ink-muted">Total paid ({currency})</dt>
               <dd className="mt-0.5 font-mono text-2xl font-semibold tabular-nums text-ink">
                 {currency} {minorUnitsToDecimalString(amountMinorUnits)}
               </dd>
@@ -52,7 +52,7 @@ export function BountyTrackRecord({ obligations }: { obligations: MyPaymentOblig
           ))}
           {pendingByCurrency.map(({ currency, amountMinorUnits }) => (
             <div key={`pending-${currency}`}>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Pending ({currency})</dt>
+              <dt className="text-xs font-semibold text-ink-muted">Pending ({currency})</dt>
               <dd className="mt-0.5 font-mono text-2xl font-semibold tabular-nums text-ink">
                 {currency} {minorUnitsToDecimalString(amountMinorUnits)}
               </dd>

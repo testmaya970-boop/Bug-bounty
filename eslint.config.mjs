@@ -8,7 +8,7 @@ export default tseslint.config(
   // never committed (see .gitignore), and not something to lint, same as .next/.
   // .claude/** holds installed agent skills (third-party CommonJS tooling scripts), and
   // partA.mjs is a leftover one-off browser script -- neither is app source.
-  globalIgnores([".next/**", ".next-prod/**", ".releases/**", "coverage/**", "playwright-report/**", "next-env.d.ts", "work/npm-cache/**", "supabase/.temp/**", ".claude/**", "partA.mjs"]),
+  globalIgnores([".next/**", ".next-prod/**", ".releases/**", "coverage/**", "playwright-report/**", "next-env.d.ts", "work/npm-cache/**", "supabase/.temp/**", ".claude/**", ".arena/**", "partA.mjs"]),
   ...tseslint.configs.recommended,
   {
     files: ["**/*.{ts,tsx}"],

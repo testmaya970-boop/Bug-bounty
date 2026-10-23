@@ -60,7 +60,7 @@ export default async function PlatformErrorsPage({ searchParams }: { searchParam
               <li key={g.fingerprint} className="p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="break-all font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                    <p className="break-all font-mono text-[11px] font-semibold text-ink-muted">
                       <span className={g.source === "server" ? "text-danger" : "text-warning"}>{g.source}</span>
                       {g.route && <> · {g.route}</>}
                     </p>

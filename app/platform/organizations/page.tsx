@@ -38,14 +38,14 @@ export default async function PlatformOrganizationsPage() {
         <SuspendOrganizationForm />
 
         <div className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Currently suspended</h2>
+          <h2 className="text-xs font-semibold text-ink-muted">Currently suspended</h2>
           {suspended.length === 0 ? (
             <EmptyState title="No suspended organizations">No organization is currently suspended.</EmptyState>
           ) : (
             <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
               {suspended.map((organization) => (
                 <li key={organization.id} className="p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-danger">Suspended · <LocalTime value={organization.suspendedAt} /></p>
+                  <p className="text-xs font-semibold text-danger">Suspended · <LocalTime value={organization.suspendedAt} /></p>
                   <p className="mt-1 text-sm font-medium text-ink">{organization.name}</p>
                   <ReinstateOrganizationForm organizationId={organization.id} />
                 </li>

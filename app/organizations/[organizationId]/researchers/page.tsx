@@ -88,7 +88,7 @@ export default async function OrganizationResearchersPage({ params }: { params: 
             <div className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[52rem] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted/70">
+                  <tr className="border-b border-border text-left font-mono text-[10px] font-medium text-ink-muted/70">
                     <th scope="col" className="py-2 pr-4 font-medium">Researcher</th>
                     <th scope="col" className="py-2 pr-4 font-medium">Access</th>
                     <th scope="col" className="py-2 pr-4 font-medium">Impact</th>

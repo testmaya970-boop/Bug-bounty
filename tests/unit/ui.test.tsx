@@ -40,7 +40,7 @@ describe("Unpatched UI foundation", () => {
     const html = renderToStaticMarkup(<AppShellClient title="Foundation" organizations={ONE_ORG} currentOrganizationId="org-1" hasResearcherParticipation={true} unreadNotificationCount={0} isPlatformAdmin={false}><p>Content</p></AppShellClient>);
     expect(html).toContain("Research");
     expect(html).toContain("Practice");
-    expect(html).toContain("Record");
+    expect(html).toContain("Earnings");
     expect(html).not.toContain("Workspace");
     expect(html).toContain("System");
     expect(html).toContain("Security");

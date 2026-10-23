@@ -68,7 +68,7 @@ function Figure({
 }) {
   if (balances.length === 0)
     return (
-      <p className="mt-1.5 font-mono text-lg font-semibold tabular-nums text-ink">
+      <p className="mt-1.5 text-2xl font-semibold tracking-tight tabular-nums text-ink">
         {empty}
       </p>
     );
@@ -77,7 +77,7 @@ function Figure({
       {balances.map((b) => (
         <p
           key={b.currency}
-          className={`font-mono text-lg font-semibold tabular-nums ${pick(b) < 0 ? "text-danger" : "text-ink"}`}
+          className={`text-2xl font-semibold tracking-tight tabular-nums ${pick(b) < 0 ? "text-danger" : "text-ink"}`}
         >
           {b.currency} {minorUnitsToDecimalString(pick(b))}
         </p>
@@ -200,8 +200,8 @@ export default async function OrganizationPaymentsPage({
           </p>
         )}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="grid grid-cols-1 divide-y divide-border rounded-xl border border-border bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="p-5">
             <SectionLabel>Available to award</SectionLabel>
             <Figure
               balances={balances}
@@ -221,14 +221,14 @@ export default async function OrganizationPaymentsPage({
               </p>
             )}
           </div>
-          <div className="rounded-lg border border-border bg-surface p-4">
+          <div className="p-5">
             <SectionLabel>Awarded, not yet paid</SectionLabel>
             <Figure balances={balances} pick={(b) => b.committed} />
             <p className="mt-1 text-xs text-ink-muted">
               Bounty + fee, already taken from your balance.
             </p>
           </div>
-          <div className="rounded-lg border border-border bg-surface p-4">
+          <div className="p-5">
             <SectionLabel>Paid out</SectionLabel>
             <Figure balances={balances} pick={(b) => b.paid} />
             <p className="mt-1 text-xs text-ink-muted">
@@ -247,7 +247,7 @@ export default async function OrganizationPaymentsPage({
             <div className="relative overflow-x-auto rounded-lg border border-border bg-surface">
               <table className="w-full min-w-[60rem] text-left text-sm">
                 <caption className="sr-only">Payment ledger</caption>
-                <thead className="border-b border-border text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <thead className="border-b border-border text-xs font-semibold text-ink-muted">
                   <tr>
                     <th scope="col" className="px-4 py-3">
                       Report

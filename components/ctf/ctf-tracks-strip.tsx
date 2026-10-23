@@ -44,7 +44,7 @@ export function CtfTracksStrip({
                 <p className="min-w-0 text-sm font-semibold text-ink">
                   {track.label}
                 </p>
-                <span className="shrink-0 font-mono text-[11px] uppercase tracking-wide text-ink-muted tabular-nums">
+                <span className="shrink-0 font-mono text-[11px] text-ink-muted tabular-nums">
                   {solved}/{items.length} solved
                 </span>
               </div>

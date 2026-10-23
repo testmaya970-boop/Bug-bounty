@@ -76,7 +76,7 @@ export function LeaderboardTable({ rows, myResearcherId }: { rows: PublicLeaderb
               onClick={() => setSortKey(option.key)}
               aria-pressed={sortKey === option.key}
               className={cn(
-                "min-h-9 border-b-2 px-2.5 font-mono text-xs font-semibold uppercase tracking-wide transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                "min-h-9 border-b-2 px-2.5 text-[13px] font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                 sortKey === option.key ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink",
               )}
             >
@@ -100,7 +100,7 @@ export function LeaderboardTable({ rows, myResearcherId }: { rows: PublicLeaderb
           <p className="border-t border-dashed border-border py-6 text-sm text-ink-muted">No researcher matches this search.</p>
         ) : (
           <div role="table" aria-label="Researcher registry">
-            <div role="row" className={cn("grid items-center gap-3 border-b border-border py-2 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted/70", GRID_COLS)}>
+            <div role="row" className={cn("grid items-center gap-3 border-b border-border py-2 font-mono text-[10px] font-medium text-ink-muted/70", GRID_COLS)}>
               <span role="columnheader">Researcher</span>
               <span role="columnheader" className="text-right">
                 Score
@@ -133,7 +133,7 @@ export function LeaderboardTable({ rows, myResearcherId }: { rows: PublicLeaderb
                       ) : (
                         <p className="break-words text-sm font-semibold text-ink">{row.displayName}</p>
                       )}
-                      {isMe && <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">You</span>}
+                      {isMe && <span className="shrink-0 font-mono text-[10px] font-semibold text-ink-muted">You</span>}
                     </div>
                     {/* A researcher who hasn't published a profile stays anonymous here (get_public_leaderboard). */}
                     <p className="truncate font-mono text-[11px] text-ink-muted">{row.publicUsername ? `@${row.publicUsername}` : "Private profile"}</p>

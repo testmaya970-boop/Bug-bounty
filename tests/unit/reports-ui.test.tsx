@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { classifyFailure, CreateReportForm } from "../../components/reports/create-report-form";
-import { ReportSummaryCard } from "../../components/reports/report-summary-card";
+import { IssueList } from "../../components/reports/issue-list";
 import { StatusBadge } from "../../components/ui/badge";
 import type { ReportStatus, ReportSummary } from "../../types/report";
 
@@ -159,9 +159,9 @@ describe("CreateReportForm: evidence and attachments are staged in the same form
   });
 });
 
-describe("ReportSummaryCard", () => {
+describe("IssueList (my reports)", () => {
   it("shows the real title, program, organization, target, and status -- not a placeholder", () => {
-    const html = renderToStaticMarkup(<ReportSummaryCard report={summary} />);
+    const html = renderToStaticMarkup(<IssueList reports={[{ ...summary, at: summary.submittedAt, atLabel: "submitted", context: `${summary.programName} · ${summary.organizationName}` }]} />);
     expect(html).toContain("Reflected XSS on search");
     expect(html).toContain("Acme Bounty");
     expect(html).toContain("Acme Security");
@@ -169,7 +169,7 @@ describe("ReportSummaryCard", () => {
   });
 
   it("links to the real nested report URL using the returned organizationId", () => {
-    const html = renderToStaticMarkup(<ReportSummaryCard report={summary} />);
+    const html = renderToStaticMarkup(<IssueList reports={[{ ...summary, at: summary.submittedAt, atLabel: "submitted", context: `${summary.programName} · ${summary.organizationName}` }]} />);
     expect(html).toContain(`/organizations/${summary.organizationId}/programs/${summary.programId}/reports/${summary.id}`);
   });
 });

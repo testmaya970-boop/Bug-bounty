@@ -137,7 +137,7 @@ export function OrganizationResponseTimes({ data, days, exportHref }: { data: Or
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
                 <caption className="sr-only">Median response time per program, with the 90th percentile and the share of reports on target</caption>
-                <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-ink-muted">
+                <thead className="border-b border-border bg-surface-muted text-xs text-ink-muted">
                   <tr>
                     <th scope="col" className="px-4 py-3 font-semibold">
                       Program

@@ -48,11 +48,11 @@ export default async function PlatformProgramsPage() {
           <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
             {programs.map((program) => (
               <li key={program.id} className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-warning">Submitted for review · <LocalTime value={program.submittedAt} /></p>
+                <p className="text-xs font-semibold text-warning">Submitted for review · <LocalTime value={program.submittedAt} /></p>
                 <p className="mt-1 text-sm font-medium text-ink">{program.name}</p>
                 <p className="mt-0.5 text-sm text-ink-muted">{program.organizationName}</p>
 
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs uppercase tracking-wide text-ink-muted">
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-ink-muted">
                   <span>{engagementTypeLabel(program.engagementType)}</span>
                   <span aria-hidden="true">·</span>
                   <span>{program.programType === "vdp" ? "Vulnerability disclosure" : "Paid bounty"}</span>

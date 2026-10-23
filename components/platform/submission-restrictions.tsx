@@ -41,7 +41,7 @@ export function PauseSubmissionsForm() {
 
   return (
     <form className="space-y-3 rounded-lg border border-border bg-surface p-4" onSubmit={handleSubmit} noValidate aria-label="Pause report submissions">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Pause report submissions</h2>
+      <h2 className="text-xs font-semibold text-ink-muted">Pause report submissions</h2>
       <p className="text-xs text-ink-muted">For spam or low-quality runs that don&apos;t justify a suspension. The researcher sees your reason on every report form.</p>
       <AccountSearch label="Researcher" selected={account} onSelect={setAccount} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">

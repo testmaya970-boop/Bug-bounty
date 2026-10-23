@@ -25,10 +25,9 @@ import type { CtfCategoryId, CtfDifficulty } from "../../lib/mock/ctf";
  * gated; under reduced motion the dot renders with no animation at all. */
 export function Badge({ className, children, dotClassName, pulse }: { className?: string; children: React.ReactNode; dotClassName?: string; pulse?: boolean }) {
   return (
-    // Tactical Telemetry: status reads as terminal telemetry -- uppercase, tracked mono.
-    // Uppercase is CSS-only (text-transform), so the DOM text every test asserts on is
-    // unchanged.
-    <span className={cn("inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]", className)}>
+    // Oct 22: a label pill (GitHub/Linear-style) -- sentence case, a hairline, the tone on the
+    // dot and text. Never color alone: the label text always says the state.
+    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-medium", className)}>
       {dotClassName && <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", dotClassName, pulse && "motion-safe:animate-glow-pulse")} />}
       {children}
     </span>

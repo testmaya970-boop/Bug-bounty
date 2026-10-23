@@ -23,7 +23,7 @@ export function RecommendedProgramsList({ programs }: { programs: RecommendedPro
             className="group flex items-start justify-between gap-4 p-4 transition-colors hover:bg-surface-muted motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus sm:p-5"
           >
             <div className="min-w-0">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{program.organizationName}</p>
+              <p className="font-mono text-[11px] font-semibold text-ink-muted">{program.organizationName}</p>
               <p className="mt-0.5 truncate text-base font-semibold text-ink">{program.name}</p>
               {program.focusAreas.length > 0 && <p className="mt-1 text-xs text-ink-muted">Matches your interest in {program.focusAreas.map(focusAreaLabel).join(", ")}</p>}
             </div>

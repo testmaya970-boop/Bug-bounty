@@ -35,7 +35,7 @@ export default async function PlatformAuditLogPage() {
               <li key={entry.id} className="p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                    <p className="font-mono text-[11px] font-semibold text-ink-muted">
                       {entry.action} · {entry.entityType}
                     </p>
                     <p className="mt-1 text-sm text-ink">

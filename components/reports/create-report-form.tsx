@@ -685,7 +685,7 @@ export function CreateReportForm({
               {stagedEvidence.map((item) => (
                 <li key={item.localId} className="flex items-start justify-between gap-3 p-3 motion-safe:animate-enter-rise">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{EVIDENCE_TYPE_LABELS[item.evidenceType]}</p>
+                    <p className="text-xs font-semibold text-ink-muted">{EVIDENCE_TYPE_LABELS[item.evidenceType]}</p>
                     <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs text-ink">{item.content}</pre>
                   </div>
                   <IconButton label="Remove" type="button" variant="quiet" className="text-danger" onClick={() => removeStagedEvidence(item.localId)}>
@@ -756,23 +756,23 @@ export function CreateReportForm({
           <SectionLabel>Review</SectionLabel>
           <dl className="mt-3 grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface-muted p-4 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Target</dt>
+              <dt className="text-xs font-semibold text-ink-muted">Target</dt>
               <dd className="mt-0.5 break-all font-mono text-ink">{target || "Not set"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Title</dt>
+              <dt className="text-xs font-semibold text-ink-muted">Title</dt>
               <dd className="mt-0.5 text-ink">{title || "Not set"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Weakness type</dt>
+              <dt className="text-xs font-semibold text-ink-muted">Weakness type</dt>
               <dd className="mt-0.5 text-ink">{weaknessType ? weaknessTypeLabel(weaknessType) : "Not set"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Your severity assessment</dt>
+              <dt className="text-xs font-semibold text-ink-muted">Your severity assessment</dt>
               <dd className="mt-0.5 text-ink">{researcherSeverity ? researcherSeverity[0].toUpperCase() + researcherSeverity.slice(1) : "Not set"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Evidence staged</dt>
+              <dt className="text-xs font-semibold text-ink-muted">Evidence staged</dt>
               <dd className="mt-0.5 font-mono text-ink">{stagedEvidence.length + stagedFiles.length === 0 ? "None" : `${stagedEvidence.length + stagedFiles.length} item(s)`}</dd>
             </div>
           </dl>

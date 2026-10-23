@@ -152,7 +152,7 @@ export function ProgramHeader({
         <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{programName}</h2>
         <ProgramStatusBadge status={status} />
         {programType === "vdp" && (
-          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">Disclosure only</span>
+          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs font-semibold text-ink-muted">Disclosure only</span>
         )}
         {siblingPrograms && <ProgramSwitcher organizationId={organizationId} programId={programId} programName={programName} siblingPrograms={siblingPrograms} />}
       </div>

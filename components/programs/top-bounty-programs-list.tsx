@@ -30,7 +30,7 @@ export function TopBountyProgramsList({ programs }: { programs: TopBountyProgram
           >
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-3">
-                <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{program.organizationName}</p>
+                <p className="font-mono text-[11px] font-semibold text-ink-muted">{program.organizationName}</p>
                 <ProgramStatusBadge status={program.status} />
               </div>
               <p className="mt-1 break-words text-base font-semibold text-ink">{program.name}</p>

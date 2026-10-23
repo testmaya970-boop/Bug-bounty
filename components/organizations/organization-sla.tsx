@@ -26,7 +26,7 @@ export function OrganizationSla({ rows, programNames }: { rows: OrganizationSlaS
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
-            <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-ink-muted">
+            <thead className="border-b border-border bg-surface-muted text-xs text-ink-muted">
               <tr>
                 {["Program", "Median first response", "First response missed", "Triage missed", "Resolution missed"].map((h) => (
                   <th key={h} scope="col" className="px-4 py-3 font-semibold">

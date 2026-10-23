@@ -34,7 +34,7 @@ function StatValue({ value }: { value: number }) {
 function Telemetry({ status }: { status: Status }) {
   const acceptRate = status.submissions > 0 ? Math.round((status.acceptedReports / status.submissions) * 100) : 0;
   return (
-    <dl className="mt-6 flex flex-wrap gap-x-6 gap-y-2 border-t border-canvas/15 pt-4 font-mono text-[11px] uppercase tracking-wider text-canvas/50">
+    <dl className="mt-6 flex flex-wrap gap-x-6 gap-y-2 border-t border-canvas/15 pt-4 font-mono text-[11px] text-canvas/50">
       <div className="flex items-center gap-1.5">
         <span aria-hidden="true" className="size-1.5 rounded-full bg-success motion-safe:animate-glow-pulse" />
         <dt className="sr-only">Session status</dt>
@@ -77,7 +77,7 @@ export function CommandRow({ action, status }: { action: PrimaryAction; status: 
               button/link text on the light canvas but fails contrast against this dark
               panel (2.7:1) -- --action-on-dark is the brighter, dark-surface-only
               variant (5.8:1 here), see app/globals.css's own token comment. */}
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-action-on-dark">{action.eyebrow}</p>
+          <p className="font-mono text-[11px] font-semibold text-action-on-dark">{action.eyebrow}</p>
           {/* Not a second <h1> -- the shell's own page title (AppShell/AppShellClient) IS
               this action's title (see app/page.tsx, where AppShell's title prop is now
               primaryAction.title, not the generic word "Dashboard"). Repeating it here as

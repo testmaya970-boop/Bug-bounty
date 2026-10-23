@@ -69,7 +69,7 @@ function PreferenceRow({ preference, description }: { preference: NotificationPr
         )}
       </div>
       {preference.isMandatory ? (
-        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-ink-muted">Always on</span>
+        <span className="shrink-0 text-xs font-semibold text-ink-muted">Always on</span>
       ) : (
         <button
           type="button"

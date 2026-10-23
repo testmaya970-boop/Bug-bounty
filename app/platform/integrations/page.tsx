@@ -42,7 +42,7 @@ export default async function IntegrationsPage() {
 
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full min-w-[44rem] text-left text-sm">
-            <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-ink-muted">
+            <thead className="border-b border-border bg-surface-muted text-xs text-ink-muted">
               <tr>
                 {["Module", "Route", "Provider", "Status", "Setup"].map((h) => (
                   <th key={h} scope="col" className="px-4 py-3 font-semibold">

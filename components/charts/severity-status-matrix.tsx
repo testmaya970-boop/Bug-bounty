@@ -32,7 +32,7 @@ export function SeverityStatusMatrix({ cells }: { cells: MockSeverityStatusCell[
         <div />
         {presentStatuses.map((status) => (
           <div key={status} className="flex items-end justify-center pb-1 text-center">
-            <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-ink-muted [writing-mode:vertical-rl]">{reportStatusLabel(status)}</span>
+            <span className="whitespace-nowrap text-[10px] font-semibold text-ink-muted [writing-mode:vertical-rl]">{reportStatusLabel(status)}</span>
           </div>
         ))}
         {SEVERITY_ORDER.map((severity) => (

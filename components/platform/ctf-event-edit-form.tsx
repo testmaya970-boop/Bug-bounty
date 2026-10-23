@@ -133,7 +133,7 @@ export function CtfEventEditForm({ event, allChallenges }: { event: CtfEventAdmi
             const inCategory = allChallenges.filter((c) => c.categoryId === categoryId);
             return (
               <fieldset key={categoryId}>
-                <legend className="font-mono text-[11px] font-semibold uppercase tracking-wide text-ink-muted">{categoryId}</legend>
+                <legend className="font-mono text-[11px] font-semibold text-ink-muted">{categoryId}</legend>
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {inCategory.map((c) => (
                     <label

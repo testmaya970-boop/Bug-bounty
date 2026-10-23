@@ -123,7 +123,7 @@ export default async function OrganizationEngagementsPage({ params, searchParams
                       <span className="flex items-center gap-2">
                         <span className="font-medium text-ink">{program.name}</span>
                         <ProgramStatusBadge status={program.status} />
-                        <span className="font-mono text-xs uppercase tracking-wide text-ink-muted">{engagementTypeLabel(program.engagementType)}</span>
+                        <span className="font-mono text-xs text-ink-muted">{engagementTypeLabel(program.engagementType)}</span>
                       </span>
                       <span className="text-sm text-ink-muted">Created <LocalTime value={program.createdAt} dateOnly /></span>
                     </Link>

@@ -84,7 +84,7 @@ export function CtfWriteupsPanel({ challengeId, writeups }: { challengeId: strin
       <Card className="p-5 sm:p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <SectionLabel>Solver write-ups</SectionLabel>
-          <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">Visible to solvers only</span>
+          <span className="font-mono text-[11px] text-ink-muted">Visible to solvers only</span>
         </div>
 
         {mine && !editing ? (

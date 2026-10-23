@@ -61,7 +61,7 @@ export function CtfHintsPanel({ challengeId, points, solved, initialHints }: { c
                     <Lightbulb aria-hidden="true" weight="fill" className="size-4 text-warning" />
                     {label}
                   </span>
-                  <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">Cost {hint.cost} pts</span>
+                  <span className="font-mono text-[11px] text-ink-muted">Cost {hint.cost} pts</span>
                 </div>
                 <p className="mt-2 text-sm leading-relaxed text-ink">{hint.body}</p>
               </li>
@@ -75,7 +75,7 @@ export function CtfHintsPanel({ challengeId, points, solved, initialHints }: { c
                   <LockSimple aria-hidden="true" className="size-4" />
                   {label}
                 </span>
-                <span className="font-mono text-[11px] uppercase tracking-wide">
+                <span className="font-mono text-[11px]">
                   {hint.cost} pts, after hint {hint.position - 1}
                 </span>
               </li>

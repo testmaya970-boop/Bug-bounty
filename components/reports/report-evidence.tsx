@@ -69,7 +69,7 @@ function EvidenceItem({ evidence, organizationId, programId, reportId }: { evide
   return (
     <li className="py-3 first:pt-0">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        <p className="text-xs font-semibold text-ink-muted">
           {EVIDENCE_TYPE_LABELS[evidence.evidenceType]} · {evidence.authorName} · {evidence.authorContext === "researcher" ? "Researcher" : "Organization"}
         </p>
         <time className="text-xs text-ink-muted"><LocalTime value={evidence.createdAt} /></time>

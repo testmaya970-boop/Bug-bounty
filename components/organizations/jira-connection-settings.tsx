@@ -29,7 +29,7 @@ function CopyValue({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
+      <p className="text-xs font-semibold text-ink-muted">{label}</p>
       <div className="mt-1 flex items-start gap-2">
         <code className="min-w-0 flex-1 break-all rounded-md border border-border bg-surface-muted px-3 py-2 font-mono text-sm text-ink">{value}</code>
         <Button

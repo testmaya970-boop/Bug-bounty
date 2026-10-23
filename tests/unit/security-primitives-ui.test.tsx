@@ -3,11 +3,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { MetadataPair, RegistryList, SectionLabel } from "../../components/ui/security-primitives";
 
-describe("SectionLabel: the one shared uppercase eyebrow, not a hand-copied string per file", () => {
-  it("renders its text uppercase-styled", () => {
+describe("SectionLabel: the one shared section label, not a hand-copied string per file", () => {
+  it("renders its text as a quiet sentence-case label (Oct 22 rebuild: no uppercase)", () => {
     const html = renderToStaticMarkup(<SectionLabel>Evidence</SectionLabel>);
     expect(html).toContain("Evidence");
-    expect(html).toContain("uppercase");
+    expect(html).not.toContain("uppercase");
   });
 });
 

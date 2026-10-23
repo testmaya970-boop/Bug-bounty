@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { Button } from "../ui/button";
 import { ErrorState } from "../ui/feedback";
-import { ReportSummaryCard } from "./report-summary-card";
+import { IssueList } from "./issue-list";
 import { listMyReportsPageAction } from "../../actions/reports";
 import type { ReportSeverity, ReportStatus } from "../../types/report";
 import type { ReportSummary } from "../../types/report";
@@ -40,13 +40,7 @@ export function MyReportsList({
 
   return (
     <div className="space-y-4">
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {reports.map((report) => (
-          <li key={report.id}>
-            <ReportSummaryCard report={report} />
-          </li>
-        ))}
-      </ul>
+      <IssueList reports={reports.map((r) => ({ ...r, at: r.submittedAt, atLabel: "submitted", context: `${r.programName} · ${r.organizationName}` }))} />
 
       {loadError && <ErrorState>{loadError}</ErrorState>}
 

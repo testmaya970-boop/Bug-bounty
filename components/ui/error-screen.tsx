@@ -17,7 +17,7 @@ export function ErrorScreen({ error, retry, backHref, backLabel }: { error: Erro
 
   return (
     <main id="main" className="mx-auto flex min-h-[60vh] max-w-lg flex-col justify-center gap-4 px-6 py-16">
-      <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-danger">Something went wrong</p>
+      <p className="font-mono text-[11px] font-semibold text-danger">Something went wrong</p>
       <h1 className="text-2xl font-bold tracking-tight text-ink">This page hit an unexpected error.</h1>
       <p className="text-sm text-ink-muted">It has been reported automatically. Try again, or go back. Nothing you submitted before this point was lost.</p>
       {error.digest && <p className="font-mono text-xs text-ink-muted">Reference: {error.digest}</p>}

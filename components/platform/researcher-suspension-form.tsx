@@ -89,7 +89,7 @@ export function DeleteResearcherForm() {
 
   return (
     <form className="space-y-3 rounded-lg border border-danger/40 bg-surface p-4" onSubmit={handleSubmit} noValidate>
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-danger">Delete a researcher account</h2>
+      <h2 className="text-xs font-semibold text-danger">Delete a researcher account</h2>
       <p className="text-xs text-ink-muted">Permanently scrubs their profile and blocks sign-in. Their reports and payout history are kept for integrity -- this cannot be undone.</p>
       <AccountSearch label="Researcher" selected={account} onSelect={setAccount} />
       <Textarea label="Explain why this account is being deleted" required value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} />

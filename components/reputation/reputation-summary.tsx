@@ -37,7 +37,7 @@ export function ReputationSummarySection({ counts }: { counts: ReputationFactCou
           if (count === 0) return null;
           return (
             <div key={factType}>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{FACT_TYPE_LABELS[factType]}</dt>
+              <dt className="text-xs font-semibold text-ink-muted">{FACT_TYPE_LABELS[factType]}</dt>
               <dd className="mt-0.5 text-2xl font-semibold tabular-nums text-ink">{count}</dd>
             </div>
           );

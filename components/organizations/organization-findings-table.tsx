@@ -186,7 +186,7 @@ export function OrganizationFindingsTable({
           {/* Desktop/tablet: a real table. */}
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
-              <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-ink-muted">
+              <thead className="border-b border-border bg-surface-muted text-xs text-ink-muted">
                 <tr>
                   {["Severity", "Report", "Engagement", "Target", "Status", "Assignee", "Researcher", "Updated", "Next action"].map((header) => (
                     <th key={header} scope="col" className="px-4 py-3 font-semibold">

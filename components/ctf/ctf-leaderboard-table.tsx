@@ -126,7 +126,7 @@ export function CtfLeaderboardTable({ rows, myResearcherId }: { rows: CtfLeaderb
           </p>
         ) : (
           <div role="table" aria-label="CTF leaderboard" className="overflow-hidden rounded-lg border border-border bg-surface">
-            <div role="row" className={cn("grid items-center gap-3 border-b border-border bg-surface-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted", GRID_COLS)}>
+            <div role="row" className={cn("grid items-center gap-3 border-b border-border bg-surface-muted px-3 py-2 text-[11px] font-semibold text-ink-muted", GRID_COLS)}>
               <span role="columnheader">Rank</span>
               <span role="columnheader">Researcher</span>
               <span role="columnheader" className="text-right">
@@ -153,7 +153,7 @@ export function CtfLeaderboardTable({ rows, myResearcherId }: { rows: CtfLeaderb
                   <div role="cell" className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-semibold text-ink">{row.name}</p>
-                      {isMe && <span className="shrink-0 rounded-full bg-action/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-action">You</span>}
+                      {isMe && <span className="shrink-0 rounded-full bg-action/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-action">You</span>}
                     </div>
                     <p className="truncate font-mono text-[11px] text-ink-muted">{row.username ? `@${row.username}` : "No username yet"}</p>
                     <div className="relative mt-1.5 h-2 w-full max-w-md overflow-hidden rounded-full bg-surface-muted">

@@ -38,7 +38,7 @@ function RetestRow({ retest, canEscalate, organizationId, programId, reportId }:
       )}
       {retest.decidedAt && (
         <div className="mt-2 rounded-md bg-surface-muted p-2.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Organization response · <LocalTime value={retest.decidedAt} /></p>
+          <p className="text-xs font-semibold text-ink-muted">Organization response · <LocalTime value={retest.decidedAt} /></p>
           {retest.decisionNotes && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{retest.decisionNotes}</p>}
         </div>
       )}

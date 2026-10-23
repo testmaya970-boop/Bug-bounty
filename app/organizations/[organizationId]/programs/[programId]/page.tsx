@@ -124,7 +124,7 @@ async function renderProgramControlCenterPage({
           {/* CAN I RESEARCH THIS — the primary action, placed immediately after identity,
               never buried below the scope listing (see docs/decisions/0043). */}
           <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
+            <p className="font-mono text-[11px] font-semibold text-canvas/55">Can I research this?</p>
             {publicProgram.programType === "vdp" && (
               <p className="mt-2 text-sm text-canvas/70">This is a vulnerability-disclosure program: it does not pay bounties. Reports are still welcome and reviewed.</p>
             )}
@@ -287,7 +287,7 @@ async function renderProgramControlCenterPage({
             {/* CAN I RESEARCH THIS — placed immediately after identity, never buried
                 below the scope listing (see docs/decisions/0043). */}
             <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
+              <p className="font-mono text-[11px] font-semibold text-canvas/55">Can I research this?</p>
               <p className="mt-2 text-sm text-canvas/70">{joinInfo?.joinMode === "request" ? "This program is public and reviews who joins." : "This program is open to the community."}</p>
               {publicProgram.programType === "vdp" && (
                 <p className="mt-2 text-sm text-canvas/70">This is a vulnerability-disclosure program: it does not pay bounties. Reports are still welcome and reviewed.</p>
@@ -539,7 +539,7 @@ async function renderProgramControlCenterPage({
               />
             ) : (
               <div className="rounded-lg bg-ink px-6 py-6 text-canvas sm:px-7">
-                <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-canvas/55">Can I research this?</p>
+                <p className="font-mono text-[11px] font-semibold text-canvas/55">Can I research this?</p>
                 <p className="mt-2 text-sm text-canvas/70">
                   This program is currently <span className="font-semibold text-canvas">{program.status}</span> and is not accepting new reports right now.
                 </p>

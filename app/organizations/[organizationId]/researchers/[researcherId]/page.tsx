@@ -81,17 +81,17 @@ export default async function OrganizationResearcherDetailPage({ params }: { par
 
         <div className="grid grid-cols-3 gap-6 border-y border-border py-4">
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted/70">Resolved</p>
+            <p className="font-mono text-[10px] font-medium text-ink-muted/70">Resolved</p>
             <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-ink">{researcher.resolvedCount}</p>
           </div>
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted/70">Critical / high</p>
+            <p className="font-mono text-[10px] font-medium text-ink-muted/70">Critical / high</p>
             <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-ink">
               <span className="text-severity-critical">{researcher.resolvedCritical}</span> / <span className="text-severity-high">{researcher.resolvedHigh}</span>
             </p>
           </div>
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted/70">Last submission</p>
+            <p className="font-mono text-[10px] font-medium text-ink-muted/70">Last submission</p>
             <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-ink">{researcher.lastSubmittedAt ? <LocalTime value={researcher.lastSubmittedAt} dateOnly /> : "Never"}</p>
           </div>
         </div>

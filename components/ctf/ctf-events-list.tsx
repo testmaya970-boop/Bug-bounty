@@ -18,7 +18,7 @@ function EventStatusBadge({ status }: { status: CtfEventEffectiveStatus }) {
         ? "border-action/40 bg-action/10 text-action"
         : "border-border-strong text-ink-muted";
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide ${tone}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold ${tone}`}>
       {status === "active" && <span aria-hidden="true" className="size-1.5 animate-pulse rounded-full bg-success" />}
       {STATUS_LABEL[status]}
     </span>
@@ -42,7 +42,7 @@ function EventCard({ event }: { event: CtfEventSummary }) {
     >
       <div className="flex items-start justify-between gap-2">
         <EventStatusBadge status={event.effectiveStatus} />
-        <span className="shrink-0 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+        <span className="shrink-0 font-mono text-[11px] text-ink-muted">
           {event.challengeCount} {event.challengeCount === 1 ? "challenge" : "challenges"}
         </span>
       </div>

@@ -37,7 +37,7 @@ function MediationRow({ mediation, canEscalate, organizationId, programId, repor
       )}
       {mediation.resolvedAt && (
         <div className="mt-2 rounded-md bg-surface-muted p-2.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Response · <LocalTime value={mediation.resolvedAt} /></p>
+          <p className="text-xs font-semibold text-ink-muted">Response · <LocalTime value={mediation.resolvedAt} /></p>
           {mediation.resolutionNotes && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{mediation.resolutionNotes}</p>}
         </div>
       )}

@@ -39,27 +39,27 @@ export function CvssSummary({ metrics, baseScore, confirmedSeverity }: { metrics
       )}
       <dl className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
         <div>
-          <dt className="font-semibold uppercase tracking-wide text-ink-muted">Attack vector</dt>
+          <dt className="font-semibold text-ink-muted">Attack vector</dt>
           <dd className="mt-0.5 text-ink">{ATTACK_VECTOR_LABEL[metrics.attackVector]}</dd>
         </div>
         <div>
-          <dt className="font-semibold uppercase tracking-wide text-ink-muted">Attack complexity</dt>
+          <dt className="font-semibold text-ink-muted">Attack complexity</dt>
           <dd className="mt-0.5 text-ink">{ATTACK_COMPLEXITY_LABEL[metrics.attackComplexity]}</dd>
         </div>
         <div>
-          <dt className="font-semibold uppercase tracking-wide text-ink-muted">Privileges required</dt>
+          <dt className="font-semibold text-ink-muted">Privileges required</dt>
           <dd className="mt-0.5 text-ink">{PRIVILEGES_REQUIRED_LABEL[metrics.privilegesRequired]}</dd>
         </div>
         <div>
-          <dt className="font-semibold uppercase tracking-wide text-ink-muted">User interaction</dt>
+          <dt className="font-semibold text-ink-muted">User interaction</dt>
           <dd className="mt-0.5 text-ink">{USER_INTERACTION_LABEL[metrics.userInteraction]}</dd>
         </div>
         <div>
-          <dt className="font-semibold uppercase tracking-wide text-ink-muted">Scope</dt>
+          <dt className="font-semibold text-ink-muted">Scope</dt>
           <dd className="mt-0.5 text-ink">{SCOPE_LABEL[metrics.scope]}</dd>
         </div>
         <div>
-          <dt className="font-semibold uppercase tracking-wide text-ink-muted">Impact (C / I / A)</dt>
+          <dt className="font-semibold text-ink-muted">Impact (C / I / A)</dt>
           <dd className="mt-0.5 text-ink">
             {IMPACT_LABEL[metrics.confidentialityImpact]} / {IMPACT_LABEL[metrics.integrityImpact]} / {IMPACT_LABEL[metrics.availabilityImpact]}
           </dd>

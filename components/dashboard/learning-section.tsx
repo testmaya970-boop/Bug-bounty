@@ -40,7 +40,7 @@ export function LearningSection({ categories }: { categories: MockChallengeCateg
           <div className="relative">
             {/* text-action-on-dark, not text-action: see app/globals.css's own token
                 comment -- --action fails contrast on this dark panel. */}
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-action-on-dark">Featured track</p>
+            <p className="font-mono text-[11px] font-semibold text-action-on-dark">Featured track</p>
             <p className="mt-1 text-xl font-semibold">Web fundamentals: cookies, injection, and access control</p>
           </div>
         </Link>

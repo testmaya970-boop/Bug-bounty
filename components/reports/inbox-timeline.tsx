@@ -73,7 +73,7 @@ function CommentRow({ entry }: { entry: Extract<TimelineEntry, { kind: "message"
         {message.authorName.slice(0, 1).toUpperCase()}
       </span>
       <div className={isInternal ? "min-w-0 flex-1 rounded-md border-l-2 border-warning bg-surface-muted p-3" : "min-w-0 flex-1"}>
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        <p className="text-xs font-semibold text-ink-muted">
           {message.authorName} · {isHacker ? "Hacker" : isInternal ? "Internal note" : "Reply to hacker"} · <time><LocalTime value={entry.createdAt} /></time>
         </p>
         <Markdown content={message.body} className="mt-1" />

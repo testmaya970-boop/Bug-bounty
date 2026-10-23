@@ -40,7 +40,7 @@ export default async function PlatformResearchersPage({ searchParams }: { search
 
         <section className="space-y-3" aria-labelledby="paused-heading">
           <div>
-            <h2 id="paused-heading" className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Paused submissions</h2>
+            <h2 id="paused-heading" className="text-xs font-semibold text-ink-muted">Paused submissions</h2>
             <p className="mt-1 text-sm text-ink-muted">Five invalid closes in a row pause a researcher for 7 days automatically. You can pause anyone by hand, or resume early.</p>
           </div>
           {paused.length === 0 ? (
@@ -50,7 +50,7 @@ export default async function PlatformResearchersPage({ searchParams }: { search
               {paused.map((p) => (
                 <li key={p.id} className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-warning">
+                    <p className="text-xs font-semibold text-warning">
                       {p.source === "automatic" ? "Paused automatically" : "Paused by an admin"} · until <LocalTime value={p.restrictedUntil} />
                     </p>
                     <p className="mt-1 break-words text-sm font-medium text-ink">{p.displayName}</p>
@@ -73,7 +73,7 @@ export default async function PlatformResearchersPage({ searchParams }: { search
 
         <section className="space-y-3">
           <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Suspended and deactivated accounts</h2>
+            <h2 className="text-xs font-semibold text-ink-muted">Suspended and deactivated accounts</h2>
             <p className="mt-1 text-sm text-ink-muted">Reinstate a suspended account, or reactivate one its owner deactivated and asked to bring back. Accounts deleted by a platform admin can&apos;t be restored and aren&apos;t listed.</p>
           </div>
           <form action="/platform/researchers" method="get" role="search" className="flex gap-2">
@@ -101,7 +101,7 @@ export default async function PlatformResearchersPage({ searchParams }: { search
             <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
               {restricted.map((account) => (
                 <li key={account.id} className="p-4">
-                  <p className={`text-xs font-semibold uppercase tracking-wide ${account.state === "suspended" ? "text-danger" : "text-warning"}`}>
+                  <p className={`text-xs font-semibold ${account.state === "suspended" ? "text-danger" : "text-warning"}`}>
                     {account.state === "suspended" ? "Suspended" : "Deactivated by its owner"}
                     {account.since && (
                       <>

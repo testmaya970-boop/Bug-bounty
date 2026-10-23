@@ -62,7 +62,7 @@ const PLATFORM_ADMIN_ITEMS: { href: Route; label: string }[] = [
 function NavGroup({ label, items, path }: { label: string; items: { href: Route; label: string }[]; path: string }) {
   return (
     <div>
-      <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{label}</p>
+      <p className="px-3 text-[11px] font-semibold text-ink-muted">{label}</p>
       <ul className="mt-2 space-y-0.5">
         {items.map((item) => {
           const active = path === item.href;

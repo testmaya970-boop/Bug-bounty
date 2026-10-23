@@ -102,7 +102,7 @@ export default async function PlatformAllProgramsPage({ searchParams }: { search
           <div className="relative overflow-x-auto rounded-lg border border-border bg-surface">
             <table className="w-full min-w-[56rem] text-left text-sm">
               <caption className="sr-only">Programs{status ? `, status ${programStatusLabel(status)}` : ""}{q ? `, matching "${q}"` : ""}</caption>
-              <thead className="border-b border-border text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              <thead className="border-b border-border text-xs font-semibold text-ink-muted">
                 <tr>
                   <th scope="col" className="px-4 py-3">Program</th>
                   <th scope="col" className="px-4 py-3">Organization</th>

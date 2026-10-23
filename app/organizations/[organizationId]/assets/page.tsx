@@ -14,6 +14,7 @@ import { listOrganizationAssets } from "../../../../services/scope";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 import type { ProgramAssetType } from "../../../../types/scope";
 import { listAssetTiers } from "../../../../services/asset-tiers";
+import { AssetPosture } from "../../../../components/organizations/asset-posture";
 
 const VALID_ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -69,6 +70,8 @@ export default async function OrganizationAssetsPage({
         <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <p className="text-sm text-ink-muted">Every asset your engagements cover, where it is in scope, and the findings filed against it. Change scope from an engagement's Scope section.</p>
+
+        <AssetPosture assets={assets} tiers={assetTiers.tiers} more={Boolean(nextCursor)} />
 
         <OrganizationAssetsTable
           organizationId={organizationId}

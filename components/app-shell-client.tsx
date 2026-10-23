@@ -279,10 +279,11 @@ function Section({ section, first, active, collapsed, folded, onToggle, onNaviga
   const rows = folded && !collapsed ? visible.filter((item) => item.href === active) : visible;
   return (
     <div className={cn(!first && (collapsed ? "mt-2 border-t border-border pt-2" : "mt-4"))}>
-      {collapsed ? (
+      {collapsed || first ? (
+        // The first section reads without a visible header; screen readers still get its name.
         <p className="sr-only">{section.label}</p>
       ) : (
-        !first && (
+        (
           <button type="button" onClick={onToggle} aria-expanded={!folded} className={`group/hdr mb-0.5 flex h-7 w-full items-center gap-1 rounded-md px-2 text-left text-xs font-medium text-ink-muted ${HOVER}:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`}>
             <span className="min-w-0 truncate">{section.label}</span>
             <CaretDown aria-hidden="true" weight="bold" className={cn("size-2.5 shrink-0 opacity-0 transition-[transform,opacity] duration-150 group-hover/hdr:opacity-100 group-focus-visible/hdr:opacity-100", folded && "-rotate-90 opacity-100")} />

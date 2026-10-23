@@ -20,7 +20,7 @@ export function SectionLabel({ children, className }: { children: React.ReactNod
 export function MetadataPair({ label, value, mono, className }: { label: string; value: React.ReactNode; mono?: boolean; className?: string }) {
   return (
     <div className={className}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
+      <p className="text-xs font-semibold text-ink-muted">{label}</p>
       <p className={cn("mt-0.5 text-sm font-medium text-ink", mono && "break-all font-mono")}>{value}</p>
     </div>
   );
@@ -50,7 +50,7 @@ export function PrimaryActionPanel({ eyebrow, title, description, href, actionLa
       <div className="relative">
         {/* text-action-on-dark, not text-action: this panel always renders on bg-ink;
             see app/globals.css's own token comment for why --action fails contrast here. */}
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-action-on-dark">{eyebrow}</p>
+        <p className="font-mono text-[11px] font-semibold text-action-on-dark">{eyebrow}</p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
         {description && <p className="mt-2 max-w-lg text-sm text-canvas/70">{description}</p>}
         <Link prefetch={false}
