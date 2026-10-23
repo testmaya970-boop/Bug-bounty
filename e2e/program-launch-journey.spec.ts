@@ -94,12 +94,15 @@ test("launch journey: org creates + submits engagement, platform admin activates
   await page.getByLabel("Title").fill(reportTitle);
   await page.getByLabel("Weakness type").selectOption("idor");
   await page.getByLabel("Your severity assessment").selectOption("high");
+  // Unique per run: the same text to several programs in a day trips NEAR_DUPLICATE_BLAST.
+  const invoice = 10000 + Math.floor(Math.random() * 89999);
   await page.getByLabel("Description").fill(
     [
-      "1. Sign in as customer A and open Billing -> Invoices.",
-      "2. Capture `GET /v1/invoices/10482` in a proxy.",
-      "3. Replay it with customer A's token but invoice id 10483 (owned by customer B).",
-      "4. The API returns customer B's full invoice (name, address, line items, last-4 of card).",
+      `Found on ${programName} (run ${stamp}).`,
+      `1. Sign in as customer A (${stamp}-a) and open Billing -> Invoices.`,
+      `2. Capture \`GET /v1/invoices/${invoice}\` in a proxy.`,
+      `3. Replay it with customer A's token but invoice id ${invoice + 1}, owned by customer ${stamp}-b.`,
+      `4. The API returns ${stamp}-b's full invoice (name, address, line items, last-4 of card).`,
     ].join("\n"),
   );
   await page.getByLabel("Impact").fill("Any authenticated customer can enumerate sequential invoice ids and read every other customer's billing PII.");

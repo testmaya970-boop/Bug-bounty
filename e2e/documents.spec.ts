@@ -80,6 +80,9 @@ test("keyboard-first shell: command menu and G-then-letter jumps", async ({ page
   await page.keyboard.press("g");
   await page.keyboard.press("f");
   await page.waitForURL(/\/findings$/);
-  await page.keyboard.press("?");
-  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
+  // The new page wires its shortcuts once it hydrates; retry the key until the sheet opens.
+  await expect(async () => {
+    await page.keyboard.press("?");
+    await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible({ timeout: 1000 });
+  }).toPass();
 });

@@ -872,6 +872,27 @@ async function main() {
     await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [platformAdmin.id]));
     await tryStep(withPlatformActor(platformAdmin.id, (client) => client.query("select public.review_tax_form($1, 'verified', 'E2E seed')", [veteran.id])), "review_tax_form (veteran)");
   }
+  // A payout from a previous run left an immutable tax deduction on this obligation
+  // (202610220040). Test reset only: the owner clears it with triggers off; the app never can.
+  if (process.env.MIGRATION_DATABASE_URL) {
+    const owner = new Pool({ connectionString: process.env.MIGRATION_DATABASE_URL, max: 1 });
+    try {
+      const c = await owner.connect();
+      try {
+        await c.query("begin");
+        await c.query("set local session_replication_role = replica");
+        await c.query(
+          "delete from public.payout_tax_withholdings w using public.payment_obligations o, public.reports r where w.obligation_id = o.id and r.id = o.report_id and r.program_id = $1 and r.title = $2",
+          [publicProgram.id, resolvedTitle],
+        );
+        await c.query("commit");
+      } finally {
+        c.release();
+      }
+    } finally {
+      await owner.end();
+    }
+  }
   await withServiceRole((client) =>
     client.query("delete from public.payment_obligations o using public.reports r where r.id = o.report_id and r.program_id = $1 and r.title = $2", [publicProgram.id, resolvedTitle]),
   );

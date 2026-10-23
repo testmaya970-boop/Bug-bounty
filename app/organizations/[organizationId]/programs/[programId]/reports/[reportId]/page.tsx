@@ -167,7 +167,7 @@ export default async function ReportDetailPage({
   const isFinal = allowedNext.length === 0;
 
   return (
-    <AppShell title={report.title} user={user} organizationId={organizationId}>
+    <AppShell title="Report" titleIsSection user={user} organizationId={organizationId}>
       <TriageStatusRailProvider initialStatus={report.status} initialSeverity={report.confirmedSeverity}>
       <div className="mx-auto max-w-6xl space-y-6">
         <Breadcrumbs
@@ -221,9 +221,9 @@ export default async function ReportDetailPage({
         {/* Issue-style header: the title and its short id, then status, who opened it and the
             target (the single most important fact for a triager) on one line. */}
         <header className="space-y-3 border-b border-border pb-4">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
             {report.title} <span className="font-normal text-ink-muted">#{report.id.slice(0, 8)}</span>
-          </h2>
+          </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
             {canTriage ? (
               <>

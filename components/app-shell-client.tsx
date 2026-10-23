@@ -628,6 +628,7 @@ export function AppShellClient({
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
+            aria-label="Open command menu"
             data-rail-label="Search  ⌘K"
             className={cn(
               `mb-3 mt-2 flex h-8 shrink-0 items-center gap-2 rounded-md border border-border bg-canvas text-[13px] text-ink-muted transition-colors duration-100 ${HOVER}:border-border-strong ${HOVER}:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`,

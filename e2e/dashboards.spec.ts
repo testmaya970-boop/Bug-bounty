@@ -58,7 +58,7 @@ test("organization dashboard: KPIs and charts for owners", async ({ page }) => {
 test("platform overview: admins land on it, with queues and platform health", async ({ page }) => {
   await signIn(page, "e2e.platform-admin@unpatched.demo");
   await expect(page).toHaveURL(/\/platform$/);
-  await expect(page.getByRole("heading", { name: "Needs attention" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Monitors" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Launch reviews/ })).toHaveAttribute("href", "/platform/programs");
   await expectTiles(page, ["Reports submitted", "Validity rate", "Bounties paid", "New researchers", "New organization accounts", "Live programs"]);
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).first().getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");

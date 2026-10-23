@@ -54,6 +54,7 @@ test("new dark security-ops shell: theme, nav, routing, typography, drawer", asy
   await page.keyboard.press("Control+k");
   const searchFocused = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") === "Global search");
   console.log("SEARCH_FOCUSED_ON_CTRL_K:", searchFocused);
+  await page.keyboard.press("Escape"); // Ctrl K opens the command menu; close it again
 
   // 7. Typography check
   const fontInfo = await page.evaluate(() => {

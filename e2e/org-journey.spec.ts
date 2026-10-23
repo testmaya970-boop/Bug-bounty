@@ -308,7 +308,9 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await expect(page.getByRole("heading", { name: /Analytics/ })).toBeVisible();
 
   // --- Help / profile menu / switchers reachable ---------------------------------------
-  await page.getByRole("link", { name: "Help", exact: true }).click();
+  // Help lives in the account menu (and the command menu); there is no top bar on desktop.
+  await page.getByRole("button", { name: /Account menu/ }).first().click();
+  await page.getByRole("link", { name: "Help & docs" }).first().click();
   await expect(page.getByRole("heading", { name: "Get help" })).toBeVisible();
   // Help has its own minimal header (Back to workspace / Sign out), no account menu.
   await page.getByRole("link", { name: "Back to workspace" }).click();
