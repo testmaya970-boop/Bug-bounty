@@ -9,6 +9,33 @@ import { isPlatformAdmin, listProgramsPendingReviewForAdmin } from "../../../ser
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { engagementTypeLabel } from "../../../lib/program-status";
 import { LocalTime } from "../../../components/ui/local-time";
+import { listProgramLaunchReadiness, type LaunchReadiness } from "../../../services/onboarding";
+
+/** The review checklist (202610230005): what Unpatched confirms before a program goes live. */
+function LaunchChecks({ r }: { r: LaunchReadiness }) {
+  const checks: [string, boolean][] = [
+    [`Scope: ${r.scopeEntries} in-scope target${r.scopeEntries === 1 ? "" : "s"}`, r.scopeEntries > 0],
+    ["Policy published", r.policyPublished],
+    ["Response targets set", r.responseTargets],
+    [r.programType === "vdp" ? "Disclosure program: no bounty table needed" : "Bounty table set", r.bountyTable],
+    [r.programType === "vdp" ? "Disclosure program: no funding needed" : "Balance funded", r.funded],
+    ["Billing details on file", r.billingProfile],
+    ["Every admin has two-factor", r.adminsMfa],
+  ];
+  const passed = checks.filter(([, ok]) => ok).length;
+  return (
+    <div className="mt-3 rounded-md border border-border p-3">
+      <p className="text-xs font-medium text-ink-muted">Launch checks: {passed} of {checks.length}</p>
+      <ul className="mt-1.5 grid grid-cols-1 gap-x-6 gap-y-1 text-[13px] sm:grid-cols-2">
+        {checks.map(([label, ok]) => (
+          <li key={label} className={ok ? "text-ink" : "font-medium text-danger"}>
+            {ok ? "✓" : "✗"} {label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /**
  * A non-admin gets a real 404, not a "Permission denied" page -- same convention every
@@ -34,13 +61,14 @@ export default async function PlatformProgramsPage() {
   const admin = await isPlatformAdmin();
   if (!admin) notFound();
 
-  const programs = await listProgramsPendingReviewForAdmin();
+  const [programs, readiness] = await Promise.all([listProgramsPendingReviewForAdmin(), listProgramLaunchReadiness()]);
+  const readinessById = new Map(readiness.map((r) => [r.programId, r]));
 
   return (
     <AppShell title="Program launch review" user={user}>
       <div className="max-w-5xl space-y-6">
         <SectionLabel>Platform operations</SectionLabel>
-        <p className="text-sm text-ink-muted">Programs awaiting platform approval before they can go active, across every organization.</p>
+        <p className="text-sm text-ink-muted">Programs awaiting platform approval before they can go active, across every organization. Target: a decision within 2 business days of submission.</p>
 
         {programs.length === 0 ? (
           <EmptyState title="Nothing awaiting review">No program is currently waiting for a launch decision.</EmptyState>
@@ -48,7 +76,16 @@ export default async function PlatformProgramsPage() {
           <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
             {programs.map((program) => (
               <li key={program.id} className="p-4">
-                <p className="text-xs font-semibold text-warning">Submitted for review · <LocalTime value={program.submittedAt} /></p>
+                {(() => {
+                  const r = readinessById.get(program.id);
+                  const late = (r?.businessDaysWaiting ?? 0) >= 2;
+                  return (
+                    <p className={`text-xs font-semibold ${late ? "text-danger" : "text-warning"}`}>
+                      Submitted for review · <LocalTime value={program.submittedAt} />
+                      {r && <> · {r.businessDaysWaiting} business day{r.businessDaysWaiting === 1 ? "" : "s"} waiting{late ? ", past the 2-day target" : ""}</>}
+                    </p>
+                  );
+                })()}
                 <p className="mt-1 text-sm font-medium text-ink">{program.name}</p>
                 <p className="mt-0.5 text-sm text-ink-muted">{program.organizationName}</p>
 
@@ -78,6 +115,7 @@ export default async function PlatformProgramsPage() {
                 ) : (
                   <p className="mt-2 text-sm italic text-ink-muted">No description provided.</p>
                 )}
+                {readinessById.get(program.id) && <LaunchChecks r={readinessById.get(program.id)!} />}
                 <ProgramLaunchReviewForm programId={program.id} />
               </li>
             ))}

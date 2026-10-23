@@ -62,7 +62,7 @@ test("researcher sets a tax residence and sees the rule for the next payout", as
   await page.getByLabel("Tax residence").selectOption("IN");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Tax residence saved" })).toBeVisible();
-  await expect(page.getByText(/section (194J|206AA)/)).toBeVisible();
+  await expect(page.getByText(/section 393/)).toBeVisible();
   // Leave the account as it was, so other specs' payouts withhold nothing.
   await page.getByLabel("Tax residence").selectOption("");
   await page.getByRole("button", { name: "Save" }).click();
@@ -102,4 +102,13 @@ test("audit log: an owner filters to scope changes and searches what changed", a
   await page.getByRole("searchbox", { name: /Search/ }).fill("out_of_scope");
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(table.getByText(/Scope state: in scope → out of scope/).first()).toBeVisible();
+});
+
+test("onboarding: an owner sees what's left to set up, linked to where it's done", async ({ page }) => {
+  await signIn(page, "e2e.admin@unpatched.demo");
+  await page.goto(`/organizations/${fixture.organizationId}`);
+  // The seeded org has launched, so only open steps show; its admins have no two-factor yet.
+  const setup = page.getByRole("region", { name: "Finish setup" });
+  await expect(setup.getByRole("link", { name: "Turn on two-factor for every admin" })).toHaveAttribute("href", "/settings/security");
+  await expect(setup.getByText("Create your first engagement")).toHaveCount(0);
 });

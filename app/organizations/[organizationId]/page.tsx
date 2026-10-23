@@ -1,4 +1,6 @@
 import React from "react";
+import { OnboardingChecklist } from "../../../components/organizations/onboarding-checklist";
+import { getOrganizationOnboarding } from "../../../services/onboarding";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
@@ -98,7 +100,7 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
   // applies) -- only fetched when canSeeAdminActivity is true, matching Settings'
   // established pattern, so a lower-privileged member never sees a misleadingly empty
   // activity feed in place of "you aren't authorized to see this."
-  const [organizations, programs, openReports, members, activityPage, resolutionPerformance, bountySpendSummary] = await perfTimed(
+  const [organizations, programs, openReports, members, activityPage, resolutionPerformance, bountySpendSummary, onboarding] = await perfTimed(
     "org dashboard: main Promise.all",
     () =>
       Promise.all([
@@ -110,6 +112,8 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
         // Org-wide figures follow the same role rules as Analytics and Payments (202610060004).
         canViewOrganizationAnalytics(actor.role) ? getOrganizationResolutionPerformance(organizationId) : Promise.resolve(null),
         canManagePayments(actor.role) ? getOrganizationBountySpendSummary(organizationId) : Promise.resolve(null),
+        // Onboarding (202610230005): owners and security admins run it.
+        canSeeAdminActivity ? getOrganizationOnboarding(organizationId) : Promise.resolve(null),
       ]),
   );
   const organization = organizations.find((org) => org.id === organizationId);
@@ -147,6 +151,8 @@ async function renderOrganizationOverviewPage(paramsPromise: Promise<{ organizat
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
         <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
+
+        {onboarding && <OnboardingChecklist onboarding={onboarding} organizationId={organizationId} />}
 
         {/* Read-only and purely informational -- only a platform admin can lift a
             suspension (see supabase/migrations/202609050016_organization_status_control.sql

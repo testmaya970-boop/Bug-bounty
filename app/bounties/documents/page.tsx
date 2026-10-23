@@ -53,12 +53,12 @@ function certificatePeriods(payouts: Payout[]) {
     if (p.regime === "in_194j" || p.regime === "in_206aa") india.add(`${financialYearOf(day)}-${financialQuarterOf(day)}`);
     if (p.regime === "us_1099" || p.regime === "us_backup") us.add(day.slice(0, 4));
   }
-  return [...[...india].sort().reverse().map((p) => ({ period: p, label: `TDS certificate, FY ${p.slice(0, 7)} ${p.slice(8)}`, secondary: "India, Form 16A details" })), ...[...us].sort().reverse().map((y) => ({ period: y, label: `Form 1099-NEC statement, ${y}`, secondary: "United States, nonemployee compensation" }))];
+  return [...[...india].sort().reverse().map((p) => ({ period: p, label: `TDS certificate, FY ${p.slice(0, 7)} ${p.slice(8)}`, secondary: "India, TDS certificate details" })), ...[...us].sort().reverse().map((y) => ({ period: y, label: `Form 1099-NEC statement, ${y}`, secondary: "United States, nonemployee compensation" }))];
 }
 
 const REGIME_NOTE: Record<string, string> = {
-  in_194j: "10% TDS under section 194J (PAN on file)",
-  in_206aa: "20% TDS under section 206AA: add your PAN in Settings to lower this to 10%",
+  in_194j: "10% TDS under section 393 (formerly 194J) once your payments this year pass Rs 50,000. PAN on file",
+  in_206aa: "20% TDS under section 393 at the no-PAN rate (formerly 206AA) once your payments this year pass Rs 50,000. Add your PAN in Settings to lower it to 10%",
   us_1099: "No withholding; reported on Form 1099-NEC (W-9 on file)",
   us_backup: "24% backup withholding: submit a W-9 with your TIN in Settings to stop it",
   none: "Nothing withheld for your tax residence",

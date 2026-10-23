@@ -176,3 +176,45 @@ describe("audit log search (202610230001)", () => {
     });
   });
 });
+
+describe("Indian TDS threshold (202610230004)", () => {
+  it("deducts nothing within Rs 50,000 a year, then tax on the whole year's amount on the payout that crosses it", async () => {
+    await inTx(async (db) => {
+      const r = await newUser(db, "researcher");
+      await db.as({ user: r });
+      await db.query("select public.set_my_tax_residence('IN')");
+      const first = await obligationFor(db, r);
+      await db.query("set session_replication_role = replica");
+      await db.query("update public.payment_obligations set currency = 'INR', amount_minor_units = 4000000 where id = $1", [first.id]); // Rs 40,000
+      await db.query("set session_replication_role = origin");
+      expect(await attempt(db, first.id, first.next)).toBe(4000000);
+      const second = await obligationFor(db, r);
+      await db.query("set session_replication_role = replica");
+      await db.query("update public.payment_obligations set currency = 'INR', amount_minor_units = 2000000 where id = $1", [second.id]); // Rs 20,000
+      await db.query("set session_replication_role = origin");
+      // Rs 60,000 for the year at 20% (no PAN) = Rs 12,000, all deducted from this payout.
+      expect(await attempt(db, second.id, second.next)).toBe(2000000 - 1200000);
+      const basis = await db.one<{ legal_basis: string }>("select legal_basis from public.payout_tax_withholdings where obligation_id = $1", [second.id]);
+      expect(basis.legal_basis).toMatch(/section 393.*Threshold crossed/);
+    });
+  });
+});
+
+describe("organization onboarding (202610230005)", () => {
+  it("reads progress from what the organization did; admins see launch checks; others are refused", async () => {
+    await inTx(async (db) => {
+      const owner = await userId(db, "e2e.admin@unpatched.demo");
+      const triager = await userId(db, "e2e.triager@unpatched.demo");
+      const admin = await userId(db, "e2e.platform-admin@unpatched.demo");
+      await db.as({ user: owner });
+      const { j } = await db.one<{ j: Record<string, unknown> }>("select public.get_organization_onboarding($1) as j", [fixture.organizationId]);
+      expect(j).toMatchObject({ program_created: true, scope_added: true, launched: true, funded: true });
+      await db.as({ user: triager });
+      expect(await db.fails("select public.get_organization_onboarding($1)", [fixture.organizationId])).toMatch(/FORBIDDEN/);
+      expect(await db.fails("select * from public.list_program_launch_readiness()")).toMatch(/FORBIDDEN/);
+      const session = await adminSession(db, admin);
+      await db.as({ user: admin, session });
+      expect(await db.fails("select * from public.list_program_launch_readiness()")).toBeNull();
+    });
+  });
+});

@@ -8,7 +8,7 @@ import { getMyTaxIdentity, listMyPayouts, taxPayer } from "../../../../../servic
 import { getCurrentUser } from "../../../../../lib/auth/current-user";
 import { calendarYearRange, financialPeriodRange } from "../../../../../lib/document-periods";
 
-const SECTION: Record<string, string> = { in_194j: "194J", in_206aa: "194J (at the 206AA rate, no PAN)" };
+const SECTION: Record<string, string> = { in_194j: "393 (formerly 194J)", in_206aa: "393, no-PAN rate (formerly 206AA)" };
 
 /**
  * A tax certificate for one period, by jurisdiction:
@@ -51,8 +51,8 @@ export default async function TaxCertificatePage({ params }: { params: Promise<{
               { title: "Deductee", name, lines: [`PAN ${identity?.panMasked ?? "not provided (20% rate applied)"}`, identity?.email] },
             ]}
             footnotes={[
-              "Nature of payment: fees for professional or technical services (security research bounties), section 194J of the Income-tax Act, 1961.",
-              "The statutory Form 16A is generated on the TRACES portal after Unpatched files the quarterly TDS return (Form 26Q). Check that these deductions appear in your Form 26AS or Annual Information Statement.",
+              "Nature of payment: fees for professional services (security research bounties), section 393 of the Income-tax Act, 2025 (section 194J of the 1961 Act for earlier years). No tax is deducted until payments in the financial year pass Rs 50,000.",
+              "The statutory TDS certificate is generated on the TRACES portal after Unpatched files the quarterly TDS return. Check that these deductions appear in your Form 26AS or Annual Information Statement.",
             ]}
           >
             <div className="grid grid-cols-1 gap-6 rounded-lg bg-surface-hover p-5 sm:grid-cols-2">

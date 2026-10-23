@@ -494,7 +494,7 @@ export default async function OrganizationPaymentsPage({
               ))}
             </ul>
           )}
-          <div className="pt-2">
+          <div id="billing-details" className="scroll-mt-16 pt-2">
             <SectionLabel>Billing details</SectionLabel>
             <p className="mb-3 mt-1 text-sm text-ink-muted">
               Printed on your invoices. Add your GSTIN to claim input tax
