@@ -67,6 +67,7 @@ type InvitationRow = {
   program_id: string;
   organization_id: string;
   email: string;
+  invited_username?: string | null;
   invited_by: string;
   message: string | null;
   expires_at: string;
@@ -80,7 +81,9 @@ function mapInvitationRow(row: InvitationRow): ProgramInvitationRecord {
     id: row.id,
     programId: row.program_id,
     organizationId: row.organization_id,
-    email: row.email,
+    // A username invitation never exposes the email it was sent to (202610230006).
+    email: row.invited_username ? "" : row.email,
+    invitedUsername: row.invited_username ?? null,
     invitedBy: row.invited_by,
     message: row.message,
     expiresAt: row.expires_at,
@@ -140,7 +143,7 @@ export async function listPendingProgramInvitations(programId: string): Promise<
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
       client
         .query<InvitationRow>(
-          `select id, program_id, organization_id, email, invited_by, message, expires_at, accepted_at, revoked_at, created_at
+          `select id, program_id, organization_id, email, invited_username, invited_by, message, expires_at, accepted_at, revoked_at, created_at
            from public.program_invitations
            where program_id = $1 and accepted_at is null and revoked_at is null
            order by created_at desc`,
@@ -169,6 +172,37 @@ export async function inviteResearcher(params: { programId: string; email: strin
     mapError(error as { message: string });
   }
   return { invitation: mapInvitationRow(rows[0]), token };
+}
+
+/** Invite by @username (202610230006). Returns the email for the server to send the invitation
+ * to -- callers must never pass it on to the browser. */
+export async function inviteResearcherByUsername(params: { programId: string; username: string; message?: string }): Promise<{ invitation: ProgramInvitationRecord; recipientEmail: string; token: string }> {
+  const actor = await getCurrentUser();
+  const token = generateInvitationToken();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<InvitationRow>(client, "public.invite_researcher_by_username", [params.programId, params.username, params.message ?? "", hashInvitationToken(token)]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return { invitation: mapInvitationRow(rows[0]), recipientEmail: rows[0].email, token };
+}
+
+export type SuggestedResearcher = { researcherId: string; displayName: string; username: string; score: number; resolvedCount: number; bountiesCount: number };
+
+/** Public-profile researchers to invite to a pilot, best reputation first, minus anyone already in. */
+export async function suggestProgramResearchers(programId: string, limit = 8): Promise<SuggestedResearcher[]> {
+  const actor = await getCurrentUser();
+  type Row = { researcher_id: string; display_name: string; public_username: string; score: string; resolved_count: string; bounty_finalized_count: string };
+  let rows: Row[];
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<Row>(client, "public.suggest_program_researchers", [programId, limit]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((r) => ({ researcherId: r.researcher_id, displayName: r.display_name, username: r.public_username, score: Number(r.score), resolvedCount: Number(r.resolved_count), bountiesCount: Number(r.bounty_finalized_count) }));
 }
 
 export async function cancelProgramInvitation(invitationId: string): Promise<void> {

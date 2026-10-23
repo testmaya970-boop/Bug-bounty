@@ -112,3 +112,19 @@ test("onboarding: an owner sees what's left to set up, linked to where it's done
   await expect(setup.getByRole("link", { name: "Turn on two-factor for every admin" })).toHaveAttribute("href", "/settings/security");
   await expect(setup.getByText("Create your first engagement")).toHaveCount(0);
 });
+
+test("private pilot: suggested researchers are invited by username and their email never shows", async ({ page }) => {
+  const fx = JSON.parse(readFileSync("e2e/.seed-fixture.json", "utf-8")) as { organizationId: string; privateProgramId: string };
+  await signIn(page, "e2e.admin@unpatched.demo");
+  await page.goto(`/organizations/${fx.organizationId}/programs/${fx.privateProgramId}#researchers`);
+  const suggested = page.getByRole("region", { name: "Suggested for your private pilot" });
+  await suggested.getByRole("button", { name: "Invite @bugtest-researcher" }).click();
+  // The page refreshes: the researcher leaves the suggestions and appears as a pending invitation.
+  await expect(suggested.getByRole("button", { name: "Invite @bugtest-researcher" })).toHaveCount(0);
+  const pending = page.getByRole("listitem").filter({ hasText: "@bugtest-researcher" }).filter({ has: page.getByRole("button", { name: "Cancel invitation" }) });
+  await expect(pending).toBeVisible();
+  await expect(page.getByText("e2e.veteran@unpatched.demo")).toHaveCount(0);
+  // Leave the program as it was for other specs.
+  await pending.getByRole("button", { name: "Cancel invitation" }).click();
+  await expect(pending).toHaveCount(0);
+});

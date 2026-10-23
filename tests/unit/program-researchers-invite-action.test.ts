@@ -31,6 +31,7 @@ const REAL_INVITATION = {
     programId: VALID_INPUT.programId,
     organizationId: VALID_INPUT.organizationId,
     email: VALID_INPUT.email,
+    invitedUsername: null,
     invitedBy: "owner-1",
     message: null,
     expiresAt: "2026-09-13T00:00:00Z",

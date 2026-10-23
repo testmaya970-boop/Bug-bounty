@@ -35,7 +35,10 @@ describe("asset tiers", () => {
       expect(r, "seed has an open report with an asset on a program with a bounty table").toBeTruthy();
       await db.query("update public.reports set confirmed_severity = 'high' where id = $1", [r.id]);
       // Walk it to resolved through the real transitions (calculation needs a final report).
-      for (const next of ["triaging", "accepted", "resolved"]) await db.query("update public.reports set status = $2 where id = $1 and status <> $2 and status <> 'resolved'", [r.id, next]);
+      // From wherever it is now: earlier E2E runs can leave the picked report already accepted.
+      const path = ["new", "triaging", "accepted", "resolved"];
+      const { status } = await db.one<{ status: string }>("select status from public.reports where id = $1", [r.id]);
+      for (const next of path.slice(path.indexOf(status) + 1)) await db.query("update public.reports set status = $2 where id = $1", [r.id, next]);
       await db.as({ user: owner });
       await db.query("select public.calculate_bounty_recommendation($1)", [r.id]);
       const full = await db.one<{ min: string; max: string; asset_tier: number; tier_percent: number }>("select calculated_min_amount_minor_units as min, calculated_max_amount_minor_units as max, asset_tier, tier_percent from public.report_bounty_decisions where report_id = $1", [r.id]);

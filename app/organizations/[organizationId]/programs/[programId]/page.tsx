@@ -40,7 +40,8 @@ import { getActorMembership, listOrganizationMembers } from "../../../../../serv
 import { getProgram, getProgramAccessInstructions, getProgramFocusAreas, getPublicProgram, listProgramMembers, listProgramsForOrganization, listPublicProgramScope } from "../../../../../services/programs";
 import { getProgramResolutionPerformance, getProgramSeverityStatusBreakdown, getProgramWeeklyReportVolume } from "../../../../../services/program-analytics";
 import { listActiveScopeEntries } from "../../../../../services/scope";
-import { getMyParticipation, listMyProgramParticipations, listPendingProgramInvitations, listProgramResearchers } from "../../../../../services/program-researchers";
+import { getMyParticipation, listMyProgramParticipations, listPendingProgramInvitations, listProgramResearchers, suggestProgramResearchers, type SuggestedResearcher } from "../../../../../services/program-researchers";
+import { SuggestedResearchers } from "../../../../../components/programs/suggested-researchers";
 import type { ProgramInvitationRecord, ProgramResearcherRecord } from "../../../../../types/researcher";
 import { listReportsForProgram } from "../../../../../services/reports";
 import { getEffectiveBountyPolicy } from "../../../../../services/bounty";
@@ -392,7 +393,7 @@ async function renderProgramControlCenterPage({
   // both already known above. Collapsed into one Promise.all so the whole page pays for
   // exactly the slowest single query in this batch, not the sum of all of them.
   const policyPromise = getProgramPolicy(programId);
-  const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations, accessRequests], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms, organizationMembers] =
+  const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations, accessRequests, suggestedResearchers], focusAreas, { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms, organizationMembers] =
     await perfTimed("program home: stage 2 (parallel batch)", () =>
       Promise.all([
         listActiveScopeEntries(programId),
@@ -403,7 +404,10 @@ async function renderProgramControlCenterPage({
         // Invitation-only read, deliberately separate from `program.description` --
         // see the same migration and getProgramAccessInstructions' own comment.
         getProgramAccessInstructions(programId),
-        canManageProgram ? Promise.all([listProgramResearchers(programId), listPendingProgramInvitations(programId), listProgramAccessRequests(programId)]) : Promise.resolve([[], [], []] as [ProgramResearcherRecord[], ProgramInvitationRecord[], Awaited<ReturnType<typeof listProgramAccessRequests>>]),
+        // Pilot suggestions (202610230006): private programs that can still take researchers.
+        canManageProgram
+          ? Promise.all([listProgramResearchers(programId), listPendingProgramInvitations(programId), listProgramAccessRequests(programId), program.visibility === "private" && program.status !== "closed" ? suggestProgramResearchers(programId) : Promise.resolve([] as SuggestedResearcher[])])
+          : Promise.resolve([[], [], [], []] as [ProgramResearcherRecord[], ProgramInvitationRecord[], Awaited<ReturnType<typeof listProgramAccessRequests>>, SuggestedResearcher[]]),
         canManageProgram ? getProgramFocusAreas(programId) : Promise.resolve([]),
         // RLS already scopes this correctly per viewer: a manager sees every report for
         // the program, a researcher sees only their own (researcher_id = auth.uid()) --
@@ -702,6 +706,7 @@ async function renderProgramControlCenterPage({
             </div>
             <AccessRequestsPanel organizationId={organizationId} programId={programId} requests={accessRequests} />
             {pendingInvitations.length > 0 && <PendingProgramInvitationsPanel organizationId={organizationId} programId={programId} invitations={pendingInvitations} />}
+            <SuggestedResearchers organizationId={organizationId} programId={programId} researchers={suggestedResearchers} />
             {researchers.length === 0 ? (
               <EmptyState title="No researchers are currently participating">Invite a researcher to get started.</EmptyState>
             ) : (

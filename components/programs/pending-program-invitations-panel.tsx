@@ -53,7 +53,7 @@ export function PendingProgramInvitationsPanel({ organizationId, programId, invi
             return (
               <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
                 <div>
-                  <p className="text-sm font-medium text-ink">{invitation.email}</p>
+                  <p className="text-sm font-medium text-ink">{invitation.invitedUsername ? `@${invitation.invitedUsername}` : invitation.email}</p>
                   <p className="mt-1 text-xs text-ink-muted">{expired ? "Expired" : <>Expires <LocalTime value={invitation.expiresAt} /></>}</p>
                 </div>
                 <CancelInvitationButton organizationId={organizationId} programId={programId} invitationId={invitation.id} />

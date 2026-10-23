@@ -27,7 +27,9 @@ export type ProgramInvitationRecord = {
   id: string;
   programId: string;
   organizationId: string;
+  /** Empty for an invitation made by @username: the researcher's email is never shown to the organization. */
   email: string;
+  invitedUsername: string | null;
   invitedBy: string;
   message: string | null;
   expiresAt: string;

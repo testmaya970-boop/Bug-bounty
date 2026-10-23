@@ -8,6 +8,7 @@ import {
   acceptProgramInvitationById as acceptProgramInvitationByIdService,
   cancelProgramInvitation as cancelProgramInvitationService,
   inviteResearcher as inviteResearcherService,
+  inviteResearcherByUsername as inviteResearcherByUsernameService,
   reinstateResearcher as reinstateResearcherService,
   revokeResearcher as revokeResearcherService,
   suspendResearcher as suspendResearcherService,
@@ -46,28 +47,49 @@ export async function inviteResearcherToProgram(input: z.infer<typeof inviteSche
   if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
   const result = await toResult(inviteResearcherService(parsed.data));
   if (!result.ok) return result;
-  revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}`);
-  // invite_researcher_to_program only writes the row; the email is sent here, directly (an
-  // invitation has no report, so it doesn't fit the outbox's report-shaped notifications).
-  // The send result is checked and returned with the link: a bounced email used to be
-  // reported as sent (invitation audit, 21 Oct).
+  return { ok: true, data: await sendProgramInvitation({ ...parsed.data, to: parsed.data.email, token: result.data.token, invitationId: result.data.invitation.id }) };
+}
+
+// The invitation row is written by the database; the email is sent here, directly (an
+// invitation has no report, so it doesn't fit the outbox's report-shaped notifications). The
+// send result is returned with the link: a bounced email used to be reported as sent
+// (invitation audit, 21 Oct).
+async function sendProgramInvitation(p: { organizationId: string; programId: string; message?: string; to: string; token: string; invitationId: string }): Promise<{ inviteUrl: string; emailSent: boolean }> {
+  revalidatePath(`/organizations/${p.organizationId}/programs/${p.programId}`);
   const user = await getCurrentUser();
-  const [program, organizations] = await Promise.all([getProgram(parsed.data.programId), user ? listCurrentUserOrganizations(user.id) : Promise.resolve([])]);
+  const [program, organizations] = await Promise.all([getProgram(p.programId), user ? listCurrentUserOrganizations(user.id) : Promise.resolve([])]);
   const programName = program?.name ?? "a program";
-  const org = organizations.find((o) => o.id === parsed.data.organizationId)?.name ?? "An organization";
-  const inviteUrl = invitationUrl(`/program-invitations/${result.data.token}`);
+  const org = organizations.find((o) => o.id === p.organizationId)?.name ?? "An organization";
+  const inviteUrl = invitationUrl(`/program-invitations/${p.token}`);
   const emailSent = await sendInvitationEmail({
-    to: parsed.data.email,
+    to: p.to,
     subject: `${org} invited you to research ${programName} on Unpatched`,
     text: [
       `${org} invited you to submit security research to its private program "${programName}" on Unpatched.`,
-      parsed.data.message ? `\nMessage from ${org}: ${parsed.data.message}` : "",
+      p.message ? `\nMessage from ${org}: ${p.message}` : "",
       `\nAccept the invitation: ${inviteUrl}`,
       "\nThis link expires in 7 days. If you don't have an Unpatched account yet, the link lets you create a researcher account with this email address, then accept.",
     ].join("\n"),
-    idempotencyKey: result.data.invitation.id,
+    idempotencyKey: p.invitationId,
   });
-  return { ok: true, data: { inviteUrl, emailSent } };
+  return { inviteUrl, emailSent };
+}
+
+const usernameInviteSchema = z.object({
+  organizationId: uuidSchema,
+  programId: uuidSchema,
+  username: z.string().trim().regex(/^@?[A-Za-z0-9_.-]{2,40}$/, "Enter a researcher's username, like @jordan-ellis."),
+  message: z.string().trim().max(500).optional(),
+});
+
+/** Invite by @username (202610230006). The researcher's email is looked up and used here, on the
+ * server, to send the invitation; it is never returned to the organization. */
+export async function inviteResearcherByUsernameToProgram(input: z.infer<typeof usernameInviteSchema>): Promise<ActionResult<{ inviteUrl: string; emailSent: boolean }>> {
+  const parsed = usernameInviteSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
+  const result = await toResult(inviteResearcherByUsernameService(parsed.data));
+  if (!result.ok) return result;
+  return { ok: true, data: await sendProgramInvitation({ ...parsed.data, to: result.data.recipientEmail, token: result.data.token, invitationId: result.data.invitation.id }) };
 }
 
 // organizationId/programId are optional -- present when a manager cancels from the

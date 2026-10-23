@@ -218,3 +218,30 @@ describe("organization onboarding (202610230005)", () => {
     });
   });
 });
+
+describe("invite by username (202610230006)", () => {
+  it("invites without the organization ever seeing the email; refuses unknown names and duplicates; suggestions exclude people already in", async () => {
+    await inTx(async (db) => {
+      const owner = await userId(db, "e2e.admin@unpatched.demo");
+      const researcher = await newUser(db, "researcher");
+      // Only researchers with a public profile have a public username to be invited by.
+      const handle = `pilot-${researcher.slice(0, 8)}`;
+      await db.query("update public.users set public_username = $2 where id = $1", [researcher, handle]);
+      await db.as({ user: owner });
+      const inv = await db.one<{ id: string; email: string; invited_username: string }>("select * from public.invite_researcher_by_username($1, $2, 'Join our pilot', 'hash-' || gen_random_uuid())", [fixture.privateProgramId, `@${handle}`]);
+      expect(inv.invited_username).toBe(handle);
+      expect(inv.email).toMatch(/@unpatched\.demo$/); // kept for delivery and the accept match
+      await db.query("reset role");
+      const audit = await db.one<{ metadata: Record<string, unknown> }>("select metadata from public.audit_logs where entity_id = $1", [inv.id]);
+      expect(audit.metadata).toEqual({ program_id: fixture.privateProgramId, username: `@${handle}` });
+      await db.as({ user: owner });
+      expect(await db.fails("select public.invite_researcher_by_username($1, $2, '', 'h2')", [fixture.privateProgramId, handle])).toMatch(/INVITATION_PENDING/);
+      expect(await db.fails("select public.invite_researcher_by_username($1, 'nobody_has_this_name_x', '', 'h3')", [fixture.privateProgramId])).toMatch(/RESEARCHER_NOT_FOUND/);
+      const suggested = await db.rows<{ public_username: string }>("select public_username from public.suggest_program_researchers($1, 25)", [fixture.privateProgramId]);
+      expect(suggested.some((s) => s.public_username === handle)).toBe(false);
+      await db.as({ user: researcher });
+      expect(await db.fails("select public.invite_researcher_by_username($1, $2, '', 'h4')", [fixture.privateProgramId, handle])).toMatch(/FORBIDDEN/);
+      expect(await db.fails("select * from public.suggest_program_researchers($1)", [fixture.privateProgramId])).toMatch(/FORBIDDEN/);
+    });
+  });
+});

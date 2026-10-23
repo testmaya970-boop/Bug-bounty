@@ -114,7 +114,7 @@ test("billing admin: sees the payment ledger with titles only, and no report con
   const row = page.getByRole("row").filter({ hasText: PAID_REPORT });
   await expect(row).toBeVisible();
   await expect(row.getByText("E2E Veteran Researcher")).toBeVisible();
-  await expect(row.getByText("USD 1800.00")).toBeVisible(); // $1,500 bounty + $300 fee billed to the org
+  await expect(row.getByText("USD 1500.00")).toBeVisible(); // the bounty alone: since 2026-10-23 the fee comes from the researcher
   await expect(row.getByRole("link")).toHaveCount(0); // no way into the report from here
 
   await page.goto(`/organizations/${organizationId}/programs/${publicProgramId}/inbox`);
