@@ -208,17 +208,9 @@ export async function getBountyAcceptance(reportId: string): Promise<BountyAccep
   return row ? { amountMinorUnits: Number(row.amount_minor_units), currency: row.currency, acceptedAt: row.accepted_at } : null;
 }
 
-export async function acceptBounty(reportId: string): Promise<void> {
-  const actor = await getCurrentUser();
-  try {
-    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.accept_bounty", [reportId]));
-  } catch (error) {
-    mapError(error as { message: string });
-  }
-}
 
 /** What finalize_bounty will check, before confirming (check_award_funding, 202610190002): the
- * program budget, and whether the organization balance covers bounty + fee (yes/no only). */
+ * program budget, and whether the organization balance covers the bounty (yes/no only). */
 export type AwardFunding = {
   currency: string;
   neededMinorUnits: number;

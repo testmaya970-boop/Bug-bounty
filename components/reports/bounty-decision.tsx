@@ -133,10 +133,10 @@ export function FinalizeBountyDialog({ organizationId, programId, reportId, curr
             </p>
             {/* Finalizing records the decision; paying it draws on the prepaid balance
                 (202610140004). Said here, at the moment an org admin commits to a number. */}
-            <p className="text-sm text-ink-muted">Paying it takes the bounty plus the platform fee from your organization&apos;s balance. Unpatched sends it to the researcher.</p>
+            <p className="text-sm text-ink-muted">Paying it takes the bounty from your organization&apos;s balance; there is no fee on top (Unpatched&apos;s fee comes out of the researcher&apos;s bounty).</p>
             {funding && (
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border border-border p-3 text-sm">
-                <dt className="text-ink-muted">With the platform fee</dt>
+                <dt className="text-ink-muted">Taken from your balance</dt>
                 <dd className="text-right font-mono tabular-nums text-ink">
                   {funding.currency} {minorUnitsToDecimalString(funding.neededMinorUnits)}
                 </dd>

@@ -1,16 +1,14 @@
 import React from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowRight, FileText, Receipt, Scroll, Wallet, ListChecks } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, ChartBar, FileText, Receipt, Wallet, ListChecks } from "@phosphor-icons/react/dist/ssr";
 import { AppShell } from "../../../../../components/app-shell";
 import { billingGate } from "../../../../../components/documents/billing-gate";
-import { getOrganizationBalances, listInvoices } from "../../../../../services/billing";
+import { getOrganizationBalances, listInvoices, listProgramBudgets } from "../../../../../services/billing";
 import { listInvoiceNotes } from "../../../../../services/documents";
 import { minorUnitsToDecimalString } from "../../../../../lib/money";
-import { recentMonths } from "../../../../../lib/document-periods";
 import { Button } from "../../../../../components/ui/button";
 
-const MONTH = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 
 function Section({ icon: Icon, title, description, children }: { icon: React.ElementType; title: string; description: string; children: React.ReactNode }) {
   return (
@@ -51,7 +49,7 @@ export default async function BillingDocumentsPage({ params }: { params: Promise
   const gate = await billingGate(organizationId, `${base}/documents`, "Billing documents");
   if (gate.denied) return gate.denied;
 
-  const [invoices, notes, balances] = await Promise.all([listInvoices(organizationId), listInvoiceNotes(organizationId), getOrganizationBalances(organizationId)]);
+  const [invoices, notes, balances, budgets] = await Promise.all([listInvoices(organizationId), listInvoiceNotes(organizationId), getOrganizationBalances(organizationId), listProgramBudgets(organizationId)]);
   const currencies = balances.length ? balances.map((b) => b.currency) : ["USD"];
   const today = new Date().toISOString().slice(0, 10);
   const field = "h-8 rounded-md border border-border bg-surface px-2 text-[13px] text-ink";
@@ -60,7 +58,7 @@ export default async function BillingDocumentsPage({ params }: { params: Promise
     <AppShell title="Billing documents" user={gate.user} organizationId={organizationId}>
       <div className="max-w-5xl space-y-5">
         <p className="max-w-2xl text-[13px] text-ink-muted">
-          Tax invoices and notes are issued by Unpatched and never change once issued. Statements and reports are built from your balance ledger when you open them. Every document prints or saves as a PDF.
+          Tax invoices and notes are issued by Unpatched and never change once issued. The wallet statement and bounty report are built from your balance ledger when you open them. Every document prints or saves as a PDF.
         </p>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -94,12 +92,29 @@ export default async function BillingDocumentsPage({ params }: { params: Promise
             )}
           </Section>
 
-          <Section icon={Scroll} title="Monthly statements" description="Opening balance, funds added, bounties and fees, closing balance.">
-            <ul className="divide-y divide-border">
-              {recentMonths(6).flatMap((m) =>
-                currencies.map((c) => <Row key={`${m}-${c}`} href={`${base}/statements/${m}?currency=${c}`} primary={MONTH.format(new Date(`${m}-01T00:00:00Z`))} secondary={`${c} balance`} />),
-              )}
-            </ul>
+          <Section icon={ChartBar} title="Budgets" description="What each program may award, what it has used and what is left.">
+            {budgets.length === 0 ? (
+              <p className="px-5 py-6 text-[13px] text-ink-muted">No programs yet.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {[...budgets]
+                  .sort((x, y) => (y.capMinorUnits ? (y.usedMinorUnits ?? 0) / y.capMinorUnits : -1) - (x.capMinorUnits ? (x.usedMinorUnits ?? 0) / x.capMinorUnits : -1))
+                  .slice(0, 5)
+                  .map((b) => (
+                    <Row
+                      key={b.programId}
+                      href={`${base}/budgets?q=${encodeURIComponent(b.programName)}`}
+                      primary={b.programName}
+                      secondary={b.capMinorUnits && b.currency ? `${Math.round(((b.usedMinorUnits ?? 0) / b.capMinorUnits) * 100)}% of ${b.currency} ${minorUnitsToDecimalString(b.capMinorUnits)} used` : "No budget set"}
+                    />
+                  ))}
+              </ul>
+            )}
+            <div className="border-t border-border px-5 py-3">
+              <Link prefetch={false} href={`${base}/budgets` as Route} className="text-[13px] font-medium text-action hover:underline">
+                Search all budgets
+              </Link>
+            </div>
           </Section>
 
           <div className="space-y-5">

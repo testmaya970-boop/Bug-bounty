@@ -264,21 +264,25 @@ export function ProgramBudgetsList({
   );
 }
 
-/** Who the invoice is made out to. A GSTIN gets the GST shown on the invoice. */
+/** Who the invoice is made out to. A GSTIN gets the GST shown on the invoice. Before the first
+ * save the form starts from what we already know (defaults): the organization's name and its
+ * likely country, so most organizations only add an address. */
 export function BillingProfileForm({
   organizationId,
   profile,
+  defaults,
 }: {
   organizationId: string;
   profile: BillingProfile | null;
+  defaults: { legalName: string; country: string };
 }) {
   const [form, setForm] = useState({
-    legalName: profile?.legalName ?? "",
+    legalName: profile?.legalName ?? defaults.legalName,
     gstin: profile?.gstin ?? "",
     addressLine: profile?.addressLine ?? "",
     city: profile?.city ?? "",
     postalCode: profile?.postalCode ?? "",
-    country: profile?.country ?? "US",
+    country: profile?.country ?? defaults.country,
     stateCode: profile?.stateCode ?? "",
   });
   const { pending, save, note } = useSave();

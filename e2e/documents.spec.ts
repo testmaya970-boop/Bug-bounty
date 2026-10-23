@@ -21,15 +21,17 @@ test("billing admin opens every organization document; a triager is refused", as
   const base = `/organizations/${fixture.organizationId}/payments`;
   await signIn(page, "e2e.billing-admin@unpatched.demo");
   await page.goto(`${base}/documents`);
-  for (const heading of ["GST tax invoices", "Credit and debit notes", "Monthly statements", "Wallet statement", "Bounty history report"]) {
+  for (const heading of ["GST tax invoices", "Credit and debit notes", "Budgets", "Wallet statement", "Bounty history report"]) {
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
   }
 
-  // Monthly statement: opening, movements, closing.
-  await page.getByRole("link", { name: /USD balance/ }).first().click();
-  await expect(page.getByRole("heading", { name: "Monthly statement" })).toBeVisible();
-  await expect(page.getByText("Closing balance").first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Download PDF" })).toBeVisible();
+  // Budgets: searchable by program, filterable by how close each is to its cap.
+  await page.getByRole("link", { name: "Search all budgets" }).click();
+  await page.getByRole("searchbox", { name: "Search programs" }).fill("E2E Public");
+  await page.getByRole("searchbox", { name: "Search programs" }).press("Enter");
+  await page.waitForURL(/budgets\?q=E2E/);
+  await expect(page.getByRole("list", { name: "Program budgets" }).getByText("E2E Public Program")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Program budgets" }).getByText("E2E Private Program")).toHaveCount(0);
 
   // Wallet statement and bounty history from their date forms.
   await page.goto(`${base}/documents`);
@@ -38,6 +40,7 @@ test("billing admin opens every organization document; a triager is refused", as
   await wallet.getByRole("button", { name: "Open statement" }).click();
   await expect(page.getByText("Opening balance").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "CSV" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download PDF" })).toBeVisible();
 
   await page.goto(`${base}/documents`);
   const history = page.getByRole("heading", { name: "Bounty history report" }).locator("xpath=ancestor::section[1]");
@@ -85,4 +88,18 @@ test("keyboard-first shell: command menu and G-then-letter jumps", async ({ page
     await page.keyboard.press("?");
     await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible({ timeout: 1000 });
   }).toPass();
+});
+
+test("audit log: an owner filters to scope changes and searches what changed", async ({ page }) => {
+  await signIn(page, "e2e.admin@unpatched.demo");
+  await page.goto(`/organizations/${fixture.organizationId}/activity`);
+  await page.getByLabel("Category").selectOption("scope");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await page.waitForURL(/category=scope/);
+  const table = page.getByRole("table", { name: "Audit log" });
+  await expect(table.getByText(/^scope\.asset_/).first()).toBeVisible();
+  await expect(table.getByText(/^report\./)).toHaveCount(0);
+  await page.getByRole("searchbox", { name: /Search/ }).fill("out_of_scope");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(table.getByText(/Scope state: in scope → out of scope/).first()).toBeVisible();
 });

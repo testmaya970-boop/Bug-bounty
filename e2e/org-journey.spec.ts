@@ -275,9 +275,10 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // Outside the policy range, so a reason is required (202610120001).
   await page.getByLabel("Note").fill("Agreed with the researcher for this E2E finding.");
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByText(/Paying it takes the bounty plus the platform fee/)).toBeVisible();
-  // What finalizing will check, shown before committing (202610190002): 500 + 20% fee.
-  await expect(page.getByText("USD 600.00")).toBeVisible();
+  // Since 2026-10-23 the organization funds the bounty only; the fee comes from the researcher.
+  await expect(page.getByText(/Paying it takes the bounty from your organization/)).toBeVisible();
+  // What finalizing will check, shown before committing (202610190002): the 500 bounty alone.
+  await expect(page.locator("dd", { hasText: "USD 500.00" })).toBeVisible();
   await expect(page.getByText("Covers it")).toBeVisible();
   await page.getByRole("button", { name: "Confirm finalization" }).click();
   // .first(): once the outbox worker creates the payment obligation, the payment-status
@@ -288,12 +289,12 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // Currently on the Inbox page (ProgramHeader) -- breadcrumb back to Engagements, then
   // the org header's own Activity tab (Activity itself is org-scoped, not per-program).
   await breadcrumbEngagements(page).click();
-  await sidebarNav(page, "Activity").click();
-  // .first(): Activity keeps every past run's events for this seeded report.
-  await expect(page.getByText(/started triage/).first()).toBeVisible();
-  await expect(page.getByText(/accepted a report/).first()).toBeVisible();
-  await expect(page.getByText(/resolved a report/).first()).toBeVisible();
-  await expect(page.getByText(/finalized a bounty/).first()).toBeVisible();
+  await sidebarNav(page, "Audit log").click();
+  // .first(): the audit log keeps every past run's events for this seeded report.
+  await expect(page.getByText(/started triage/i).first()).toBeVisible();
+  await expect(page.getByText(/accepted a report/i).first()).toBeVisible();
+  await expect(page.getByText(/resolved a report/i).first()).toBeVisible();
+  await expect(page.getByText(/finalized a bounty/i).first()).toBeVisible();
 
   // --- Bell shows the new notifications (proves the Turn 8 notification handlers) -------
   // report.accepted's notification routes to the report's own researcher (the veteran),
@@ -364,9 +365,9 @@ test("nav de-duplication: every one of the nine org routes highlights exactly on
   await page.waitForURL(/\/researchers$/);
   await expectSingleSidebarHighlight(page, "Researchers");
 
-  await sidebarNav(page, "Activity").click();
+  await sidebarNav(page, "Audit log").click();
   await page.waitForURL(/\/activity$/);
-  await expectSingleSidebarHighlight(page, "Activity");
+  await expectSingleSidebarHighlight(page, "Audit log");
 
   await sidebarNav(page, "Analytics").click();
   await page.waitForURL(/\/analytics$/);

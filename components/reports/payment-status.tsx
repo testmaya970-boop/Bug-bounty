@@ -11,8 +11,6 @@ import {
   initiateManualPaymentAttemptAction,
   recordManualPaymentResultAction,
 } from "../../actions/payments";
-import { acceptBountyAction } from "../../actions/bounty";
-import { LocalTime } from "../ui/local-time";
 import { minorUnitsToDecimalString } from "../../lib/money";
 import type { PaymentAttempt, PaymentObligation } from "../../types/payment";
 import type { PayoutReadiness } from "../../services/payments";
@@ -107,8 +105,8 @@ export function CreatePaymentObligationButton({ organizationId, programId, repor
       description={
         <p>
           This records that <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span> is owed for this
-          report's finalized bounty -- split between the researcher and any collaborators by their agreed shares, each paid in full. A 20% platform fee is billed to
-          your organization on top. This does not itself move any money; each payout is initiated separately.
+          report's finalized bounty -- split between the researcher and any collaborators by their agreed shares, Your organization pays the bounty only; Unpatched's platform fee comes out of the researcher's share.
+          This does not itself move any money; each payout is initiated separately.
         </p>
       }
       confirmLabel="Create obligation"
@@ -141,8 +139,8 @@ export function InitiateManualPayoutButton({
       title={isRetry ? "Retry this payout?" : "Pay this researcher?"}
       description={
         <p>
-          Unpatched sends the full <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span> bounty to the researcher
-          from your balance, where it is already set aside.
+          Unpatched pays the <span className="font-mono font-semibold text-ink">{currency} {minorUnitsToDecimalString(amountMinorUnits)}</span> bounty to the researcher
+          from your balance, where it is already set aside, after its own fee and any tax the law requires.
           {platformFeeMinorUnits > 0 && <> The {currency} {minorUnitsToDecimalString(platformFeeMinorUnits)} platform fee is not deducted from it.</>} You never need the
           researcher&apos;s bank details.
         </p>
@@ -364,24 +362,6 @@ export function CancelPaymentObligationDialog({ organizationId, programId, repor
   );
 }
 
-/** The submitter confirms the current award. Disputing goes through mediation below
- * (reason: bounty amount), which also pauses payment until it is settled. */
-function ConfirmAwardButton({ organizationId, programId, reportId }: ReportRef) {
-  return (
-    <ConfirmDialog
-      triggerLabel="Confirm award"
-      triggerVariant="secondary"
-      title="Confirm this bounty award?"
-      description={<p>This tells the organization you accept the awarded amount. If you disagree with it, open a mediation request instead.</p>}
-      confirmLabel="Confirm award"
-      onConfirm={async () => {
-        const result = await acceptBountyAction({ organizationId, programId, reportId });
-        return result.ok ? { ok: true } : { ok: false, message: result.message };
-      }}
-    />
-  );
-}
-
 /** Report detail's Payment section. Renders only once a bounty decision is finalized.
  * One row per recipient (submitter and split collaborators, 202610060008); a researcher sees
  * only their own (RLS). Attempt-level detail stays manager-only. Payout blockers name the
@@ -418,18 +398,6 @@ export function PaymentStatusSection({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-ink-muted">
-        {acceptance ? (
-          <>
-            {isOwnReport ? "You" : "The researcher"} confirmed this award on <LocalTime value={acceptance.acceptedAt} dateOnly />.
-          </>
-        ) : isOwnReport ? (
-          "You haven't confirmed this award yet."
-        ) : (
-          "The researcher hasn't confirmed this award yet."
-        )}
-      </p>
-      {isOwnReport && !acceptance && <ConfirmAwardButton {...ref} />}
 
       {!canManage && ownBlockers.length > 0 && (
         <div className="rounded-md border border-warning bg-surface-muted p-3 text-sm">

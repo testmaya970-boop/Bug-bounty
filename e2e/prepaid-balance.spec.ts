@@ -49,7 +49,7 @@ test.describe.serial("prepaid balance", () => {
     await expect(row.getByText("Pending")).toBeVisible();
     await row.getByRole("button", { name: "Pay researcher" }).click();
     const confirm = page.getByRole("dialog", { name: "Pay this researcher?" });
-    await expect(confirm.getByText("USD 1500.00")).toBeVisible(); // the full bounty; the fee is on top
+    await expect(confirm.getByText("USD 1500.00")).toBeVisible(); // the bounty; the fee now comes out of it (202610230001)
     await confirm.getByRole("button", { name: "Pay researcher" }).click();
     await expect(row.getByText("Unpatched is sending this")).toBeVisible();
     await expect(row.getByRole("button", { name: "Record payout result" })).toHaveCount(0);
@@ -63,7 +63,8 @@ test.describe.serial("prepaid balance", () => {
     await deposit.getByRole("button", { name: "Confirm received" }).click();
     await expect(deposit).toHaveCount(0);
 
-    const payout = page.getByRole("listitem").filter({ hasText: "E2E Veteran Researcher" }).filter({ hasText: "USD 1500.00" });
+    // The admin sends the net: USD 1500 bounty less the 20% platform fee (US W-9 on file, no tax withheld).
+    const payout = page.getByRole("listitem").filter({ hasText: "E2E Veteran Researcher" }).filter({ hasText: "USD 1200.00" });
     await expect(payout.getByText("PayPal · e2e.veteran.payouts@example.test")).toBeVisible(); // who to pay, shown to the payer only
     await payout.getByRole("button", { name: "Record payout result" }).click();
     const record = page.getByRole("dialog", { name: "Record the outcome of this payout attempt" });

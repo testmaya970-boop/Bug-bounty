@@ -195,6 +195,29 @@ export async function getOrganizationAuditActivity(organizationId: string, curso
   return { items, nextCursor };
 }
 
+export const AUDIT_CATEGORIES = ["scope", "programs", "members", "researchers", "reports", "billing", "organization"] as const;
+export type AuditCategory = (typeof AUDIT_CATEGORIES)[number];
+export type AuditLogFilters = { category?: AuditCategory; query?: string; from?: string; to?: string };
+export type AuditLogEntry = OrganizationAuditEventRecord & { actorName: string | null };
+
+/** The audit log with category / text / date filters (search_organization_audit_log,
+ * 202610230001), newest first. `before` is the last row of the previous page. */
+export async function searchOrganizationAuditLog(organizationId: string, filters: AuditLogFilters, before?: { createdAt: string; id: string }, limit = 50): Promise<{ items: AuditLogEntry[]; next: { createdAt: string; id: string } | null }> {
+  const actor = await getCurrentUser();
+  type Row = AuditRow & { actor_name: string | null };
+  let rows: Row[];
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<Row>(client, "public.search_organization_audit_log", [organizationId, filters.category ?? null, filters.query ?? null, filters.from ?? null, filters.to ?? null, before?.createdAt ?? null, before?.id ?? null, limit]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  const items = rows.map((r) => ({ ...mapAuditRow(r), createdAt: new Date(r.created_at).toISOString(), actorName: r.actor_name }));
+  const last = items.at(-1);
+  return { items, next: rows.length === limit && last ? { createdAt: last.createdAt, id: last.id } : null };
+}
+
 // --- Mutations (each one a single RPC call into a SECURITY DEFINER function) ---------
 
 export async function inviteMember(params: { organizationId: string; email: string; role: OrganizationRole; message?: string }): Promise<{ invitation: OrganizationInvitationRecord; token: string }> {

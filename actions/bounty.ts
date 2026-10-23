@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
-import { acceptBounty, adjustBounty, calculateBountyRecommendation, checkAwardFunding, createBountyPolicyVersion, finalizeBounty, type AwardFunding } from "@/services/bounty";
+import { adjustBounty, calculateBountyRecommendation, checkAwardFunding, createBountyPolicyVersion, finalizeBounty, type AwardFunding } from "@/services/bounty";
 import type { BountyPolicy, ReportBountyDecision } from "@/types/bounty";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
@@ -95,11 +95,3 @@ export async function adjustBountyAction(input: z.infer<typeof adjustSchema>): P
   return result;
 }
 
-/** The submitting researcher confirms the current award (accept_bounty re-checks ownership). */
-export async function acceptBountyAction(input: z.infer<typeof reportActionBase>): Promise<ActionResult<void>> {
-  const parsed = reportActionBase.safeParse(input);
-  if (!parsed.success) return invalidInput();
-  const result = await toResult(acceptBounty(parsed.data.reportId));
-  if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
-  return result;
-}

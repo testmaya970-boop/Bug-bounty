@@ -1,6 +1,7 @@
 import React from "react";
 import { notFound, redirect } from "next/navigation";
 import type { Route } from "next";
+import Link from "next/link";
 import { AppShell } from "../../../../../components/app-shell";
 import { DocumentAmount, DocumentSheet, DocumentTable, DocumentToolbar, DocumentTotals, money } from "../../../../../components/documents/document-sheet";
 import { getMyTaxIdentity, listMyPayouts, taxPayer } from "../../../../../services/documents";
@@ -35,9 +36,21 @@ export default async function PayoutReceiptPage({ params }: { params: Promise<{ 
             { title: "Paid by", name: payer?.name ?? "Unpatched", lines: [payer?.address, payer?.tan ? `TAN ${payer.tan}` : null, payer?.ein ? `EIN ${payer.ein}` : null] },
             { title: "Paid to", name: identity?.displayName ?? user.displayName ?? "Researcher", lines: [identity?.email, identity?.country ? `Tax residence: ${countryName(identity.country)}` : null, identity?.panMasked ? `PAN ${identity.panMasked}` : null] },
           ]}
-          footnotes={[p.legalBasis, "Bounty paid on behalf of the organization named above, from its prepaid balance held by Unpatched."]}
+          footnotes={[p.legalBasis, "Bounty paid on behalf of the organization named above, from its prepaid balance held by Unpatched.", ...(p.feeMinorUnits > 0 ? ["Unpatched's platform fee is taken from the bounty; tax is withheld on the full bounty before it."] : [])]}
         >
-          <DocumentAmount label="Amount received" value={m(p.netMinorUnits)} sub={p.withheldMinorUnits > 0 ? `after ${m(p.withheldMinorUnits)} tax withheld` : "nothing withheld"} />
+          <DocumentAmount
+            label="Amount received"
+            value={m(p.netMinorUnits)}
+            sub={[p.withheldMinorUnits > 0 && `${m(p.withheldMinorUnits)} tax withheld`, p.feeMinorUnits > 0 && `${m(p.feeMinorUnits + p.feeGstMinorUnits)} platform fee`].filter(Boolean).join(" · ") || "nothing deducted"}
+          />
+          {p.feeInvoiceNumber && (
+            <p className="text-[13px] text-ink-muted">
+              GST invoice for the platform fee:{" "}
+              <Link prefetch={false} href={`/bounties/documents/fee-invoices/${p.obligationId}` as Route} className="font-mono text-xs font-medium text-action hover:underline">
+                {p.feeInvoiceNumber}
+              </Link>
+            </p>
+          )}
           <DocumentTable
             columns={[{ header: "Description" }, { header: "Amount", align: "right" }]}
             rows={[
@@ -53,7 +66,15 @@ export default async function PayoutReceiptPage({ params }: { params: Promise<{ 
             ]}
             empty=""
           />
-          <DocumentTotals rows={[["Gross bounty", m(p.grossMinorUnits)], [`Tax withheld (${(p.rateBps / 100).toFixed(p.rateBps % 100 ? 2 : 0)}%)`, `-${m(p.withheldMinorUnits)}`], ["Net paid", m(p.netMinorUnits)]]} />
+          <DocumentTotals
+            rows={[
+              ["Gross bounty", m(p.grossMinorUnits)],
+              [`Tax withheld (${(p.rateBps / 100).toFixed(p.rateBps % 100 ? 2 : 0)}% of the bounty)`, `-${m(p.withheldMinorUnits)}`],
+              ...(p.feeMinorUnits > 0 ? ([["Platform fee", `-${m(p.feeMinorUnits)}`]] as [string, string][]) : []),
+              ...(p.feeGstMinorUnits > 0 ? ([["GST on the fee (18%)", `-${m(p.feeGstMinorUnits)}`]] as [string, string][]) : []),
+              ["Net paid", m(p.netMinorUnits)],
+            ]}
+          />
         </DocumentSheet>
       </div>
     </AppShell>

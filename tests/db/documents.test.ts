@@ -14,7 +14,8 @@ async function obligationFor(db: Db, researcher: string): Promise<{ id: string; 
   // Constraints tie researcher to the report; the trigger only reads researcher_id, so a test
   // can point the obligation at a researcher whose tax profile it controls.
   await db.query("set session_replication_role = replica");
-  await db.query("update public.payment_obligations set researcher_id = $2 where id = $1", [o.id, researcher]);
+  // Tax-only by default: a fee from 202610230001 is set explicitly by the tests that need one.
+  await db.query("update public.payment_obligations set researcher_id = $2, researcher_fee_minor_units = 0 where id = $1", [o.id, researcher]);
   await db.query("set session_replication_role = origin");
   const next = await db.one<{ n: number }>("select coalesce(max(attempt_number), 0) + 1 as n from public.payment_attempts where payment_obligation_id = $1", [o.id]);
   return { id: o.id, gross: Number(o.amount_minor_units), next: next.n };
@@ -134,6 +135,44 @@ describe("billing documents", () => {
       expect(await db.fails("select * from public.get_organization_wallet_ledger($1, 'USD', current_date - 30, current_date)", [fixture.organizationId])).toMatch(/FORBIDDEN/);
       expect(await db.fails("select * from public.list_organization_bounty_history($1, current_date - 30, current_date)", [fixture.organizationId])).toMatch(/FORBIDDEN/);
       expect(await db.fails("select * from public.list_my_payouts(null, null)")).toBeNull();
+    });
+  });
+});
+
+describe("fee from the researcher (202610230001)", () => {
+  it("an Indian resident's payout nets bounty - TDS on the full bounty - fee - 18% GST on the fee, with a numbered fee invoice", async () => {
+    await inTx(async (db) => {
+      const r = await newUser(db, "researcher");
+      await db.as({ user: r });
+      await db.query("select public.set_my_tax_residence('IN')");
+      const ob = await obligationFor(db, r);
+      const fee = Math.floor(ob.gross / 5);
+      await db.query("set session_replication_role = replica");
+      await db.query("update public.payment_obligations set researcher_fee_minor_units = $2, platform_fee_minor_units = 0 where id = $1", [ob.id, fee]);
+      await db.query("set session_replication_role = origin");
+      const net = await attempt(db, ob.id, ob.next);
+      const tds = Math.floor((ob.gross * 2000 + 5000) / 10000);
+      const gst = Math.floor((fee * 18 + 50) / 100);
+      expect(net).toBe(ob.gross - tds - fee - gst);
+      const w = await db.one<{ fee_invoice_number: string }>("select fee_invoice_number from public.payout_tax_withholdings where obligation_id = $1", [ob.id]);
+      expect(w.fee_invoice_number).toMatch(/^UNP-RF\/\d{4}-\d{2}\/\d{5}$/);
+    });
+  });
+});
+
+describe("audit log search (202610230001)", () => {
+  it("filters by category and text, owners and security admins only", async () => {
+    await inTx(async (db) => {
+      const owner = await userId(db, "e2e.admin@unpatched.demo");
+      const triager = await userId(db, "e2e.triager@unpatched.demo");
+      await db.as({ user: owner });
+      const scope = await db.rows<{ action: string }>("select action from public.search_organization_audit_log($1, 'scope', null, null, null)", [fixture.organizationId]);
+      expect(scope.length).toBeGreaterThan(0);
+      expect(scope.every((e) => /^(scope\.|asset\.|report\.asset_)/.test(e.action))).toBe(true);
+      const removed = await db.rows<{ action: string }>("select action from public.search_organization_audit_log($1, null, 'asset_removed', null, null)", [fixture.organizationId]);
+      expect(removed.every((e) => e.action.includes("asset_removed"))).toBe(true);
+      await db.as({ user: triager });
+      expect(await db.fails("select * from public.search_organization_audit_log($1, null, null, null, null)", [fixture.organizationId])).toMatch(/FORBIDDEN/);
     });
   });
 });

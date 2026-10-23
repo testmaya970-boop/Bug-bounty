@@ -31,8 +31,8 @@ export function HowPayingWorks({ routes }: { routes: PayoutRoute[] }) {
             under <span className="font-medium text-ink">Add funds</span>. It becomes available to award once we see it arrive in our account.
           </Step>
           <Step n={2} title="You award a bounty">
-            Awarding takes the bounty plus a {PLATFORM_FEE_PERCENT}% platform fee from your balance straight away, so the money is set aside. If the balance can&apos;t cover it, the
-            award waits until you add funds. The researcher always gets the full bounty.
+            Awarding takes the bounty from your balance straight away, so the money is set aside. If the balance can&apos;t cover it, the award waits until you add funds.
+            There is no fee on top: Unpatched&apos;s {PLATFORM_FEE_PERCENT}% platform fee comes out of the researcher&apos;s bounty.
           </Step>
           <Step n={3} title="Unpatched checks the researcher can be paid">
             Before any money moves, the researcher needs a verified identity, an approved tax form and a payout method. You see only whether each is ready. Identity documents, tax

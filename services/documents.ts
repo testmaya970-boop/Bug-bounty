@@ -109,17 +109,18 @@ export async function getBountyHistory(organizationId: string, from: string, to:
 export type TaxRegime = "in_194j" | "in_206aa" | "us_1099" | "us_backup" | "none";
 export type Payout = {
   obligationId: string; paidAt: string; provider: string; providerReference: string | null; organizationName: string | null; programName: string | null; reportTitle: string | null;
-  currency: string; grossMinorUnits: number; withheldMinorUnits: number; netMinorUnits: number; regime: TaxRegime; rateBps: number; legalBasis: string; country: string | null;
+  currency: string; grossMinorUnits: number; withheldMinorUnits: number; feeMinorUnits: number; feeGstMinorUnits: number; feeInvoiceNumber: string | null; netMinorUnits: number; regime: TaxRegime; rateBps: number; legalBasis: string; country: string | null;
 };
 export async function listMyPayouts(from: string | null = null, to: string | null = null): Promise<Payout[]> {
   type Row = {
     obligation_id: string; paid_at: string; provider: string; provider_reference: string | null; organization_name: string | null; program_name: string | null; report_title: string | null;
-    currency: string; gross_minor_units: string; withheld_minor_units: string; net_minor_units: string; regime: TaxRegime; rate_bps: number; legal_basis: string; country: string | null;
+    currency: string; gross_minor_units: string; withheld_minor_units: string; fee_minor_units: string; fee_gst_minor_units: string; fee_invoice_number: string | null; net_minor_units: string; regime: TaxRegime; rate_bps: number; legal_basis: string; country: string | null;
   };
   const rows = await asActor((client) => callRpc<Row>(client, "public.list_my_payouts", [from, to]));
   return rows.map((r) => ({
     obligationId: r.obligation_id, paidAt: new Date(r.paid_at).toISOString(), provider: r.provider, providerReference: r.provider_reference, organizationName: r.organization_name,
     programName: r.program_name, reportTitle: r.report_title, currency: r.currency, grossMinorUnits: Number(r.gross_minor_units), withheldMinorUnits: Number(r.withheld_minor_units),
+    feeMinorUnits: Number(r.fee_minor_units), feeGstMinorUnits: Number(r.fee_gst_minor_units), feeInvoiceNumber: r.fee_invoice_number,
     netMinorUnits: Number(r.net_minor_units), regime: r.regime, rateBps: r.rate_bps, legalBasis: r.legal_basis, country: r.country,
   }));
 }

@@ -19,7 +19,6 @@ import {
   Coins,
   Bell,
   HourglassMedium,
-  Pulse,
   ChartLineUp,
   ClipboardText,
   ListBullets,
@@ -45,6 +44,7 @@ import {
   EnvelopeSimple,
   SidebarSimple,
   FileText,
+  ChartPieSlice,
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
 import { Avatar, DropdownMenu } from "./ui/navigation";
@@ -152,8 +152,9 @@ function orgSections(id: string): NavSection[] {
         // Assets: the cross-program inventory with risk posture; editing stays per engagement.
         { href: `${base}/assets` as Route, label: "Assets", icon: Target, goKey: "A", roles: REPORT_WORKERS },
         { href: `${base}/researchers` as Route, label: "Researchers", icon: UsersThree, roles: ["owner", "security_admin", "program_manager"] },
-        // Activity: the audit feed, owner/security_admin only (audit_logs' read policy).
-        { href: `${base}/activity` as Route, label: "Activity", icon: Pulse, roles: ORG_ADMINS },
+        // Audit log: every change in the organization (scope, programs, members, billing...),
+        // owner/security_admin only (audit_logs' read policy). Route kept as /activity.
+        { href: `${base}/activity` as Route, label: "Audit log", icon: Scroll, goKey: "U", roles: ORG_ADMINS },
       ],
     },
     { id: "org-insights", label: "Insights", items: [{ href: `${base}/analytics` as Route, label: "Analytics", icon: ChartLineUp, goKey: "I", roles: ORG_ADMINS }] },
@@ -163,6 +164,7 @@ function orgSections(id: string): NavSection[] {
       items: [
         // Payments: balance, ledger and every billing document -- billing admins' page.
         { href: `${base}/payments` as Route, label: "Payments", icon: Wallet, goKey: "$", roles: BILLING },
+        { href: `${base}/payments/budgets` as Route, label: "Budgets", icon: ChartPieSlice, roles: BILLING },
         { href: `${base}/payments/documents` as Route, label: "Billing documents", icon: FileText, roles: BILLING },
         { href: `${base}/members` as Route, label: "Members", icon: UserList, goKey: "M", roles: ORG_ADMINS },
         { href: `${base}/settings` as Route, label: "Settings", icon: Gear, roles: ORG_ADMINS },

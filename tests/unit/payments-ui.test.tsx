@@ -145,7 +145,7 @@ describe("dialogs default to closed and only show their trigger, never the confi
   });
 });
 
-describe("PaymentStatusSection: payout gate, recipients and the researcher's confirmation", () => {
+describe("PaymentStatusSection: payout gate and recipients", () => {
   const RAE = { researcherId: "researcher-1", displayName: "Rae Kestrel", blockers: [] as ("payout_method_missing" | "tax_form_not_verified" | "kyc_not_verified")[] };
 
   it("names each recipient and disables payout for a blocked one, saying what is missing", () => {
@@ -169,7 +169,7 @@ describe("PaymentStatusSection: payout gate, recipients and the researcher's con
     expect(html).toMatch(/<button[^>]*disabled[^>]*>Pay researcher/);
   });
 
-  it("the researcher sees their own blockers with a link to fix them, and can confirm the award", () => {
+  it("the researcher sees their own blockers with a link to fix them, and has no award to confirm (step removed 2026-10-23)", () => {
     const html = renderToStaticMarkup(
       <PaymentStatusSection
         obligations={[PENDING_OBLIGATION]}
@@ -185,10 +185,10 @@ describe("PaymentStatusSection: payout gate, recipients and the researcher's con
     );
     expect(html).toContain("No payout method on file");
     expect(html).toContain("/settings/payments");
-    expect(html).toContain("Confirm award");
+    expect(html).not.toContain("Confirm award");
   });
 
-  it("once confirmed, says so and offers no confirm button", () => {
+  it("an award confirmed under the old flow shows no confirmation UI either", () => {
     const html = renderToStaticMarkup(
       <PaymentStatusSection
         obligations={[]}
@@ -202,7 +202,7 @@ describe("PaymentStatusSection: payout gate, recipients and the researcher's con
         {...REF}
       />,
     );
-    expect(html).toContain("You confirmed this award");
-    expect(html).not.toContain("Confirm award</button>");
+    expect(html).not.toContain("confirmed this award");
+    expect(html).not.toContain("Confirm award");
   });
 });

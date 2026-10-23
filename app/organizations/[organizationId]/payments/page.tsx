@@ -1,5 +1,7 @@
 import React from "react";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { BILLING_COUNTRIES } from "../../../../lib/countries";
 import type { Route } from "next";
 import { AppShell } from "../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../components/ui/navigation";
@@ -86,6 +88,14 @@ function Figure({
   );
 }
 
+/** A first guess for the billing country: rupee funding means India; otherwise the region of
+ * the browser's language (en-IN, en-GB...); otherwise the US. Only a form default. */
+async function likelyBillingCountry(currencies: string[]): Promise<string> {
+  if (currencies.includes("INR")) return "IN";
+  const region = /^[a-z]{2,3}-([A-Z]{2})/.exec((await headers()).get("accept-language") ?? "")?.[1];
+  return region && BILLING_COUNTRIES.some((c) => c.code === region) ? region : "US";
+}
+
 /**
  * The organization's prepaid balance and payment ledger (202610140004) -- the Billing Admin's
  * page, also open to owners and security admins. The organization adds funds; each award
@@ -168,8 +178,8 @@ export default async function OrganizationPaymentsPage({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <p className="max-w-2xl text-sm text-ink-muted">
             Add funds to your balance; each bounty you award is taken from it
-            and Unpatched pays the researcher in full. The platform fee is
-            charged on top.
+            and Unpatched pays the researcher. There is no fee on top: the
+            platform fee comes out of the researcher&apos;s bounty.
           </p>
           <div className="flex flex-wrap gap-2">
             <HowPayingWorks routes={payoutRoutes} />
@@ -225,14 +235,14 @@ export default async function OrganizationPaymentsPage({
             <SectionLabel>Awarded, not yet paid</SectionLabel>
             <Figure balances={balances} pick={(b) => b.committed} />
             <p className="mt-1 text-xs text-ink-muted">
-              Bounty + fee, already taken from your balance.
+              Already taken from your balance.
             </p>
           </div>
           <div className="p-5">
             <SectionLabel>Paid out</SectionLabel>
             <Figure balances={balances} pick={(b) => b.paid} />
             <p className="mt-1 text-xs text-ink-muted">
-              Bounty + fee on completed payouts.
+              Bounties on completed payouts.
             </p>
           </div>
         </div>
@@ -433,7 +443,7 @@ export default async function OrganizationPaymentsPage({
           <div>
             <SectionLabel>Program budgets</SectionLabel>
             <p className="mt-1 text-sm text-ink-muted">
-              Cap what each program can award (bounty + fee). An award that
+              Cap what each program can award. An award that
               would go over its program&apos;s budget is refused.
             </p>
           </div>
@@ -447,9 +457,9 @@ export default async function OrganizationPaymentsPage({
           <div>
             <SectionLabel>Invoices</SectionLabel>
             <p className="mt-1 text-sm text-ink-muted">
-              A monthly invoice for the platform fee on bounties paid that
-              month. Bounties themselves are paid on your behalf and aren&apos;t
-              taxed by Unpatched.
+              Fee invoices for awards made before 23 October 2026, when the
+              platform fee was charged to your organization. Newer awards carry
+              no fee for you, so they never appear here.
             </p>
           </div>
           {invoices.length === 0 ? (
@@ -490,9 +500,19 @@ export default async function OrganizationPaymentsPage({
               Printed on your invoices. Add your GSTIN to claim input tax
               credit.
             </p>
+            {!billingProfile && (
+              <p className="mb-3 text-[13px] text-ink-muted">
+                Filled in from your organization. Check it, add your address,
+                and save.
+              </p>
+            )}
             <BillingProfileForm
               organizationId={organizationId}
               profile={billingProfile}
+              defaults={{
+                legalName: organization?.name ?? "",
+                country: await likelyBillingCountry(balances.map((b) => b.currency)),
+              }}
             />
           </div>
         </section>

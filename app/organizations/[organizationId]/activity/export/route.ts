@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { withActorTransaction } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { canManageMembers } from "@/services/authorization";
-import { getActorMembership } from "@/services/organization-members";
+import { AUDIT_CATEGORIES, getActorMembership, type AuditCategory } from "@/services/organization-members";
+import { describeAuditChange } from "@/lib/audit-change";
 import { activityActionLabel } from "@/lib/organization-activity-labels";
 import { rangeDays } from "@/lib/viz";
 import { csvCell } from "@/lib/csv";
@@ -19,30 +20,38 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const membership = await getActorMembership(user.id, organizationId);
   if (!membership || membership.status !== "active" || !canManageMembers(membership.role)) return new NextResponse("Forbidden", { status: 403 });
 
-  const days = rangeDays(request.nextUrl.searchParams.get("range") ?? undefined);
-  const rows = await withActorTransaction(user.id, (client) =>
-    client
-      .query<{ created_at: string; actor: string | null; action: string; entity_type: string; entity_id: string | null; metadata: unknown }>(
-        `select a.created_at, case when u.id is null then null when u.deactivated_at is not null then 'Deactivated account' else u.display_name end as actor,
-                a.action, a.entity_type, a.entity_id, a.metadata
-           from public.audit_logs a left join public.users u on u.id = a.actor_id
-          where a.organization_id = $1 and a.created_at >= now() - make_interval(days => $2)
-          order by a.created_at desc limit $3`,
-        [organizationId, days, MAX_ROWS],
-      )
-      .then((r) => r.rows),
-  );
+  // The page's filters (category, text, dates) when given; otherwise the selected window.
+  const sp = request.nextUrl.searchParams;
+  const isDate = (v: string | null) => (v && /^d{4}-d{2}-d{2}$/.test(v) ? v : null);
+  const days = rangeDays(sp.get("range") ?? undefined);
+  const category = AUDIT_CATEGORIES.includes(sp.get("category") as AuditCategory) ? sp.get("category") : null;
+  const from = isDate(sp.get("from")) ?? new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  const to = isDate(sp.get("to"));
+  const query = sp.get("q")?.trim().slice(0, 100) || null;
+  type Row = { id: string; created_at: string; actor_id: string | null; actor_name: string | null; action: string; entity_type: string; entity_id: string | null; metadata: Record<string, unknown> };
+  const rows: Row[] = [];
+  await withActorTransaction(user.id, async (client) => {
+    let before: Row | undefined;
+    while (rows.length < MAX_ROWS) {
+      const page = (
+        await client.query<Row>("select * from public.search_organization_audit_log($1, $2, $3, $4, $5, $6, $7, 200)", [organizationId, category, query, from, to, before?.created_at ?? null, before?.id ?? null])
+      ).rows;
+      rows.push(...page);
+      if (page.length < 200) break;
+      before = page[page.length - 1];
+    }
+  });
 
-  const header = ["Time (UTC)", "Actor", "Action", "Description", "Entity type", "Entity id", "Details"];
+  const header = ["Time (UTC)", "Actor", "Action", "Description", "What changed", "Entity type", "Entity id", "Details"];
   const lines = [header.map(csvCell).join(",")];
   for (const row of rows) {
-    lines.push([new Date(row.created_at).toISOString(), row.actor ?? "System", row.action, activityActionLabel(row.action), row.entity_type, row.entity_id, row.metadata].map(csvCell).join(","));
+    lines.push([new Date(row.created_at).toISOString(), row.actor_id ? (row.actor_name ?? "Former member") : "System", row.action, activityActionLabel(row.action), describeAuditChange(row.metadata).join("; "), row.entity_type, row.entity_id, row.metadata].map(csvCell).join(","));
   }
 
   return new NextResponse(lines.join("\r\n") + "\r\n", {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="activity-${organizationId.slice(0, 8)}-${days}d.csv"`,
+      "Content-Disposition": `attachment; filename="audit-log-${organizationId.slice(0, 8)}-${from}.csv"`,
       "Cache-Control": "private, no-store",
     },
   });
