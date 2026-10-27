@@ -114,10 +114,10 @@ export async function completeEvidenceUpload(actorId: string, uploadId: string):
       const ready = (await callRpc<UploadRow>(client, "public.mark_evidence_upload_ready", [uploadId, inspected.sha256]))[0];
       if (!ready.report_id) return { upload: toStaged(ready), evidenceId: null };
       // Attach now, through the same functions every report file has always gone through.
-      const args = [ready.report_id, ready.object_key, ready.original_filename, ready.content_type, declared, inspected.sha256];
+      // Arguments spelled out per call: scripts/check-rpc-call-order.mjs checks them by position.
       const evidence = ready.visibility
-        ? (await callRpc<{ id: string }>(client, "public.add_organization_file_evidence", [...args, ready.visibility]))[0]
-        : (await callRpc<{ id: string }>(client, "public.add_researcher_file_evidence", args))[0];
+        ? (await callRpc<{ id: string }>(client, "public.add_organization_file_evidence", [ready.report_id, ready.object_key, ready.original_filename, ready.content_type, declared, inspected.sha256, ready.visibility]))[0]
+        : (await callRpc<{ id: string }>(client, "public.add_researcher_file_evidence", [ready.report_id, ready.object_key, ready.original_filename, ready.content_type, declared, inspected.sha256]))[0];
       await callRpc(client, "public.mark_evidence_upload_attached", [uploadId, evidence.id]);
       return { upload: { ...toStaged(ready), status: "attached" as const }, evidenceId: evidence.id };
     });
