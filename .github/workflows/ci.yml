@@ -46,7 +46,13 @@ jobs:
   # build (playwright.config.ts builds and starts it, plus the outbox worker) with a
   # from-scratch schema, a fresh bucket, and the deterministic seed. The latency budgets are
   # excluded -- shared CI runners are too noisy for a 20% rule; measure those locally.
+  #
+  # Off in CI since 2026-10-27: MinIO's open-source images and binaries were withdrawn
+  # (Docker Hub repo deleted, dl.min.io returns 410), so a fresh runner cannot start the
+  # bucket. Run the gate locally (npm run test:e2e) until an S3 server for CI is chosen,
+  # then delete this `if`.
   release-gate:
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: verify
