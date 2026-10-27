@@ -107,7 +107,7 @@ docs/           Architecture notes, environment reference, decision records, kno
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md) — system architecture
-- [`docs/env.md`](docs/env.md) — every environment variable, what it does, and production implications
+- [`docs/env.md`](docs/env.md) — every environment variable, what it does, and production implication
 - [`docs/known-issues.md`](docs/known-issues.md) — disclosed limitations, not silently accepted ones
 - [`docs/launch-qa.md`](docs/launch-qa.md) — performance budgets and the release gate
 - [`docs/decisions/`](docs/decisions/) — architecture decision records
