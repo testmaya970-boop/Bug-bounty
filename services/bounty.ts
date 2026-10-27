@@ -2,8 +2,9 @@ import "server-only";
 import { withActorTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
-import type { ReportSeverity } from "@/types/report";
+import type { ReportSeverity, ReportPriority } from "@/types/report";
 import type { BountyPolicy, BountySeverityRange, ReportBountyDecision } from "@/types/bounty";
+import { priorityForSeverity } from "@/lib/report-priority";
 
 export { OrganizationServiceError };
 
@@ -18,6 +19,7 @@ type DecisionRow = {
   ineligible_reason: string | null;
   policy_version_id: string | null;
   severity_at_calculation: ReportSeverity | null;
+  priority_at_calculation?: ReportPriority | null;
   currency: string | null;
   calculated_min_amount_minor_units: number | null;
   calculated_max_amount_minor_units: number | null;
@@ -42,6 +44,8 @@ function mapDecisionRow(row: DecisionRow): ReportBountyDecision {
     ineligibleReason: row.ineligible_reason,
     policyVersionId: row.policy_version_id,
     severityAtCalculation: row.severity_at_calculation,
+    // Decisions calculated before priority existed recorded only the tier; the tier IS the priority.
+    priorityAtCalculation: row.priority_at_calculation ?? (row.severity_at_calculation ? priorityForSeverity(row.severity_at_calculation) : null),
     currency: row.currency,
     calculatedMinAmountMinorUnits: row.calculated_min_amount_minor_units,
     calculatedMaxAmountMinorUnits: row.calculated_max_amount_minor_units,

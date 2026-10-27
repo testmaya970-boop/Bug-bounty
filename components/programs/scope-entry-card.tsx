@@ -12,6 +12,8 @@ import { cn } from "../../lib/cn";
 import type { ProgramAssetType, ScopeEntry, ScopeState } from "../../types/scope";
 import { LocalTime } from "../ui/local-time";
 import { PencilSimple, Trash } from "@phosphor-icons/react";
+import Link from "next/link";
+import type { Route } from "next";
 
 const ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -21,7 +23,7 @@ const TARGET_PLACEHOLDER: Record<ProgramAssetType, string> = {
   ip_cidr: "203.0.113.0/24 or 203.0.113.5",
   ios_app: "https://apps.apple.com/app/id123456789 or com.example.app",
   android_app: "https://play.google.com/store/apps/details?id=com.example.app",
-  source_code: "https://github.com/example/repo",
+  source_code: "https://git.example.com/org/repo",
   hardware: "Model XR-200 router",
   ai_model: "gpt-example-v2 or https://api.example.com/v1/chat/completions",
 };
@@ -227,6 +229,28 @@ function RemoveEntryDialog({ organizationId, programId, entry }: { organizationI
   );
 }
 
+/** Why an in-scope entry does not authorize testing yet (202610260008). Researchers never see
+ * these rows (RLS), so this only ever renders for the organization. */
+function ClearanceNotice({ organizationId, entry }: { organizationId: string; entry: ScopeEntry }) {
+  const { clearance } = entry;
+  if (!clearance || clearance === "not_required" || clearance === "verified" || clearance === "approved") return null;
+  return (
+    <p className="mt-1 text-xs font-medium text-danger">
+      {clearance === "pending_verification" && (
+        <>
+          Not testable yet: hidden from researchers until you{" "}
+          <Link href={`/organizations/${organizationId}/settings#verified-domains` as Route} className="underline underline-offset-2">
+            verify you own this domain
+          </Link>
+          .
+        </>
+      )}
+      {clearance === "pending_review" && "Not testable yet: hidden from researchers until Unpatched confirms you own this asset."}
+      {clearance === "rejected" && `Ownership not confirmed by Unpatched${entry.clearanceNote ? `: ${entry.clearanceNote}` : "."}`}
+    </p>
+  );
+}
+
 /** A single scope registry row -- TYPE / TARGET / STATE as three genuinely aligned
  * columns (a CSS grid with fixed track widths, not flex-wrap), the shape a real
  * authorization registry uses. Attribution is a quiet second line under the target
@@ -266,6 +290,7 @@ export function ScopeEntryCard({ organizationId, programId, entry, canManage }: 
       <div className="min-w-0">
         <span className="break-all font-mono text-sm font-medium text-ink">{entry.displayTarget}</span>
         {entry.description && <p className="mt-0.5 text-sm text-ink-muted">{entry.description}</p>}
+        <ClearanceNotice organizationId={organizationId} entry={entry} />
       </div>
       <div className="col-span-2 sm:col-span-1">
         <ScopeStateBadge state={entry.scopeState} />

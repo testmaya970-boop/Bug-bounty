@@ -9,9 +9,23 @@ import { createBountyPolicyVersionAction } from "../../actions/bounty";
 import { minorUnitsToDecimalString, parseDecimalToMinorUnits } from "../../lib/money";
 import type { BountyPolicy } from "../../types/bounty";
 import type { ReportSeverity } from "../../types/report";
+import { priorityForSeverity, priorityLabel } from "../../lib/report-priority";
 
-const SEVERITY_TIERS: ReportSeverity[] = ["none", "low", "medium", "high", "critical"];
-const SEVERITY_LABELS: Record<ReportSeverity, string> = { none: "None", low: "Low", medium: "Medium", high: "High", critical: "Critical" };
+// Payout ranges are per PRIORITY (P0-P4). Policies store them keyed by tier (critical..none),
+// and each tier is exactly one priority, so P0 first. See lib/report-priority.ts.
+const SEVERITY_TIERS: ReportSeverity[] = ["critical", "high", "medium", "low", "none"];
+const SEVERITY_LABELS = Object.fromEntries(SEVERITY_TIERS.map((tier) => [tier, priorityLabel(priorityForSeverity(tier))])) as Record<ReportSeverity, string>;
+
+/** Ranges where a lower priority can pay more than a higher one: allowed, but almost always a typo. */
+function inversions(parsed: Record<ReportSeverity, { min: number; max: number }>): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < SEVERITY_TIERS.length - 1; i++) {
+    const higher = SEVERITY_TIERS[i];
+    const lower = SEVERITY_TIERS[i + 1];
+    if (parsed[lower].max > parsed[higher].max) out.push(`${SEVERITY_LABELS[lower]} can pay more than ${SEVERITY_LABELS[higher]}.`);
+  }
+  return out;
+}
 
 /** Read-only display of the program's current effective bounty policy -- or the honest
  * absence of one. See docs/decisions/0013-bounty-decision-engine.md. */
@@ -23,13 +37,14 @@ export function BountyPolicySection({ policy }: { policy: BountyPolicy | null })
   return (
     <div>
       <p className="text-sm text-ink-muted">
-        Version {policy.versionNumber} &middot; {policy.currency}
+        Paid in {policy.currency}
       </p>
+      <p className="mt-1 text-xs text-ink-muted">Ranges are per priority. A report&apos;s priority follows its confirmed severity unless a triager sets it.</p>
       <table className="mt-3 w-full max-w-md text-left text-sm">
         <thead className="text-xs text-ink-muted">
           <tr>
             <th scope="col" className="py-1 pr-3 font-semibold">
-              Severity
+              Priority
             </th>
             <th scope="col" className="py-1 pr-3 font-semibold">
               Minimum
@@ -106,11 +121,11 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
   function handleContinue() {
     const parsed = parsedRanges();
     if (!parsed) {
-      setError("Enter a valid amount for every severity tier, with minimum no greater than maximum.");
+      setError("Enter a valid amount for every priority, with minimum no greater than maximum.");
       return;
     }
     if (parsed.critical.max === 0) {
-      setError("A bounty table must pay something: set at least the Critical maximum above zero.");
+      setError("A bounty table must pay something: set at least the P0 maximum above zero.");
       return;
     }
     setError(null);
@@ -145,7 +160,7 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
           <div className="space-y-4">
             {currentPolicy && (
               <p className="text-sm text-ink-muted">
-                This replaces version {currentPolicy.versionNumber}. Reports already calculated or finalized under it are never affected.
+                This replaces the current table. Reports already calculated or finalized under it are never affected.
               </p>
             )}
             {/* Awards are paid from the prepaid balance, which holds INR and USD only. */}
@@ -156,7 +171,7 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
             <div className="space-y-2">
               {SEVERITY_TIERS.map((severity) => (
                 <div key={severity} className="flex flex-wrap items-end gap-2">
-                  <span className="w-20 pb-2.5 text-sm font-medium text-ink">{SEVERITY_LABELS[severity]}</span>
+                  <span className="w-32 pb-2.5 text-sm font-medium text-ink">{SEVERITY_LABELS[severity]}</span>
                   <Input
                     label="Minimum"
                     value={ranges[severity].min}
@@ -189,11 +204,21 @@ export function CreateBountyPolicyDialog({ organizationId, programId, currentPol
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-ink-muted">This will become the program's effective bounty policy immediately.</p>
+            {parsed && inversions(parsed).length > 0 && (
+              <div role="status" className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-ink">
+                <p className="font-semibold">Check these ranges before publishing:</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {inversions(parsed).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-ink-muted">
                 <tr>
                   <th scope="col" className="py-1 pr-3 font-semibold">
-                    Severity
+                    Priority
                   </th>
                   <th scope="col" className="py-1 pr-3 font-semibold">
                     Minimum

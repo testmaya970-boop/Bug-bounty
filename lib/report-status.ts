@@ -88,6 +88,14 @@ export function researcherNextActionLabel(status: ReportStatus): string {
 // ordering.
 export const REPORT_STATUS_ORDER: ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"];
 export const REPORT_SEVERITY_ORDER: ReportSeverity[] = ["critical", "high", "medium", "low", "none"];
+
+/** The one place a severity gets its display label. The stored value `none` means an
+ * informational finding, so it reads "Info" everywhere; the enum value itself is unchanged,
+ * so no stored report, bounty table, or API value moves. */
+export const SEVERITY_LABEL: Record<ReportSeverity, string> = { critical: "Critical", high: "High", medium: "Medium", low: "Low", none: "Info" };
+export function severityLabel(severity: ReportSeverity): string {
+  return SEVERITY_LABEL[severity];
+}
 const SEVERITY_RANK: Record<ReportSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3, none: 4 };
 
 export type ReportSortOption = "newest" | "oldest" | "severity";

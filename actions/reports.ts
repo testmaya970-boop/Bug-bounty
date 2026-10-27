@@ -30,6 +30,7 @@ import {
   resolveReport,
   resolveReportMediation,
   setReportSeverity,
+  setReportPriority,
   startTriage,
   submitReport,
   assignReport,
@@ -47,6 +48,9 @@ import { captchaConfig, verifyCaptcha } from "@/lib/integrations/captcha";
 import { getMySubmissionStanding } from "@/services/submission-signal";
 import { headers } from "next/headers";
 import { CVSS4_VECTOR_PATTERN, cvss4Score } from "@/lib/cvss4";
+import { WEAKNESS_TYPE_ORDER } from "../lib/report-weakness-labels";
+import type { ReportWeaknessType } from "../types/report";
+import { scoreCvssVector } from "../lib/cvss-vector";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
@@ -55,24 +59,8 @@ export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string;
 // docs/decisions/0008-report-authorization-and-scope-snapshot.md.
 const assetTypeSchema = z.enum(["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"]);
 const severitySchema = z.enum(["none", "low", "medium", "high", "critical"]);
-const weaknessTypeSchema = z.enum([
-  "cross_site_scripting",
-  "sql_injection",
-  "ssrf",
-  "idor",
-  "broken_authentication",
-  "broken_access_control",
-  "csrf",
-  "remote_code_execution",
-  "information_disclosure",
-  "insecure_deserialization",
-  "security_misconfiguration",
-  "injection_other",
-  "business_logic",
-  "denial_of_service",
-  "cryptographic_failure",
-  "other",
-]);
+// The taxonomy has one source of truth (lib/report-weakness-labels.ts).
+const weaknessTypeSchema = z.enum(WEAKNESS_TYPE_ORDER as [ReportWeaknessType, ...ReportWeaknessType[]]);
 const visibilitySchema = z.enum(["researcher_visible", "internal"]);
 const evidenceTypeSchema = z.enum(["text", "code", "url", "log"]);
 const uuidSchema = z.string().uuid();
@@ -90,11 +78,24 @@ const submitSchema = z.object({
   // The policy version the researcher accepted; the database refuses the report unless it
   // is exactly the version in effect (202610060009).
   acknowledgedPolicyVersion: z.number().int().positive().nullable().optional(),
+  scopeEntryId: uuidSchema,
+  // A CVSS vector only; the score is computed below from the vector, never accepted from the browser.
+  cvssVector: z.string().trim().max(200).optional(),
+  draftId: uuidSchema.nullable().optional(),
+  uploadIds: z.array(uuidSchema).max(100).optional(),
+  submissionKey: uuidSchema,
 });
 
 export async function submitReportAction(input: z.infer<typeof submitSchema> & { captchaToken?: string }) {
   const parsed = submitSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+
+  let cvss: { version: "4.0" | "3.1"; vector: string; score: number } | null = null;
+  if (parsed.data.cvssVector) {
+    const scored = scoreCvssVector(parsed.data.cvssVector);
+    if (!scored.ok) return { ok: false as const, code: "INVALID_CVSS", message: scored.message };
+    cvss = { version: scored.version, vector: scored.vector, score: scored.score };
+  }
 
   const user = await getCurrentUser();
   // New and limited-tier researchers prove they're human per report: that's where scripted
@@ -108,17 +109,22 @@ export async function submitReportAction(input: z.infer<typeof submitSchema> & {
   }
   try {
     const report = await withRequestLogging("report.submit", { actorId: user?.id, organizationId: parsed.data.organizationId }, () =>
-      submitReport(
-        parsed.data.programId,
-        parsed.data.assetType,
-        parsed.data.targetInput,
-        parsed.data.title,
-        parsed.data.description,
-        parsed.data.weaknessType,
-        parsed.data.impact,
-        parsed.data.researcherSeverity,
-        parsed.data.acknowledgedPolicyVersion ?? null,
-      ),
+      submitReport({
+        programId: parsed.data.programId,
+        assetType: parsed.data.assetType,
+        targetInput: parsed.data.targetInput,
+        title: parsed.data.title,
+        description: parsed.data.description,
+        weaknessType: parsed.data.weaknessType,
+        impact: parsed.data.impact,
+        researcherSeverity: parsed.data.researcherSeverity,
+        acknowledgedPolicyVersion: parsed.data.acknowledgedPolicyVersion ?? null,
+        scopeEntryId: parsed.data.scopeEntryId,
+        cvss,
+        draftId: parsed.data.draftId ?? null,
+        uploadIds: parsed.data.uploadIds ?? [],
+        submissionKey: parsed.data.submissionKey,
+      }),
     );
     revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}`);
     revalidatePath("/reports");
@@ -300,6 +306,17 @@ export async function setReportSeverityAction(input: z.infer<typeof severityActi
   const parsed = severityActionSchema.safeParse(input);
   if (!parsed.success) return invalidInput();
   const result = await toResult(setReportSeverity(parsed.data.reportId, parsed.data.severity, parsed.data.cvss as CvssMetrics | undefined));
+  if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
+  return result;
+}
+
+const priorityActionSchema = reportActionBase.extend({ priority: z.enum(["p0", "p1", "p2", "p3", "p4"]).nullable() });
+
+/** Explicit P0-P4, or null to follow the confirmed severity again. */
+export async function setReportPriorityAction(input: z.infer<typeof priorityActionSchema>): Promise<ActionResult<Report>> {
+  const parsed = priorityActionSchema.safeParse(input);
+  if (!parsed.success) return invalidInput();
+  const result = await toResult(setReportPriority(parsed.data.reportId, parsed.data.priority));
   if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
   return result;
 }
@@ -584,8 +601,11 @@ export async function assignReportAction(input: z.infer<typeof assignSchema>): P
 
 // Server-side report drafts (202610060014): typed text only, never attachments.
 const draftSchema = z.object({
+  draftId: uuidSchema.nullable(),
   programId: uuidSchema,
+  expectedVersion: z.number().int().positive().nullable(),
   draft: z.object({
+    scopeEntryId: z.union([uuidSchema, z.literal("")]),
     assetType: assetTypeSchema,
     target: z.string().max(2048),
     title: z.string().max(200),
@@ -593,18 +613,26 @@ const draftSchema = z.object({
     description: z.string().max(20000),
     impact: z.string().max(20000),
     researcherSeverity: z.union([severitySchema, z.literal("")]),
+    cvssVector: z.string().max(200),
     stagedEvidence: z.array(z.object({ localId: z.string().max(64), evidenceType: evidenceTypeSchema, content: z.string().max(20000) })).max(20),
   }),
 });
 
-export async function saveReportDraftAction(input: z.infer<typeof draftSchema>): Promise<ActionResult<string>> {
+/** Saves a draft (creating it when draftId is null). Incomplete content is fine: nothing here is
+ * required, and nothing reaches the program until the researcher submits. */
+export async function saveReportDraftAction(input: z.infer<typeof draftSchema>): Promise<ActionResult<{ id: string; version: number; updatedAt: string }>> {
   const parsed = draftSchema.safeParse(input);
   if (!parsed.success) return invalidInput("This draft could not be saved.");
-  return toResult(saveMyReportDraft(parsed.data.programId, parsed.data.draft));
+  // Deliberately no revalidatePath: a revalidating server action refreshes the CURRENT route,
+  // which re-rendered the composer (keyed by draft id, now in the URL) mid-upload and dropped
+  // the in-flight files. /reports/drafts is dynamic and reads fresh on every visit anyway.
+  return toResult(saveMyReportDraft(parsed.data));
 }
 
-export async function deleteReportDraftAction(input: { programId: string }): Promise<ActionResult<void>> {
-  const parsed = z.object({ programId: uuidSchema }).safeParse(input);
+export async function deleteReportDraftAction(input: { draftId: string }): Promise<ActionResult<void>> {
+  const parsed = z.object({ draftId: uuidSchema }).safeParse(input);
   if (!parsed.success) return invalidInput();
-  return toResult(deleteMyReportDraft(parsed.data.programId));
+  const result = await toResult(deleteMyReportDraft(parsed.data.draftId));
+  if (result.ok) revalidatePath("/reports/drafts");
+  return result;
 }

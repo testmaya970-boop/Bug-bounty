@@ -539,7 +539,7 @@ export function SeverityControl({ organizationId, programId, reportId, currentSe
         </option>
         {SEVERITIES.map((severity) => (
           <option key={severity} value={severity}>
-            {severity[0].toUpperCase() + severity.slice(1)}
+            {SEVERITY_LABEL[severity]}
           </option>
         ))}
       </Select>

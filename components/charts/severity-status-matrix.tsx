@@ -3,13 +3,12 @@
 import React, { useState } from "react";
 import { cn } from "../../lib/cn";
 import { severityTone } from "../ui/badge";
-import { reportStatusLabel } from "../../lib/report-status";
+import { reportStatusLabel, SEVERITY_LABEL } from "../../lib/report-status";
 import type { MockSeverityStatusCell } from "../../lib/mock/report-analytics";
 import type { ReportSeverity, ReportStatus } from "../../types/report";
 
 const SEVERITY_ORDER: ReportSeverity[] = ["critical", "high", "medium", "low", "none"];
 const STATUS_ORDER: ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"];
-const SEVERITY_LABEL: Record<ReportSeverity, string> = { critical: "Critical", high: "High", medium: "Medium", low: "Low", none: "None" };
 
 /**
  * Where an important finding is actually stuck -- a real matrix, severity (rows, worst

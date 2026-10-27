@@ -7,12 +7,15 @@ import { IdentityStartButtons, PhoneVerificationForm } from "../../../components
 import { SectionLabel } from "../../../components/ui/security-primitives";
 import { LocalTime } from "../../../components/ui/local-time";
 
-const STATUS_COPY: Record<string, { label: string; tone: string }> = {
-  approved: { label: "Verified", tone: "text-success" },
-  pending: { label: "In progress", tone: "text-warning" },
-  declined: { label: "Not verified", tone: "text-danger" },
-  expired: { label: "Expired -- start again", tone: "text-ink-muted" },
-  error: { label: "Couldn't complete -- start again", tone: "text-danger" },
+// The shared verification vocabulary (Not started / Pending / Verified / Failed / Requires review).
+// Only the provider's own result moves a check to Verified: starting it, or finishing the
+// provider's steps, is Pending until their signed result arrives.
+const STATUS_COPY: Record<string, { label: string; detail: string; tone: string }> = {
+  approved: { label: "Verified", detail: "", tone: "text-success" },
+  pending: { label: "Pending", detail: "Waiting for the provider's result.", tone: "text-warning" },
+  declined: { label: "Failed", detail: "The provider could not verify you. You can try again.", tone: "text-danger" },
+  expired: { label: "Failed", detail: "The session expired before it finished. Start again.", tone: "text-danger" },
+  error: { label: "Failed", detail: "The provider had a problem. Start again.", tone: "text-danger" },
 };
 
 /** Automatic identity verification (hosted DigiLocker / document + selfie) and phone
@@ -29,8 +32,28 @@ export default async function IdentitySettingsPage({ searchParams }: { searchPar
     <div className="space-y-10">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Identity &amp; phone</h1>
-        <p className="mt-1 text-sm text-ink-muted">Some programs and every payout need a verified identity. Verification is done by a specialist provider; Unpatched only keeps the result.</p>
+        <p className="mt-1 text-sm text-ink-muted">Submitting reports, some programs, and payouts need a verified identity. Verification is done by an authorized provider; Unpatched only keeps the result.</p>
       </div>
+
+      <details className="rounded-lg border border-border bg-surface p-4 text-sm">
+        <summary className="cursor-pointer font-semibold text-ink">Why we ask, and what we keep</summary>
+        <div className="mt-3 space-y-2 text-ink-muted">
+          <p>Verification keeps programs safe from throwaway and impersonating accounts, and lets us pay you and meet tax rules.</p>
+          <p>
+            In India, you verify Aadhaar and PAN in DigiLocker, the government&apos;s own service, through our provider. You approve the request and enter your OTP on DigiLocker&apos;s site.
+            Unpatched never sees or stores your Aadhaar number, OTP, or documents.
+          </p>
+          <p>We keep only: which provider checked you, their reference for the check, the outcome and its date. Nothing about it appears on your public profile, your reports, or in URLs or analytics.</p>
+          <p>
+            A verification is valid for 12 months, then you verify again. These records are kept while your account exists; deactivating your account does not erase them. To ask for them to be
+            erased, contact us through{" "}
+            <Link prefetch={false} href={"/help" as Route} className="font-medium text-action hover:text-action-hover">
+              Help
+            </Link>
+            .
+          </p>
+        </div>
+      </details>
 
       <section className="space-y-4">
         <SectionLabel>Identity</SectionLabel>
@@ -40,16 +63,18 @@ export default async function IdentitySettingsPage({ searchParams }: { searchPar
           </p>
         )}
         {latest ? (
-          <p className="text-sm">
+          <p className="text-sm" role="status">
             <span className={`font-semibold ${STATUS_COPY[latest.status].tone}`}>{STATUS_COPY[latest.status].label}</span>
             <span className="text-ink-muted">
               {" "}
               · started <LocalTime value={latest.createdAt} />
-              {latest.failureReason ? ` · ${latest.failureReason}` : ""}
+              {STATUS_COPY[latest.status].detail ? ` · ${STATUS_COPY[latest.status].detail}` : ""}
             </span>
           </p>
         ) : (
-          <p className="text-sm text-ink-muted">You haven&apos;t verified your identity yet.</p>
+          <p className="text-sm text-ink-muted">
+            <span className="font-semibold text-ink">Not started.</span> You haven&apos;t verified your identity yet.
+          </p>
         )}
         {!verified &&
           (regions.length > 0 ? (

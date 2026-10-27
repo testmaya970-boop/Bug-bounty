@@ -37,7 +37,7 @@ export function ProgramPolicySummary({ policy, showRules = true }: { policy: Pro
         )}
         <ToneBadge tone={{ text: "text-info", bg: "bg-info" }}>{DISCLOSURE_LABEL[policy.disclosureMode](policy.disclosureDays)}</ToneBadge>
         <span className="font-mono text-xs text-ink-muted">
-          Policy v{policy.versionNumber} · published <LocalTime value={policy.publishedAt} dateOnly />
+          Published <LocalTime value={policy.publishedAt} dateOnly />
         </span>
       </div>
       {targets.length > 0 && (
@@ -71,7 +71,7 @@ function SlaRow({ label, target }: { label: string; target: SlaTarget | null }) 
 export function ReportSlaPanel({ sla }: { sla: ReportSla }) {
   return (
     <div>
-      <p className="text-xs text-ink-muted">Targets from program policy v{sla.policyVersionNumber}</p>
+      <p className="text-xs text-ink-muted">Targets from the program policy</p>
       <ul className="mt-1 divide-y divide-border">
         <SlaRow label="First response" target={sla.firstResponse} />
         <SlaRow label="Triage" target={sla.triage} />

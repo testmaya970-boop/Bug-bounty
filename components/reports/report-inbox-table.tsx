@@ -9,9 +9,10 @@ import { Input, Select } from "../ui/form";
 import { Dialog } from "../ui/navigation";
 import { EmptyState, ErrorState, Skeleton } from "../ui/feedback";
 import { SeverityBadge, StatusBadge } from "../ui/badge";
-import { reportStatusLabel, reportNextActionLabel } from "../../lib/report-status";
+import { reportStatusLabel, reportNextActionLabel, severityLabel } from "../../lib/report-status";
 import { bulkMarkDuplicateAction, listReportsForProgramPageAction } from "../../actions/reports";
-import type { Report, ReportInboxWorkloadSummary, ReportSeverity, ReportStatus } from "../../types/report";
+import type { Report, ReportInboxWorkloadSummary, ReportSeverity, ReportStatus } from "../../types/report";
+
 import { LocalTime } from "../ui/local-time";
 
 const FILTERABLE_STATUSES: ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"];
@@ -259,7 +260,7 @@ export function ReportInboxTable({
           <option value="all">All severities</option>
           {FILTERABLE_SEVERITIES.map((value) => (
             <option key={value} value={value}>
-              {value[0].toUpperCase() + value.slice(1)}
+              {severityLabel(value)}
             </option>
           ))}
         </Select>

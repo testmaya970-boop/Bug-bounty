@@ -56,7 +56,7 @@ export function PublishProgramPolicyDialog({ organizationId, programId, current 
       <Button variant="secondary" onClick={() => setOpen(true)}>
         {current ? "Publish a new version" : "Publish policy"}
       </Button>
-      <Dialog open={open} title={current ? `Publish policy v${current.versionNumber + 1}` : "Publish program policy"} onClose={() => !pending && setOpen(false)}>
+      <Dialog open={open} title={current ? "Publish a new policy" : "Publish program policy"} onClose={() => !pending && setOpen(false)}>
         <div className="space-y-4">
           <p className="text-sm text-ink-muted">Researchers must accept this version before submitting. Reports already submitted keep the version they were submitted under.</p>
           <Textarea label="Rules of engagement" required rows={8} value={rules} onChange={(e) => setRules(e.target.value)} maxLength={20000} helperText="Testing rules, prohibited techniques, rate limits, test accounts, what not to touch." />

@@ -84,8 +84,8 @@ export function ProfessionalDetailsSettings({ initial }: { initial: Professional
             </option>
           ))}
         </Select>
-        <Input label="LinkedIn" value={linkedinUrl} onChange={(event) => setLinkedinUrl(event.target.value)} maxLength={300} placeholder="https://www.linkedin.com/in/username" />
-        <Input label="Resume / portfolio link" className="sm:col-span-2" value={resumeUrl} onChange={(event) => setResumeUrl(event.target.value)} maxLength={500} placeholder="https://drive.google.com/..." />
+        <Input label="LinkedIn" value={linkedinUrl} onChange={(event) => setLinkedinUrl(event.target.value)} maxLength={300} helperText="Paste the link to your own LinkedIn profile (linkedin.com/in/…)." />
+        <Input label="Resume / portfolio link" className="sm:col-span-2" value={resumeUrl} onChange={(event) => setResumeUrl(event.target.value)} maxLength={500} helperText="A link to your resume or portfolio that anyone with the link can open." />
       </div>
 
       <CheckboxGroup legend="What are your hacking interests?" helperText="Used to recommend relevant programs to you. It is never shared as a ranking or score." options={FOCUS_AREA_ORDER} labels={FOCUS_AREA_LABELS} values={hackingInterests} onChange={setHackingInterests} />

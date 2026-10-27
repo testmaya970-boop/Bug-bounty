@@ -18,6 +18,9 @@ import React from "react";
  * A Server Component: pure markup + CSS animation (the `.hero-art-draw`/
  * `.hero-art-fade`/`.hero-art-stamp-wrap` classes in app/globals.css), no
  * client-side JS or state, so it renders on the server with no flash-in.
+ * The `data-seal` / `data-motion` attributes are hooks only (geometry untouched): the
+ * homepage's chapter-four copy turns the rings at their own pace while on screen
+ * (globals.css `.seal-orbit`), and the hero copy, which has no `.seal-orbit` wrapper, ignores them.
  */
 export function AuditSeal() {
   return (
@@ -35,7 +38,7 @@ export function AuditSeal() {
           <circle pathLength={1} cx="400" cy="400" r="306" />
           <circle pathLength={1} cx="400" cy="400" r="262" />
         </g>
-        <g className="hero-art-draw" style={{ "--d": "1.1s" } as React.CSSProperties}>
+        <g className="hero-art-draw" data-seal="rosette" style={{ "--d": "1.1s" } as React.CSSProperties}>
           <ellipse pathLength={1} cx="400" cy="400" rx="250" ry="68" />
           <ellipse pathLength={1} cx="400" cy="400" rx="250" ry="68" transform="rotate(15 400 400)" />
           <ellipse pathLength={1} cx="400" cy="400" rx="250" ry="68" transform="rotate(30 400 400)" />
@@ -52,16 +55,16 @@ export function AuditSeal() {
         </g>
         <g className="hero-art-fade">
           {/* perforated edge, minute ticks, stitching, quarter marks */}
-          <circle cx="400" cy="400" r="392" strokeWidth={3.2} strokeDasharray="0.1 9" />
-          <circle cx="400" cy="400" r="298" pathLength={120} strokeWidth={8} strokeLinecap="butt" strokeDasharray="0.14 0.86" />
-          <circle cx="400" cy="400" r="104" strokeWidth={2} strokeDasharray="9 7" strokeLinecap="butt" />
+          <circle data-seal="perf" cx="400" cy="400" r="392" strokeWidth={3.2} strokeDasharray="0.1 9" />
+          <circle data-seal="ticks" cx="400" cy="400" r="298" pathLength={120} strokeWidth={8} strokeLinecap="butt" strokeDasharray="0.14 0.86" />
+          <circle data-seal="stitch" cx="400" cy="400" r="104" strokeWidth={2} strokeDasharray="9 7" strokeLinecap="butt" />
           <circle className="hero-art-mk" cx="728" cy="400" r="5" />
           <circle className="hero-art-mk" cx="400" cy="728" r="5" />
           <circle className="hero-art-mk" cx="72" cy="400" r="5" />
           <circle className="hero-art-mk" cx="400" cy="72" r="5" />
         </g>
       </g>
-      <g className="hero-art-fade">
+      <g className="hero-art-fade" data-motion="seal-ring-text">
         <text className="hero-art-ring-text" textAnchor="middle">
           <textPath href="#hero-art-seal-q1" startOffset="50%">
             RECEIVED

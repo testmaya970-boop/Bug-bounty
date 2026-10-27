@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
 import { Select, Textarea } from "../ui/form";
-import { reportStatusLabel } from "../../lib/report-status";
+import { reportStatusLabel, severityLabel } from "../../lib/report-status";
 import {
   acceptReportAction,
   markDuplicateAction,
@@ -123,7 +123,7 @@ export function InboxTriageControls({
           </option>
           {(["none", "low", "medium", "high", "critical"] as ReportSeverity[]).map((severity) => (
             <option key={severity} value={severity}>
-              {severity[0].toUpperCase() + severity.slice(1)}
+              {severityLabel(severity)}
             </option>
           ))}
         </Select>

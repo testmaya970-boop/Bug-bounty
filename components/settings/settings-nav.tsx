@@ -7,6 +7,7 @@ import type { Route } from "next";
 import type { SettingsAudience } from "../../lib/auth/account-type";
 
 const ACCOUNT_ITEMS: { href: Route; label: string }[] = [
+  { href: "/settings" as Route, label: "Overview" },
   { href: "/settings/profile" as Route, label: "Public Profile" },
   { href: "/settings/password" as Route, label: "Email & Password" },
   { href: "/settings/security" as Route, label: "Account Security" },
@@ -40,6 +41,7 @@ const RESEARCHER_ITEMS: { href: Route; label: string }[] = [
 // settings, members and payments are already in the sidebar -- not repeated here (one nav
 // control per destination, AGENTS.md).
 const ORGANIZATION_ACCOUNT_ITEMS: { href: Route; label: string }[] = [
+  { href: "/settings" as Route, label: "Overview" },
   { href: "/settings/profile" as Route, label: "Profile" },
   { href: "/settings/password" as Route, label: "Email & Password" },
   { href: "/settings/security" as Route, label: "Account Security" },
@@ -52,6 +54,7 @@ const ORGANIZATION_ACCOUNT_ITEMS: { href: Route; label: string }[] = [
 // A platform admin's own settings: platform staff, so only identity and sign-in. Nothing
 // researcher-side, and no self-deactivation (staff accounts are managed by the platform).
 const PLATFORM_ADMIN_ITEMS: { href: Route; label: string }[] = [
+  { href: "/settings" as Route, label: "Overview" },
   { href: "/settings/profile" as Route, label: "Profile" },
   { href: "/settings/password" as Route, label: "Email & Password" },
   { href: "/settings/security" as Route, label: "Account Security" },

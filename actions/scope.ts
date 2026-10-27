@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
-import { addScopeEntry, listOrganizationAssets, removeScopeEntry, updateScopeEntry } from "@/services/scope";
+import { addScopeEntry, listOrganizationAssets, removeScopeEntry, reviewScopeEntry, updateScopeEntry } from "@/services/scope";
 import { linkReportToScopeEntry } from "@/services/reports";
 import type { AssetInventoryItem } from "@/types/scope";
 import type { Page } from "@/types/pagination";
@@ -116,5 +116,16 @@ export async function linkReportToScopeEntryAction(input: z.infer<typeof linkRep
     revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}/inbox`);
     revalidatePath(`/organizations/${parsed.data.organizationId}/programs/${parsed.data.programId}/reports/${parsed.data.reportId}`);
   }
+  return result;
+}
+
+const reviewSchema = z.object({ entryId: uuidSchema, decision: z.enum(["approved", "rejected"]), note: z.string().trim().max(500, "Use 500 characters or fewer.") });
+
+/** Platform staff decide whether an organization owns a non-domain asset (review_scope_entry re-checks). */
+export async function reviewScopeEntryAction(input: z.input<typeof reviewSchema>): Promise<ActionResult<null>> {
+  const parsed = reviewSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
+  const result = await toResult(reviewScopeEntry(parsed.data.entryId, parsed.data.decision, parsed.data.note).then(() => null));
+  if (result.ok) revalidatePath("/platform/scope-review");
   return result;
 }

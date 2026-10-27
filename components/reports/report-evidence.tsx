@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Button, IconButton } from "../ui/button";
+import { IconButton } from "../ui/button";
 import { SectionLabel } from "../ui/security-primitives";
 import { getEvidenceDownloadUrlAction } from "../../actions/report-file-evidence";
 import type { ReportEvidence, ReportEvidenceType } from "../../types/report";
@@ -11,17 +11,6 @@ import { DownloadSimple } from "@phosphor-icons/react";
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
 export const EVIDENCE_TYPE_LABELS: Record<ReportEvidenceType, string> = { text: "Text", code: "Code", url: "URL", log: "Log", file: "File" };
-export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-
-/** The same checks the server applies to an upload (services/report-file-evidence.ts), run
- * before anything is sent so a bad file is caught while the researcher can still fix it. */
-export function fileProblem(file: File): string | null {
-  if (file.size === 0) return "The selected file is empty.";
-  if (file.size > MAX_FILE_SIZE_BYTES) return "File must be 10 MB or smaller.";
-  if (file.name.trim().length > 255) return "File name must be 255 characters or fewer.";
-  return null;
-}
-
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -134,50 +123,3 @@ export function ReportEvidenceSection({ evidence, showInternal, organizationId, 
 export type TextualEvidenceType = Exclude<ReportEvidenceType, "file">;
 export const EVIDENCE_TYPES: TextualEvidenceType[] = ["text", "code", "url", "log"];
 
-export function FileField({
-  inputRef,
-  error,
-  selectedName,
-  onClear,
-  onFileChange,
-  required = true,
-}: {
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  error?: string;
-  selectedName?: string | null;
-  onClear?: () => void;
-  onFileChange?: (name: string | null) => void;
-  /** False where attaching a file is optional (the report composer). */
-  required?: boolean;
-}) {
-  const id = "file-evidence-input";
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
-        File {required && <span aria-hidden="true"> *</span>}
-      </label>
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          ref={inputRef}
-          id={id}
-          type="file"
-          required={required}
-          aria-invalid={Boolean(error)}
-          onChange={(event) => onFileChange?.(event.target.files?.[0]?.name ?? null)}
-          className="block min-w-0 flex-1 text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-muted"
-        />
-        {selectedName && onClear && (
-          <Button type="button" variant="quiet" onClick={onClear}>
-            Clear
-          </Button>
-        )}
-      </div>
-      <p className="mt-1 text-xs text-ink-muted">Up to 10 MB. Downloaded as a file, never previewed or executed.</p>
-      {error && (
-        <p role="alert" className="mt-1 text-xs font-medium text-danger">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}

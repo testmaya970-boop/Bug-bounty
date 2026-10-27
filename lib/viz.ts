@@ -28,7 +28,7 @@ export const SEVERITY_SERIES: { key: ReportSeverity | "unrated"; label: string; 
   { key: "high", label: "High", color: "var(--severity-high)" },
   { key: "medium", label: "Medium", color: "var(--severity-medium)" },
   { key: "low", label: "Low", color: "var(--severity-low)" },
-  { key: "none", label: "None", color: "var(--severity-none)" },
+  { key: "none", label: "Info", color: "var(--severity-none)" },
   { key: "unrated", label: "Not yet rated", color: "var(--viz-axis)" },
 ];
 

@@ -22,7 +22,16 @@ import React from "react";
  * classes defined in app/globals.css), no client-side JS or state, so it
  * renders on the server with no flash-in.
  */
-export function BugSpecimen() {
+// The callout dots below, in reading order (top to bottom).
+export const SIGNAL_POINTS = [
+  [560, 142],
+  [571, 214],
+  [680, 505],
+  [752, 612],
+  [556, 726],
+] as const;
+
+export function BugSpecimen({ signal = false }: { signal?: boolean }) {
   return (
     <svg className="hero-art hero-art-bug" viewBox="0 0 1000 830" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
       <g className="hero-art-lines">
@@ -151,6 +160,20 @@ export function BugSpecimen() {
           </text>
         </g>
       </g>
+      {signal && (
+        // Chapter one only: a red signal that visits each inspection point in turn and lights
+        // its leader line, scrubbed by scroll from public-home-motion.tsx. Parked hidden on the
+        // first point so a reduced-motion visitor sees the plain plate.
+        <g data-motion="bug-signal" opacity={0}>
+          <g className="hero-art-labels">
+            {SIGNAL_POINTS.map(([cx, cy]) => (
+              <path key={`${cx}-${cy}`} className="bug-signal-ldr" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1} d={`M${cx} ${cy}H780`} />
+            ))}
+          </g>
+          <circle className="bug-signal-halo" cx={SIGNAL_POINTS[0][0]} cy={SIGNAL_POINTS[0][1]} r="11" />
+          <circle className="bug-signal-marker" cx={SIGNAL_POINTS[0][0]} cy={SIGNAL_POINTS[0][1]} r="5" />
+        </g>
+      )}
     </svg>
   );
 }

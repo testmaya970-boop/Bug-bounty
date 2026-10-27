@@ -45,13 +45,14 @@ import {
   SidebarSimple,
   FileText,
   ChartPieSlice,
+  SealCheck,
+  ChatCircleText,
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
 import { Avatar, DropdownMenu } from "./ui/navigation";
 import { IconButton } from "./ui/button";
 import { Separator } from "./ui/feedback";
 import { NotificationBellDropdown } from "./notifications/notification-bell-dropdown";
-import { CommandPalette, ShortcutSheet, type CommandItem } from "./command-palette";
 import { cn } from "../lib/cn";
 import { SIDEBAR_COOKIE } from "../lib/sidebar";
 import { popoverMotion } from "./ui/popover-motion";
@@ -68,47 +69,48 @@ import type { OrganizationRole } from "../types/auth";
 // deactivated/MFA gate (lib/session/middleware.ts), measured at ~11x real navigation volume.
 // Fixed at the source; the gate keeps no header-based exception (AGENTS.md).
 //
-// Shell (22 Oct, Linear-style): no desktop top bar. The sidebar carries the account menu,
-// the inbox bell and a "Search ⌘K" command menu; navigation is keyboard-first (⌘K, "G then a
-// letter", "[" to fold the sidebar, "?" for the list). Phones keep a slim top bar + drawer.
-// One nav model (buildNav) feeds the sidebar, the command menu and the shortcuts, so the three
-// can never offer different destinations.
-type NavItem = { href: Route; label: string; icon: PhosphorIcon; badge?: string; goKey?: string; exact?: boolean; roles?: readonly OrganizationRole[] };
+// Shell (22 Oct, Linear-style): no desktop top bar. The sidebar carries the account menu, the
+// inbox bell and a plain search field (Enter opens /search). No command menu and no keyboard
+// shortcuts (removed Oct 26, by request). Phones keep a slim top bar + drawer. One nav model
+// (buildNav) feeds the sidebar and the drawer.
+type NavItem = { href: Route; label: string; icon: PhosphorIcon; badge?: string; exact?: boolean; roles?: readonly OrganizationRole[] };
 type NavSection = { id: string; label: string; items: NavItem[]; limit?: number; orgSwitcher?: boolean };
 
 // Research zones (docs/decisions/0074). No separate Leaderboard (it lives in /researchers,
 // 0065) and no "Workspace" group (it duplicated these destinations, 0059).
 const RESEARCH_NAV: NavItem[] = [
-  { href: "/" as Route, label: "Dashboard", icon: SquaresFour, goKey: "D", exact: true },
-  { href: "/programs" as Route, label: "Programs", icon: Crosshair, goKey: "P" },
-  { href: "/reports" as Route, label: "Reports", icon: Bug, goKey: "R" },
-  { href: "/researchers" as Route, label: "Researchers", icon: UsersThree, goKey: "L" },
+  { href: "/" as Route, label: "Dashboard", icon: SquaresFour, exact: true },
+  { href: "/programs" as Route, label: "Programs", icon: Crosshair },
+  { href: "/reports" as Route, label: "Reports", icon: Bug },
+  { href: "/researchers" as Route, label: "Researchers", icon: UsersThree },
 ];
 const PRACTICE_NAV: NavItem[] = [
-  { href: "/ctf" as Route, label: "CTF", icon: Flag, badge: MOCK_CTF_CHALLENGES.length.toString(), goKey: "C" },
+  { href: "/ctf" as Route, label: "CTF", icon: Flag, badge: MOCK_CTF_CHALLENGES.length.toString() },
   { href: "/learn" as Route, label: "Learn", icon: BookOpenText, badge: TRAINING_ARTICLES.length.toString() },
 ];
 // Earnings documents (payout receipts, statements, tax certificates) live under Bounties.
 const RECORD_NAV: NavItem[] = [
-  { href: "/bounties" as Route, label: "Bounties", icon: Coins, goKey: "B" },
+  { href: "/bounties" as Route, label: "Bounties", icon: Coins },
   { href: "/bounties/documents" as Route, label: "Tax & documents", icon: FileText },
 ];
 
 // Platform-admin nav: every app/platform/* page. Each page re-checks isPlatformAdmin()
 // server-side; this group is discoverability only, never the authorization boundary.
 const PLATFORM_NAV: NavItem[] = [
-  { href: "/platform" as Route, label: "Overview", icon: SquaresFour, goKey: "O", exact: true },
-  { href: "/platform/all-programs" as Route, label: "All programs", icon: ListBullets, goKey: "P" },
+  { href: "/platform" as Route, label: "Overview", icon: SquaresFour, exact: true },
+  { href: "/platform/all-programs" as Route, label: "All programs", icon: ListBullets },
   { href: "/platform/programs" as Route, label: "Program launches", icon: ClipboardText },
+  { href: "/platform/scope-review" as Route, label: "Scope review", icon: SealCheck },
   { href: "/platform/organizations" as Route, label: "Organizations", icon: Buildings },
+  { href: "/platform/contact-requests" as Route, label: "Contact requests", icon: ChatCircleText },
   { href: "/platform/researchers" as Route, label: "Researchers", icon: UsersThree },
   { href: "/platform/ctf-events" as Route, label: "CTF events", icon: Flag },
-  { href: "/platform/kyc" as Route, label: "KYC", icon: IdentificationCard, goKey: "K" },
-  { href: "/platform/payouts" as Route, label: "Payouts", icon: Wallet, goKey: "Y" },
+  { href: "/platform/kyc" as Route, label: "KYC", icon: IdentificationCard },
+  { href: "/platform/payouts" as Route, label: "Payouts", icon: Wallet },
   { href: "/platform/mediations" as Route, label: "Mediations", icon: Scales },
   { href: "/platform/retests" as Route, label: "Retests", icon: ArrowsClockwise },
   { href: "/platform/needs-recovery" as Route, label: "Needs recovery", icon: Lifebuoy },
-  { href: "/platform/errors" as Route, label: "Errors", icon: WarningOctagon, goKey: "E" },
+  { href: "/platform/errors" as Route, label: "Errors", icon: WarningOctagon },
   { href: "/platform/engagement" as Route, label: "Engagement emails", icon: EnvelopeSimple },
   { href: "/platform/integrations" as Route, label: "Integrations", icon: Plug },
   { href: "/platform/audit-log" as Route, label: "Audit log", icon: Scroll },
@@ -116,16 +118,17 @@ const PLATFORM_NAV: NavItem[] = [
 
 // Coming Soon is an honest static stub (app/coming-soon/page.tsx), researcher-facing only.
 const SYSTEM_NAV: NavItem[] = [
-  { href: "/notifications" as Route, label: "Notifications", icon: Bell, goKey: "N" },
+  { href: "/notifications" as Route, label: "Notifications", icon: Bell },
   { href: "/coming-soon" as Route, label: "Coming Soon", icon: HourglassMedium },
 ];
-const PLATFORM_SYSTEM_NAV: NavItem[] = [{ href: "/notifications" as Route, label: "Notifications", icon: Bell, goKey: "N" }];
+const PLATFORM_SYSTEM_NAV: NavItem[] = [{ href: "/notifications" as Route, label: "Notifications", icon: Bell }];
 const PLATFORM_MFA_SETUP_NAV: NavItem[] = [{ href: "/settings/security" as Route, label: "Set up two-factor", icon: ShieldCheck }];
 
 // Profile, Settings and Help (the same /help the old top-bar link opened). Support is one
 // click from /help (Send feedback), so it has no row of its own.
 const ACCOUNT_MENU_LINKS: { href: Route; label: string }[] = [
-  { href: "/settings/profile" as Route, label: "Profile" },
+  // Two different pages: /profile is how others see you, /settings is the private account.
+  { href: "/profile" as Route, label: "Profile" },
   { href: "/settings" as Route, label: "Settings" },
   { href: "/help" as Route, label: "Help & docs" },
 ];
@@ -140,33 +143,33 @@ function orgSections(id: string): NavSection[] {
   const base = `/organizations/${id}`;
   return [
     // Home matches only the exact org root: every org route starts with it.
-    { id: "org-overview", label: "Overview", items: [{ href: base as Route, label: "Home", icon: SquaresFour, goKey: "H", exact: true }] },
+    { id: "org-overview", label: "Overview", items: [{ href: base as Route, label: "Home", icon: SquaresFour, exact: true }] },
     {
       id: "org-security",
       label: "Security",
       items: [
         // Label "Engagements", route unchanged (docs/decisions/0076).
-        { href: `${base}/programs` as Route, label: "Engagements", icon: Briefcase, goKey: "E", roles: REPORT_WORKERS },
+        { href: `${base}/programs` as Route, label: "Engagements", icon: Briefcase, roles: REPORT_WORKERS },
         // Findings: the flat cross-program list; per-program inboxes still own triage actions.
-        { href: `${base}/findings` as Route, label: "Findings", icon: Bug, goKey: "F", roles: REPORT_WORKERS },
+        { href: `${base}/findings` as Route, label: "Findings", icon: Bug, roles: REPORT_WORKERS },
         // Assets: the cross-program inventory with risk posture; editing stays per engagement.
-        { href: `${base}/assets` as Route, label: "Assets", icon: Target, goKey: "A", roles: REPORT_WORKERS },
+        { href: `${base}/assets` as Route, label: "Assets", icon: Target, roles: REPORT_WORKERS },
         { href: `${base}/researchers` as Route, label: "Researchers", icon: UsersThree, roles: ["owner", "security_admin", "program_manager"] },
         // Audit log: every change in the organization (scope, programs, members, billing...),
         // owner/security_admin only (audit_logs' read policy). Route kept as /activity.
-        { href: `${base}/activity` as Route, label: "Audit log", icon: Scroll, goKey: "U", roles: ORG_ADMINS },
+        { href: `${base}/activity` as Route, label: "Audit log", icon: Scroll, roles: ORG_ADMINS },
       ],
     },
-    { id: "org-insights", label: "Insights", items: [{ href: `${base}/analytics` as Route, label: "Analytics", icon: ChartLineUp, goKey: "I", roles: ORG_ADMINS }] },
+    { id: "org-insights", label: "Insights", items: [{ href: `${base}/analytics` as Route, label: "Analytics", icon: ChartLineUp, roles: ORG_ADMINS }] },
     {
       id: "org-organization",
       label: "Organization",
       items: [
         // Payments: balance, ledger and every billing document -- billing admins' page.
-        { href: `${base}/payments` as Route, label: "Payments", icon: Wallet, goKey: "$", roles: BILLING },
+        { href: `${base}/payments` as Route, label: "Payments", icon: Wallet, roles: BILLING },
         { href: `${base}/payments/budgets` as Route, label: "Budgets", icon: ChartPieSlice, roles: BILLING },
         { href: `${base}/payments/documents` as Route, label: "Billing documents", icon: FileText, roles: BILLING },
-        { href: `${base}/members` as Route, label: "Members", icon: UserList, goKey: "M", roles: ORG_ADMINS },
+        { href: `${base}/members` as Route, label: "Members", icon: UserList, roles: ORG_ADMINS },
         { href: `${base}/settings` as Route, label: "Settings", icon: Gear, roles: ORG_ADMINS },
       ],
     },
@@ -245,6 +248,8 @@ function NavRow({ item, active, collapsed, onNavigate }: { item: NavItem; active
   const Icon = item.icon;
   return (
     <Link href={item.href} prefetch={false} onClick={onNavigate} aria-current={active ? "page" : undefined} data-rail-label={item.label} className={rowClass(active, collapsed)}>
+      {/* "You are here", restated: a short red mark that settles in when the row becomes current. */}
+      {active && <span aria-hidden="true" className="nav-active-mark absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-action" />}
       <Icon aria-hidden="true" weight={active ? "fill" : "regular"} className={cn("size-4 shrink-0", active ? "text-action" : "text-ink-muted group-hover/nav:text-ink")} />
       <NavLabel label={item.label} collapsed={collapsed} />
       {item.badge && !collapsed && <span className="shrink-0 text-xs tabular-nums text-ink-muted">{item.badge}</span>}
@@ -475,15 +480,10 @@ export function AppShellClient({
   initialSidebarCollapsed?: boolean;
 }) {
   const path = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  // Desktop sidebar: open (15rem) or an icon rail (3.5rem). A click animates the width; the
-  // "[" shortcut switches instantly (keyboard actions are never animated). Remembered in a
-  // cookie AppShell reads on the server, so a reload paints the chosen width directly.
+  // Desktop sidebar: open (15rem) or an icon rail (3.5rem); a click animates the width.
+  // Remembered in a cookie AppShell reads on the server, so a reload paints the chosen width.
   const [collapsed, setCollapsed] = useState(initialSidebarCollapsed);
-  const [instant, setInstant] = useState(false);
   const [railTip, setRailTip] = useState<{ label: string; top: number; left: number } | null>(null);
   const reducedMotion = usePrefersReducedMotion();
 
@@ -491,64 +491,19 @@ export function AppShellClient({
     () => buildNav({ organizations, currentOrganizationId, hasResearcherParticipation, isPlatformAdmin, platformAdminNeedsMfa }),
     [organizations, currentOrganizationId, hasResearcherParticipation, isPlatformAdmin, platformAdminNeedsMfa],
   );
-  const commands: CommandItem[] = useMemo(
-    () => [
-      ...sections.flatMap((section) => section.items.map((item) => ({ href: item.href, label: item.label, group: section.label, icon: item.icon, goKey: item.goKey }))),
-      ...(platformAdminNeedsMfa ? [] : ACCOUNT_MENU_LINKS.map((item) => ({ href: item.href, label: item.label, group: "Account", icon: item.href === "/help" ? BookOpenText : Gear, goKey: item.href === "/settings" ? "S" : undefined }))),
-    ],
-    [sections, platformAdminNeedsMfa],
-  );
-
   const showRailTip = (target: EventTarget | null) => {
     const el = (target as HTMLElement | null)?.closest<HTMLElement>("[data-rail-label]");
     if (!el) return setRailTip(null);
     const rect = el.getBoundingClientRect();
     setRailTip({ label: el.dataset.railLabel ?? "", top: rect.top + rect.height / 2, left: rect.right + 10 });
   };
-  const toggleSidebar = useCallback((fromKeyboard = false) => {
-    setInstant(fromKeyboard);
+  const toggleSidebar = useCallback(() => {
     setRailTip(null);
     setCollapsed((was) => {
       document.cookie = `${SIDEBAR_COOKIE}=${was ? "open" : "collapsed"}; path=/; max-age=31536000; samesite=lax`;
       return !was;
     });
   }, []);
-
-  // Keyboard-first navigation: ⌘K / Ctrl K opens the command menu anywhere (even in a field);
-  // the rest only when not typing: "[" folds the sidebar, "?" lists shortcuts, "G" then a letter
-  // jumps (1.2s to press the second key).
-  useEffect(() => {
-    let goPending = 0;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setPaletteOpen((was) => !was);
-        return;
-      }
-      if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")) return;
-      if (goPending && Date.now() - goPending < 1200) {
-        goPending = 0;
-        const hit = commands.find((item) => item.goKey && item.goKey.toLowerCase() === event.key.toLowerCase());
-        if (hit) {
-          event.preventDefault();
-          router.push(hit.href);
-        }
-        return;
-      }
-      if (event.key === "g" || event.key === "G") goPending = Date.now();
-      else if (event.key === "?") {
-        event.preventDefault();
-        setSheetOpen(true);
-      } else if (event.key === "[" && window.matchMedia("(min-width: 1024px)").matches) {
-        event.preventDefault();
-        toggleSidebar(true);
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [commands, router, toggleSidebar]);
 
   const close = () => setOpen(false);
   // The phone drawer is modal: Escape closes it, like every Dialog in this app.
@@ -603,7 +558,6 @@ export function AppShellClient({
       <div
         className={cn(
           "lg:grid lg:transition-[grid-template-columns] lg:duration-200 lg:ease-in-out motion-reduce:transition-none",
-          instant && "lg:transition-none",
           collapsed ? "lg:grid-cols-[3.5rem_minmax(0,1fr)]" : "lg:grid-cols-[15rem_minmax(0,1fr)]",
         )}
       >
@@ -623,31 +577,38 @@ export function AppShellClient({
           <div className={cn("flex items-center gap-1 pt-2.5", collapsed && "flex-col")}>
             {user ? <SidebarAccount user={user} roleLabel={roleLabel} collapsed={collapsed} /> : <Brand />}
             <NotificationBellDropdown initialUnreadCount={unreadNotificationCount} align="left" />
-            <button type="button" onClick={() => toggleSidebar()} aria-controls="desktop-sidebar" aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} data-rail-label="Expand sidebar  [" title={collapsed ? undefined : "Collapse sidebar  ["} className={quiet}>
+            <button type="button" onClick={() => toggleSidebar()} aria-controls="desktop-sidebar" aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} data-rail-label="Expand sidebar" title={collapsed ? undefined : "Collapse sidebar"} className={quiet}>
               {collapsed ? <CaretRight aria-hidden="true" className="size-4" /> : <SidebarSimple aria-hidden="true" className="size-4" />}
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            aria-label="Open command menu"
-            data-rail-label="Search  ⌘K"
-            className={cn(
-              `mb-3 mt-2 flex h-8 shrink-0 items-center gap-2 rounded-md border border-border bg-canvas text-[13px] text-ink-muted transition-colors duration-100 ${HOVER}:border-border-strong ${HOVER}:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`,
-              collapsed ? "mx-auto w-8 justify-center" : "px-2",
-            )}
-          >
-            <MagnifyingGlass aria-hidden="true" className="size-4 shrink-0" />
-            <span className={collapsed ? "sr-only" : "flex-1 text-left"}>Search or jump to…</span>
-            {!collapsed && <kbd className="rounded border border-border px-1 font-mono text-[10px]">⌘K</kbd>}
-          </button>
-          <SidebarNav sections={sections} path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} collapsed={collapsed} onExpand={() => toggleSidebar()} onNavigate={close} />
-          {!collapsed && (
-            <button type="button" onClick={() => setSheetOpen(true)} className={`mt-auto flex h-7 shrink-0 items-center gap-2 rounded-md px-2 pt-6 text-xs text-ink-muted ${HOVER}:text-ink`}>
-              <kbd className="rounded border border-border px-1 font-mono text-[10px]">?</kbd>
-              Keyboard shortcuts
-            </button>
+          {/* A plain search field: Enter opens /search (programs, reports, researchers). No
+              command menu and no keyboard shortcuts, by request (Oct 26). */}
+          {collapsed ? (
+            <Link
+              href={"/search" as Route}
+              prefetch={false}
+              aria-label="Search"
+              data-rail-label="Search"
+              className={cn(`mb-3 mt-2 mx-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-canvas text-ink-muted transition-colors duration-100 ${HOVER}:border-border-strong ${HOVER}:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`)}
+            >
+              <MagnifyingGlass aria-hidden="true" className="size-4 shrink-0" />
+            </Link>
+          ) : (
+            <form action="/search" method="get" role="search" aria-label="Search programs and reports" className="mb-3 mt-2 shrink-0">
+              <label className={`flex h-8 items-center gap-2 rounded-md border border-border bg-canvas px-2 text-[13px] text-ink-muted transition-colors duration-100 focus-within:border-focus ${HOVER}:border-border-strong`}>
+                <MagnifyingGlass aria-hidden="true" className="size-4 shrink-0" />
+                <span className="sr-only">Search programs and reports</span>
+                <input
+                  type="search"
+                  name="q"
+                  maxLength={100}
+                  placeholder="Search programs and reports"
+                  className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink-muted [&::-webkit-search-cancel-button]:hidden"
+                />
+              </label>
+            </form>
           )}
+          <SidebarNav sections={sections} path={path} organizations={organizations} currentOrganizationId={currentOrganizationId} collapsed={collapsed} onExpand={() => toggleSidebar()} onNavigate={close} />
         </aside>
         {/* The rail's hover/focus label: one element that moves between icons. */}
         {collapsed && railTip && (
@@ -695,8 +656,6 @@ export function AppShellClient({
           <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:px-8">{children}</div>
         </main>
       </div>
-      <CommandPalette open={paletteOpen} items={commands} onClose={() => setPaletteOpen(false)} />
-      <ShortcutSheet open={sheetOpen} items={commands} onClose={() => setSheetOpen(false)} />
     </div>
   );
 }

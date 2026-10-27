@@ -739,26 +739,29 @@ async function main() {
         where bucket_key ~ '^(sign_up|password_reset)_client:(::1|::ffff:127\\.0\\.0\\.1|127\\.0\\.0\\.1)$'
            or bucket_key ~ '^(sign_up|password_reset):.*@(unpatched\\.demo|example\\.com)$'`,
     );
-    // Leftovers from before those specs moved to E2E Launch Org (see E2E_LAUNCH_ORG_NAME).
+    // The contact form's limits (202610260009): its client key is a hash of the loopback address.
+    const loopbackKeys = ["::1", "::ffff:127.0.0.1", "127.0.0.1", "unknown"].map((ip) => `contact:client:${createHash("sha256").update(ip).digest("hex").slice(0, 32)}`);
+    await owner.query("delete from private.rate_limit_counters where bucket_key = any($1) or bucket_key like 'contact:email:%.example'", [loopbackKeys]);
+    // Programs the launch/import/ownership specs create every run, in both E2E orgs.
     // Programs only -- every dependent row (reports, scope, members...) cascades.
     // Also the two "E2E Live Public/Private <timestamp>" programs org-journey.spec.ts creates
     // every run: ~200 had piled up, making the analytics program table 10,000px tall.
     // Their append-only reputation rows go first (replica mode for that one statement only;
     // it also disables FK cascades), then the programs cascade normally.
     const strayPrograms = `select p.id from public.programs p join public.organizations o on o.id = p.organization_id
-      where o.name = $1 and (p.name like 'Acme Payments Bug Bounty %' or p.name like 'H1 Import %' or p.name ~ '^E2E Live (Public|Private) [0-9]+$')`;
+      where o.name = any($1) and (p.name like 'Acme Payments Bug Bounty %' or p.name like 'H1 Import %' or p.name like 'Ownership %' or p.name ~ '^E2E Live (Public|Private) [0-9]+$' or p.name ~ ' [0-9]{13}$')`;
     await owner.query("begin");
     await owner.query("set local session_replication_role = replica");
-    await owner.query(`delete from public.reputation_ledger where program_id in (${strayPrograms})`, [E2E_ORG_NAME]);
+    await owner.query(`delete from public.reputation_ledger where program_id in (${strayPrograms})`, [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
     await owner.query("set local session_replication_role = origin");
-    const removed = await owner.query(`delete from public.programs where id in (${strayPrograms})`, [E2E_ORG_NAME]);
+    const removed = await owner.query(`delete from public.programs where id in (${strayPrograms})`, [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
     await owner.query("commit");
     // notifications.spec.ts proves cross-org isolation by asserting this account has NO
     // notifications at all -- anything it legitimately received (e.g. a manual
     // suspend/reinstate check of its own org) would break that proof, so start it clean.
     await owner.query("delete from public.notifications where recipient_id = (select id from public.users where email = $1)", [E2E_UNRELATED_ADMIN_EMAIL]);
     await owner.end();
-    console.log(`Cleared ${cleared.rowCount} sign-in rate-limit counter(s) for E2E accounts; removed ${removed.rowCount} stray test program(s) from ${E2E_ORG_NAME}.\n`);
+    console.log(`Cleared ${cleared.rowCount} sign-in rate-limit counter(s) for E2E accounts; removed ${removed.rowCount} stray test program(s) from the E2E orgs.\n`);
   } else {
     console.log("MIGRATION_DATABASE_URL not set -- sign-in rate-limit counters NOT cleared; back-to-back suite runs may be locked out.\n");
   }

@@ -11,7 +11,8 @@ export function cvssBand(score: number): ReportSeverity {
   return "critical";
 }
 
-export const SEVERITY_LABEL: Record<ReportSeverity, string> = { none: "None", low: "Low", medium: "Medium", high: "High", critical: "Critical" };
+// Re-exported so existing imports keep working; the label map itself lives in report-status.
+export { SEVERITY_LABEL } from "./report-status";
 
 /** The confirmed severity is the organization's call and may differ from what CVSS alone says
  * (business context, chained impact). A difference is allowed, but it should never be silent:

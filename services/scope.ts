@@ -3,7 +3,7 @@ import { withActorTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { mapRpcError as mapError } from "@/services/rpc-error";
 import { clampPageSize, decodeCursor, encodeCursor } from "@/lib/pagination";
-import type { AssetInventoryItem, ProgramAssetType, ScopeEntry, ScopeEvaluationResult, ScopeState } from "@/types/scope";
+import type { AssetInventoryItem, ProgramAssetType, ScopeClearance, ScopeEntry, ScopeEvaluationResult, ScopeState } from "@/types/scope";
 import type { Page } from "@/types/pagination";
 
 type ScopeEntryRow = {
@@ -20,6 +20,8 @@ type ScopeEntryRow = {
   created_at: string;
   updated_at: string;
   removed_at: string | null;
+  clearance: ScopeClearance;
+  clearance_note: string | null;
   creator_display_name: string | null;
 };
 
@@ -39,6 +41,8 @@ function mapScopeEntryRow(row: ScopeEntryRow): ScopeEntry {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     removedAt: row.removed_at,
+    clearance: row.clearance,
+    clearanceNote: row.clearance_note,
   };
 }
 
@@ -57,7 +61,7 @@ export async function listActiveScopeEntries(programId: string): Promise<ScopeEn
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
       client
         .query<ScopeEntryRow>(
-          `select e.id, e.program_id, e.organization_id, e.asset_type, e.target, e.display_target, e.scope_state, e.description, e.status, e.created_by, e.created_at, e.updated_at, e.removed_at, u.display_name as creator_display_name
+          `select e.id, e.program_id, e.organization_id, e.asset_type, e.target, e.display_target, e.scope_state, e.description, e.status, e.created_by, e.created_at, e.updated_at, e.removed_at, e.clearance, e.clearance_note, u.display_name as creator_display_name
            from public.program_scope_entries e left join public.users u on u.id = e.created_by
            where e.program_id = $1 and e.status = 'active' order by e.created_at asc`,
           [programId],
@@ -167,4 +171,28 @@ export async function evaluateProgramScope(programId: string, assetType: Program
   }
   const row = rows[0];
   return { isInScope: row.is_in_scope, matchedScopeState: row.matched_scope_state, matchedEntryId: row.matched_entry_id, matchedTarget: row.matched_target };
+}
+
+export type ScopeReviewItem = { id: string; organizationName: string; programId: string; programName: string; organizationId: string; assetType: ProgramAssetType; displayTarget: string; description: string | null; createdAt: string };
+
+/** Platform staff: non-domain assets waiting for an ownership decision (202610260008). */
+export async function listScopeEntriesPendingReview(): Promise<ScopeReviewItem[]> {
+  const actor = await getCurrentUser();
+  type Row = { id: string; organization_id: string; organization_name: string; program_id: string; program_name: string; asset_type: ProgramAssetType; display_target: string; description: string | null; created_at: string };
+  let rows: Row[];
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (c) => callRpc<Row>(c, "public.list_scope_entries_pending_review"));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows.map((r) => ({ id: r.id, organizationId: r.organization_id, organizationName: r.organization_name, programId: r.program_id, programName: r.program_name, assetType: r.asset_type, displayTarget: r.display_target, description: r.description, createdAt: new Date(r.created_at).toISOString() }));
+}
+
+export async function reviewScopeEntry(entryId: string, decision: "approved" | "rejected", note: string): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (c) => callRpc(c, "public.review_scope_entry", [entryId, decision, note || null]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
 }

@@ -1,5 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+/** A full submitReport input; tests override only what they check. */
+function submitInput(overrides: Record<string, unknown> = {}) {
+  return {
+    programId: "prog-1",
+    assetType: "domain" as const,
+    targetInput: "foo.example.com",
+    title: "t",
+    description: "d",
+    weaknessType: "other" as const,
+    impact: "impact",
+    acknowledgedPolicyVersion: null,
+    scopeEntryId: "entry-1",
+    cvss: null,
+    draftId: null,
+    uploadIds: [] as string[],
+    submissionKey: "key-1",
+    ...overrides,
+  };
+}
+
+
 // services/reports.ts's data-access boundary is lib/db/pool.ts's withActorTransaction/
 // callRpc -- mocked here at that boundary, same "mock the thin data-access layer,
 // exercise the service's own logic for real" pattern used across the native-Postgres
@@ -74,9 +95,12 @@ describe("reports service: submitReport", () => {
     });
     const { submitReport } = await import("../../services/reports");
 
-    const result = await submitReport("prog-1", "domain", "FOO.example.com", "XSS on foo", "Steps...", "cross_site_scripting", "Session hijacking.");
+    const result = await submitReport(
+      submitInput({ targetInput: "FOO.example.com", title: "XSS on foo", description: "Steps...", weaknessType: "cross_site_scripting", impact: "Session hijacking.", cvss: { version: "4.0", vector: "CVSS:4.0/AV:N", score: 9.3 }, draftId: "draft-1", uploadIds: ["up-1"] }),
+    );
 
-    expect(captured).toEqual(["prog-1", "domain", "FOO.example.com", "XSS on foo", "Steps...", "cross_site_scripting", "Session hijacking.", null]);
+    // Positional order matters (a swapped argument once broke a whole feature silently).
+    expect(captured).toEqual(["prog-1", "domain", "FOO.example.com", "XSS on foo", "Steps...", "cross_site_scripting", "Session hijacking.", null, "entry-1", "4.0", "CVSS:4.0/AV:N", 9.3, "draft-1", ["up-1"], "key-1"]);
     expect(result).toMatchObject({ id: "report-1", target: "foo.example.com", matchedScopeState: "in_scope", status: "new" });
   });
 
@@ -94,7 +118,7 @@ describe("reports service: submitReport", () => {
         throw new Error(message);
       });
       const { submitReport } = await import("../../services/reports");
-      const error: unknown = await submitReport("prog-1", "domain", "foo.example.com", "t", "d", "other", "impact").catch((thrown) => thrown);
+      const error: unknown = await submitReport(submitInput()).catch((thrown) => thrown);
       expect(error).toBeInstanceOf(OrganizationServiceError);
       expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe(code);
     }
@@ -107,7 +131,7 @@ describe("reports service: submitReport", () => {
     const { submitReport } = await import("../../services/reports");
     const { OrganizationServiceError } = await import("../../services/rpc-error");
 
-    const error: unknown = await submitReport("prog-1", "domain", "foo.example.com", "t", "d", "other", "impact").catch((thrown) => thrown);
+    const error: unknown = await submitReport(submitInput()).catch((thrown) => thrown);
     expect(error).toBeInstanceOf(OrganizationServiceError);
     expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("UNKNOWN");
     expect((error as Error).message).not.toContain("constraint");
@@ -126,7 +150,7 @@ describe("reports service: cross-program access", () => {
     });
     const { submitReport, OrganizationServiceError } = await import("../../services/reports");
 
-    const error: unknown = await submitReport("prog-A", "domain", "foo.example.com", "t", "d", "other", "impact").catch((thrown) => thrown);
+    const error: unknown = await submitReport(submitInput({ programId: "prog-A" })).catch((thrown) => thrown);
 
     expect(capturedProgramId).toBe("prog-A");
     expect(error).toBeInstanceOf(OrganizationServiceError);

@@ -6,6 +6,8 @@ import { BadgeGrid } from "../../../components/researchers/badge-grid";
 import { getPublicResearcherProfile, getResearcherBadges } from "../../../services/reputation";
 import { getResearcherCtfBadges } from "../../../services/ctf";
 import { focusAreaLabel, securityFocusLabel } from "../../../lib/researcher-identity-labels";
+import { getPublicResearcherLinks } from "../../../services/researcher-profiles";
+import { ExternalProfileLinks } from "../../../components/researchers/external-profile-links";
 
 /**
  * The real, genuinely public (unauthenticated) researcher profile -- docs/decisions/0065
@@ -15,16 +17,16 @@ import { focusAreaLabel, securityFocusLabel } from "../../../lib/researcher-iden
  * researcher and one who exists but never set a public_username render the identical
  * "not found" page -- never distinguishing the two, which would leak the latter fact.
  * Only fields already decided public in 0065 appear here: display name, biography,
- * stated focus areas, and the real reputation score -- personal details, KYC, payout, and
- * external handles are never read by this page at all (the service layer itself does not
- * expose them here).
+ * stated focus areas, and the real reputation score -- personal details, KYC and payout are
+ * never read by this page at all. External profile handles appear only when the researcher
+ * opted in (researcher_profiles.show_external_links), labelled self-reported.
  */
 export default async function PublicResearcherProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
   const profile = await getPublicResearcherProfile(username);
   if (!profile) notFound();
 
-  const [badges, ctfBadges] = await Promise.all([getResearcherBadges(profile.researcherId), getResearcherCtfBadges(profile.researcherId)]);
+  const [badges, ctfBadges, links] = await Promise.all([getResearcherBadges(profile.researcherId), getResearcherCtfBadges(profile.researcherId), getPublicResearcherLinks(profile.publicUsername)]);
 
   return (
     <div className="min-h-dvh bg-canvas text-ink">
@@ -83,6 +85,14 @@ export default async function PublicResearcherProfilePage({ params }: { params: 
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {links && Object.values(links).some(Boolean) && (
+          <div className="mt-8 border-t border-border pt-6">
+            <SectionLabel>Elsewhere</SectionLabel>
+            <p className="mt-1 text-xs text-ink-muted">Self-reported by the researcher. Unpatched does not verify these.</p>
+            <ExternalProfileLinks handles={links} />
           </div>
         )}
 

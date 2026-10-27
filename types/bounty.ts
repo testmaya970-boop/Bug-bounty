@@ -1,4 +1,4 @@
-import type { ReportSeverity } from "./report";
+import type { ReportSeverity, ReportPriority } from "./report";
 
 /**
  * ineligible: a permanent classification fact -- the report reached a terminal status
@@ -46,6 +46,8 @@ export type ReportBountyDecision = {
   ineligibleReason: string | null;
   policyVersionId: string | null;
   severityAtCalculation: ReportSeverity | null;
+  /** The P0-P4 priority whose payout tier produced the range. */
+  priorityAtCalculation: ReportPriority | null;
   currency: string | null;
   calculatedMinAmountMinorUnits: number | null;
   calculatedMaxAmountMinorUnits: number | null;

@@ -13,6 +13,7 @@ import type { KycStatus } from "../../types/researcher-identity";
 import type { PaymentObligationStatus } from "../../types/payment";
 import type { CtfCategoryId, CtfDifficulty } from "../../lib/mock/ctf";
 
+import { severityLabel } from "../../lib/report-status";
 /** Flat, dot-plus-label operational indicator -- deliberately not a pill/chip (no border,
  * no background fill): "status should look like operational information," not a decorative
  * badge. The dot is enrichment only, never the sole signal -- the text label is always
@@ -49,7 +50,7 @@ export function Badge({ className, children, dotClassName, pulse }: { className?
  * drift risk reintroduced) -- just no longer computed. */
 export type Tone = { text: string; bg: string };
 
-const TONE = {
+export const TONE = {
   info: { text: "text-info", bg: "bg-info" },
   warning: { text: "text-warning", bg: "bg-warning" },
   success: { text: "text-success", bg: "bg-success" },
@@ -116,7 +117,7 @@ export const severityTone: Record<ReportSeverity, Tone> = {
   none: TONE.severityNone,
 };
 export function SeverityBadge({ severity }: { severity: ReportSeverity }) {
-  return <ToneBadge tone={severityTone[severity]}>{severity[0].toUpperCase() + severity.slice(1)}</ToneBadge>;
+  return <ToneBadge tone={severityTone[severity]}>{severityLabel(severity)}</ToneBadge>;
 }
 
 export function RoleBadge({ role }: { role: OrganizationRole }) { return <Badge>{organizationRoleLabel(role)}</Badge>; }
@@ -138,7 +139,9 @@ export function PendingInvitationBadge() {
 // not_submitted/pending/verified/rejected -- see docs/decisions/0051. There is no
 // "verifying..." state: this is a manual, out-of-band review, not a live provider call.
 const kycStatusTone: Record<KycStatus, Tone> = { not_submitted: TONE.muted, pending: TONE.warning, verified: TONE.success, rejected: TONE.danger };
-const kycStatusLabels: Record<KycStatus, string> = { not_submitted: "Not submitted", pending: "Pending review", verified: "Verified", rejected: "Rejected" };
+// The shared verification vocabulary (Not started / Pending / Verified / Failed / Requires review).
+// A manually submitted detail waits on a person, so "pending" reads Requires review here.
+const kycStatusLabels: Record<KycStatus, string> = { not_submitted: "Not started", pending: "Requires review", verified: "Verified", rejected: "Failed" };
 export function KycStatusBadge({ status }: { status: KycStatus }) {
   return <ToneBadge tone={kycStatusTone[status]}>{kycStatusLabels[status]}</ToneBadge>;
 }

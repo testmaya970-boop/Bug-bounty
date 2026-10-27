@@ -20,6 +20,8 @@ const WEAKNESS_TYPE_LABELS: Record<ReportWeaknessType, string> = {
   business_logic: "Business Logic Error",
   denial_of_service: "Denial of Service",
   cryptographic_failure: "Cryptographic Failure",
+  insecure_file_upload: "Insecure File Upload",
+  api_security: "API Security",
   other: "Other",
 };
 
@@ -39,6 +41,8 @@ export const WEAKNESS_TYPE_ORDER: ReportWeaknessType[] = [
   "business_logic",
   "denial_of_service",
   "cryptographic_failure",
+  "insecure_file_upload",
+  "api_security",
   "other",
 ];
 

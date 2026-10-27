@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { InviteResearcherDialog } from "../../components/programs/invite-researcher-dialog";
+import { InviteResearcherDialog, isEmail } from "../../components/programs/invite-researcher-dialog";
 import { PendingProgramInvitationCard } from "../../components/programs/pending-program-invitation-card";
 import { ProgramParticipationCard } from "../../components/programs/program-participation-card";
 import { ResearcherStatusBadge } from "../../components/ui/badge";
@@ -32,6 +32,14 @@ const participation: ProgramParticipation = {
 };
 
 describe("InviteResearcherDialog", () => {
+  it("routes any address with an @ to the email path, including ones containing the letter s", () => {
+    // Regression: a lost backslash (`[^@s]`) sent every address with an "s" to the username path.
+    expect(isEmail("e2e.fresh-invite-1@unpatched.demo")).toBe(true);
+    expect(isEmail("sam@security.example")).toBe(true);
+    expect(isEmail("@jordan-ellis")).toBe(false);
+    expect(isEmail("jordan-ellis")).toBe(false);
+    expect(isEmail("two words@example.com")).toBe(false);
+  });
   it("defaults to closed, showing only the trigger", () => {
     const html = renderToStaticMarkup(<InviteResearcherDialog organizationId="org-1" programId="prog-1" />);
     expect(html).toContain("Invite researcher");

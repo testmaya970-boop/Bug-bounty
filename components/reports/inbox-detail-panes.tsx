@@ -8,7 +8,7 @@ import { Markdown } from "../ui/markdown";
 import { InboxTimeline } from "./inbox-timeline";
 import { InboxTriageControls } from "./inbox-triage-controls";
 import { ReportComposer } from "./report-composer";
-import { reportNextActionLabel, reportStatusMeaning, REPORT_STATUS_TRANSITIONS } from "../../lib/report-status";
+import { reportNextActionLabel, reportStatusMeaning, REPORT_STATUS_TRANSITIONS, severityLabel } from "../../lib/report-status";
 import { getReport } from "../../services/reports";
 import { getReportTimeline } from "../../services/timeline";
 import { listActiveScopeEntries } from "../../services/scope";
@@ -17,6 +17,10 @@ import { ScopeStateBadge } from "../ui/badge";
 import type { Report } from "../../types/report";
 import type { ScopeEntry } from "../../types/scope";
 import { LocalTime } from "../ui/local-time";
+import { evidenceLimits } from "../../lib/evidence-limits";
+import { cvssBand } from "../../lib/cvss";
+import { effectivePriority, priorityLabel } from "../../lib/report-priority";
+import { weaknessTypeLabel } from "../../lib/report-weakness-labels";
 
 /** No report selected yet -- the inbox's own resting state for the middle/right panes,
  * distinct from "no reports exist at all" (InboxReportList's own EmptyState). */
@@ -138,6 +142,18 @@ function InboxMiddlePane({
         <div className="mt-2 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <MetadataPair label="Researcher" value={report.researcherName} />
           <MetadataPair label="Submitted" value=<LocalTime value={report.submittedAt} /> />
+          <MetadataPair label="Vulnerability category" value={report.weaknessType ? weaknessTypeLabel(report.weaknessType) : "Not specified"} />
+          <MetadataPair
+            label="Priority"
+            value={(() => {
+              const p = effectivePriority(report);
+              return p ? `${priorityLabel(p)}${report.priority ? "" : " (from severity)"}` : "Not set";
+            })()}
+          />
+          <MetadataPair
+            label="Researcher's CVSS"
+            value={report.researcherCvss ? `${report.researcherCvss.score.toFixed(1)} ${severityLabel(cvssBand(report.researcherCvss.score))} (CVSS ${report.researcherCvss.version})` : "Not scored"}
+          />
           <MetadataPair
             label="Target"
             className="sm:col-span-2"
@@ -234,7 +250,7 @@ function InboxRightPane({
       {/* The same composer as the report page: a comment, attachments, and one "Visible to"
           (switch to an internal note for the team only). */}
       <div className="border-t border-border pt-4">
-        <ReportComposer organizationId={organizationId} programId={programId} reportId={report.id} side="organization" />
+        <ReportComposer organizationId={organizationId} programId={programId} reportId={report.id} side="organization" limits={evidenceLimits()} />
       </div>
     </div>
   );

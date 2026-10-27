@@ -114,7 +114,7 @@ export function buildIssueDescription(ctx: SyncContextRow) {
   return adfDoc([
     adfLabelledLine("Target", `${ctx.display_target} (${assetTypeLabel(ctx.asset_type)})`),
     adfLabelledLine("Severity", severityLine(ctx)),
-    adfLabelledLine("Weakness", ctx.weakness_type ? weaknessTypeLabel(ctx.weakness_type) : "not specified"),
+    adfLabelledLine("Vulnerability category", ctx.weakness_type ? weaknessTypeLabel(ctx.weakness_type) : "not specified"),
     adfLabelledLine("Program", ctx.program_name),
     adfLinkParagraph("View the full report in Unpatched", reportUrl(ctx)),
     adfHeading("Description"),

@@ -22,7 +22,8 @@ const POLICY: ProgramPolicy = {
 describe("ProgramPolicySummary", () => {
   it("shows the version, safe harbor link, disclosure terms, targets and rules", () => {
     const html = renderToStaticMarkup(<ProgramPolicySummary policy={POLICY} />);
-    expect(html).toContain("Policy v3");
+    expect(html).toContain("Published");
+    expect(html).not.toContain("Policy v3");
     expect(html).toContain('href="/safe-harbor"');
     expect(html).toContain("Coordinated disclosure · 90 days after resolution");
     expect(html).toContain("First response within 3 days");
@@ -54,7 +55,8 @@ describe("ReportSlaPanel", () => {
         }}
       />,
     );
-    expect(html).toContain("policy v3");
+    expect(html).toContain("Targets from the program policy");
+    expect(html).not.toContain("policy v3");
     expect(html).toMatch(/First response[\s\S]*>Met</);
     expect(html).toMatch(/Triage[\s\S]*Met late/);
     expect(html).toMatch(/Resolution[\s\S]*>Due</);

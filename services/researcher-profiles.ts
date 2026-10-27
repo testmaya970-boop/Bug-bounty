@@ -1,5 +1,6 @@
 import "server-only";
-import { withActorTransaction, callRpc } from "@/lib/db/pool";
+import { withActorTransaction, withPublicTransaction, callRpc } from "@/lib/db/pool";
+import type { ExternalHandles } from "@/lib/external-profiles";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
 import type {
@@ -449,60 +450,80 @@ export async function submitMyTaxForm(taxFormType: TaxFormType, taxId: string): 
 // unverified in the UI.
 // ---------------------------------------------------------------------------
 
-export type ExternalHandles = {
-  bugcrowdHandle: string | null;
-  cobaltHandle: string | null;
-  githubHandle: string | null;
-  gitlabHandle: string | null;
-  xHandle: string | null;
-  hacktheboxHandle: string | null;
+export type { ExternalHandles } from "@/lib/external-profiles";
+export type ExternalProfileSettings = ExternalHandles & { showExternalLinks: boolean };
+
+type ExternalHandles_DB = {
+  hackerone_handle: string | null;
+  bugcrowd_handle: string | null;
+  cobalt_handle: string | null;
+  github_handle: string | null;
+  gitlab_handle: string | null;
+  x_handle: string | null;
+  hackthebox_handle: string | null;
 };
 
-export async function getMyExternalHandles(userId: string): Promise<ExternalHandles> {
+function toExternalHandles(row: ExternalHandles_DB | undefined): ExternalHandles {
+  return {
+    hackeroneHandle: row?.hackerone_handle ?? null,
+    bugcrowdHandle: row?.bugcrowd_handle ?? null,
+    cobaltHandle: row?.cobalt_handle ?? null,
+    githubHandle: row?.github_handle ?? null,
+    gitlabHandle: row?.gitlab_handle ?? null,
+    xHandle: row?.x_handle ?? null,
+    hacktheboxHandle: row?.hackthebox_handle ?? null,
+  };
+}
+
+export async function getMyExternalHandles(userId: string): Promise<ExternalProfileSettings> {
   let rows;
   try {
     rows = await withActorTransaction(userId, (client) =>
       client
-        .query<{
-          bugcrowd_handle: string | null;
-          cobalt_handle: string | null;
-          github_handle: string | null;
-          gitlab_handle: string | null;
-          x_handle: string | null;
-          hackthebox_handle: string | null;
-        }>("select bugcrowd_handle, cobalt_handle, github_handle, gitlab_handle, x_handle, hackthebox_handle from public.researcher_profiles where user_id = $1", [userId])
+        .query<ExternalHandles_DB & { show_external_links: boolean }>(
+          "select hackerone_handle, bugcrowd_handle, cobalt_handle, github_handle, gitlab_handle, x_handle, hackthebox_handle, show_external_links from public.researcher_profiles where user_id = $1",
+          [userId],
+        )
         .then((r) => r.rows),
     );
   } catch (error) {
     mapError(error as { message: string });
   }
-  const data = rows[0];
-  return {
-    bugcrowdHandle: data?.bugcrowd_handle ?? null,
-    cobaltHandle: data?.cobalt_handle ?? null,
-    githubHandle: data?.github_handle ?? null,
-    gitlabHandle: data?.gitlab_handle ?? null,
-    xHandle: data?.x_handle ?? null,
-    hacktheboxHandle: data?.hackthebox_handle ?? null,
-  };
+  return { ...toExternalHandles(rows[0]), showExternalLinks: rows[0]?.show_external_links ?? false };
 }
 
-export async function updateMyExternalHandles(input: ExternalHandles): Promise<void> {
+/** Handles must already be normalized (lib/external-profiles.ts); the RPC re-checks formats. */
+export async function updateMyExternalHandles(input: ExternalProfileSettings): Promise<void> {
   const actor = await getCurrentUser();
   try {
     await withActorTransaction(actor?.id ?? null, (client) =>
       callRpc(client, "public.update_my_external_handles", [
-        input.bugcrowdHandle ?? null,
-        input.cobaltHandle ?? null,
-        input.githubHandle ?? null,
-        input.gitlabHandle ?? null,
-        input.xHandle ?? null,
-        input.hacktheboxHandle ?? null,
+        input.hackeroneHandle,
+        input.bugcrowdHandle,
+        input.cobaltHandle,
+        input.githubHandle,
+        input.gitlabHandle,
+        input.xHandle,
+        input.hacktheboxHandle,
+        input.showExternalLinks,
       ]),
     );
   } catch (error) {
     mapError(error as { message: string });
   }
+}
+
+/** A public profile's external links: null unless the researcher has a public username AND
+ * opted in -- the RPC answers both cases identically, so this never reveals which. */
+export async function getPublicResearcherLinks(username: string): Promise<ExternalHandles | null> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withPublicTransaction(actor?.id ?? null, (client) => callRpc<ExternalHandles_DB>(client, "public.get_public_researcher_links", [username]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return rows[0] ? toExternalHandles(rows[0]) : null;
 }
 
 // ---------------------------------------------------------------------------

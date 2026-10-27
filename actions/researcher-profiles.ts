@@ -17,6 +17,7 @@ import {
   upsertMyBiography,
 } from "@/services/researcher-profiles";
 import { setMyPublicUsername } from "@/services/reputation";
+import { EXTERNAL_PLATFORM_ORDER, normalizeExternalHandle, type ExternalHandles, type ExternalPlatform } from "@/lib/external-profiles";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
@@ -46,8 +47,15 @@ const personalDetailsSchema = z.object({
 const kycSchema = z.object({
   phoneCountryCode: z.string().trim().max(8).optional().refine(blankOr(isPhoneCountryCode), "Enter a country code like +91."),
   phoneNumber: z.string().trim().max(20).optional().refine(blankOr(isPhoneNumber), "Enter the phone number as 6 to 14 digits."),
-  aadhaarNumber: z.string().trim().max(20).optional(),
-  panNumber: z.string().trim().max(20).optional(),
+  // No aadhaarNumber: Aadhaar is verified only through DigiLocker (/settings/identity); the
+  // database refuses new numbers too (202610260005).
+  panNumber: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .max(10)
+    .optional()
+    .refine(blankOr((v) => /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v)), "Enter the 10-character PAN, like ABCDE1234F."),
   passportNumber: z.string().trim().max(20).optional().refine(blankOr(isPassportNumber), "Enter the passport number: 6 to 9 letters and numbers."),
   passportDateOfBirth: z.string().trim().optional().refine(blankOr((v) => isPlausibleDateOfBirth(v)), "Enter your real date of birth. You must be at least 16."),
 });
@@ -74,12 +82,9 @@ const taxFormSchema = z.object({
 });
 
 const externalHandlesSchema = z.object({
-  bugcrowdHandle: z.string().trim().max(80).optional(),
-  cobaltHandle: z.string().trim().max(80).optional(),
-  githubHandle: z.string().trim().max(80).optional(),
-  gitlabHandle: z.string().trim().max(80).optional(),
-  xHandle: z.string().trim().max(80).optional(),
-  hacktheboxHandle: z.string().trim().max(80).optional(),
+  // Raw input: a handle, "@handle", or a pasted profile URL. Normalized per platform below.
+  handles: z.record(z.enum(EXTERNAL_PLATFORM_ORDER as [ExternalPlatform, ...ExternalPlatform[]]), z.string().max(300)),
+  showExternalLinks: z.boolean(),
 });
 
 const publicUsernameSchema = z.object({ username: z.string().trim().max(30) });
@@ -191,22 +196,25 @@ export async function submitMyTaxFormAction(input: z.infer<typeof taxFormSchema>
 }
 
 /** Self-reported, explicitly unverified -- see services/researcher-profiles.ts's own
- * comment. Never read by any trust-relevant code path. */
-export async function updateMyExternalHandlesAction(input: z.infer<typeof externalHandlesSchema>): Promise<ActionResult<void>> {
+ * comment. Never read by any trust-relevant code path. Every handle is normalized here (a
+ * pasted profile URL becomes the bare handle; wrong hosts and non-http(s) schemes are
+ * refused) before the RPC re-checks the stored formats. Errors name the field. */
+export async function updateMyExternalHandlesAction(input: z.infer<typeof externalHandlesSchema>): Promise<ActionResult<{ handles: ExternalHandles }> & { field?: ExternalPlatform }> {
   const parsed = externalHandlesSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
 
+  const handles = {} as ExternalHandles;
+  for (const platform of EXTERNAL_PLATFORM_ORDER) {
+    const result = normalizeExternalHandle(platform, parsed.data.handles[platform] ?? "");
+    if (!result.ok) return { ok: false, code: "INVALID_HANDLE", message: result.message, field: platform };
+    handles[`${platform}Handle`] = result.handle;
+  }
+
   try {
-    await updateMyExternalHandles({
-      bugcrowdHandle: parsed.data.bugcrowdHandle ?? null,
-      cobaltHandle: parsed.data.cobaltHandle ?? null,
-      githubHandle: parsed.data.githubHandle ?? null,
-      gitlabHandle: parsed.data.gitlabHandle ?? null,
-      xHandle: parsed.data.xHandle ?? null,
-      hacktheboxHandle: parsed.data.hacktheboxHandle ?? null,
-    });
-    revalidatePath("/settings");
-    return { ok: true, data: undefined };
+    await updateMyExternalHandles({ ...handles, showExternalLinks: parsed.data.showExternalLinks });
+    revalidatePath("/settings/external-services");
+    revalidatePath("/profile");
+    return { ok: true, data: { handles } };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
     throw error;

@@ -86,7 +86,7 @@ export function ReportTemplatesSettings({ templates: initialTemplates }: { templ
       {editing && (
         <form className="space-y-4 rounded-lg border border-border bg-surface p-4" onSubmit={handleSubmit}>
           <Input label="Template name" required value={draft.name} onChange={(event) => setDraft((d) => ({ ...d, name: event.target.value }))} maxLength={100} />
-          <Select label="Weakness type" value={draft.weaknessType} onChange={(event) => setDraft((d) => ({ ...d, weaknessType: event.target.value as ReportWeaknessType }))}>
+          <Select label="Vulnerability category" value={draft.weaknessType} onChange={(event) => setDraft((d) => ({ ...d, weaknessType: event.target.value as ReportWeaknessType }))}>
             <option value="">Not set</option>
             {WEAKNESS_TYPE_ORDER.map((wt) => (
               <option key={wt} value={wt}>
@@ -119,7 +119,7 @@ export function ReportTemplatesSettings({ templates: initialTemplates }: { templ
           <li key={template.id} className="flex items-center justify-between gap-3 p-4">
             <div className="min-w-0">
               <p className="text-sm font-medium text-ink">{template.name}</p>
-              <p className="mt-0.5 text-xs text-ink-muted">{template.weaknessType ? weaknessTypeLabel(template.weaknessType) : "No weakness type set"}</p>
+              <p className="mt-0.5 text-xs text-ink-muted">{template.weaknessType ? weaknessTypeLabel(template.weaknessType) : "No vulnerability category set"}</p>
             </div>
             <div className="flex shrink-0 gap-2">
               <IconButton label="Edit" variant="secondary" onClick={() => startEdit(template)}>

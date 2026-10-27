@@ -48,10 +48,10 @@ const nextConfig: NextConfig = {
   compress: process.env.NEXT_COMPRESS === "1",
   typedRoutes: true,
   allowedDevOrigins: ["127.0.0.1", "localhost", ...lanAddresses, ...devTunnelHosts],
-  // Evidence file uploads go through a Server Action (actions/report-file-evidence.ts).
-  // The application's own 10 MiB evidence size limit (see
-  // docs/decisions/0011-binary-evidence-storage.md) is the one a user actually sees
-  // enforced; this just needs enough headroom for multipart overhead plus that limit.
+  // Program access files and organization logos still upload through Server Actions (10 MiB
+  // each); this is their limit plus multipart headroom. Report evidence does NOT pass through
+  // here: it uploads straight to object storage under a size-bound signed URL
+  // (services/evidence-uploads.ts), with its own limit in EVIDENCE_MAX_FILE_MB.
   //
   // allowedOrigins: Server Actions refuse a request whose Origin differs from its
   // (forwarded) host -- Next's CSRF check. A reverse proxy or dev tunnel that rewrites

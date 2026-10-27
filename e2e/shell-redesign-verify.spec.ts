@@ -50,11 +50,9 @@ test("new dark security-ops shell: theme, nav, routing, typography, drawer", asy
   });
   console.log("ACTIVE_NAV_STYLES:", JSON.stringify(activeStyles));
 
-  // 6. Cmd+K focuses search
-  await page.keyboard.press("Control+k");
-  const searchFocused = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") === "Global search");
-  console.log("SEARCH_FOCUSED_ON_CTRL_K:", searchFocused);
-  await page.keyboard.press("Escape"); // Ctrl K opens the command menu; close it again
+  // 6. The sidebar has a plain search field (no command menu, no shortcuts since Oct 26)
+  const hasSearchField = (await page.getByRole("search", { name: "Search programs and reports" }).count()) > 0;
+  console.log("SIDEBAR_SEARCH_FIELD:", hasSearchField);
 
   // 7. Typography check
   const fontInfo = await page.evaluate(() => {

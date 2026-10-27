@@ -480,6 +480,161 @@ a:is(.glass-surface, .glass-surface-raised) { transition: transform 160ms cubic-
   .hero-art-host { padding-bottom: calc(24vh + 1.5rem); }
 }
 
+/* ---------- Homepage motion layer (public-home-motion.tsx) ----------
+   Everything below is additive. `html[data-home-motion]` is set by the client controller
+   only when motion is allowed; without it (no JS, reduced motion) every rule here resolves
+   to the finished, static drawing. Continuous loops are CSS (off the main thread) and only
+   run while their section carries `.is-inview`, so offscreen art costs nothing. */
+
+/* Hero evidence field: faint plate, red marker, nodes that light when inspected. */
+.evidence-field svg { fill: none; stroke: var(--ink); stroke-width: 1; }
+.evidence-field-grid line { stroke-opacity: 0.06; }
+.evidence-field-orbit { stroke-opacity: 0.22; }
+.evidence-field-ticks { stroke-width: 7; stroke-opacity: 0.16; stroke-linecap: butt; transform-box: view-box; transform-origin: 720px 450px; }
+.evidence-field-node-dot { fill: var(--ink); stroke: none; opacity: 0.55; }
+.evidence-field-node-ring, .evidence-field-node-cross { stroke-opacity: 0.45; transform-box: fill-box; transform-origin: center; }
+.evidence-field-node-label { font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; fill: var(--ink-muted); stroke: none; }
+.evidence-field-marker { fill: var(--action); stroke: none; }
+.evidence-field-marker-halo { stroke: var(--action); stroke-opacity: 0.4; }
+html[data-home-motion] .evidence-field-node-ring { opacity: 0; transform: scale(0.55); transition: opacity 0.5s var(--ease-out), transform 0.7s var(--ease-out); }
+html[data-home-motion] .evidence-field-node-cross { opacity: 0; transition: opacity 0.4s ease; }
+html[data-home-motion] .evidence-field-node-label { opacity: 0.32; transition: opacity 0.5s ease, fill 0.5s ease; }
+html[data-home-motion] .evidence-field-node.is-active .evidence-field-node-ring { opacity: 1; transform: scale(1); }
+html[data-home-motion] .evidence-field-node.is-active .evidence-field-node-cross { opacity: 1; }
+html[data-home-motion] .evidence-field-node.is-active .evidence-field-node-label { opacity: 1; fill: var(--ink); }
+html[data-home-motion] .is-inview .evidence-field-ticks { animation: field-spin 240s linear infinite; }
+@keyframes field-spin { to { transform: rotate(360deg); } }
+@media (max-width: 820px) { .evidence-field-node-label { display: none; } .evidence-field { opacity: 0.7; } }
+
+/* Chapter illustrations draw when they arrive on screen, not at page load offscreen. */
+html[data-home-motion] .chapter-art-full:not(.is-inview) :is(.hero-art-draw *, .hero-art-fade, .hero-art-stamp-wrap) { animation-play-state: paused; }
+
+/* Chapter one: the signal's red leader overlay (drawn by scroll). */
+.bug-signal-ldr { stroke: var(--action); stroke-width: 1.4; stroke-dasharray: none; }
+.bug-signal-marker { fill: var(--action); stroke: none; }
+.bug-signal-halo { stroke: var(--action); stroke-width: 1.2; opacity: 0.35; }
+
+/* Chapter four: the seal keeps turning, each ring at its own pace, while it is on screen. */
+.seal-orbit [data-seal] { transform-box: view-box; transform-origin: 400px 400px; }
+html[data-home-motion] .seal-orbit.is-inview [data-seal="perf"] { animation: field-spin 180s linear infinite; }
+html[data-home-motion] .seal-orbit.is-inview [data-seal="ticks"] { animation: field-spin 120s linear infinite reverse; }
+html[data-home-motion] .seal-orbit.is-inview [data-seal="stitch"] { animation: field-spin 70s linear infinite; }
+html[data-home-motion] .seal-orbit.is-inview [data-seal="rosette"] { animation: field-spin 300s linear infinite reverse; }
+html[data-home-motion] .seal-orbit.is-inview .hero-art-stamp { animation: seal-breathe 5s ease-in-out 3s infinite; }
+@keyframes seal-breathe { 0%, 100% { opacity: 0.92; } 50% { opacity: 0.74; } }
+
+/* FAQ: the native <details> opens and closes by height where the browser supports animating
+   to `auto` (interpolate-size); elsewhere it simply snaps, exactly as before. */
+.faq-item { interpolate-size: allow-keywords; }
+.faq-item::details-content { block-size: 0; overflow: clip; transition: block-size 0.28s var(--ease-out), content-visibility 0.28s allow-discrete; }
+.faq-item[open]::details-content { block-size: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-item::details-content { transition: none; }
+}
+
+/* Findings table: a red edge marks the row under the pointer or focus, and stays on the
+   report this visitor last opened, so returning from a report shows where they were. */
+.finding-row > td:first-child { position: relative; }
+.finding-row > td:first-child::before {
+  content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--action);
+  transform: scaleY(0); transform-origin: center; transition: transform 0.18s var(--ease-out);
+}
+.finding-row:focus-within > td:first-child::before, .finding-row[data-last-opened] > td:first-child::before { transform: scaleY(1); }
+@media (hover: hover) and (pointer: fine) { .finding-row:hover > td:first-child::before { transform: scaleY(1); } }
+.finding-row[data-last-opened] { background: color-mix(in srgb, var(--action) 4%, var(--surface)); }
+@media (prefers-reduced-motion: reduce) { .finding-row > td:first-child::before { transition: none; } }
+
+/* A report title morphs from its Findings row into the report page heading (React
+   <ViewTransition name=...>). Only the named pair moves: the page itself never crossfades,
+   because navigation happens tens of times a day. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+::view-transition-group(.report-title) { animation-duration: 0.32s; animation-timing-function: var(--ease-out); }
+::view-transition-image-pair(.report-title) { animation-name: report-title-blur; }
+@keyframes report-title-blur { 40% { filter: blur(2px); } }
+
+/* ---------- Homepage atmosphere (components/marketing/atmosphere.tsx) ----------
+   Background-only environment behind every homepage section. Every moving part is its own
+   element moved by transform/opacity (compositor-only); loops run only while their section
+   is on screen (`.atmo.is-live`) and only under `html[data-home-motion]`. */
+.atmo { --atmo-gutter: max(10px, calc(50% - 38.5rem)); }
+
+/* Raking light: soft bands, like an inspection lamp through blinds. */
+.atmo-shadow { position: absolute; inset: -25% -45%; will-change: transform; }
+.atmo-shadow-drift {
+  position: absolute; inset: 0;
+  /* Slats with a soft penumbra, falling inside a soft-edged window of light: it reads as light
+     through blinds, not as clouds. Pixel spacing keeps the rhythm the same at every width. */
+  --slat: rgb(22 23 26 / 0.04);
+  background: repeating-linear-gradient(112deg, transparent 0 28px, var(--slat) 44px 70px, transparent 86px 128px);
+  -webkit-mask-image: linear-gradient(to right, transparent 8%, #000 30%, #000 62%, transparent 86%), linear-gradient(to bottom, transparent 12%, #000 34%, #000 66%, transparent 88%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 8%, #000 30%, #000 62%, transparent 86%), linear-gradient(to bottom, transparent 12%, #000 34%, #000 66%, transparent 88%);
+  mask-composite: intersect;
+}
+[data-atmo="lifecycle"] .atmo-shadow-drift, [data-atmo="record"] .atmo-shadow-drift { --slat: rgb(22 23 26 / 0.034); }
+[data-atmo="quiet"] .atmo-shadow, [data-atmo="rest"] .atmo-shadow { opacity: 0.6; }
+html[data-home-motion] .atmo.is-live .atmo-shadow-drift { animation: atmo-drift 34s ease-in-out infinite alternate; }
+@keyframes atmo-drift { from { transform: translate3d(-3%, -1.5%, 0); } to { transform: translate3d(3%, 1.5%, 0); } }
+
+/* Evidence thread: neutral line always; its red, scroll-drawn ink and signal only with motion. */
+.atmo-thread { position: absolute; inset-block: 0; left: var(--atmo-gutter); width: 80px; translate: -50% 0; }
+.atmo-thread svg { width: 100%; height: 100%; overflow: visible; fill: none; }
+.atmo-thread path { vector-effect: non-scaling-stroke; }
+.atmo-thread-base { stroke: var(--ink); stroke-opacity: 0.14; stroke-width: 1; }
+.atmo-thread-ink { stroke: var(--action); stroke-width: 1.5; stroke-linecap: round; opacity: 0; }
+html[data-home-motion] .atmo-thread-ink { opacity: 1; }
+.atmo-thread-signal { position: absolute; left: 0; top: 0; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 999px; background: var(--action); opacity: 0; will-change: transform; }
+.atmo-thread-signal::after { content: ""; position: absolute; inset: -6px; border-radius: inherit; border: 1px solid var(--action); opacity: 0.35; }
+html[data-home-motion] .atmo-thread-signal { opacity: 1; }
+.atmo-thread-rest { position: absolute; left: 50%; top: 52%; width: 17px; height: 17px; translate: -50% -50%; border-radius: 999px; border: 1px solid var(--ink-muted); }
+.atmo-thread-rest::after { content: ""; position: absolute; inset: 5px; border-radius: inherit; background: var(--action); }
+/* With motion, the node's red centre fills only when the signal arrives and hands off to it. */
+html[data-home-motion] .atmo-thread-rest::after { transform: scale(0); transition: transform 0.35s var(--ease-out); }
+html[data-home-motion] .atmo-thread-rest[data-rested]::after { transform: scale(1); }
+@media (max-width: 767px) { .atmo-thread { width: 14px; left: 7px; } .atmo-thread-signal::after { display: none; } }
+
+/* Chapter one: a measurement rule at its own depth. */
+.atmo-ruler {
+  position: absolute; top: -20%; height: 140%; right: var(--atmo-gutter); width: 22px; will-change: transform;
+  border-right: 1px solid rgb(22 23 26 / 0.1);
+  background:
+    repeating-linear-gradient(to bottom, rgb(22 23 26 / 0.2) 0 1px, transparent 1px 64px) right / 22px 100% no-repeat,
+    repeating-linear-gradient(to bottom, rgb(22 23 26 / 0.13) 0 1px, transparent 1px 16px) right / 9px 100% no-repeat;
+}
+
+/* Chapter two: the lifecycle rail and the light that travels it. */
+.atmo-rail { position: absolute; inset: 0; }
+.atmo-rail-light { position: absolute; top: 0; right: 0; width: 60vw; height: 80vh; margin-top: -40vh; background: radial-gradient(closest-side, rgb(255 255 255 / 0.9), transparent); will-change: transform; }
+.atmo-rail-track { position: absolute; top: 10%; bottom: 10%; right: var(--atmo-gutter); width: 1px; }
+.atmo-rail-line { position: absolute; inset: 0; background: rgb(22 23 26 / 0.14); }
+.atmo-rail-progress { position: absolute; inset: 0; background: var(--action); transform-origin: center top; transform: scaleY(0); opacity: 0; will-change: transform; }
+html[data-home-motion] .atmo-rail-progress { opacity: 0.6; }
+.atmo-rail-stage { position: absolute; left: -10px; width: 11px; height: 1px; background: rgb(22 23 26 / 0.35); }
+/* Phones: the gauge hugs the edge so its marks never reach the copy's 16px gutter. */
+@media (max-width: 767px) { .atmo-rail-track { right: 6px; } .atmo-rail-stage { left: -5px; width: 6px; } }
+
+/* Chapter three: a guide for each path at its own depth, and the path that crosses between. */
+.atmo-guide { position: absolute; top: -15%; height: 130%; width: 1px; will-change: transform; background: repeating-linear-gradient(to bottom, rgb(22 23 26 / 0.16) 0 6px, transparent 6px 15px); }
+.atmo-guide-right { right: var(--atmo-gutter); }
+.atmo-cross { position: absolute; inset: -10% 0; width: 100%; height: 120%; fill: none; will-change: transform; }
+.atmo-cross path { stroke: rgb(22 23 26 / 0.12); stroke-width: 1; vector-effect: non-scaling-stroke; }
+@media (max-width: 1023px) { .atmo-guide, .atmo-cross, .atmo-ruler { display: none; } }
+
+/* Chapter four: orbital rings around the seal, and the light that gathers on it. */
+.atmo-rings { position: absolute; left: 27%; top: 50%; width: 0; height: 0; }
+.atmo-ring { position: absolute; left: 0; top: 0; translate: -50% -50%; fill: none; stroke: var(--ink); stroke-opacity: 0.16; stroke-width: 1; will-change: transform; }
+.atmo-ring-glow { position: absolute; width: 900px; height: 900px; translate: -50% -50%; background: radial-gradient(closest-side, rgb(255 255 255 / 0.9), transparent); opacity: 0.35; }
+html[data-home-motion] .atmo.is-live .atmo-ring[data-ring="a"] { animation: atmo-turn 140s linear infinite; }
+html[data-home-motion] .atmo.is-live .atmo-ring[data-ring="c"] { animation: atmo-turn 200s linear infinite reverse; }
+@keyframes atmo-turn { to { rotate: 360deg; } }
+@media (max-width: 1023px) { .atmo-rings { left: 50%; top: 74%; scale: 0.6; } }
+
+/* Sidebar: the active row's mark settles in (160ms) when navigation lands on it. */
+.nav-active-mark { animation: nav-mark 0.16s var(--ease-out) both; transform-origin: center; }
+@keyframes nav-mark { from { opacity: 0; transform: scaleY(0.4); } }
+@media (prefers-reduced-motion: reduce) { .nav-active-mark { animation: none; } }
+
 /* Printing an invoice prints only the invoice, not the app around it. */
 @media print {
   body:has(.print-only-this) * {

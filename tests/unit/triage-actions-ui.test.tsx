@@ -73,7 +73,7 @@ describe("SeverityControl", () => {
   it("renders a labeled severity select with every DOMAIN.md severity level as an option when not locked", () => {
     const html = renderToStaticMarkup(withStatusRail("new", null, <SeverityControl {...REF} currentSeverity={null} locked={false} />));
     expect(html).toContain("Confirmed severity");
-    for (const severity of ["None", "Low", "Medium", "High", "Critical"]) {
+    for (const severity of ["Info", "Low", "Medium", "High", "Critical"]) {
       expect(html).toContain(severity);
     }
     expect(html).toContain("<select");

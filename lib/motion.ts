@@ -3,6 +3,22 @@
 import { useEffect, useState } from "react";
 
 /**
+ * The one set of timing tokens every GSAP-driven surface reads (the CSS side keeps its own
+ * --ease-* / --animate-* tokens in app/globals.css; these mirror them for JS). Tiers, fastest
+ * to slowest: feedback (a press), ui (a control settling), reveal (content entering on
+ * scroll), story (a scroll-scrubbed chapter), ambient (background motion, deliberately calm).
+ */
+export const MOTION = {
+  ease: { out: "cubic-bezier(0.16, 1, 0.3, 1)", inOut: "power2.inOut" },
+  duration: { feedback: 0.16, ui: 0.24, reveal: 0.6, story: 1.2 },
+  stagger: { words: 0.045, items: 0.07 },
+  // Seconds of lag between the scrollbar and a scrubbed timeline: tied to the hand, never jumpy.
+  scrub: 0.6,
+  // Hero evidence marker: travel time per degree of orbit, and the pause at each inspection point.
+  ambient: { secondsPerDegree: 0.026, hold: 1.6 },
+} as const;
+
+/**
  * A whole-app primitive (moved out of components/marketing per docs/decisions/0057's
  * app-wide motion vocabulary -- this hook now backs authenticated-product motion, not
  * just the public marketing page).

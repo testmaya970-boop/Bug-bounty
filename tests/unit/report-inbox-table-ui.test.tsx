@@ -25,6 +25,7 @@ function makeReport(overrides: Partial<Report>): Report {
     matchedTarget: "*.example.com",
     status: "new",
     confirmedSeverity: null,
+    priority: null,
     duplicateOfReportId: null,
     resolutionSummary: null,
     weaknessType: null,

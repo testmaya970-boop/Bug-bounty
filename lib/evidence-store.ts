@@ -1,5 +1,5 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getNativeEnv } from "./env";
@@ -126,6 +126,51 @@ export const s3EvidenceObjectStore: EvidenceObjectStore = {
     }
   },
 };
+
+/**
+ * Direct uploads (202610260004): the browser PUTs the file straight to storage, so its bytes
+ * never pass through the app server. The signature covers the key, the content type and the
+ * exact byte length, and expires quickly: the URL can only write that one object, of that one
+ * size, once the server has already authorized and recorded the upload.
+ */
+const SIGNED_UPLOAD_TTL_SECONDS = 15 * 60;
+
+export async function getSignedEvidenceUploadUrl(objectKey: string, contentType: string, sizeBytes: number): Promise<string> {
+  const command = new PutObjectCommand({ Bucket: bucketName(), Key: objectKey, ContentType: contentType, ContentLength: sizeBytes });
+  return getSignedUrl(storageClient(), command, { expiresIn: SIGNED_UPLOAD_TTL_SECONDS, signableHeaders: new Set(["content-type", "content-length"]) });
+}
+
+/** Size of a stored object, or null when it does not exist (the upload never arrived). */
+export async function evidenceObjectSize(objectKey: string): Promise<number | null> {
+  try {
+    const head = await storageClient().send(new HeadObjectCommand({ Bucket: bucketName(), Key: objectKey }));
+    return typeof head.ContentLength === "number" ? head.ContentLength : null;
+  } catch (error) {
+    const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+    if (status === 404) return null;
+    throw error;
+  }
+}
+
+/** Streams a stored object once: its SHA-256 and its first `headBytes` bytes (for the file
+ * signature check), without ever holding the whole file in memory. */
+export async function inspectEvidenceObject(objectKey: string, headBytes = 64 * 1024): Promise<{ sha256: string; head: Uint8Array; size: number }> {
+  const response = await storageClient().send(new GetObjectCommand({ Bucket: bucketName(), Key: objectKey }));
+  const hash = createHash("sha256");
+  const head = new Uint8Array(headBytes);
+  let headLength = 0;
+  let size = 0;
+  for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+    hash.update(chunk);
+    if (headLength < headBytes) {
+      const take = Math.min(headBytes - headLength, chunk.byteLength);
+      head.set(chunk.subarray(0, take), headLength);
+      headLength += take;
+    }
+    size += chunk.byteLength;
+  }
+  return { sha256: hash.digest("hex"), head: head.subarray(0, headLength), size };
+}
 
 /** The active implementation. Swapping providers means writing a new EvidenceObjectStore
  * implementation and changing this one export -- nothing else in the codebase changes. */

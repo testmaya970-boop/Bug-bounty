@@ -4,14 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { deleteMyReportTemplate, upsertMyReportTemplate, type ReportTemplate } from "@/services/report-templates";
 import { OrganizationServiceError } from "@/services/researcher-profiles";
+import { WEAKNESS_TYPE_ORDER } from "../lib/report-weakness-labels";
+import type { ReportWeaknessType } from "../types/report";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
-const weaknessTypeEnum = z.enum([
-  "cross_site_scripting", "sql_injection", "ssrf", "idor", "broken_authentication", "broken_access_control",
-  "csrf", "remote_code_execution", "information_disclosure", "insecure_deserialization", "security_misconfiguration",
-  "injection_other", "business_logic", "denial_of_service", "cryptographic_failure", "other",
-]);
+// The taxonomy has one source of truth (lib/report-weakness-labels.ts).
+const weaknessTypeEnum = z.enum(WEAKNESS_TYPE_ORDER as [ReportWeaknessType, ...ReportWeaknessType[]]);
 
 const upsertSchema = z.object({
   id: z.string().uuid().optional(),

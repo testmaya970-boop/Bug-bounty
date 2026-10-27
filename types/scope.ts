@@ -17,7 +17,12 @@ export type ScopeEntry = {
   createdAt: string;
   updatedAt: string;
   removedAt: string | null;
+  /** 202610260008: only cleared entries authorize testing; absent on older fixtures (= cleared). */
+  clearance?: ScopeClearance;
+  clearanceNote?: string | null;
 };
+
+export type ScopeClearance = "not_required" | "verified" | "pending_verification" | "pending_review" | "approved" | "rejected";
 
 /** The result of asking "is this target covered by this program's scope right now" --
  * see services/scope.ts's evaluateProgramScope and docs/decisions/0006-scope-asset-model.md.

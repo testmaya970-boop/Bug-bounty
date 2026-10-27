@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildContentSecurityPolicy, generateNonce } from "../../lib/security/csp";
+import { buildContentSecurityPolicy, evidenceStorageOrigin, generateNonce } from "../../lib/security/csp";
 
 const directive = (policy: string, name: string) => policy.split("; ").find((d) => d.startsWith(`${name} `)) ?? "";
 
@@ -14,6 +14,16 @@ describe("content security policy", () => {
 
   it("adds unsafe-eval only in development", () => {
     expect(directive(buildContentSecurityPolicy("n", true), "script-src")).toContain("'unsafe-eval'");
+  });
+
+  it("lets the browser connect to the evidence store (direct uploads) and nowhere else", () => {
+    expect(directive(buildContentSecurityPolicy("n", false, "https://storage.example.com"), "connect-src")).toBe("connect-src 'self' https://storage.example.com");
+    expect(directive(buildContentSecurityPolicy("n", false, ""), "connect-src")).toBe("connect-src 'self'");
+    expect(evidenceStorageOrigin("https://storage.example.com:9000/some/path?x=1")).toBe("https://storage.example.com:9000");
+    // A bad value never widens the policy.
+    expect(evidenceStorageOrigin("not a url")).toBe("");
+    expect(evidenceStorageOrigin("javascript:alert(1)")).toBe("");
+    expect(evidenceStorageOrigin(undefined)).toBe("");
   });
 
   it("keeps clickjacking, plugin and base-tag protections", () => {

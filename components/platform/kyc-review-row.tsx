@@ -9,10 +9,11 @@ import type { KycField, KycStatus, TaxFormType } from "../../types/researcher-id
 const PENDING_FIELDS: KycField[] = ["phone", "aadhaar", "pan", "passport"];
 
 /**
- * One pending KYC field, one decision -- verify or reject, with an optional note. No
- * "Verify via DigiLocker" call: a platform admin makes this decision after their own
- * out-of-band review (see docs/decisions/0051 and the migration's own comment on why
- * Unpatched has no real government-ID-verification provider integration).
+ * One pending KYC field, one decision -- verify or reject, with an optional note. This is the
+ * MANUAL fallback queue: most researchers verify automatically through the provider flow
+ * (/settings/identity: DigiLocker via Cashfree in India, Persona elsewhere), whose signed result
+ * never passes through here. Aadhaar can no longer be submitted manually (202610260005); a
+ * pending Aadhaar row here predates that change.
  */
 export function KycReviewRow({ userId, displayName, email, statuses }: { userId: string; displayName: string; email: string | null; statuses: Record<KycField, KycStatus> }) {
   const pendingFields = PENDING_FIELDS.filter((field) => statuses[field] === "pending");

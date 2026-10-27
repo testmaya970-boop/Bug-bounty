@@ -10,7 +10,7 @@ import { rangeDays } from "../../lib/viz";
 import { getMyReportStatusCounts, listMyReportedPrograms, listMyReports } from "../../services/reports";
 import { getCurrentUser } from "../../lib/auth/current-user";
 import Link from "next/link";
-import { REPORT_SEVERITY_ORDER, REPORT_STATUS_ORDER, reportStatusLabel } from "../../lib/report-status";
+import { REPORT_SEVERITY_ORDER, REPORT_STATUS_ORDER, reportStatusLabel, severityLabel } from "../../lib/report-status";
 import type { ReportSeverity, ReportStatus } from "../../types/report";
 
 type ReportsSearchParams = { status?: string; programId?: string; severity?: string; range?: string };
@@ -105,7 +105,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <option value="">All severities</option>
                 {REPORT_SEVERITY_ORDER.map((value) => (
                   <option key={value} value={value}>
-                    {value[0].toUpperCase() + value.slice(1)}
+                    {severityLabel(value)}
                   </option>
                 ))}
               </select>

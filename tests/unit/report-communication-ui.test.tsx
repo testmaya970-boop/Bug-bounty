@@ -127,7 +127,7 @@ describe("ReportEvidenceSection: same structural visibility separation as commun
 
 describe("Report composer (one form: comment, attachments, one visibility)", () => {
   it("a researcher gets a comment box and attachments, never a visibility choice", () => {
-    const html = renderToStaticMarkup(<ReportComposer {...REF} side="researcher" />);
+    const html = renderToStaticMarkup(<ReportComposer {...REF} side="researcher" limits={{ maxFileBytes: 50 * 1024 * 1024, maxFiles: 20 }} />);
     expect(html).toContain("Add a comment for the organization");
     expect(html).toContain("Attach files");
     expect(html).not.toContain("Internal note");
@@ -135,7 +135,7 @@ describe("Report composer (one form: comment, attachments, one visibility)", () 
   });
 
   it("the organization gets exactly one visibility choice for the comment and its files", () => {
-    const html = renderToStaticMarkup(<ReportComposer {...REF} side="organization" />);
+    const html = renderToStaticMarkup(<ReportComposer {...REF} side="organization" limits={{ maxFileBytes: 50 * 1024 * 1024, maxFiles: 20 }} />);
     expect(html.match(/<select/g)?.length).toBe(1);
     expect(html).toContain("Internal note (team only)");
     expect(html).toContain("Visible to the researcher");

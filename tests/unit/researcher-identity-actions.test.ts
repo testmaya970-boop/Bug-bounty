@@ -54,11 +54,22 @@ describe("updateMyPersonalDetailsAction: gender/age, self-only", () => {
   });
 });
 
-describe("submitMyKycAction: real fields, format validation happens server-side (the RPC), not duplicated here", () => {
-  it("passes a submitted field straight through -- INVALID_AADHAAR/INVALID_PAN come back as the RPC's own mapped error, not a client-side guess", async () => {
-    const result = await submitMyKycAction({ aadhaarNumber: "123456789012" });
+describe("submitMyKycAction: manual review fallback (PAN, passport, phone); Aadhaar only via DigiLocker", () => {
+  it("normalizes a PAN to upper case and sends it for review", async () => {
+    const result = await submitMyKycAction({ panNumber: "abcde1234f" });
     expect(result.ok).toBe(true);
-    expect(researcherProfilesService.submitMyKyc).toHaveBeenCalledWith(expect.objectContaining({ aadhaarNumber: "123456789012" }));
+    expect(researcherProfilesService.submitMyKyc).toHaveBeenCalledWith(expect.objectContaining({ panNumber: "ABCDE1234F" }));
+  });
+
+  it("rejects a malformed PAN with a message, before any database call", async () => {
+    const result = await submitMyKycAction({ panNumber: "12345" });
+    expect(result).toMatchObject({ ok: false, code: "INVALID_INPUT" });
+    expect(researcherProfilesService.submitMyKyc).not.toHaveBeenCalled();
+  });
+
+  it("never forwards an Aadhaar number, even if a caller sends one (the database refuses it too)", async () => {
+    await submitMyKycAction({ panNumber: "ABCDE1234F", aadhaarNumber: "123456789012" } as never);
+    expect(researcherProfilesService.submitMyKyc).toHaveBeenCalledWith(expect.not.objectContaining({ aadhaarNumber: expect.anything() }));
   });
 });
 

@@ -27,8 +27,8 @@ test("billing admin opens every organization document; a triager is refused", as
 
   // Budgets: searchable by program, filterable by how close each is to its cap.
   await page.getByRole("link", { name: "Search all budgets" }).click();
-  await page.getByRole("searchbox", { name: "Search programs" }).fill("E2E Public");
-  await page.getByRole("searchbox", { name: "Search programs" }).press("Enter");
+  await page.getByRole("main").getByRole("searchbox", { name: "Search programs" }).fill("E2E Public");
+  await page.getByRole("main").getByRole("searchbox", { name: "Search programs" }).press("Enter");
   await page.waitForURL(/budgets\?q=E2E/);
   await expect(page.getByRole("list", { name: "Program budgets" }).getByText("E2E Public Program")).toBeVisible();
   await expect(page.getByRole("list", { name: "Program budgets" }).getByText("E2E Private Program")).toHaveCount(0);
@@ -69,25 +69,23 @@ test("researcher sets a tax residence and sees the rule for the next payout", as
   await expect(page.getByText("Nothing withheld for your tax residence")).toBeVisible();
 });
 
-test("keyboard-first shell: command menu and G-then-letter jumps", async ({ page }) => {
+test("no keyboard shortcuts: the sidebar search field opens search, and shortcut keys do nothing", async ({ page }) => {
   await signIn(page, "e2e.admin@unpatched.demo");
-  await page.goto(`/organizations/${fixture.organizationId}`);
-  await page.keyboard.press("Control+k");
-  const search = page.getByRole("searchbox", { name: "Global search" });
-  await expect(search).toBeFocused();
-  await search.fill("billing doc");
-  await page.getByRole("option", { name: /Billing documents/ }).click();
-  await page.waitForURL(/\/payments\/documents$/);
+  const home = `/organizations/${fixture.organizationId}`;
+  await page.goto(home);
+  await expect(page.getByText("Keyboard shortcuts")).toHaveCount(0);
+  await expect(page.getByText("⌘K")).toHaveCount(0);
 
+  // Former shortcuts are inert: no command menu, no G-then-letter jump, no shortcut sheet.
   await page.locator("main").click({ position: { x: 5, y: 5 } });
-  await page.keyboard.press("g");
-  await page.keyboard.press("f");
-  await page.waitForURL(/\/findings$/);
-  // The new page wires its shortcuts once it hydrates; retry the key until the sheet opens.
-  await expect(async () => {
-    await page.keyboard.press("?");
-    await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible({ timeout: 1000 });
-  }).toPass();
+  for (const key of ["Control+k", "g", "f", "?", "["]) await page.keyboard.press(key);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`${home}$`));
+
+  const search = page.getByRole("search", { name: "Search programs and reports" }).getByRole("searchbox");
+  await search.fill("E2E");
+  await search.press("Enter");
+  await page.waitForURL(/\/search\?q=E2E/);
 });
 
 test("audit log: an owner filters to scope changes and searches what changed", async ({ page }) => {
@@ -99,7 +97,7 @@ test("audit log: an owner filters to scope changes and searches what changed", a
   const table = page.getByRole("table", { name: "Audit log" });
   await expect(table.getByText(/^scope\.asset_/).first()).toBeVisible();
   await expect(table.getByText(/^report\./)).toHaveCount(0);
-  await page.getByRole("searchbox", { name: /Search/ }).fill("out_of_scope");
+  await page.getByRole("main").getByRole("searchbox", { name: /Search/ }).fill("out_of_scope");
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(table.getByText(/Scope state: in scope → out of scope/).first()).toBeVisible();
 });

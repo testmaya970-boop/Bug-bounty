@@ -72,6 +72,14 @@ const REPORT_TEMPLATES: Record<ReportWeaknessType, ReportTemplate> = {
     descriptionScaffold: "Affected component (token generation, encryption at rest/in transit, password hashing, etc.):\n\nWeakness observed (e.g. predictable token, weak algorithm, hardcoded key):\n\nSteps to reproduce:\n1. \n2. \n3. \n\nEvidence of the weakness (e.g. a forged/predicted value that was accepted):",
     impactPrompt: "What could be forged, decrypted, or predicted as a result, and what does that let an attacker do?",
   },
+  insecure_file_upload: {
+    descriptionScaffold: "Upload feature or endpoint:\n\nFile you uploaded (type, extension, and content-type you sent):\n\nWhere the file ends up (URL or path it is served from, and the response headers when fetched):\n\nSteps to reproduce:\n1. \n2. \n3. \n\nEvidence (e.g. the uploaded file executing, rendering as HTML, or bypassing a type or size check):",
+    impactPrompt: "What does the uploaded file let you do: run code on the server, script another user's session, overwrite files, or exhaust storage?",
+  },
+  api_security: {
+    descriptionScaffold: "API and endpoint (method and path):\n\nAuthentication used for the request (none, your own token, another role's token):\n\nRequest sent (with any sensitive values redacted):\n\nResponse received:\n\nSteps to reproduce:\n1. \n2. \n3. \n\nWhat the API should have done instead (e.g. rejected the field, scoped the result, rate-limited the call):",
+    impactPrompt: "Whose data or which actions does this expose, and at what scale (one record, any record, every record)?",
+  },
   other: {
     descriptionScaffold: "Affected component or endpoint:\n\nSteps to reproduce:\n1. \n2. \n3. \n\nObserved behavior:",
     impactPrompt: "What can an attacker actually achieve as a result of this?",

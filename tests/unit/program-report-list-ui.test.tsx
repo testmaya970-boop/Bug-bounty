@@ -20,6 +20,7 @@ const report: Report = {
   matchedTarget: "api.example.com",
   status: "new",
   confirmedSeverity: null,
+  priority: null,
   duplicateOfReportId: null,
   resolutionSummary: null,
   weaknessType: null,

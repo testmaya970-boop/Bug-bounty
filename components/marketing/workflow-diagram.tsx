@@ -29,15 +29,17 @@ export function WorkflowDiagram({ stages, tone = "default" }: { stages: Workflow
   );
 }
 
+// data-motion hooks: the homepage controller reveals step N of both paths together and lights
+// each step's number as it crosses the reading line (public-home-motion.tsx).
 function WorkflowStep({ stage, index }: { stage: WorkflowStage; index: number }) {
   return (
     <div className="flex items-start gap-4 py-4 sm:gap-6 sm:py-5">
-      <span aria-hidden="true" className="mt-0.5 font-mono text-xs text-ink-muted">
+      <span aria-hidden="true" data-motion="wf-index" className="mt-0.5 font-mono text-xs text-ink-muted transition-colors duration-300">
         {String(index + 1).padStart(2, "0")}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{stage.label}</p>
-        <div className="mt-1.5 text-sm text-ink-muted">{stage.detail}</div>
+        <p data-motion="wf-label" className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{stage.label}</p>
+        <div data-motion="wf-detail" className="mt-1.5 text-sm text-ink-muted">{stage.detail}</div>
       </div>
     </div>
   );
@@ -63,6 +65,7 @@ export function WorkflowDiagramPair({ left, right }: { left: WorkflowStage[]; ri
       {left.map((stage, index) => (
         <div
           key={stage.label}
+          data-wf-row={index}
           style={{ "--wf-col": 1, "--wf-row": index + 1 } as React.CSSProperties}
           className={cn("border-border lg:border-r lg:pr-12", index > 0 && "border-t")}
         >
@@ -72,6 +75,7 @@ export function WorkflowDiagramPair({ left, right }: { left: WorkflowStage[]; ri
       {right.map((stage, index) => (
         <div
           key={stage.label}
+          data-wf-row={index}
           style={{ "--wf-col": 2, "--wf-row": index + 1 } as React.CSSProperties}
           className={cn("border-border lg:pl-12", index > 0 && "border-t")}
         >

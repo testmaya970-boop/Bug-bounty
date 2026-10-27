@@ -14,17 +14,32 @@
  *   loads its display faces from Google Fonts at runtime. next/font faces are self-hosted.
  * - frame-src challenges.cloudflare.com only: the Turnstile human check renders in its iframe
  *   (lib/integrations/captcha.ts); every other frame stays blocked by default-src.
+ * - connect-src adds exactly one origin: the evidence store (S3_ENDPOINT). Report attachments
+ *   upload from the browser straight to it under a signed PUT (services/evidence-uploads.ts);
+ *   without it the browser blocks the upload. Nothing else is allowed to connect out.
  * - No upgrade-insecure-requests: it would break the plain-http local/E2E server. Add it
  *   (with HSTS) where TLS terminates, in the deployment layer.
  */
-export function buildContentSecurityPolicy(nonce: string, isDev: boolean): string {
+/** The evidence store's origin for connect-src, or "" when unset or malformed (then uploads
+ * simply stay blocked rather than the policy being widened by a bad value). */
+export function evidenceStorageOrigin(endpoint = process.env.S3_ENDPOINT): string {
+  if (!endpoint) return "";
+  try {
+    const url = new URL(endpoint);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.origin : "";
+  } catch {
+    return "";
+  }
+}
+
+export function buildContentSecurityPolicy(nonce: string, isDev: boolean, storageOrigin = evidenceStorageOrigin()): string {
   const directives = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' blob: data:",
-    `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
+    `connect-src 'self'${storageOrigin ? ` ${storageOrigin}` : ""}${isDev ? " ws: wss:" : ""}`,
     "frame-src https://challenges.cloudflare.com",
     "object-src 'none'",
     "base-uri 'self'",

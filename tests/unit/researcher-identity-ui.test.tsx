@@ -95,12 +95,14 @@ describe("KycSettings: real fields, manually reviewed -- never a fake verificati
   it("shows a real status badge per field", () => {
     const html = renderToStaticMarkup(<KycSettings initial={{ ...EMPTY_KYC, aadhaarStatus: "verified", panStatus: "pending" }} />);
     expect(html).toContain("Verified");
-    expect(html).toContain("Pending review");
+    expect(html).toContain("Requires review"); // a manually submitted detail waits on a person
   });
 
-  it("discloses that review is manual, not automated", () => {
+  it("discloses that this is manual review, points to the provider flow, and never collects Aadhaar", () => {
     const html = renderToStaticMarkup(<KycSettings initial={EMPTY_KYC} />);
-    expect(html.toLowerCase()).toContain("reviewed manually");
+    expect(html.toLowerCase()).toContain("manual identity review");
+    expect(html).toContain('href="/settings/identity"');
+    expect(html).not.toContain("Aadhaar number</label>");
   });
 });
 

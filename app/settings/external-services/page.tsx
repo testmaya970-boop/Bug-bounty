@@ -17,7 +17,7 @@ export default async function ExternalServicesSettingsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">External Services</h1>
-        <p className="mt-1 text-sm text-ink-muted">Link handles on other platforms.</p>
+        <p className="mt-1 text-sm text-ink-muted">Your profiles on other security platforms, including HackerOne.</p>
       </div>
       <ExternalServicesSettings initial={handles} />
     </div>

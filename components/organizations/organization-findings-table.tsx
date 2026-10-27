@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useEffect, useState, useTransition, ViewTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
@@ -8,10 +8,11 @@ import { Select } from "../ui/form";
 import { ErrorState, EmptyState, Skeleton } from "../ui/feedback";
 import { Button } from "../ui/button";
 import { SeverityBadge, StatusBadge } from "../ui/badge";
-import { reportStatusLabel, reportNextActionLabel } from "../../lib/report-status";
+import { reportStatusLabel, reportNextActionLabel, severityLabel } from "../../lib/report-status";
 import { listReportsForOrganizationPageAction } from "../../actions/reports";
 import type { Report, ReportSeverity, ReportStatus } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
+import { cn } from "../../lib/cn";
 
 const FILTERABLE_STATUSES: ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"];
 const FILTERABLE_SEVERITIES: ReportSeverity[] = ["none", "low", "medium", "high", "critical"];
@@ -27,7 +28,16 @@ const FILTERABLE_SEVERITIES: ReportSeverity[] = ["none", "low", "medium", "high"
  * difference from the per-program table; everything else (server-side status/severity
  * filtering via URL query params, keyset "Load more" pagination, responsive table/card
  * split) follows that component's own established shape exactly.
+ *
+ * Feedback, all CSS (no page-change animation -- this page is opened tens of times a day):
+ * rows settle in with a short capped stagger when a result set arrives (first load, a filter
+ * change, Load more); the results dim while a filter navigation is in flight; a red edge marks
+ * the row under the pointer/focus and stays on the report this visitor last opened here
+ * (remembered per tab in sessionStorage), so coming back shows where they were. Each title is
+ * a named <ViewTransition> paired with the report page's heading, so opening a report morphs
+ * the title into place instead of cutting.
  */
+const LAST_OPENED_KEY = "unpatched:findings:last-opened";
 export function OrganizationFindingsTable({
   organizationId,
   initialReports,
@@ -62,6 +72,21 @@ export function OrganizationFindingsTable({
   const programNameById = new Map(programOptions.map((program) => [program.id, program.name]));
 
   const [search, setSearch] = useState(query);
+  const [lastOpened, setLastOpened] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setLastOpened(sessionStorage.getItem(`${LAST_OPENED_KEY}:${organizationId}`));
+    } catch {
+      // Storage blocked (private mode, policy): the marker is a convenience, skip it.
+    }
+  }, [organizationId]);
+  function rememberOpened(reportId: string) {
+    try {
+      sessionStorage.setItem(`${LAST_OPENED_KEY}:${organizationId}`, reportId);
+    } catch {
+      // Same as above: never block navigation on storage.
+    }
+  }
   function navigateWithFilters(next: { programId?: string | "all"; status?: ReportStatus | "all"; severity?: ReportSeverity | "all"; assignee?: string; query?: string; sort?: "newest" | "oldest" }) {
     const params = new URLSearchParams();
     const nextProgramId = next.programId ?? programId;
@@ -105,7 +130,14 @@ export function OrganizationFindingsTable({
     });
   }
 
-  const hasActiveFilter = programId !== "all" || status !== "all" || severity !== "all" || assignee !== "all" || query !== "";
+  const activeFilterCount = [programId !== "all", status !== "all", severity !== "all", assignee !== "all", query !== ""].filter(Boolean).length;
+  const hasActiveFilter = activeFilterCount > 0;
+  function clearFilters() {
+    setSearch("");
+    navigateWithFilters({ programId: "all", status: "all", severity: "all", assignee: "all", query: "" });
+  }
+  // A changed filter reads as changed: the select keeps an ink border while it narrows results.
+  const filterClass = (active: boolean) => cn("max-w-xs", active && "[&_select]:border-ink [&_select]:font-medium");
 
   return (
     <div className="rounded-lg border border-border bg-surface">
@@ -143,7 +175,7 @@ export function OrganizationFindingsTable({
         </Button>
       </form>
       <div className="flex flex-wrap items-end gap-3 border-b border-border p-3">
-        <Select label="Engagement" className="max-w-xs" disabled={filterPending} value={programId} onChange={(event) => navigateWithFilters({ programId: event.target.value })}>
+        <Select label="Engagement" className={filterClass(programId !== "all")} disabled={filterPending} value={programId} onChange={(event) => navigateWithFilters({ programId: event.target.value })}>
           <option value="all">All engagements</option>
           {programOptions.map((program) => (
             <option key={program.id} value={program.id}>
@@ -151,7 +183,7 @@ export function OrganizationFindingsTable({
             </option>
           ))}
         </Select>
-        <Select label="Filter by status" className="max-w-xs" disabled={filterPending} value={status} onChange={(event) => navigateWithFilters({ status: event.target.value as ReportStatus | "all" })}>
+        <Select label="Filter by status" className={filterClass(status !== "all")} disabled={filterPending} value={status} onChange={(event) => navigateWithFilters({ status: event.target.value as ReportStatus | "all" })}>
           <option value="all">All statuses</option>
           {FILTERABLE_STATUSES.map((value) => (
             <option key={value} value={value}>
@@ -159,15 +191,15 @@ export function OrganizationFindingsTable({
             </option>
           ))}
         </Select>
-        <Select label="Filter by severity" className="max-w-xs" disabled={filterPending} value={severity} onChange={(event) => navigateWithFilters({ severity: event.target.value as ReportSeverity | "all" })}>
+        <Select label="Filter by severity" className={filterClass(severity !== "all")} disabled={filterPending} value={severity} onChange={(event) => navigateWithFilters({ severity: event.target.value as ReportSeverity | "all" })}>
           <option value="all">All severities</option>
           {FILTERABLE_SEVERITIES.map((value) => (
             <option key={value} value={value}>
-              {value[0].toUpperCase() + value.slice(1)}
+              {severityLabel(value)}
             </option>
           ))}
         </Select>
-        <Select label="Assigned to" className="max-w-xs" disabled={filterPending} value={assignee} onChange={(event) => navigateWithFilters({ assignee: event.target.value })}>
+        <Select label="Assigned to" className={filterClass(assignee !== "all")} disabled={filterPending} value={assignee} onChange={(event) => navigateWithFilters({ assignee: event.target.value })}>
           <option value="all">Anyone</option>
           <option value="me">Me</option>
           <option value="unassigned">Unassigned</option>
@@ -175,9 +207,33 @@ export function OrganizationFindingsTable({
         {filterPending && <span aria-hidden="true" className="mb-2.5 size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent text-ink-muted motion-reduce:animate-none" />}
       </div>
 
+      {/* What the list currently is: how many rows are loaded, the real sort key (submission
+          date), and a one-click way out of any narrowing. */}
+      {reports.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-xs text-ink-muted">
+          <p>
+            {reports.length} shown{nextCursor ? ", more below" : ""} <span aria-hidden="true">·</span> {sort === "newest" ? "newest submitted first" : "oldest submitted first"}
+          </p>
+          {hasActiveFilter && (
+            <button type="button" onClick={clearFilters} disabled={filterPending} className="rounded font-medium text-ink underline-offset-2 transition-colors duration-150 hover:text-action hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-50">
+              {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"} active. Clear
+            </button>
+          )}
+        </div>
+      )}
+
+      <div aria-busy={filterPending || undefined} className={cn("transition-opacity duration-200 ease-out motion-reduce:transition-none", filterPending && "opacity-50")}>
+
       {reports.length === 0 ? (
         hasActiveFilter ? (
-          <EmptyState title="No matching findings">No report across this organization's engagements matches the current filters.</EmptyState>
+          <div className="p-4">
+            <EmptyState title="No matching findings">No report across this organization&apos;s engagements matches the current filters. Widen or clear them to see more.</EmptyState>
+            <div className="mt-3 flex justify-center">
+              <Button variant="secondary" onClick={clearFilters} disabled={filterPending}>
+                Clear filters
+              </Button>
+            </div>
+          </div>
         ) : (
           <EmptyState title="No findings yet">Reports submitted to any of this organization's engagements will appear here.</EmptyState>
         )
@@ -196,18 +252,23 @@ export function OrganizationFindingsTable({
                 </tr>
               </thead>
               <tbody>
-                {reports.map((report) => (
+                {reports.map((report, index) => (
                   <tr
                     key={report.id}
-                    className="border-b border-border relative last:border-0 transition-colors duration-150 hover:z-10 hover:bg-surface-muted hover:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.4)] motion-reduce:transition-none"
+                    data-last-opened={report.id === lastOpened || undefined}
+                    style={{ animationDelay: `${Math.min(index, 10) * 20}ms` }}
+                    className="finding-row border-b border-border last:border-0 transition-colors duration-150 hover:bg-surface-muted focus-within:bg-surface-muted motion-safe:animate-enter-rise motion-reduce:transition-none"
                   >
                     <td className="px-4 py-3">{report.confirmedSeverity ? <SeverityBadge severity={report.confirmedSeverity} /> : <span className="text-sm text-ink-muted">Not set</span>}</td>
                     <td className="px-4 py-3">
                       <Link prefetch={false}
                         href={`/organizations/${organizationId}/programs/${report.programId}/reports/${report.id}` as Route}
+                        onClick={() => rememberOpened(report.id)}
                         className="font-medium text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                       >
-                        {report.title}
+                        <ViewTransition name={`report-title-${report.id}`} share="report-title" default="none">
+                          <span>{report.title}</span>
+                        </ViewTransition>
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-sm text-ink-muted">{programNameById.get(report.programId) ?? "Unknown engagement"}</td>
@@ -232,10 +293,15 @@ export function OrganizationFindingsTable({
 
           {/* Mobile: labelled cards, never a shrunk/scrolled table. */}
           <ul className="divide-y divide-border md:hidden">
-            {reports.map((report) => (
-              <li key={report.id} className="p-4 transition-colors duration-150 hover:bg-surface-muted motion-reduce:transition-none">
+            {reports.map((report, index) => (
+              <li
+                key={report.id}
+                style={{ animationDelay: `${Math.min(index, 10) * 20}ms` }}
+                className={cn("border-l-2 p-4 transition-colors duration-150 hover:bg-surface-muted motion-safe:animate-enter-rise motion-reduce:transition-none", report.id === lastOpened ? "border-action" : "border-transparent")}
+              >
                 <Link prefetch={false}
                   href={`/organizations/${organizationId}/programs/${report.programId}/reports/${report.id}` as Route}
+                  onClick={() => rememberOpened(report.id)}
                   className="font-medium text-ink hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   {report.title}
@@ -265,6 +331,7 @@ export function OrganizationFindingsTable({
           </ul>
         </>
       )}
+      </div>
 
       {pending && (
         <div className="space-y-2 border-t border-border p-4" role="status" aria-label="Loading more findings">

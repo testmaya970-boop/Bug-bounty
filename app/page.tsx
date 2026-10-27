@@ -12,12 +12,14 @@ import { WorkflowDiagramPair } from "../components/marketing/workflow-diagram";
 import { PublicHomeMotion } from "../components/marketing/public-home-motion";
 import { ProgramDiscoveryPreview } from "../components/marketing/program-discovery-preview";
 import { StateMachineDiagram } from "../components/marketing/state-machine-diagram";
+import { EvidenceField } from "../components/marketing/evidence-field";
+import { Atmosphere } from "../components/marketing/atmosphere";
 import { getCurrentUser } from "../lib/auth/current-user";
 import {
   listMyPendingProgramInvitations,
   listMyProgramParticipations,
 } from "../services/program-researchers";
-import { listMyReports } from "../services/reports";
+import { countMyReportDrafts, listMyReports } from "../services/reports";
 import { hasAnyOrganizationMembership } from "../services/organizations";
 import {
   getMyReputationLedger,
@@ -72,7 +74,7 @@ const secondaryLinkClass =
 // for a page section entering on scroll, not a FAQ answer appearing on click).
 function FaqItem({ question, answer }: { question: string; answer: string }) {
   return (
-    <details className="group border-t border-border py-5 transition-colors duration-200 ease-out motion-reduce:transition-none">
+    <details className="faq-item group border-t border-border py-5 transition-colors duration-200 ease-out motion-reduce:transition-none">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-ink [&::-webkit-details-marker]:hidden">
         {question}
         <span
@@ -108,7 +110,7 @@ const RESEARCHER_STAGES = [
   {
     label: "Attach evidence",
     detail:
-      "Text, code, request/response logs, or a file, up to 10 MB. Attached at submission or added afterward.",
+      "Text, code, request/response logs, or files: screenshots, screen recordings, PDFs. Attached at submission or added afterward.",
   },
   {
     label: "Communicate",
@@ -247,6 +249,13 @@ function PublicHome() {
             >
               Programs
             </Link>
+            <Link
+              prefetch={false}
+              href={"/contact" as Route}
+              className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+            >
+              Contact
+            </Link>
           </div>
         </div>
       </header>
@@ -255,9 +264,11 @@ function PublicHome() {
         {/* TITLE PAGE (docs/decisions/0082/0083) -- the chaptered-editorial hero:
               type on the paper ground, the hero-art bleeding off both edges as the
               only imagery above the fold. Headline/copy/buttons unchanged. */}
-        <section className="hero-art-host relative overflow-hidden px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
+        <section data-motion="hero" className="hero-art-host relative isolate overflow-hidden px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
+          <Atmosphere variant="hero" />
+          <EvidenceField />
           <HeroArt />
-          <div className="relative mx-auto max-w-2xl text-center">
+          <div data-motion="hero-content" className="relative mx-auto max-w-2xl text-center">
             <h1
               data-motion="hero-heading"
               className={`${headingClass} text-4xl leading-[1.05] sm:text-5xl lg:text-[3.4rem]`}
@@ -303,8 +314,9 @@ function PublicHome() {
               the hero with the title page. */}
         <section
           id="how-it-works"
-          className="relative overflow-hidden border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28"
+          className="relative isolate overflow-hidden border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28"
         >
+          <Atmosphere variant="evidence" />
           <div className="mx-auto grid grid-cols-1 max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
             <div className="relative z-10">
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">
@@ -326,8 +338,8 @@ function PublicHome() {
                 A researcher notices something worth a second look. Domains,
                 URLs, or IP ranges: the single most-specific scope match decides
                 what&rsquo;s authorized before anyone tests anything. Text,
-                code, request/response logs, or a file, up to 10 MB, attached at
-                submission or added afterward.
+                code, request/response logs, screenshots, recordings or PDFs,
+                attached at submission or added afterward.
               </p>
             </div>
             <figure
@@ -335,7 +347,7 @@ function PublicHome() {
               className="chapter-art-full relative -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:mx-0 lg:h-[64vh]"
               aria-hidden="true"
             >
-              <BugSpecimen />
+              <BugSpecimen signal />
               <figcaption className="sr-only">
                 A specimen-plate diagram of a security finding, annotated with
                 real vulnerability classes: unvalidated input, broken access
@@ -348,7 +360,8 @@ function PublicHome() {
         {/* CHAPTER TWO — FINDING / TRIAGE. Hard-cut ground change (bg-surface-muted,
               not an interpolated drift), the real state-machine diagram as the
               chapter's one real "second-read" moment. */}
-        <section className="border-t border-border bg-surface-muted px-4 py-20 sm:px-6 sm:py-28">
+        <section className="relative isolate border-t border-border bg-surface-muted px-4 py-20 sm:px-6 sm:py-28">
+          <Atmosphere variant="lifecycle" />
           <div className="mx-auto max-w-4xl">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">
               <span aria-hidden="true" className="text-action-hover">
@@ -370,7 +383,9 @@ function PublicHome() {
               same one that runs in production, not a simplified version for
               this page.
             </p>
-            <div data-motion="chapter-figure" className="mt-12">
+            {/* No chapter-figure reveal here: that tween leaves a transform on its
+                element, and a transformed ancestor would break the diagram's own pin. */}
+            <div className="mt-12">
               <StateMachineDiagram />
             </div>
           </div>
@@ -383,8 +398,9 @@ function PublicHome() {
               tinted card. */}
         <section
           id="for-researchers"
-          className="border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28"
+          className="relative isolate border-t border-border bg-surface px-4 py-20 sm:px-6 sm:py-28"
         >
+          <Atmosphere variant="workflows" />
           <div className="mx-auto max-w-6xl">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">
               <span aria-hidden="true" className="text-action-hover">
@@ -442,11 +458,12 @@ function PublicHome() {
             plain prose, not a tinted rounded card. The largest span on the page,
             and the quiet chapter-three ground change is its silence-before, per
             feel.md's peak rules. */}
-        <section className="relative overflow-hidden border-t border-border bg-surface-muted px-4 py-24 sm:px-6 sm:py-32">
+        <section className="relative isolate overflow-hidden border-t border-border bg-surface-muted px-4 py-24 sm:px-6 sm:py-32">
+          <Atmosphere variant="record" />
           <div className="mx-auto grid grid-cols-1 max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
             <figure
               data-motion="chapter-figure"
-              className="chapter-art-full relative order-2 -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:order-1 lg:mx-0 lg:h-[68vh]"
+              className="chapter-art-full seal-orbit relative order-2 -mx-4 h-[52vh] min-h-[360px] sm:-mx-6 lg:order-1 lg:mx-0 lg:h-[68vh]"
               aria-hidden="true"
             >
               <AuditSeal />
@@ -480,7 +497,10 @@ function PublicHome() {
                 className="mt-8 space-y-5 border-t border-border pt-6"
               >
                 {PHILOSOPHY_STAGES.map((stage) => (
-                  <div key={stage.label}>
+                  <div key={stage.label} data-motion="record-row" className="relative pl-4">
+                    {/* Each fact is written into the record as it arrives: a short red
+                        rule draws beside it (static, fully drawn, without motion). */}
+                    <span aria-hidden="true" data-motion="record-tick" className="absolute left-0 top-1 h-4 w-px origin-top bg-action" />
                     <dt className="text-sm font-bold text-ink">
                       {stage.label}
                     </dt>
@@ -498,7 +518,8 @@ function PublicHome() {
             parts" rule: information the reader will use, not experience they'll
             remember, so it stays a plain divided list, not another chapter. Real
             questions about Unpatched's real, current constraints, unchanged. */}
-        <section className="border-t border-border px-4 py-16 sm:px-6 sm:py-20">
+        <section className="relative isolate border-t border-border px-4 py-16 sm:px-6 sm:py-20">
+          <Atmosphere variant="quiet" />
           <div className="mx-auto max-w-3xl">
             <h2 className={`${headingClass} text-2xl sm:text-3xl`}>
               Frequently asked questions
@@ -533,8 +554,9 @@ function PublicHome() {
             single dark section breaking an otherwise light page, which every
             earlier version of this homepage violated with two separate bg-ink
             bands. The CTA is set as running text. */}
-        <section className="border-t border-border px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mx-auto max-w-2xl text-center">
+        <section className="relative isolate border-t border-border px-4 py-16 sm:px-6 sm:py-20">
+          <Atmosphere variant="close" />
+          <div data-motion="reveal" className="mx-auto max-w-2xl text-center">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-ink-muted">
               <span aria-hidden="true">[ </span>REC-0000842
               <span aria-hidden="true"> ] /// </span>closed
@@ -562,8 +584,9 @@ function PublicHome() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-border px-4 py-14 sm:px-6">
-        <div className="mx-auto max-w-6xl">
+      <footer className="relative isolate border-t border-border px-4 py-14 sm:px-6">
+        <Atmosphere variant="rest" />
+        <div data-motion="reveal" className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
             <div>
               <div className="flex items-center gap-2">
@@ -636,6 +659,15 @@ function PublicHome() {
                     className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
                   >
                     For organizations
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    prefetch={false}
+                    href={"/contact" as Route}
+                    className="hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
+                    Talk to us
                   </Link>
                 </li>
                 <li>
@@ -751,7 +783,8 @@ async function renderHomePage() {
     reputationScore,
     paymentObligations,
     emailAlias,
-  ] = await perfTimed("HomePage 10-query dashboard batch", () =>
+    draftCount,
+  ] = await perfTimed("HomePage 11-query dashboard batch", () =>
     Promise.all([
       listMyPendingProgramInvitations(),
       // Replaces four separate round trips (getMyReputationSummary,
@@ -781,6 +814,8 @@ async function renderHomePage() {
       // "lifetime rewards" stat, replacing the fabricated MOCK_RESEARCHER_STATUS figure.
       listMyPaymentObligations(user.id),
       getMyEmailAliasAddress(user.id),
+      // One indexed count; the drafts list itself lives at /reports/drafts (Home links out).
+      countMyReportDrafts(),
     ]),
   );
   const {
@@ -843,6 +878,14 @@ async function renderHomePage() {
             label: "Review invitations",
             href: "/programs" as Route,
           }
+        : draftCount > 0
+          ? {
+              eyebrow: "In progress",
+              title: `${draftCount} unsubmitted report draft${draftCount === 1 ? "" : "s"}`,
+              description: "Drafts are private to you until you submit them. Pick up where you left off.",
+              label: "Open my drafts",
+              href: "/reports/drafts" as Route,
+            }
         : {
             eyebrow: "Research",
             title: "Find your next security target",

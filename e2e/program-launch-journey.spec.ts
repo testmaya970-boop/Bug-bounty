@@ -91,11 +91,9 @@ test("launch journey: org creates + submits engagement, platform admin activates
   await page.getByRole("button", { name: /Start researching/ }).click();
   await page.waitForURL(/\/reports\/new$/);
 
-  await page.getByLabel("Target type").selectOption("domain");
-  // The in-scope <datalist> makes this input a combobox, not a textbox.
-  await page.getByRole("combobox", { name: "Target", exact: true }).fill(scopeTarget);
+  await page.getByLabel("Asset").selectOption({ label: scopeTarget });
   await page.getByLabel("Title").fill(reportTitle);
-  await page.getByLabel("Weakness type").selectOption("idor");
+  await page.getByLabel("Vulnerability category").selectOption("idor");
   await page.getByLabel("Your severity assessment").selectOption("high");
   // Unique per run: the same text to several programs in a day trips NEAR_DUPLICATE_BLAST.
   const invoice = 10000 + Math.floor(Math.random() * 89999);
@@ -135,7 +133,7 @@ test("launch journey: org creates + submits engagement, platform admin activates
   const statusFilters = page.getByRole("navigation", { name: "Filter by status" });
   await expect(statusFilters.getByRole("link", { name: /Active/ })).toBeVisible();
   await expect(statusFilters.getByRole("link", { name: /Closed/ })).toBeVisible();
-  await page.getByLabel("Search programs").fill(programName);
+  await page.getByRole("main").getByLabel("Search programs").fill(programName);
   await page.getByRole("button", { name: "Search" }).click();
   await page.waitForURL(/q=/);
   const row = page.getByRole("row").filter({ hasText: programName });

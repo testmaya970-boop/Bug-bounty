@@ -6,16 +6,19 @@ import { Input } from "../ui/form";
 import { Button } from "../ui/button";
 import { Alert } from "../ui/feedback";
 import { SectionLabel } from "../ui/security-primitives";
+import Link from "next/link";
+import type { Route } from "next";
 import { KycStatusBadge } from "../ui/badge";
 import { submitMyKycAction } from "../../actions/researcher-profiles";
 import type { KycStatusSummary } from "../../types/researcher-identity";
 
 /**
- * Real KYC fields, reviewed manually by a platform admin -- deliberately NOT a "Verify via
- * DigiLocker"/"Verify PAN" button. Unpatched has no real government-ID-verification
- * provider integration; a button claiming to verify identity with nothing real behind it
- * is fabricated security theater. See docs/decisions/0051 and app/platform/kyc (the real
- * review surface) for the other half of this.
+ * Manual review: the fallback to provider verification (/settings/identity, DigiLocker or a
+ * document + selfie check). A PAN, passport or phone number submitted here is encrypted at rest
+ * and checked by a platform admin by hand; submitting is not verification, and the status says
+ * so ("Requires review") until an admin decides. Aadhaar is NOT collected here: it is verified
+ * only through DigiLocker, and the database refuses new Aadhaar numbers (202610260005). A record
+ * submitted before that change keeps its status and is shown read-only.
  *
  * Each field is its own small form: submitting one never touches the others (the
  * underlying RPC only updates the field it's given), matching how the fields are reviewed
@@ -25,12 +28,18 @@ export function KycSettings({ initial }: { initial: KycStatusSummary }) {
   return (
     <div className="space-y-6 border-t border-border pt-6">
       <div>
-        <SectionLabel>KYC verification</SectionLabel>
-        <p className="mt-1 text-sm text-ink-muted">Submitted details are encrypted and reviewed manually. A platform admin marks each field verified or rejected. There is no automated verification.</p>
+        <SectionLabel>Manual identity review</SectionLabel>
+        <p className="mt-1 text-sm text-ink-muted">
+          The fastest way to verify is automatic, on{" "}
+          <Link prefetch={false} href={"/settings/identity" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            Identity &amp; phone
+          </Link>
+          . If that isn&apos;t possible, submit a detail below: it is encrypted, seen only by the platform staff who review it, and shows Requires review until they decide.
+        </p>
       </div>
 
       <PhoneField initial={initial} />
-      <AadhaarField initial={initial} />
+      <AadhaarNotice initial={initial} />
       <PanField initial={initial} />
       <PassportField initial={initial} />
     </div>
@@ -93,43 +102,18 @@ function PhoneField({ initial }: { initial: KycStatusSummary }) {
   );
 }
 
-function AadhaarField({ initial }: { initial: KycStatusSummary }) {
-  const router = useRouter();
-  const [aadhaarNumber, setAadhaarNumber] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [pending, startTransition] = useTransition();
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setError(null);
-    setSaved(false);
-    startTransition(async () => {
-      const result = await submitMyKycAction({ aadhaarNumber });
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      setAadhaarNumber("");
-      setSaved(true);
-      router.refresh();
-    });
-  }
-
+/** Aadhaar is never typed in here: DigiLocker verifies it and Unpatched never sees the number.
+ * An Aadhaar number submitted before 202610260005 keeps its review status, shown read-only. */
+function AadhaarNotice({ initial }: { initial: KycStatusSummary }) {
   return (
-    <FieldShell title="Aadhaar verification" status={initial.aadhaarStatus} note={initial.reviewNote}>
-      <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={handleSubmit}>
-        <Input label="Aadhaar number" value={aadhaarNumber} onChange={(event) => setAadhaarNumber(event.target.value)} className="sm:flex-1" maxLength={12} placeholder={initial.aadhaarSubmitted ? "On file, enter a new number to replace it" : "12-digit Aadhaar number"} />
-        <Button type="submit" pending={pending} disabled={!aadhaarNumber}>
-          Submit
-        </Button>
-      </form>
-      {error && (
-        <p role="alert" className="mt-2 text-sm font-medium text-danger">
-          {error}
-        </p>
-      )}
-      {saved && <Alert tone="success" title="Aadhaar submitted for review." className="mt-2" />}
+    <FieldShell title="Aadhaar" status={initial.aadhaarStatus} note={initial.reviewNote}>
+      <p className="text-sm text-ink-muted">
+        Aadhaar is verified only through DigiLocker, with your consent and your own OTP on DigiLocker&apos;s site. Unpatched never sees or stores your Aadhaar number or OTP.{" "}
+        <Link prefetch={false} href={"/settings/identity" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+          Verify with DigiLocker
+        </Link>
+      </p>
+      {initial.aadhaarSubmitted && <p className="mt-2 text-xs text-ink-muted">You submitted an Aadhaar number for manual review earlier; that record keeps the status shown here.</p>}
     </FieldShell>
   );
 }
@@ -158,8 +142,8 @@ function PanField({ initial }: { initial: KycStatusSummary }) {
   }
 
   return (
-    <FieldShell title="PAN verification" status={initial.panStatus} note={initial.reviewNote}>
-      <p className="mb-2 text-xs text-ink-muted">Mandatory for bounty payouts and invoice generation.</p>
+    <FieldShell title="PAN" status={initial.panStatus} note={initial.reviewNote}>
+      <p className="mb-2 text-xs text-ink-muted">Needed for payouts in India and on invoices. DigiLocker can verify it automatically; entering it here sends it for manual review instead.</p>
       <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={handleSubmit}>
         <Input label="PAN number" value={panNumber} onChange={(event) => setPanNumber(event.target.value.toUpperCase())} className="sm:flex-1" maxLength={10} placeholder={initial.panSubmitted ? "On file, enter a new number to replace it" : "e.g. ABCDE1234F"} />
         <Button type="submit" pending={pending} disabled={!panNumber}>
@@ -201,7 +185,7 @@ function PassportField({ initial }: { initial: KycStatusSummary }) {
   }
 
   return (
-    <FieldShell title="Passport verification" status={initial.passportStatus} note={initial.reviewNote}>
+    <FieldShell title="Passport" status={initial.passportStatus} note={initial.reviewNote}>
       <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={handleSubmit}>
         <Input label="Passport number" value={passportNumber} onChange={(event) => setPassportNumber(event.target.value.toUpperCase())} className="sm:flex-1" maxLength={20} placeholder={initial.passportSubmitted ? "On file, enter a new number to replace it" : "Passport file number"} />
         <Input label="Date of birth" type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} className="sm:w-44" />

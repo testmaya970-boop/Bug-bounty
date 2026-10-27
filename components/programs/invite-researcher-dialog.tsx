@@ -14,7 +14,9 @@ const INVITATION_EXPIRY_DAYS = 7;
 
 /** An address with an @ in the middle is an email; anything else (with or without a leading @)
  * is a researcher's username, whose email the organization never sees. */
-const isEmail = (value: string) => /^[^@s]+@[^@s]+$/.test(value.trim());
+// `\s`, not `s`: a lost backslash once sent every address containing the letter "s" down
+// the username path, where it failed validation.
+export const isEmail = (value: string) => /^[^@\s]+@[^@\s]+$/.test(value.trim());
 
 export function InviteResearcherDialog({ organizationId, programId }: { organizationId: string; programId: string }) {
   const [open, setOpen] = useState(false);

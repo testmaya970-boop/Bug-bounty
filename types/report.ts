@@ -36,6 +36,10 @@ export type CvssMetrics = {
  * pure metadata, never authorization-bearing. See
  * docs/decisions/0047-report-composer-weakness-impact-severity.md and
  * lib/report-weakness-labels.ts for display labels. */
+/** Operational priority, P0 (critical) to P4 (informational). Distinct from severity: see
+ * lib/report-priority.ts and db/migrations/202610260003_report_priority.sql. */
+export type ReportPriority = "p0" | "p1" | "p2" | "p3" | "p4";
+
 export type ReportWeaknessType =
   | "cross_site_scripting"
   | "sql_injection"
@@ -52,6 +56,8 @@ export type ReportWeaknessType =
   | "business_logic"
   | "denial_of_service"
   | "cryptographic_failure"
+  | "insecure_file_upload"
+  | "api_security"
   | "other";
 
 /**
@@ -81,6 +87,8 @@ export type Report = {
   matchedTarget: string;
   status: ReportStatus;
   confirmedSeverity: ReportSeverity | null;
+  /** Explicit triager-set priority; null means it follows confirmedSeverity (effectivePriority). */
+  priority: ReportPriority | null;
   duplicateOfReportId: string | null;
   resolutionSummary: string | null;
   weaknessType: ReportWeaknessType | null;
@@ -90,6 +98,8 @@ export type Report = {
   cvssBaseScore: number | null;
   /** CVSS 4.0 base vector and score (202610220006); null when not scored with v4. */
   cvss4Vector?: string | null;
+  /** The researcher's own CVSS at submission (scored server-side). Advisory; separate from the triager's CVSS. */
+  researcherCvss?: { version: "4.0" | "3.1"; vector: string; score: number } | null;
   cvss4Score?: number | null;
   /** The staff member working this report (202610060011); null when unassigned. */
   assigneeId: string | null;

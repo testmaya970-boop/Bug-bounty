@@ -7,10 +7,12 @@ import { SegmentedBar } from "../charts/segmented-bar";
 import { RangeFilter } from "../charts/range-filter";
 import { SEVERITY_SERIES, VIZ, change, compactMoney, compactNumber, formatHours, percent, reportStatusSegments, weekLabel } from "../../lib/viz";
 import type { OrganizationDashboard as Data } from "../../services/dashboards";
-import type { ReportStatus } from "../../types/report";
+import type { ReportStatus, ReportWeaknessType } from "../../types/report";
+import { weaknessTypeLabel } from "../../lib/report-weakness-labels";
 
-const WEAKNESS_LABELS: Record<string, string> = { xss: "Cross-site scripting", sqli: "SQL injection", idor: "IDOR", ssrf: "SSRF", rce: "Remote code execution", csrf: "CSRF" };
-const weaknessLabel = (w: string) => WEAKNESS_LABELS[w] ?? w.replaceAll("_", " ").replace(/^\w/, (c) => c.toUpperCase());
+// The taxonomy's own labels: the old local map keyed by "xss"/"sqli"/"rce" never matched the
+// stored values ("cross_site_scripting", ...), so most categories fell through to a fallback.
+const weaknessLabel = (w: string) => weaknessTypeLabel(w as ReportWeaknessType) ?? w.replaceAll("_", " ").replace(/^\w/, (c) => c.toUpperCase());
 
 /**
  * Organization analytics (HackerOne program analytics as the reference): KPI row, inflow by
@@ -83,7 +85,7 @@ export function OrganizationDashboard({ data, days, organizationId, statusCounts
           <SegmentedBar data={statusSegments} />
         </ChartCard>
 
-        <ChartCard title="Top weaknesses" subtitle={`Valid findings by weakness type, ${window}`} empty={data.weaknesses.length === 0 && "No valid findings in this period."}>
+        <ChartCard title="Top vulnerability categories" subtitle={`Valid findings by vulnerability category, ${window}`} empty={data.weaknesses.length === 0 && "No valid findings in this period."}>
           <BarList items={data.weaknesses.map((w) => ({ label: weaknessLabel(w.weakness), value: w.count }))} />
         </ChartCard>
 

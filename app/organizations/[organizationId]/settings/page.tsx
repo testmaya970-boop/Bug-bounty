@@ -19,6 +19,8 @@ import { getActorMembership, listOrganizationMembers, listPendingInvitations } f
 import { getOrganizationDescription, listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listProgramsForOrganization } from "../../../../services/programs";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
+import { listOrganizationDomains } from "../../../../services/organization-domains";
+import { VerifiedDomainsSettings } from "../../../../components/organizations/verified-domains-settings";
 
 /**
  * The final page in the organization workspace hierarchy (Overview / Programs / Members
@@ -53,7 +55,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
   // member would silently come back empty, which would misrepresent "0" as a real count
   // rather than "you aren't authorized to see this." So that fetch only happens at all
   // when `canManage` is true.
-  const [organizations, members, programs, invitations, description, jiraConnection, logoVersions] = await Promise.all([
+  const [organizations, members, programs, invitations, description, jiraConnection, logoVersions, domains] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listOrganizationMembers(organizationId),
     listProgramsForOrganization(organizationId),
@@ -63,6 +65,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
     // so only fetched for them -- same reasoning as invitations above.
     canIntegrate ? getJiraConnection(organizationId) : Promise.resolve(null),
     getOrganizationLogoVersions([organizationId]),
+    listOrganizationDomains(organizationId),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
@@ -153,6 +156,14 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
           </Link>
         </div>
         )}
+
+        <div className="border-t border-border pt-6" id="verified-domains">
+          <SectionLabel>Verified domains</SectionLabel>
+          <p className="mt-1 text-sm text-ink-muted">Prove you control a domain before researchers may test it. Hosts under a verified domain become testable; anything else you add to scope stays hidden until it is verified.</p>
+          <div className="mt-3">
+            <VerifiedDomainsSettings organizationId={organizationId} domains={domains} canManage={canManage} />
+          </div>
+        </div>
 
         <div className="border-t border-border pt-6" id="integrations">
           <SectionLabel>Integrations</SectionLabel>

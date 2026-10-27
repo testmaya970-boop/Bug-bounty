@@ -40,7 +40,7 @@ const createPolicySchema = z.object({
   currency: currencySchema,
   ranges: z
     .object({ none: rangeSchema, low: rangeSchema, medium: rangeSchema, high: rangeSchema, critical: rangeSchema })
-    .refine((r) => r.critical.max > 0, { message: "A bounty table must pay something: set at least the Critical maximum above zero." }),
+    .refine((r) => r.critical.max > 0, { message: "A bounty table must pay something: set at least the P0 maximum above zero." }),
 });
 
 export async function createBountyPolicyVersionAction(input: z.infer<typeof createPolicySchema>): Promise<ActionResult<BountyPolicy>> {

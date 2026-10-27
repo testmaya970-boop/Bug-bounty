@@ -12,7 +12,7 @@ const SEVERITY_BREAKDOWN: { key: keyof Pick<OrganizationBountySpendSummary, "pai
   { key: "paidHighCount", severity: "high", label: "High" },
   { key: "paidMediumCount", severity: "medium", label: "Medium" },
   { key: "paidLowCount", severity: "low", label: "Low" },
-  { key: "paidNoneCount", severity: "none", label: "None" },
+  { key: "paidNoneCount", severity: "none", label: "Info" },
 ];
 
 const SEVERITY_DOT_CLASS: Record<ReportSeverity, string> = {

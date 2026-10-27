@@ -8,8 +8,8 @@ import { REPUTATION_FACT_TYPE_DISPLAY_ORDER } from "../../lib/reputation-labels"
 import type { ReputationFactCount } from "../../types/reputation";
 import type { ReportSeverity } from "../../types/report";
 
+import { SEVERITY_LABEL } from "../../lib/report-status";
 const SEVERITY_ORDER: ReportSeverity[] = ["critical", "high", "medium", "low"];
-const SEVERITY_LABEL: Record<ReportSeverity, string> = { critical: "Critical", high: "High", medium: "Medium", low: "Low", none: "None" };
 
 /**
  * Two real charts over the researcher's own existing counts -- no new metric, no score,

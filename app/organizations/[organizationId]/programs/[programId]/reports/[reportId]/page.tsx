@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ViewTransition } from "react";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { AppShell } from "../../../../../../../components/app-shell";
@@ -18,6 +18,10 @@ import { PaymentStatusSection } from "../../../../../../../components/reports/pa
 import { OrganizationDisclosureDecisionPanel, ResearcherDisclosurePanel } from "../../../../../../../components/reports/report-disclosure";
 import { CvssSummary } from "../../../../../../../components/reports/cvss-summary";
 import { Cvss4Editor } from "../../../../../../../components/reports/cvss4-editor";
+import { PriorityControl } from "../../../../../../../components/reports/priority-control";
+import { evidenceLimits } from "../../../../../../../lib/evidence-limits";
+import { cvssBand } from "../../../../../../../lib/cvss";
+import { effectivePriority, priorityLabel } from "../../../../../../../lib/report-priority";
 import { ReportCollaboratorsPanel } from "../../../../../../../components/reports/report-collaborators";
 import { ReportRetestPanel } from "../../../../../../../components/reports/report-retest";
 import { ReportMediationPanel } from "../../../../../../../components/reports/report-mediation";
@@ -34,7 +38,7 @@ import { canCreateProgram } from "../../../../../../../services/authorization";
 import { getActorMembership } from "../../../../../../../services/organization-members";
 import { getProgram, listProgramMembers } from "../../../../../../../services/programs";
 import { getCurrentUser } from "../../../../../../../lib/auth/current-user";
-import { reportStatusMeaning, reportNextActionLabel, researcherNextActionLabel, REPORT_STATUS_TRANSITIONS } from "../../../../../../../lib/report-status";
+import { reportStatusMeaning, reportNextActionLabel, researcherNextActionLabel, REPORT_STATUS_TRANSITIONS, severityLabel } from "../../../../../../../lib/report-status";
 import { weaknessTypeLabel } from "../../../../../../../lib/report-weakness-labels";
 import { getResearcherBiography } from "../../../../../../../services/researcher-profiles";
 import { LocalTime } from "../../../../../../../components/ui/local-time";
@@ -109,6 +113,7 @@ export default async function ReportDetailPage({
   const isProgramTriager = members.some((member) => member.userId === user.id);
   const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
   const canTriage = isProgramTriager || isOrgAdmin;
+  const reportPriority = effectivePriority(report);
 
   // Committing a financial figure is more sensitive than triage: org admins and the
   // program's own manager, never a triager (lock_and_authorize_report_for_finance).
@@ -217,7 +222,11 @@ export default async function ReportDetailPage({
             target (the single most important fact for a triager) on one line. */}
         <header className="space-y-3 border-b border-border pb-4">
           <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
-            {report.title} <span className="font-normal text-ink-muted">#{report.id.slice(0, 8)}</span>
+            {/* Paired with the Findings row title of the same name: opening a report morphs it here. */}
+            <ViewTransition name={`report-title-${report.id}`} share="report-title" default="none">
+              <span>{report.title}</span>
+            </ViewTransition>{" "}
+            <span className="font-normal text-ink-muted">#{report.id.slice(0, 8)}</span>
           </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
             {canTriage ? (
@@ -230,6 +239,12 @@ export default async function ReportDetailPage({
                 <StatusBadge status={report.status} />
                 {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
               </>
+            )}
+            {reportPriority && (
+              <span title={report.priority ? "Priority set by the program" : "Priority follows the confirmed severity"} className="inline-flex items-center rounded border border-border-strong px-1.5 py-0.5 font-mono text-xs font-semibold text-ink">
+                <span className="sr-only">Priority </span>
+                {priorityLabel(reportPriority)}
+              </span>
             )}
             <span className="text-ink-muted">
               <span className="font-semibold text-ink">{isOwnReport ? "You" : report.researcherName}</span> submitted this report <LocalTime value={report.submittedAt} /> · {messages.length} {messages.length === 1 ? "message" : "messages"}
@@ -270,8 +285,23 @@ export default async function ReportDetailPage({
                     reports. researcherSeverity is deliberately labeled distinctly from
                     the decision rail's "Confirmed severity" — see that field's own
                     comment for why this is advisory-only, never authoritative. */}
-                <MetadataPair label="Weakness type" value={report.weaknessType ? weaknessTypeLabel(report.weaknessType) : "Not specified"} />
-                <MetadataPair label="Researcher's severity assessment" value={report.researcherSeverity ? report.researcherSeverity[0].toUpperCase() + report.researcherSeverity.slice(1) : "Not set"} />
+                <MetadataPair label="Vulnerability category" value={report.weaknessType ? weaknessTypeLabel(report.weaknessType) : "Not specified"} />
+                <MetadataPair label="Researcher's severity assessment" value={report.researcherSeverity ? severityLabel(report.researcherSeverity) : "Not set"} />
+                {/* Scored by the server from the vector at submission; advisory, like the
+                    severity assessment above. Older reports have none. */}
+                <MetadataPair
+                  label="Researcher's CVSS"
+                  value={
+                    report.researcherCvss ? (
+                      <span>
+                        <span className="font-mono font-semibold tabular-nums">{report.researcherCvss.score.toFixed(1)}</span> {severityLabel(cvssBand(report.researcherCvss.score))} (CVSS {report.researcherCvss.version})
+                        <span className="mt-0.5 block break-all font-mono text-xs text-ink-muted">{report.researcherCvss.vector}</span>
+                      </span>
+                    ) : (
+                      "Not scored"
+                    )
+                  }
+                />
                 <MetadataPair
                   label="Scope authorization"
                   className="sm:col-span-2"
@@ -358,7 +388,7 @@ export default async function ReportDetailPage({
             )}
             {(isOwnReport || canTriage) && (
               <TimelineItem icon={ChatCircleText} title="Add to this report">
-                <ReportComposer organizationId={organizationId} programId={programId} reportId={reportId} side={canTriage ? "organization" : "researcher"} />
+                <ReportComposer organizationId={organizationId} programId={programId} reportId={reportId} side={canTriage ? "organization" : "researcher"}  limits={evidenceLimits()} />
               </TimelineItem>
             )}
             </div>
@@ -442,6 +472,7 @@ export default async function ReportDetailPage({
                   <ReportAssigneeControl organizationId={organizationId} programId={programId} reportId={reportId} assigneeId={report.assigneeId} staff={assignableStaff} currentUserId={user.id} />
                   <SeverityControl organizationId={organizationId} programId={programId} reportId={reportId} currentSeverity={report.confirmedSeverity} currentCvssBaseScore={report.cvssBaseScore} locked={isFinal || bountyFinalized} lockReason={bountyFinalized && !isFinal ? "bounty" : "decision"} />
                   <Cvss4Editor organizationId={organizationId} programId={programId} reportId={reportId} vector={report.cvss4Vector ?? null} score={report.cvss4Score ?? null} locked={isFinal || bountyFinalized} />
+                  <PriorityControl organizationId={organizationId} programId={programId} reportId={reportId} priority={report.priority} confirmedSeverity={report.confirmedSeverity} locked={bountyFinalized} />
                   <TriageActionPanel organizationId={organizationId} programId={programId} reportId={reportId} status={report.status} allowedNext={allowedNext} />
                 </div>
               )}

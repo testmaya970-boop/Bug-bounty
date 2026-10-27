@@ -17,7 +17,7 @@ const TARGET_PLACEHOLDER: Record<ProgramAssetType, string> = {
   ip_cidr: "203.0.113.0/24 or 203.0.113.5",
   ios_app: "https://apps.apple.com/app/id123456789 or com.example.app",
   android_app: "https://play.google.com/store/apps/details?id=com.example.app",
-  source_code: "https://github.com/example/repo",
+  source_code: "https://git.example.com/org/repo",
   hardware: "Model XR-200 router",
   ai_model: "gpt-example-v2 or https://api.example.com/v1/chat/completions",
 };

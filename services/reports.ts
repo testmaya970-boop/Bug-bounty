@@ -1,4 +1,5 @@
 import "server-only";
+import { evidenceObjectStore } from "@/lib/evidence-store";
 import { withActorTransaction, withServiceRoleTransaction, callRpc } from "@/lib/db/pool";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
@@ -6,6 +7,7 @@ import { clampPageSize, decodeCursor, encodeCursor } from "@/lib/pagination";
 import { REPORT_STATUS_TRANSITIONS } from "@/lib/report-status";
 import type { ProgramAssetType } from "@/types/scope";
 import type {
+  ReportPriority,
   CvssMetrics,
   Report,
   ReportCollaborator,
@@ -30,7 +32,7 @@ import type { Page } from "@/types/pagination";
 export { OrganizationServiceError };
 
 const REPORT_SELECT_COLUMNS =
-  "r.id, r.program_id, r.organization_id, r.researcher_id, r.title, r.description, r.asset_type, r.target, r.display_target, r.matched_scope_entry_id, r.matched_scope_state, r.matched_target, r.status, r.confirmed_severity, r.duplicate_of_report_id, r.resolution_summary, r.weakness_type, r.impact, r.researcher_severity, r.cvss_attack_vector, r.cvss_attack_complexity, r.cvss_privileges_required, r.cvss_user_interaction, r.cvss_scope, r.cvss_confidentiality_impact, r.cvss_integrity_impact, r.cvss_availability_impact, r.cvss_base_score, r.cvss4_vector, r.cvss4_score, r.submitted_at, r.created_at, r.updated_at, u.display_name as researcher_display_name, r.assignee_id, a.display_name as assignee_display_name";
+  "r.id, r.program_id, r.organization_id, r.researcher_id, r.title, r.description, r.asset_type, r.target, r.display_target, r.matched_scope_entry_id, r.matched_scope_state, r.matched_target, r.status, r.confirmed_severity, r.priority, r.duplicate_of_report_id, r.resolution_summary, r.weakness_type, r.impact, r.researcher_severity, r.cvss_attack_vector, r.cvss_attack_complexity, r.cvss_privileges_required, r.cvss_user_interaction, r.cvss_scope, r.cvss_confidentiality_impact, r.cvss_integrity_impact, r.cvss_availability_impact, r.cvss_base_score, r.cvss4_vector, r.cvss4_score, r.researcher_cvss_version, r.researcher_cvss_vector, r.researcher_cvss_score, r.submitted_at, r.created_at, r.updated_at, u.display_name as researcher_display_name, r.assignee_id, a.display_name as assignee_display_name";
 
 type ReportRow = {
   id: string;
@@ -47,6 +49,7 @@ type ReportRow = {
   matched_target: string;
   status: ReportStatus;
   confirmed_severity: ReportSeverity | null;
+  priority?: ReportPriority | null;
   duplicate_of_report_id: string | null;
   resolution_summary: string | null;
   weakness_type: ReportWeaknessType | null;
@@ -62,6 +65,9 @@ type ReportRow = {
   cvss_availability_impact: string | null;
   cvss_base_score: number | null;
   cvss4_vector?: string | null;
+  researcher_cvss_version?: "4.0" | "3.1" | null;
+  researcher_cvss_vector?: string | null;
+  researcher_cvss_score?: number | string | null;
   cvss4_score?: string | number | null;
   submitted_at: string;
   created_at: string;
@@ -110,6 +116,7 @@ function mapReportRow(row: ReportRow): Report {
     matchedTarget: row.matched_target,
     status: row.status,
     confirmedSeverity: row.confirmed_severity,
+    priority: row.priority ?? null,
     duplicateOfReportId: row.duplicate_of_report_id,
     resolutionSummary: row.resolution_summary,
     weaknessType: row.weakness_type,
@@ -118,6 +125,10 @@ function mapReportRow(row: ReportRow): Report {
     cvssMetrics: mapCvssMetrics(row),
     cvssBaseScore: row.cvss_base_score,
     cvss4Vector: row.cvss4_vector ?? null,
+    researcherCvss:
+      row.researcher_cvss_vector && row.researcher_cvss_version && row.researcher_cvss_score != null
+        ? { version: row.researcher_cvss_version, vector: row.researcher_cvss_vector, score: Number(row.researcher_cvss_score) }
+        : null,
     cvss4Score: row.cvss4_score == null ? null : Number(row.cvss4_score),
     assigneeId: row.assignee_id ?? null,
     assigneeName: row.assignee_display_name ?? null,
@@ -138,24 +149,50 @@ function mapReportRpcResult(row: ReportRpcRow): Report {
  * (private.canonicalize_scope_target / private.match_program_scope, 202608270001),
  * never duplicated here. See docs/decisions/0008-report-authorization-and-scope-snapshot.md.
  */
-export async function submitReport(
-  programId: string,
-  assetType: ProgramAssetType,
-  targetInput: string,
-  title: string,
-  description: string,
-  weaknessType: ReportWeaknessType,
-  impact: string,
-  researcherSeverity?: ReportSeverity,
-  acknowledgedPolicyVersion: number | null = null,
-): Promise<Report> {
+export type SubmitReportInput = {
+  programId: string;
+  assetType: ProgramAssetType;
+  targetInput: string;
+  title: string;
+  description: string;
+  weaknessType: ReportWeaknessType;
+  impact: string;
+  researcherSeverity?: ReportSeverity;
+  acknowledgedPolicyVersion: number | null;
+  /** The scope entry the researcher picked; the database requires its own match to be this one. */
+  scopeEntryId: string | null;
+  /** Already scored on the server (lib/cvss-vector.ts); null when the researcher gave none. */
+  cvss: { version: "4.0" | "3.1"; vector: string; score: number } | null;
+  draftId: string | null;
+  uploadIds: string[];
+  /** Same key on a retry returns the report already created (no duplicate). */
+  submissionKey: string;
+};
+
+export async function submitReport(input: SubmitReportInput): Promise<Report> {
   const actor = await getCurrentUser();
   let rows;
   try {
     rows = await withActorTransaction(actor?.id ?? null, async (client) => {
       // Read by the reports insert trigger in this same transaction (202610060009).
-      await client.query("select set_config('app.acknowledged_policy_version', $1, true)", [acknowledgedPolicyVersion?.toString() ?? ""]);
-      return callRpc<ReportRpcRow>(client, "public.submit_report", [programId, assetType, targetInput, title, description, weaknessType, impact, researcherSeverity ?? null]);
+      await client.query("select set_config('app.acknowledged_policy_version', $1, true)", [input.acknowledgedPolicyVersion?.toString() ?? ""]);
+      return callRpc<ReportRpcRow>(client, "public.submit_report", [
+        input.programId,
+        input.assetType,
+        input.targetInput,
+        input.title,
+        input.description,
+        input.weaknessType,
+        input.impact,
+        input.researcherSeverity ?? null,
+        input.scopeEntryId,
+        input.cvss?.version ?? null,
+        input.cvss?.vector ?? null,
+        input.cvss?.score ?? null,
+        input.draftId,
+        input.uploadIds,
+        input.submissionKey,
+      ]);
     });
   } catch (error) {
     mapError(error as { message: string });
@@ -717,6 +754,12 @@ export async function setReportSeverity(reportId: string, severity: ReportSeveri
     cvss?.integrityImpact ?? null,
     cvss?.availabilityImpact ?? null,
   ]);
+}
+
+/** Sets the operational priority, or clears it (null) back to the severity default. The RPC
+ * authorizes the triager and refuses once the bounty is finalized (202610260003). */
+export async function setReportPriority(reportId: string, priority: ReportPriority | null): Promise<Report> {
+  return callTriageRpc("public.set_report_priority", [reportId, priority]);
 }
 
 type ReportAuditRow = { id: string; actor_id: string | null; action: string; entity_type: string; entity_id: string; metadata: Record<string, unknown> | null; created_at: string };
@@ -1374,37 +1417,96 @@ export async function getReportStatusHistory(reportId: string): Promise<ReportSt
 }
 
 /** The researcher's saved draft for a program (report_drafts, 202610060014), or null. */
-export async function getMyReportDraft(programId: string): Promise<{ draft: Record<string, unknown>; updatedAt: string } | null> {
+export type ReportDraftRecord = { id: string; programId: string; version: number; draft: Record<string, unknown>; updatedAt: string };
+export type ReportDraftSummary = { id: string; programId: string; programName: string | null; organizationId: string | null; title: string; updatedAt: string; fileCount: number };
+
+/** One of the caller's own drafts (RLS: drafts are visible to their owner only). */
+export async function getMyReportDraft(draftId: string): Promise<ReportDraftRecord | null> {
   const actor = await getCurrentUser();
   let rows;
   try {
     rows = await withActorTransaction(actor?.id ?? null, (client) =>
       client
-        .query<{ draft: Record<string, unknown>; updated_at: string }>("select draft, updated_at from public.report_drafts where program_id = $1 and researcher_id = $2", [programId, actor?.id ?? null])
+        .query<{ id: string; program_id: string; version: number; draft: Record<string, unknown>; updated_at: string }>(
+          "select id, program_id, version, draft, updated_at from public.report_drafts where id = $1 and researcher_id = $2",
+          [draftId, actor?.id ?? null],
+        )
         .then((r) => r.rows),
     );
   } catch (error) {
     mapError(error as { message: string });
   }
-  return rows[0] ? { draft: rows[0].draft, updatedAt: rows[0].updated_at } : null;
+  const row = rows[0];
+  return row ? { id: row.id, programId: row.program_id, version: row.version, draft: row.draft, updatedAt: row.updated_at } : null;
 }
 
-export async function saveMyReportDraft(programId: string, draft: Record<string, unknown>): Promise<string> {
+/** How many unsubmitted drafts the caller has (Home links to My Drafts with this). One indexed count. */
+export async function countMyReportDrafts(): Promise<number> {
+  const actor = await getCurrentUser();
+  if (!actor) return 0;
+  try {
+    const result = await withActorTransaction(actor.id, (client) => client.query<{ count: string }>("select count(*) from public.report_drafts where researcher_id = $1", [actor.id]));
+    return Number(result.rows[0]?.count ?? 0);
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+/** The caller's drafts across every program, most recently saved first (My Drafts). */
+export async function listMyReportDrafts(programId?: string): Promise<ReportDraftSummary[]> {
   const actor = await getCurrentUser();
   let rows;
   try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<{ save_my_report_draft: string }>(client, "public.save_my_report_draft", [programId, JSON.stringify(draft)]));
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      client
+        .query<{ id: string; program_id: string; program_name: string | null; organization_id: string | null; title: string | null; updated_at: string; file_count: string }>(
+          `select d.id, d.program_id, p.name as program_name, p.organization_id, nullif(trim(d.draft->>'title'), '') as title, d.updated_at,
+             (select count(*) from public.evidence_uploads u where u.draft_id = d.id and u.status = 'ready') as file_count
+           from public.report_drafts d left join public.programs p on p.id = d.program_id
+           where d.researcher_id = $1 and ($2::uuid is null or d.program_id = $2)
+           order by d.updated_at desc limit 50`,
+          [actor?.id ?? null, programId ?? null],
+        )
+        .then((r) => r.rows),
+    );
   } catch (error) {
     mapError(error as { message: string });
   }
-  return rows[0]?.save_my_report_draft ?? new Date().toISOString();
+  return rows.map((row) => ({
+    id: row.id,
+    programId: row.program_id,
+    programName: row.program_name,
+    organizationId: row.organization_id,
+    title: row.title ?? "Untitled draft",
+    updatedAt: row.updated_at,
+    fileCount: Number(row.file_count),
+  }));
 }
 
-export async function deleteMyReportDraft(programId: string): Promise<void> {
+/** Creates (draftId null) or updates a draft. expectedVersion guards against a second tab or
+ * device overwriting newer content: a mismatch raises DRAFT_CONFLICT instead of saving. */
+export async function saveMyReportDraft(input: { draftId: string | null; programId: string; expectedVersion: number | null; draft: Record<string, unknown> }): Promise<{ id: string; version: number; updatedAt: string }> {
   const actor = await getCurrentUser();
+  let rows;
   try {
-    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.delete_my_report_draft", [programId]));
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<{ id: string; version: number; updated_at: string }>(client, "public.save_my_report_draft", [input.draftId, input.programId, JSON.stringify(input.draft), input.expectedVersion]),
+    );
   } catch (error) {
     mapError(error as { message: string });
   }
+  const row = rows[0];
+  return { id: row.id, version: row.version, updatedAt: row.updated_at };
+}
+
+/** Deletes a draft and the files staged on it (their bytes too, best-effort). */
+export async function deleteMyReportDraft(draftId: string): Promise<void> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<{ delete_my_report_draft: string }>(client, "public.delete_my_report_draft", [draftId]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  await Promise.all(rows.map((row) => evidenceObjectStore.deleteObject(row.delete_my_report_draft).catch(() => {})));
 }

@@ -31,14 +31,11 @@ test.describe.serial("program policy", () => {
     // The program's manager, not the owner: e2e.admin is near the sign-in limit (10 per 15 min) in a full run.
     await signIn(page, "e2e.program-manager@unpatched.demo");
     await page.goto(`/organizations/${organizationId}/programs/${publicProgramId}`);
-    const versionText = await page.getByText(/Policy v\d+/).first().textContent();
-    const current = Number(/Policy v(\d+)/.exec(versionText ?? "")?.[1]);
     await page.getByRole("button", { name: "Publish a new version" }).click();
-    const dialog = page.getByRole("dialog", { name: `Publish policy v${current + 1}` });
+    const dialog = page.getByRole("dialog", { name: "Publish a new policy" });
     await dialog.getByLabel("First response (hours)").fill("48");
     await dialog.getByLabel("What changed (optional)").fill("E2E: tighter first response");
     await dialog.getByRole("button", { name: "Publish" }).click();
-    await expect(page.getByText(`Policy v${current + 1}`).first()).toBeVisible();
     await expect(page.getByText("First response within 2 days").first()).toBeVisible(); // 48h reads as days
   });
 
@@ -47,14 +44,13 @@ test.describe.serial("program policy", () => {
     await signIn(page, "e2e.veteran@unpatched.demo");
     await page.goto(`/organizations/${organizationId}/programs/${publicProgramId}/reports/new`);
     const title = `E2E policy-bound report ${Date.now().toString(36)}`;
-    await page.getByLabel("Target type").selectOption("domain");
-    await page.getByRole("combobox", { name: "Target", exact: true }).fill("api.e2e-public.example");
+    await page.getByLabel("Asset").selectOption({ label: "api.e2e-public.example" });
     await page.getByLabel("Title").fill(title);
-    await page.getByLabel("Weakness type").selectOption("idor");
+    await page.getByLabel("Vulnerability category").selectOption("idor");
     await page.getByLabel("Description").fill("Policy E2E: steps to reproduce.");
     await page.getByLabel("Impact").fill("Policy E2E: impact.");
 
-    const accept = page.getByRole("checkbox", { name: /I have read and will follow .*'s policy \(v\d+\)/ });
+    const accept = page.getByRole("checkbox", { name: /I have read and will follow .*'s policy$/ });
     await expect(accept).toBeVisible();
     await page.getByRole("button", { name: "Submit report" }).click();
     await expect(page).toHaveURL(/\/reports\/new$/); // required: nothing submitted without accepting
@@ -64,7 +60,7 @@ test.describe.serial("program policy", () => {
     await page.waitForURL(/\/reports\/[0-9a-f-]{36}/);
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
     await expect(page.getByText("Response targets")).toBeVisible();
-    await expect(page.getByText(/Targets from program policy v\d+/)).toBeVisible();
+    await expect(page.getByText("Targets from the program policy")).toBeVisible();
     await expect(page.getByText("First response").first()).toBeVisible();
   });
 });

@@ -7,6 +7,7 @@ import { cn } from "../../lib/cn";
 import type { PublicDisclosure, ReportSeverity } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
 
+import { severityLabel } from "../../lib/report-status";
 type SortKey = "newest" | "oldest";
 const SEVERITY_ORDER: ReportSeverity[] = ["critical", "high", "medium", "low", "none"];
 
@@ -78,11 +79,11 @@ export function DisclosureFeed({ disclosures }: { disclosures: PublicDisclosure[
               onClick={() => setSeverityFilter(severity)}
               aria-pressed={severityFilter === severity}
               className={cn(
-                "min-h-9 rounded-full border px-3 text-xs font-semibold capitalize transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                "min-h-9 rounded-full border px-3 text-xs font-semibold transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                 severityFilter === severity ? "border-action bg-action/10 text-action" : "border-border text-ink-muted hover:text-ink",
               )}
             >
-              {severity}
+              {severityLabel(severity)}
             </button>
           ))}
         </div>

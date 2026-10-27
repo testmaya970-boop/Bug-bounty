@@ -10,6 +10,7 @@ import type { AwardFunding } from "../../services/bounty";
 import { minorUnitsToDecimalString, parseDecimalToMinorUnits } from "../../lib/money";
 import type { ReportBountyDecision } from "../../types/bounty";
 import { LocalTime } from "../ui/local-time";
+import { priorityLabel } from "../../lib/report-priority";
 
 type ReportRef = { organizationId: string; programId: string; reportId: string };
 
@@ -312,7 +313,7 @@ export function BountyDecisionSection({
             {" - "}
             {decision.calculatedMaxAmountMinorUnits !== null ? minorUnitsToDecimalString(decision.calculatedMaxAmountMinorUnits) : ""}
           </span>{" "}
-          for {decision.severityAtCalculation} severity. This is a recommendation, not a final decision.
+          for priority {decision.priorityAtCalculation ? priorityLabel(decision.priorityAtCalculation) : "not set"}. This is a recommendation, not a final decision.
         </p>
         {decision.assetTier && decision.assetTier > 1 && decision.tierPercent && decision.tierPercent < 100 && (
           <p className="text-sm text-ink-muted">The report's asset is tier {decision.assetTier}, so the range is {decision.tierPercent}% of the program's bounty table.</p>

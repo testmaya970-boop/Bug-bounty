@@ -38,7 +38,8 @@ describe("BountyPolicySection", () => {
 
   it("renders every severity tier's min/max as decimal currency, not raw minor units", () => {
     const html = renderToStaticMarkup(<BountyPolicySection policy={POLICY} />);
-    expect(html).toContain("Version 1");
+    expect(html).toContain("Paid in");
+    expect(html).not.toContain("Version 1");
     expect(html).toContain("USD");
     expect(html).toContain("250.00");
     expect(html).toContain("1000.00");
@@ -88,6 +89,7 @@ describe("BountyDecisionSection: separates eligibility, the calculated range, an
       ineligibleReason: "This report's classification is not eligible for a bounty.",
       policyVersionId: null,
       severityAtCalculation: null,
+      priorityAtCalculation: null,
       currency: null,
       calculatedMinAmountMinorUnits: null,
       calculatedMaxAmountMinorUnits: null,
@@ -111,6 +113,7 @@ describe("BountyDecisionSection: separates eligibility, the calculated range, an
       ineligibleReason: null,
       policyVersionId: "policy-1",
       severityAtCalculation: "high",
+      priorityAtCalculation: "p1",
       currency: "USD",
       calculatedMinAmountMinorUnits: 25000,
       calculatedMaxAmountMinorUnits: 100000,
@@ -140,6 +143,7 @@ describe("BountyDecisionSection: separates eligibility, the calculated range, an
       ineligibleReason: null,
       policyVersionId: "policy-1",
       severityAtCalculation: "high",
+      priorityAtCalculation: "p1",
       currency: "USD",
       calculatedMinAmountMinorUnits: 25000,
       calculatedMaxAmountMinorUnits: 100000,

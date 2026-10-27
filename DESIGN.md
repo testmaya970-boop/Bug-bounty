@@ -29,7 +29,7 @@ Use semantic tokens. The values below are Unpatched's actual current `app/global
   --accent-2: #e0592a; --on-accent-2: #ffffff;
   --info: #2f6fb0; --success: #3f6b3a; --warning: #b5760f; --danger: #c1401f; --on-danger: #ffffff;
   --severity-critical: #c1401f; --severity-high: #b5760f; --severity-medium: #8a7a1f; --severity-low: #2f6fb0; --severity-none: #5b6355;
-  --glass-border: rgba(22, 28, 20, 0.08); --glass-border-strong: rgba(63, 107, 58, 0.35);
+  --glass-border: rgba(22, 28, 20, 0.08); --glass-border-strong: rgba(31, 244, 7, 0.35);
   --glow-action: rgba(63, 107, 58, 0.22); --glow-accent-2: rgba(224, 89, 42, 0.22);
 }
 .dark {

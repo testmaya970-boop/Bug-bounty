@@ -119,11 +119,16 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await page.getByRole("button", { name: "Create engagement" }).click();
   await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: publicName })).toBeVisible();
-  // Fresh programs start private -- toggle it public via the real visibility switch. The
-  // program page has a second switch (KYC requirement) -- scope by the visibility switch's
-  // own accessible name (its label reads "Private: ..." while unchecked).
+  // Fresh programs start private -- toggle it public via the real visibility switch, which
+  // lives on the program's Settings tab since 48db446. That page has a second switch (KYC
+  // requirement) -- scope by the visibility switch's own accessible name (its label reads
+  // "Private: ..." while unchecked). Then back to Overview, where scope is managed.
+  await programTab(page, "Settings").click();
+  await page.waitForURL(/\/settings$/);
   await page.getByRole("switch", { name: /^Private:/ }).click();
   await expect(page.getByText(/Public: researchers can discover this program/)).toBeVisible();
+  await programTab(page, "Overview").click();
+  await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
 
   // Add scope while still draft (create+disable, driven live here since scope mutation is
   // only legal in draft -- the seeded active programs can no longer accept scope changes).
@@ -149,7 +154,10 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await page.getByRole("button", { name: "Create engagement" }).click();
   await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: privateName })).toBeVisible();
-  // Left private (the schema default) -- no visibility toggle needed.
+  // Left private (the schema default) -- no visibility toggle needed; the visibility label
+  // lives on the Settings tab.
+  await programTab(page, "Settings").click();
+  await page.waitForURL(/\/settings$/);
   await expect(page.getByText(/Private: not listed publicly/)).toBeVisible();
 
   // --- Invite a researcher to the (seeded, real) private program via the existing panel -
@@ -309,7 +317,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await expect(page.getByRole("heading", { name: /Analytics/ })).toBeVisible();
 
   // --- Help / profile menu / switchers reachable ---------------------------------------
-  // Help lives in the account menu (and the command menu); there is no top bar on desktop.
+  // Help lives in the account menu; there is no top bar on desktop.
   await page.getByRole("button", { name: /Account menu/ }).first().click();
   await page.getByRole("link", { name: "Help & docs" }).first().click();
   await expect(page.getByRole("heading", { name: "Get help" })).toBeVisible();
@@ -403,10 +411,10 @@ test("org journey: researcher accepts an invitation, sees the finalized amount, 
   await page.getByRole("button", { name: "Accept" }).click();
   await expect(page.getByText(PRIVATE_PROGRAM_NAME)).not.toBeVisible();
 
-  // --- Now a participant, the private program is findable from the command menu's search (202610190001) --
-  await page.keyboard.press("Control+k");
-  await page.getByRole("searchbox", { name: "Global search" }).fill(PRIVATE_PROGRAM_NAME);
-  await page.getByRole("searchbox", { name: "Global search" }).press("Enter");
+  // --- Now a participant, the private program is findable from the sidebar search (202610190001) --
+  const sidebarSearch = page.getByRole("search", { name: "Search programs and reports" }).getByRole("searchbox");
+  await sidebarSearch.fill(PRIVATE_PROGRAM_NAME);
+  await sidebarSearch.press("Enter");
   await page.waitForURL(/\/search\?q=/);
   await expect(page.getByRole("link", { name: new RegExp(PRIVATE_PROGRAM_NAME) })).toBeVisible();
 
