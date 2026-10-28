@@ -4,11 +4,13 @@ import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { BountyTrackRecord } from "../../../components/payments/bounty-track-record";
 import { AwardedBounties } from "../../../components/payments/awarded-bounties";
-import { PayoutDetailsSettings, TaxFormSettings } from "../../../components/settings/payout-details-settings";
-import { KycSettings } from "../../../components/settings/kyc-settings";
+import { PayoutDetailsSettings } from "../../../components/settings/payout-details-settings";
+import { PayoutConnections } from "../../../components/settings/payout-connections";
+import { SectionLabel } from "../../../components/ui/security-primitives";
+import { listMyPayoutConnectOptions } from "../../../services/payout-connections";
 import { Alert } from "../../../components/ui/feedback";
 import { listMyAwardsAwaitingPayment, listMyPaymentObligations } from "../../../services/payments";
-import { getMyKycStatus, getMyPayoutDetails } from "../../../services/researcher-profiles";
+import { getMyPayoutDetails } from "../../../services/researcher-profiles";
 import { getCurrentUser } from "../../../lib/auth/current-user";
 import { requireResearcherSettings } from "../../../lib/auth/account-type";
 
@@ -25,7 +27,7 @@ import { requireResearcherSettings } from "../../../lib/auth/account-type";
  * the same disclosure PayoutDetailsSettings' own code comment already states
  * (activePaymentProvider doesn't read this table yet) -- made visible to the researcher
  * here instead of staying a comment only a developer would ever see. */
-export default async function PaymentsSettingsPage() {
+export default async function PaymentsSettingsPage({ searchParams }: { searchParams: Promise<{ connected?: string; connect_error?: string }> }) {
   await requireResearcherSettings();
   // This page's own parent layout (app/settings/layout.tsx) already redirects an
   // unauthenticated visitor away -- Next.js layouts cannot pass their own getCurrentUser()
@@ -36,7 +38,7 @@ export default async function PaymentsSettingsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirectTo=/settings/payments" as Route);
 
-  const [obligations, awards, kycStatus, payoutDetails] = await Promise.all([listMyPaymentObligations(user.id), listMyAwardsAwaitingPayment(user.id), getMyKycStatus(), getMyPayoutDetails()]);
+  const [obligations, awards, payoutDetails, connectOptions, { connected, connect_error: connectError }] = await Promise.all([listMyPaymentObligations(user.id), listMyAwardsAwaitingPayment(user.id), getMyPayoutDetails(), listMyPayoutConnectOptions(), searchParams]);
 
   return (
     <div className="space-y-8">
@@ -58,9 +60,22 @@ export default async function PaymentsSettingsPage() {
         Unpatched uses the details below to send your bounties. Organizations never see them.
       </Alert>
 
+      <section className="space-y-3">
+        <SectionLabel>Connect a payout account</SectionLabel>
+        {connected && <Alert tone="success" title={`${connected === "paypal" ? "PayPal" : "Stripe"} account connected.`} />}
+        {connectError && <Alert tone="danger" title="The account wasn't connected.">{connectError.slice(0, 300)}</Alert>}
+        <p className="text-sm text-ink-muted">Sign in on PayPal&apos;s or Stripe&apos;s own page to connect your account. Unpatched never sees your password.</p>
+        <PayoutConnections options={connectOptions} />
+      </section>
+
       <PayoutDetailsSettings initial={payoutDetails} />
-      <TaxFormSettings initial={payoutDetails} />
-      <KycSettings initial={kycStatus} />
+      <p className="text-sm text-ink-muted">
+        Your PAN, Aadhaar, passport, phone and tax form are under{" "}
+        <Link prefetch={false} href={"/settings/identity" as Route} className="font-medium text-action hover:text-action-hover">
+          Identity &amp; Tax
+        </Link>
+        .
+      </p>
     </div>
   );
 }

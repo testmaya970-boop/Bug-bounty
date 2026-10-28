@@ -18,7 +18,6 @@ import {
   BookOpenText,
   Coins,
   Bell,
-  HourglassMedium,
   ChartLineUp,
   ClipboardText,
   ListBullets,
@@ -46,6 +45,12 @@ import {
   FileText,
   ChartPieSlice,
   SealCheck,
+  Medal,
+  CalendarDots,
+  ChalkboardTeacher,
+  Trophy,
+  Certificate,
+  Package,
   ChatCircleText,
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
@@ -83,6 +88,12 @@ const RESEARCH_NAV: NavItem[] = [
   { href: "/programs" as Route, label: "Programs", icon: Crosshair },
   { href: "/reports" as Route, label: "Reports", icon: Bug },
   { href: "/researchers" as Route, label: "Researchers", icon: UsersThree },
+  { href: "/recognition" as Route, label: "Recognition", icon: Medal },
+];
+const COMMUNITY_NAV: NavItem[] = [
+  { href: "/events" as Route, label: "Events", icon: CalendarDots },
+  { href: "/mentorship" as Route, label: "Mentorship", icon: ChalkboardTeacher },
+  { href: "/hall-of-fame" as Route, label: "Hall of Fame", icon: Trophy },
 ];
 const PRACTICE_NAV: NavItem[] = [
   { href: "/ctf" as Route, label: "CTF", icon: Flag, badge: MOCK_CTF_CHALLENGES.length.toString() },
@@ -103,6 +114,9 @@ const PLATFORM_NAV: NavItem[] = [
   { href: "/platform/scope-review" as Route, label: "Scope review", icon: SealCheck },
   { href: "/platform/organizations" as Route, label: "Organizations", icon: Buildings },
   { href: "/platform/contact-requests" as Route, label: "Contact requests", icon: ChatCircleText },
+  { href: "/platform/cve-requests" as Route, label: "CVE requests", icon: Certificate },
+  { href: "/platform/events" as Route, label: "Events", icon: CalendarDots },
+  { href: "/platform/swag" as Route, label: "Swag", icon: Package },
   { href: "/platform/researchers" as Route, label: "Researchers", icon: UsersThree },
   { href: "/platform/ctf-events" as Route, label: "CTF events", icon: Flag },
   { href: "/platform/kyc" as Route, label: "KYC", icon: IdentificationCard },
@@ -116,10 +130,8 @@ const PLATFORM_NAV: NavItem[] = [
   { href: "/platform/audit-log" as Route, label: "Audit log", icon: Scroll },
 ];
 
-// Coming Soon is an honest static stub (app/coming-soon/page.tsx), researcher-facing only.
 const SYSTEM_NAV: NavItem[] = [
   { href: "/notifications" as Route, label: "Notifications", icon: Bell },
-  { href: "/coming-soon" as Route, label: "Coming Soon", icon: HourglassMedium },
 ];
 const PLATFORM_SYSTEM_NAV: NavItem[] = [{ href: "/notifications" as Route, label: "Notifications", icon: Bell }];
 const PLATFORM_MFA_SETUP_NAV: NavItem[] = [{ href: "/settings/security" as Route, label: "Set up two-factor", icon: ShieldCheck }];
@@ -170,6 +182,8 @@ function orgSections(id: string): NavSection[] {
         { href: `${base}/payments/budgets` as Route, label: "Budgets", icon: ChartPieSlice, roles: BILLING },
         { href: `${base}/payments/documents` as Route, label: "Billing documents", icon: FileText, roles: BILLING },
         { href: `${base}/members` as Route, label: "Members", icon: UserList, roles: ORG_ADMINS },
+        // Webhooks, Slack/Teams, GitHub/GitLab, ServiceNow, SSO/SCIM (Jira stays in Settings).
+        { href: `${base}/integrations` as Route, label: "Integrations", icon: Plug, roles: ORG_ADMINS },
         { href: `${base}/settings` as Route, label: "Settings", icon: Gear, roles: ORG_ADMINS },
       ],
     },
@@ -210,7 +224,7 @@ function buildNav(ctx: NavContext): NavSection[] {
   const role = ctx.organizations.find((org) => org.id === orgId)?.role;
   const sections: NavSection[] = [];
   if (!isOrganizationOnly) {
-    sections.push({ id: "research", label: "Research", items: RESEARCH_NAV }, { id: "practice", label: "Practice", items: PRACTICE_NAV }, { id: "record", label: "Earnings", items: RECORD_NAV });
+    sections.push({ id: "research", label: "Research", items: RESEARCH_NAV }, { id: "practice", label: "Practice", items: PRACTICE_NAV }, { id: "community", label: "Community", items: COMMUNITY_NAV }, { id: "record", label: "Earnings", items: RECORD_NAV });
   }
   if (hasOrganization) {
     const org = orgId ? orgSections(orgId).map((section) => ({ ...section, items: section.items.filter((item) => !item.roles || (role !== undefined && item.roles.includes(role))) })) : [];
@@ -570,7 +584,9 @@ export function AppShellClient({
           onBlur={() => setRailTip(null)}
           onScroll={() => setRailTip(null)}
           className={cn(
-            "nav-scope sticky top-0 hidden h-dvh flex-col overflow-y-auto overscroll-contain border-r border-border bg-surface pb-3 [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden",
+            // z-30: sticky makes the sidebar its own stacking context, so without it the
+            // notification panel it opens paints under positioned content in <main>.
+            "nav-scope sticky top-0 z-30 hidden h-dvh flex-col overflow-y-auto overscroll-contain border-r border-border bg-surface pb-3 [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden",
             collapsed ? "px-2" : "px-2.5",
           )}
         >

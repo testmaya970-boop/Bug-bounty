@@ -742,6 +742,14 @@ async function main() {
     // The contact form's limits (202610260009): its client key is a hash of the loopback address.
     const loopbackKeys = ["::1", "::ffff:127.0.0.1", "127.0.0.1", "unknown"].map((ip) => `contact:client:${createHash("sha256").update(ip).digest("hex").slice(0, 32)}`);
     await owner.query("delete from private.rate_limit_counters where bucket_key = any($1) or bucket_key like 'contact:email:%.example'", [loopbackKeys]);
+    // SSO set-ups and test domains e2e/org-integrations.spec.ts and scope-ownership-contact.spec.ts
+    // leave when a run stops early.
+    await owner.query("delete from public.sso_connections where organization_id in (select id from public.organizations where name = any($1))", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
+    await owner.query("delete from public.organization_domains where domain like 'sso-%.example' or domain ~ '^owned-[a-z0-9]+\.com$'");
+    // Events and swag researcher-journey.spec.ts creates every run (requests go with their item).
+    await owner.query("delete from public.hacking_events where title like 'E2E live hack %'");
+    await owner.query("delete from public.swag_requests where item_id in (select id from public.swag_items where name like 'E2E sticker %')");
+    await owner.query("delete from public.swag_items where name like 'E2E sticker %'");
     // Programs the launch/import/ownership specs create every run, in both E2E orgs.
     // Programs only -- every dependent row (reports, scope, members...) cascades.
     // Also the two "E2E Live Public/Private <timestamp>" programs org-journey.spec.ts creates
@@ -768,7 +776,8 @@ async function main() {
 
   // e2e/program-policy.spec.ts submits a report every run; left in place they push the
   // fixture reports out of the program page's 5-report preview that journeys click through.
-  const policyReports = await withServiceRole((client) => client.query("delete from public.reports where title like 'E2E policy-bound report %'"));
+  // researcher-journey.spec.ts's collaboration report too (its invitations cascade).
+  const policyReports = await withServiceRole((client) => client.query("delete from public.reports where title like 'E2E policy-bound report %' or title like 'Collab journey %'"));
   if (policyReports.rowCount) console.log(`Removed ${policyReports.rowCount} report(s) left by the program-policy spec.`);
   // e2e/report-validation.spec.ts does the same; they filled org Home's 8-slot action queue
   // and pushed the triage-walk fixture out of it.
@@ -904,6 +913,9 @@ async function main() {
           "delete from public.payout_tax_withholdings w using public.payment_obligations o, public.reports r where w.obligation_id = o.id and r.id = o.report_id and r.program_id = $1 and r.title = $2",
           [publicProgram.id, resolvedTitle],
         );
+        // e2e/org-integrations.spec.ts approves a bonus on this report; its obligations go with
+        // the bounty's just below, and the bonus rows here (FKs are off inside this block).
+        await c.query("delete from public.report_bonuses b using public.reports r where r.id = b.report_id and r.program_id = $1 and r.title = $2", [publicProgram.id, resolvedTitle]);
         await c.query("commit");
       } finally {
         c.release();

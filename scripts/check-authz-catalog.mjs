@@ -26,6 +26,7 @@ const PUBLIC_BY_DESIGN = new Map([
   ["get_researcher_badges", "badges shown on public profiles"],
   ["get_researcher_ctf_badges", "CTF track badges shown on public profiles"],
   ["get_researcher_reputation_score", "score shown on public profiles"],
+  ["list_hall_of_fame", "published acknowledgements on public live programs: researcher name, program, date; never report content"],
   ["list_ctf_events", "CTF events listing for signed-in researchers"],
   ["list_public_disclosures", "disclosed reports listing"],
   ["list_public_program_scope", "a public program's scope"],
@@ -34,7 +35,7 @@ const PUBLIC_BY_DESIGN = new Map([
   ["verify_api_token", "authenticates an API token before any user is known"],
 ]);
 
-const GUARD = /(auth\.uid\(\)|has_org_role|is_platform_admin|is_org_member|is_program_member|is_program_triager|authorize_|lock_and_authorize|actor_is_active|can_currently_read_report|is_report_collaborator)/;
+const GUARD = /(auth\.uid\(\)|has_org_role|assert_org_integration_admin|is_platform_admin|is_org_member|is_program_member|is_program_triager|authorize_|lock_and_authorize|actor_is_active|can_currently_read_report|is_report_collaborator)/;
 const RETIRED = ["authorize_organization_analytics_read"];
 
 const c = new pg.Client({ connectionString: process.env.MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL });

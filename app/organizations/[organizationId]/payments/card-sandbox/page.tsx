@@ -11,7 +11,7 @@ import { getCurrentUser } from "../../../../../lib/auth/current-user";
 import { sandboxAllowed } from "../../../../../lib/integrations/common";
 import { minorUnitsToDecimalString } from "../../../../../lib/money";
 
-/** The sandbox card provider's "hosted checkout": stands in for Razorpay / Stripe off
+/** The sandbox card provider's "hosted checkout": stands in for Razorpay / Stripe / PayPal off
  * production so the whole card flow can be tried without a real card. Never served in production. */
 export default async function CardSandboxPage({
   params,
@@ -54,7 +54,7 @@ export default async function CardSandboxPage({
     <AppShell title="Checkout" user={user} organizationId={organizationId}>
       <div className="mx-auto max-w-sm space-y-5 rounded-xl border border-border bg-surface p-6">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-ink">Unpatched checkout</p>
+          <p className="text-sm font-semibold text-ink">{deposit.gateway ? { stripe: "Stripe", paypal: "PayPal", razorpay: "Razorpay" }[deposit.gateway] : "Unpatched"} checkout</p>
           <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-semibold text-warning">Test mode</span>
         </div>
         <div>
@@ -65,7 +65,7 @@ export default async function CardSandboxPage({
           <p className="mt-1 text-xs text-ink-muted">Adds {deposit.currency} {minorUnitsToDecimalString(deposit.amountMinorUnits)} to your balance</p>
         </div>
         {deposit.status === "pending" ? (
-          <CardSandboxActions organizationId={organizationId} reference={deposit.payerReference} currency={deposit.currency === "USD" ? "USD" : "INR"} />
+          <CardSandboxActions organizationId={organizationId} reference={deposit.payerReference} gateway={deposit.gateway ?? (deposit.currency === "USD" ? "stripe" : "razorpay")} />
         ) : (
           <p className="text-sm text-ink-muted">This payment is already {deposit.status === "confirmed" ? "complete" : "closed"}.</p>
         )}

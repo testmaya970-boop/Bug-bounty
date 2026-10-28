@@ -65,6 +65,8 @@ async function createUser(key: string, accountType: "researcher" | "organization
   ids[key] = await service(async (db) => {
     const { rows } = await db.query("select id from public.create_user($1, $2, $3, null)", [`e2e.qa-reg-${key}-${tag}@example.com`, "not-a-real-hash", `QA ${key}`]);
     await db.query("update public.users set email_verified_at = now(), account_type = $2 where id = $1", [rows[0].id, accountType]);
+    // Reporting requires a verified identity (202610230008), as tests/db/db.ts newUser sets up.
+    if (accountType === "researcher") await db.query("insert into public.researcher_kyc (user_id, passport_status) values ($1, 'verified')", [rows[0].id]);
     return rows[0].id as string;
   });
 }
@@ -211,7 +213,7 @@ test.describe.serial("QA regressions (2026-10-12)", () => {
     const report = await submitReport(ids.r1, "QA collab report");
     const username = `qa-collab-${tag}`.slice(0, 30);
     await service((db) => db.query("update public.users set public_username = $2 where id = $1", [ids.r3, username]));
-    await expect(rpc(ids.r1, "select public.add_report_collaborator($1, $2, $3)", [report, username, "99.999"])).rejects.toThrow(/INVALID_SPLIT/);
+    await expect(rpc(ids.r1, "select public.invite_report_collaborator($1, $2, $3, null)", [report, username, "99.999"])).rejects.toThrow(/INVALID_SPLIT/);
   });
 
   test("retests are capped at 3 per report", async () => {
@@ -275,7 +277,7 @@ test.describe.serial("QA regressions (2026-10-12)", () => {
     await service((db) => db.query("update public.users set deactivated_at = now() where id = $1", [ids.r3]));
     expect(await rpc(ids.owner, "select count(*)::int as n from public.users where id = $1", [ids.r3])).toEqual({ n: 0 });
     const report = await submitReport(ids.r1, "QA collab after deactivation");
-    await expect(rpc(ids.r1, "select public.add_report_collaborator($1, $2, $3)", [report, `qa-collab-${tag}`.slice(0, 30), "10"])).rejects.toThrow(/COLLABORATOR_NOT_FOUND/);
+    await expect(rpc(ids.r1, "select public.invite_report_collaborator($1, $2, $3, null)", [report, `qa-collab-${tag}`.slice(0, 30), "10"])).rejects.toThrow(/COLLABORATOR_NOT_FOUND/);
     // They still see themselves (and platform admins still see the record).
     expect(await rpc(ids.r3, "select count(*)::int as n from public.users where id = $1", [ids.r3])).toEqual({ n: 1 });
   });

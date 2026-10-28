@@ -26,6 +26,8 @@ export type PaymentObligation = {
   /** Who this obligation is owed to: the submitter or a collaborator (split, 202610060008). */
   researcherId: string;
   bountyDecisionId: string;
+  /** Set when this payment is a post-award bonus (202610290003), not the bounty itself. */
+  bonusId?: string | null;
   /** The finalized bounty -- the researcher receives all of it. The organization pays this
    * plus platformFeeMinorUnits (db/migrations/202609250010). This
    * is what the org confirmed and what docs/decisions/0077's org spend analytics reads;

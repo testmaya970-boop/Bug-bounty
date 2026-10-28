@@ -40,6 +40,8 @@ import { OperationalGrid } from "../components/dashboard/operational-grid";
 import { StandingSplit } from "../components/dashboard/standing-split";
 import { getMyEmailAliasAddress } from "../services/email-alias";
 import { ReferenceStrip } from "../components/dashboard/reference-strip";
+import { ActionCenter } from "../components/dashboard/action-center";
+import { getMyResearcherActions } from "../services/researcher-journey";
 import { LearningSection } from "../components/dashboard/learning-section";
 import {
   MOCK_CHALLENGE_CATEGORIES,
@@ -784,7 +786,8 @@ async function renderHomePage() {
     paymentObligations,
     emailAlias,
     draftCount,
-  ] = await perfTimed("HomePage 11-query dashboard batch", () =>
+    researcherActions,
+  ] = await perfTimed("HomePage 12-query dashboard batch", () =>
     Promise.all([
       listMyPendingProgramInvitations(),
       // Replaces four separate round trips (getMyReputationSummary,
@@ -816,6 +819,8 @@ async function renderHomePage() {
       getMyEmailAliasAddress(user.id),
       // One indexed count; the drafts list itself lives at /reports/drafts (Home links out).
       countMyReportDrafts(),
+      // One summary read for everything else waiting (202610280001).
+      getMyResearcherActions(),
     ]),
   );
   const {
@@ -931,6 +936,8 @@ async function renderHomePage() {
         </div>
 
         <CommandRow action={primaryAction} status={researcherStatus} />
+
+        <ActionCenter actions={researcherActions} />
 
         {emailAlias.enabled && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-raised px-5 py-3 shadow-sm">

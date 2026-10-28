@@ -8,7 +8,7 @@ import { logIntegrationEvent, sandboxAllowed } from "@/lib/integrations/common";
 import { IDENTITY_ENV, identityProviderName, selectIdentityProvider, type IdentityRegion } from "@/lib/integrations/identity";
 import { PHONE_ENV, phoneProviderName, selectPhoneProvider, toE164 } from "@/lib/integrations/phone";
 import { PAYOUT_ENV, payoutProviderName } from "@/lib/payment-provider";
-import { CARD_ENV, cardProviderName } from "@/lib/integrations/card";
+import { CARD_ENV, cardProviderName, gatewayProviderName } from "@/lib/integrations/card";
 
 export { OrganizationServiceError };
 
@@ -181,6 +181,8 @@ export function getIntegrationStatuses(): IntegrationStatus[] {
     status("payments", "Other currencies (PayPal)", payoutProviderName("USD"), PAYOUT_ENV),
     status("cards", "INR card top-ups (Razorpay)", cardProviderName("INR"), CARD_ENV),
     status("cards", "USD card top-ups (Stripe)", cardProviderName("USD"), CARD_ENV),
+    // PayPal checkout has no live adapter yet (lib/integrations/card.ts), so "paypal" can't be live.
+    ((s) => (s.provider === "paypal" ? { ...s, mode: "misconfigured" as const } : s))(status("cards", "USD top-ups (PayPal)", gatewayProviderName("paypal"), CARD_ENV)),
     status("phone", "India (+91)", phoneProviderName("+91"), PHONE_ENV),
     status("phone", "Rest of world", phoneProviderName("+1"), PHONE_ENV),
   ];

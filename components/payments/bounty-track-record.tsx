@@ -4,7 +4,8 @@ import { EmptyState } from "../ui/feedback";
 import { PaymentObligationStatusBadge } from "../ui/badge";
 import { minorUnitsToDecimalString } from "../../lib/money";
 import type { MyPaymentObligation } from "../../services/payments";
-import type { PaymentObligationStatus } from "../../types/payment";
+import type { PaymentObligationStatus } from "../../types/payment";
+
 import { LocalTime } from "../ui/local-time";
 
 /** Every real payment_obligations amount, grouped by currency -- summed as integers
@@ -67,7 +68,10 @@ export function BountyTrackRecord({ obligations }: { obligations: MyPaymentOblig
           {obligations.map((o) => (
             <li key={o.id} className="flex flex-col gap-1 p-4 transition-colors duration-150 hover:bg-surface-muted motion-reduce:transition-none sm:flex-row sm:items-center sm:justify-between sm:p-5">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-ink">{o.reportTitle}</p>
+                <p className="truncate text-sm font-medium text-ink">
+                  {o.bonusId && <span className="mr-1.5 rounded bg-success/15 px-1.5 py-0.5 text-[11px] font-semibold text-success">Bonus</span>}
+                  {o.reportTitle}
+                </p>
                 <p className="mt-0.5 text-xs text-ink-muted">
                   {o.organizationName} · {o.programName} · <LocalTime value={o.createdAt} />
                 </p>

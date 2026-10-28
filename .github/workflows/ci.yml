@@ -47,12 +47,10 @@ jobs:
   # from-scratch schema, a fresh bucket, and the deterministic seed. The latency budgets are
   # excluded -- shared CI runners are too noisy for a 20% rule; measure those locally.
   #
-  # Off in CI since 2026-10-27: MinIO's open-source images and binaries were withdrawn
-  # (Docker Hub repo deleted, dl.min.io returns 410), so a fresh runner cannot start the
-  # bucket. Run the gate locally (npm run test:e2e) until an S3 server for CI is chosen,
-  # then delete this `if`.
+  # Object storage: MinIO's own images and binaries were withdrawn on 2026-10-27 (Docker Hub
+  # repo deleted, dl.min.io returns 410). pgsty/minio is the community-maintained build of the
+  # same server, pinned to an exact release so an upstream push can't change what CI runs.
   release-gate:
-    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: verify
@@ -74,8 +72,9 @@ jobs:
       - run: npm ci
       - name: Start MinIO
         run: |
-          docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=ci_minio -e MINIO_ROOT_PASSWORD=ci_minio_password minio/minio:latest server /data
+          docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=ci_minio -e MINIO_ROOT_PASSWORD=ci_minio_password pgsty/minio:RELEASE.2026-08-04T00-00-00Z server /data
           for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/live && break; sleep 2; done
+          curl -sf http://localhost:9000/minio/health/live || { docker logs minio; exit 1; }
       - name: Write .env.local (the scripts and worker read it)
         run: |
           cat > .env.local <<ENV
@@ -98,9 +97,16 @@ jobs:
           npm run db:migrate
           npm run storage:init
           ALLOW_TEST_ACCOUNTS=1 npm run seed:e2e
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
+      # The session cookie is Secure in a production build, and WebKit (the iphone project)
+      # won't send it to plain http, so every browser goes through a local HTTPS front with a
+      # throwaway certificate (scripts/https-proxy.mjs), as in local runs.
+      - name: HTTPS front for the test server
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout /tmp/e2e-key.pem -out /tmp/e2e-cert.pem -days 1 -subj "/CN=127.0.0.1" -addext "subjectAltName=IP:127.0.0.1"
+          nohup node scripts/https-proxy.mjs 3443 3100 /tmp/e2e-key.pem /tmp/e2e-cert.pem > /tmp/https-proxy.log 2>&1 &
       - run: npx playwright test --grep-invert "latency budgets"
-        env: { CI: "true" }
+        env: { CI: "true", E2E_BASE_URL: "https://127.0.0.1:3443" }
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: playwright-report, path: "test-results/\nplaywright-report/", retention-days: 7 }

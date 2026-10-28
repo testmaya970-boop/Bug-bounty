@@ -18,14 +18,15 @@ import {
   InitiateManualPayoutButton,
 } from "../../../../components/reports/payment-status";
 import { HowPayingWorks } from "../../../../components/organizations/how-paying-works";
-import { AddFunds } from "../../../../components/organizations/add-funds";
+import { Plus } from "@phosphor-icons/react/dist/ssr";
+import { listPendingBonuses } from "../../../../services/bonuses";
+import { BonusItem } from "../../../../components/reports/report-bonuses";
 import { DEPOSIT_METHOD_LABEL } from "../../../../lib/billing-labels";
 import { canManagePayments } from "../../../../services/authorization";
 import { getActorMembership } from "../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listPaymentLedgerForBilling } from "../../../../services/payments";
 import {
-  cardFundingOptions,
   getBillingProfile,
   getOrganizationBalances,
   listBalanceAlerts,
@@ -100,15 +101,8 @@ async function likelyBillingCountry(currencies: string[]): Promise<string> {
  * commits bounty + fee against them; Unpatched pays the researcher. Shows each report's TITLE
  * only: billing admins never read report contents (the database enforces that too).
  */
-export default async function OrganizationPaymentsPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ organizationId: string }>;
-  searchParams: Promise<{ card?: string }>;
-}) {
+export default async function OrganizationPaymentsPage({ params }: { params: Promise<{ organizationId: string }> }) {
   const { organizationId } = await params;
-  const { card: cardReturn } = await searchParams;
   const user = await getCurrentUser();
   if (!user)
     redirect(
@@ -137,6 +131,7 @@ export default async function OrganizationPaymentsPage({
     billingProfile,
     invoices,
     invoiceRefs,
+    pendingBonuses,
   ] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listPaymentLedgerForBilling(organizationId),
@@ -147,6 +142,8 @@ export default async function OrganizationPaymentsPage({
     getBillingProfile(organizationId),
     listInvoices(organizationId),
     listInvoiceRefsByObligation(organizationId),
+    // Approvers are owners and security admins; billing admins only pay.
+    actor.role === "owner" || actor.role === "security_admin" ? listPendingBonuses(organizationId) : Promise.resolve([]),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
@@ -181,26 +178,25 @@ export default async function OrganizationPaymentsPage({
           </p>
           <div className="flex flex-wrap gap-2">
             <HowPayingWorks routes={payoutRoutes} />
-            <AddFunds organizationId={organizationId} cardOptions={cardFundingOptions()} />
+            <Link
+              prefetch={false}
+              href={`/organizations/${organizationId}/payments/add-funds` as Route}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-action px-3.5 text-[13px] font-medium text-on-action hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [@media(pointer:fine)]:min-h-8"
+            >
+              <Plus aria-hidden="true" weight="bold" className="size-4" />
+              Add funds
+            </Link>
           </div>
         </div>
-        {cardReturn === "done" && (
-          <p
-            role="status"
-            className="rounded-md border border-border bg-surface px-4 py-3 text-sm text-ink"
-          >
-            Card payment received by the provider. It shows as confirmed below
-            as soon as the provider tells us it went through, usually within a
-            minute.
-          </p>
-        )}
-        {cardReturn === "cancelled" && (
-          <p
-            role="status"
-            className="rounded-md border border-border bg-surface px-4 py-3 text-sm text-ink-muted"
-          >
-            Card payment cancelled. Nothing was charged.
-          </p>
+        {pendingBonuses.length > 0 && (
+          <section aria-label="Bonuses awaiting approval" className="rounded-xl border border-warning/40 bg-surface px-5 py-4">
+            <SectionLabel>Bonuses awaiting approval</SectionLabel>
+            <ul className="mt-1 divide-y divide-border">
+              {pendingBonuses.map((b) => (
+                <BonusItem key={b.id} organizationId={organizationId} bonus={b} currentUserId={user.id} canDecide showReport />
+              ))}
+            </ul>
+          </section>
         )}
 
         <div className="grid grid-cols-1 divide-y divide-border rounded-xl border border-border bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0">

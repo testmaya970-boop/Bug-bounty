@@ -30,11 +30,7 @@ export function KycSettings({ initial }: { initial: KycStatusSummary }) {
       <div>
         <SectionLabel>Manual identity review</SectionLabel>
         <p className="mt-1 text-sm text-ink-muted">
-          The fastest way to verify is automatic, on{" "}
-          <Link prefetch={false} href={"/settings/identity" as Route} className="font-medium text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-            Identity &amp; phone
-          </Link>
-          . If that isn&apos;t possible, submit a detail below: it is encrypted, seen only by the platform staff who review it, and shows Requires review until they decide.
+          The fastest way to verify is automatic, above. If that isn&apos;t possible, submit a detail below: it is encrypted, seen only by the platform staff who review it, and shows Requires review until they decide.
         </p>
       </div>
 

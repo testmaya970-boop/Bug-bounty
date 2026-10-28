@@ -27,21 +27,22 @@ test.describe.serial("prepaid balance", () => {
     const { organizationId } = await fixture();
     await signIn(page, "e2e.billing-admin@unpatched.demo");
     await page.goto(`/organizations/${organizationId}/payments`);
-    const dialog = page.getByRole("dialog", { name: "Add funds" });
-    // A click before the page hydrates does nothing; retry until the dialog opens.
+    await page.getByRole("link", { name: "Add funds" }).click();
+    await page.waitForURL(/\/payments\/add-funds$/);
+    // A click before the page hydrates does nothing; retry until Razorpay is selected.
     await expect(async () => {
-      await page.getByRole("button", { name: "Add funds" }).click();
-      await expect(dialog).toBeVisible({ timeout: 2000 });
+      await page.getByRole("radio", { name: /Razorpay/ }).click();
+      await expect(page.getByLabel("Amount (INR)")).toBeVisible({ timeout: 2000 });
     }).toPass();
-    await dialog.getByRole("radio", { name: "INR" }).click();
-    await dialog.getByLabel("Amount (INR)").fill("25000");
-    await expect(dialog.getByLabel("Sent by")).toHaveCount(0);
-    await expect(dialog.getByLabel("Transfer reference")).toHaveCount(0);
-    await dialog.getByRole("button", { name: "Add funds" }).click();
+    await page.getByLabel("Amount (INR)").fill("25000");
+    await expect(page.getByLabel("Sent by")).toHaveCount(0);
+    await expect(page.getByLabel("Transfer reference")).toHaveCount(0);
+    await page.getByRole("button", { name: "Continue to Razorpay" }).click();
     await page.waitForURL(/\/payments\/card-sandbox\?ref=card_/);
     await page.getByRole("radio", { name: /UPI/ }).click();
     await page.getByRole("button", { name: "Pay", exact: true }).click();
-    await page.waitForURL(/\/payments\?card=done/);
+    await page.waitForURL(/\/payments\/add-funds\/return\?ref=card_/);
+    await page.goto(`/organizations/${organizationId}/payments`);
     await expect(page.getByRole("listitem").filter({ hasText: /Paid by UPI · pay_/ }).getByText("Confirmed").first()).toBeVisible();
   });
 

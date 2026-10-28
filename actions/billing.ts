@@ -16,7 +16,7 @@ import {
   upsertBillingProfile,
 } from "@/services/billing";
 import { sandboxAllowed } from "@/lib/integrations/common";
-import { selectCardProvider } from "@/lib/integrations/card";
+import { selectGatewayProvider } from "@/lib/integrations/card";
 import { parseDecimalToMinorUnits } from "@/lib/money";
 
 export type ActionResult = { ok: true } | { ok: false; code: string; message: string };
@@ -70,7 +70,7 @@ const invalid = (error: z.ZodError): ActionResult => ({ ok: false, code: "INVALI
 /** "" clears the setting; otherwise a positive amount. */
 const toOptionalMinor = (value: string) => (value === "" ? null : parseDecimalToMinorUnits(value));
 
-const cardSchema = z.object({ organizationId: z.string().uuid(), currency: currencyField, amount: amountField });
+const cardSchema = z.object({ organizationId: z.string().uuid(), gateway: z.enum(["stripe", "paypal", "razorpay"]), amount: amountField });
 
 export async function startCardDepositAction(input: z.infer<typeof cardSchema>): Promise<{ ok: true; url: string } | Extract<ActionResult, { ok: false }>> {
   const parsed = cardSchema.safeParse(input);
@@ -78,7 +78,7 @@ export async function startCardDepositAction(input: z.infer<typeof cardSchema>):
   const amountMinorUnits = parseDecimalToMinorUnits(parsed.data.amount) ?? 0;
   if (amountMinorUnits <= 0) return { ok: false, code: "INVALID_INPUT", message: "Enter an amount above zero." };
   try {
-    const { url } = await startCardDeposit({ organizationId: parsed.data.organizationId, currency: parsed.data.currency, amountMinorUnits });
+    const { url } = await startCardDeposit({ organizationId: parsed.data.organizationId, gateway: parsed.data.gateway, amountMinorUnits });
     return { ok: true, url };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
@@ -86,7 +86,7 @@ export async function startCardDepositAction(input: z.infer<typeof cardSchema>):
   }
 }
 
-const sandboxSchema = z.object({ organizationId: z.string().uuid(), reference: z.string().regex(/^card_[0-9a-f]{32}$/), outcome: z.enum(["confirmed", "failed"]), method: z.enum(["UPI", "Card", "Net banking", "ACH"]).optional() });
+const sandboxSchema = z.object({ organizationId: z.string().uuid(), reference: z.string().regex(/^card_[0-9a-f]{32}$/), outcome: z.enum(["confirmed", "failed"]), method: z.enum(["UPI", "Card", "Net banking", "ACH", "PayPal"]).optional() });
 
 /** The sandbox checkout's Approve / Decline. Sandbox only, and only for a deposit the caller
  * can already read under RLS (a finance role of that organization). */
@@ -95,7 +95,7 @@ export async function completeSandboxCardAction(input: z.infer<typeof sandboxSch
   if (!parsed.success || !sandboxAllowed()) return { ok: false, code: "NOT_AVAILABLE", message: "The card sandbox isn't available here." };
   // Never let this page settle a real provider's payment: only a sandbox deposit qualifies.
   const deposit = (await listOrganizationDeposits(parsed.data.organizationId)).find((d) => d.method === "card" && d.provider === "sandbox" && d.payerReference === parsed.data.reference);
-  if (!deposit || selectCardProvider(deposit.currency as "INR" | "USD")?.name !== "sandbox") return { ok: false, code: "NOT_FOUND", message: "That card payment wasn't found." };
+  if (!deposit || !deposit.gateway || selectGatewayProvider(deposit.gateway)?.name !== "sandbox") return { ok: false, code: "NOT_FOUND", message: "That card payment wasn't found." };
   // Like a real gateway: the method chosen on the checkout page and the provider's own payment id.
   const paymentId = `pay_${randomUUID().replace(/-/g, "").slice(0, 14).toUpperCase()}`;
   const result = await run(completeCardDeposit(parsed.data.reference, parsed.data.outcome, parsed.data.outcome === "failed" ? "Payment declined" : `Paid by ${parsed.data.method ?? "Card"} · ${paymentId}`));

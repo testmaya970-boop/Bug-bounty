@@ -3,28 +3,33 @@
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { Bank, CreditCard, QrCode } from "@phosphor-icons/react";
+import { Bank, CreditCard, PaypalLogo, QrCode } from "@phosphor-icons/react";
 import { Button } from "../ui/button";
 import { completeSandboxCardAction } from "../../actions/billing";
 import { cn } from "../../lib/cn";
 
-type Method = "UPI" | "Card" | "Net banking" | "ACH";
-const METHODS: Record<"INR" | "USD", { key: Method; icon: React.ElementType; hint: string }[]> = {
-  INR: [
+type Method = "UPI" | "Card" | "Net banking" | "ACH" | "PayPal";
+type Gateway = "stripe" | "paypal" | "razorpay";
+const METHODS: Record<Gateway, { key: Method; icon: React.ElementType; hint: string }[]> = {
+  razorpay: [
     { key: "UPI", icon: QrCode, hint: "Any UPI app" },
     { key: "Card", icon: CreditCard, hint: "Visa, Mastercard, RuPay" },
     { key: "Net banking", icon: Bank, hint: "All major banks" },
   ],
-  USD: [
+  stripe: [
     { key: "Card", icon: CreditCard, hint: "Visa, Mastercard, Amex" },
     { key: "ACH", icon: Bank, hint: "US bank account" },
+  ],
+  paypal: [
+    { key: "PayPal", icon: PaypalLogo, hint: "PayPal balance" },
+    { key: "Card", icon: CreditCard, hint: "Card through PayPal" },
   ],
 };
 
 /** The test-mode checkout: pick a method and pay, or cancel -- what the provider's own page does. */
-export function CardSandboxActions({ organizationId, reference, currency }: { organizationId: string; reference: string; currency: "INR" | "USD" }) {
+export function CardSandboxActions({ organizationId, reference, gateway }: { organizationId: string; reference: string; gateway: Gateway }) {
   const router = useRouter();
-  const methods = METHODS[currency];
+  const methods = METHODS[gateway];
   const [method, setMethod] = useState<Method>(methods[0].key);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +38,8 @@ export function CardSandboxActions({ organizationId, reference, currency }: { or
       setError(null);
       const result = await completeSandboxCardAction({ organizationId, reference, outcome, method });
       if (!result.ok) return setError(result.message);
-      router.push(`/organizations/${organizationId}/payments?card=${outcome === "confirmed" ? "done" : "cancelled"}` as Route);
+      // Back to Unpatched, the way the gateway's return and cancel URLs do.
+      router.push(`/organizations/${organizationId}/payments/add-funds/return?ref=${reference}${outcome === "confirmed" ? "" : "&cancelled=1"}` as Route);
     });
   }
   return (

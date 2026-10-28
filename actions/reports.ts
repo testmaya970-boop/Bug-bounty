@@ -8,7 +8,6 @@ import { withRequestLogging } from "@/lib/request-context";
 import {
   acceptReport,
   addOrganizationEvidence,
-  addReportCollaborator,
   addResearcherEvidence,
   decideReportRetest,
   escalateReportMediation,
@@ -42,7 +41,7 @@ import { getReportTimeline, type ReportTimelinePage } from "@/services/timeline"
 import { getActorMembership } from "@/services/organization-members";
 import { listProgramMembers } from "@/services/programs";
 import { canCreateProgram } from "@/services/authorization";
-import type { CvssMetrics, Report, ReportCollaborator, ReportEvidence, ReportMediation, ReportMessage, ReportRetest, ReportSeverity, ReportStatus, ReportSummary } from "@/types/report";
+import type { CvssMetrics, Report, ReportEvidence, ReportMediation, ReportMessage, ReportRetest, ReportSeverity, ReportStatus, ReportSummary } from "@/types/report";
 import type { Page } from "@/types/pagination";
 import { captchaConfig, verifyCaptcha } from "@/lib/integrations/captcha";
 import { getMySubmissionStanding } from "@/services/submission-signal";
@@ -446,25 +445,6 @@ export async function listMyReportsPageAction(input: { cursor?: string; status?:
 }
 
 // --- Collaboration (see docs/decisions/0064-report-collaboration-scope.md) ---
-
-const addReportCollaboratorSchema = reportActionBase.extend({
-  collaboratorUsername: z
-    .string()
-    .trim()
-    .min(1, "Enter a username.")
-    .max(32, "Use 32 characters or fewer.")
-    // Their account username (letters, numbers, underscores) or a public username (hyphens).
-    .regex(/^[A-Za-z0-9_-]{3,32}$/, "Enter their username: letters, numbers, underscores or hyphens."),
-  bountySplitPercent: z.coerce.number().gt(0, "Enter a split greater than 0%.").lte(100, "Enter a split of 100% or less."),
-});
-
-export async function addReportCollaboratorAction(input: z.infer<typeof addReportCollaboratorSchema>): Promise<ActionResult<ReportCollaborator>> {
-  const parsed = addReportCollaboratorSchema.safeParse(input);
-  if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
-  const result = await toResult(addReportCollaborator(parsed.data.reportId, parsed.data.collaboratorUsername, parsed.data.bountySplitPercent));
-  if (result.ok) revalidateReportPaths(parsed.data.organizationId, parsed.data.programId, parsed.data.reportId);
-  return result;
-}
 
 const removeReportCollaboratorSchema = reportActionBase.extend({ collaboratorId: uuidSchema });
 

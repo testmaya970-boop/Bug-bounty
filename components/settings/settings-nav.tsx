@@ -21,7 +21,7 @@ const ACCOUNT_ITEMS: { href: Route; label: string }[] = [
 
 const RESEARCHER_ITEMS: { href: Route; label: string }[] = [
   { href: "/settings/email-alias" as Route, label: "Email Alias" },
-  { href: "/settings/identity" as Route, label: "Identity & Phone" },
+  { href: "/settings/identity" as Route, label: "Identity & Tax" },
   { href: "/settings/payments" as Route, label: "Rewards & Payments" },
   { href: "/settings/swag" as Route, label: "Swag" },
   { href: "/settings/reputation" as Route, label: "Reputation" },

@@ -25,17 +25,22 @@ test.describe.serial("payment features", () => {
     await page.goto(payments);
 
     // Card: the surcharge is shown before paying; the sandbox checkout approves it.
-    await page.getByRole("button", { name: "Add funds" }).click();
-    const dialog = page.getByRole("dialog", { name: "Add funds" });
-    await dialog.getByRole("radio", { name: "USD" }).click();
-    await dialog.getByLabel("Amount (USD)").fill("100");
-    await expect(dialog.getByText("USD 103.00")).toBeVisible(); // amount + payment processing, before paying
-    await dialog.getByRole("button", { name: "Add funds" }).click();
+    await page.getByRole("link", { name: "Add funds" }).click();
+    await page.waitForURL(/\/payments\/add-funds$/);
+    await page.getByRole("radio", { name: /Stripe/ }).click();
+    await page.getByLabel("Amount (USD)").fill("100");
+    await expect(page.getByText("USD 103.00")).toBeVisible(); // amount + payment processing, before paying
+    await page.getByRole("button", { name: "Continue to Stripe" }).click();
     await page.waitForURL(/\/payments\/card-sandbox\?ref=card_/);
     await expect(page.getByText("Adds USD 100.00 to your balance")).toBeVisible();
     await page.getByRole("radio", { name: /Card/ }).click();
     await page.getByRole("button", { name: "Pay", exact: true }).click();
-    await page.waitForURL(/\/payments\?card=done/);
+    // Back on Unpatched: the return page reads the deposit's real status.
+    await page.waitForURL(/\/payments\/add-funds\/return\?ref=card_/);
+    await expect(page.getByText("USD 100.00 added to your balance.")).toBeVisible();
+    // Through the page's own link (client navigation), so the forms below are hydrated.
+    await page.getByRole("link", { name: "Back to Payments" }).click();
+    await page.waitForURL(/\/payments$/);
     await expect(page.getByRole("listitem").filter({ hasText: /Paid by Card · pay_/ }).filter({ hasText: "USD 100.00" }).getByText("Confirmed").first()).toBeVisible();
 
     // Low-balance alert above the balance fires at once; then turned off again.

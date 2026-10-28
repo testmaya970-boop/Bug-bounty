@@ -58,7 +58,7 @@ export default defineConfig({
     // left no margin for `next start` to then boot within the same window. 300s -- then
     // measured 202s for the build alone with a `next dev` running alongside, which blew
     // past 300s once seeding and boot were added. 600s.
-    { command: `npm run build && npm run start -- -p ${E2E_PORT}`, url: E2E_SERVER_URL, env: { NEXT_DIST_DIR: ".next-prod", LOCAL_PROD_TEST: "1", APP_ORIGIN: E2E_BASE_URL, CARD_PROVIDER_IN: "sandbox", CARD_PROVIDER_GLOBAL: "sandbox" }, reuseExistingServer: !process.env.CI, timeout: 600_000 },
-    { command: "npm run worker:outbox", reuseExistingServer: !process.env.CI, timeout: 30_000 },
+    { command: `npm run build && npm run start -- -p ${E2E_PORT}`, url: E2E_SERVER_URL, env: { NEXT_DIST_DIR: ".next-prod", LOCAL_PROD_TEST: "1", APP_ORIGIN: E2E_BASE_URL, CARD_PROVIDER_IN: "sandbox", CARD_PROVIDER_GLOBAL: "sandbox", CARD_PROVIDER_PAYPAL: "sandbox", PAYOUT_CONNECT_PAYPAL: "sandbox", PAYOUT_CONNECT_STRIPE: "sandbox", ALLOW_LOOPBACK_DELIVERY: "1" }, reuseExistingServer: !process.env.CI, timeout: 600_000 },
+    { command: "npm run worker:outbox", reuseExistingServer: !process.env.CI, timeout: 30_000, env: { ALLOW_LOOPBACK_DELIVERY: "1", OUTBOX_POLL_INTERVAL_MS: "500" } },
   ],
 });

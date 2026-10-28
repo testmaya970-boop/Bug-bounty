@@ -987,19 +987,6 @@ export async function listReportCollaborators(reportId: string): Promise<ReportC
   return rows.map(mapReportCollaboratorRow);
 }
 
-export async function addReportCollaborator(reportId: string, collaboratorUsername: string, bountySplitPercent: number): Promise<ReportCollaborator> {
-  const actor = await getCurrentUser();
-  let rows;
-  try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) =>
-      callRpc<ReportCollaboratorRow>(client, "public.add_report_collaborator", [reportId, collaboratorUsername, bountySplitPercent]),
-    );
-  } catch (error) {
-    mapError(error as { message: string });
-  }
-  return mapReportCollaboratorRow(rows[0]);
-}
-
 export async function removeReportCollaborator(collaboratorId: string): Promise<void> {
   const actor = await getCurrentUser();
   try {

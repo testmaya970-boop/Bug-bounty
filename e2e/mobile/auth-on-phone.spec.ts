@@ -86,11 +86,12 @@ test("an abandoned signup can sign up again on the phone instead of 'account alr
   await enterCode(page, email);
   await expect(page).toHaveURL(/\/organizations/); // still an organization account
 
-  // The password from the latest attempt is the one that works.
+  // The first password stands: a repeat signup never changes it, or a stranger typing someone's
+  // unconfirmed email could set the owner's password (services/auth.ts). A forgotten one is reset.
   await context.clearCookies();
-  await signIn(page, email, FIRST_PASSWORD);
-  await expect(page.getByRole("alert").first()).toBeVisible();
   await signIn(page, email, SECOND_PASSWORD);
+  await expect(page.getByRole("alert").first()).toBeVisible();
+  await signIn(page, email, FIRST_PASSWORD);
   await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
 });
 

@@ -4,6 +4,9 @@ import { createReportOutcomeHandler } from "./reputation/report-outcome";
 import { handleBountyFinalizedV1 } from "./reputation/bounty-finalized-v1";
 import { createBillingNotificationHandler, createProgramNotificationHandler, createNotificationHandler, createPaymentNotificationHandler, createPlatformNotificationHandler, createRecommendationHandler } from "./notifications/notification-handler";
 import { handleJiraSync, JIRA_SYNC_EVENT_TYPES } from "./jira/jira-sync-handler";
+import { handleIntegrationFanout, INTEGRATION_EVENT_TYPES } from "../../integrations/delivery";
+import { handleCodeHostSync, CODE_HOST_SYNC_EVENT_TYPES } from "../../integrations/code-host-sync";
+import { handleServiceNowSync, SERVICENOW_SYNC_EVENT_TYPES } from "../../integrations/servicenow-sync";
 
 /** The complete handler registry for this slice. Importing this module (a side effect
  * import, `import "./handlers"`) is what makes each event_type:schema_version
@@ -103,3 +106,11 @@ registerHandler("platform.program_launch_rejected", 1, createProgramNotification
 registerHandler("program.published", 1, createRecommendationHandler());
 
 for (const eventType of JIRA_SYNC_EVENT_TYPES) registerHandler(eventType, 1, handleJiraSync);
+
+// Outbound webhooks and Slack / Teams alerts (202610290001): one fan-out consumer per event
+// type, which only writes delivery rows; the delivery loop (workers/integrations) sends them.
+for (const eventType of INTEGRATION_EVENT_TYPES) registerHandler(eventType, 1, handleIntegrationFanout);
+// GitHub / GitLab (202610290004): close the linked issue when the report closes.
+for (const eventType of CODE_HOST_SYNC_EVENT_TYPES) registerHandler(eventType, 1, handleCodeHostSync);
+// ServiceNow (202610290005): a work note, and resolve the incident, when the report closes.
+for (const eventType of SERVICENOW_SYNC_EVENT_TYPES) registerHandler(eventType, 1, handleServiceNowSync);

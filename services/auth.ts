@@ -209,6 +209,13 @@ export async function signInWithPassword(email: string, password: string): Promi
     throw new AuthServiceError("This account has been deactivated. Contact support to reactivate it.", "ACCOUNT_DEACTIVATED");
   }
 
+  // Enforced single sign-on (202610290006): members on the organization's verified domains sign
+  // in through its identity provider. Owners keep their password as the break-glass way in.
+  const ssoOnly = await withServiceRoleTransaction((client) =>
+    client.query<{ blocked: boolean }>("select private.password_sign_in_blocked($1) as blocked", [user.id]).then((r) => r.rows[0]?.blocked === true),
+  );
+  if (ssoOnly) throw new AuthServiceError("Your organization signs in with single sign-on. Use Sign in with SSO.", "SSO_REQUIRED");
+
   const { userAgent, ip } = await currentUserAgentAndIp();
   return withServiceRoleTransaction(async (client) => {
     const { cookieValue } = await createSession(client, { userId: user.id, userAgent, ip });

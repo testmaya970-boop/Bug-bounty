@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { AuthLayout } from "../../components/auth/auth-layout";
@@ -28,6 +29,12 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
         </p>
       )}
       <SignInForm redirectTo={redirectTo} />
+      {/* Single sign-on (202610290006) has its own page, so this form keeps one email field. */}
+      <p className="mt-6 border-t border-border pt-4 text-center text-sm">
+        <Link prefetch={false} href={"/sign-in/sso" as Route} className="font-medium text-action hover:text-action-hover">
+          Sign in with SSO
+        </Link>
+      </p>
     </AuthLayout>
   );
 }

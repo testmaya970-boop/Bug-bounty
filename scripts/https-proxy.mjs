@@ -20,6 +20,10 @@ createServer({ key: readFileSync(keyFile), cert: readFileSync(certFile) }, (req,
       upstreamRes.pipe(res);
     },
   );
-  upstream.on("error", () => res.writeHead(502).end());
+  // An upstream reset after the response started (a client hanging up mid-stream) must not
+  // crash the proxy: answering again would throw ERR_HTTP_HEADERS_SENT and take down every
+  // later test. Just drop that one response.
+  upstream.on("error", () => (res.headersSent ? res.destroy() : res.writeHead(502).end()));
+  req.on("error", () => upstream.destroy());
   req.pipe(upstream);
 }).listen(Number(listenPort), "127.0.0.1", () => console.log(`https://127.0.0.1:${listenPort} -> http://127.0.0.1:${targetPort}`));

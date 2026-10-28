@@ -45,6 +45,9 @@ import { perfTimed } from "../../../../../lib/perf-trace";
 import type { ScopeState } from "../../../../../types/scope";
 import type { OrganizationResolutionPerformance, OrganizationSeverityStatusCount, OrganizationWeeklyReportVolume } from "../../../../../types/organization";
 import { LocalTime } from "../../../../../components/ui/local-time";
+import { ActionButton } from "../../../../../components/researcher/journey-controls";
+import { isFollowingProgram } from "../../../../../services/researcher-journey";
+import { setProgramFollowAction } from "../../../../../actions/researcher-journey";
 import { BountyTiersPanel } from "../../../../../components/organizations/asset-tier-control";
 
 const SCOPE_FILTERS: { value: "all" | ScopeState; label: string }[] = [
@@ -388,6 +391,8 @@ async function renderProgramControlCenterPage({
   // both already known above. Collapsed into one Promise.all so the whole page pays for
   // exactly the slowest single query in this batch, not the sum of all of them.
   const policyPromise = getProgramPolicy(programId);
+  // Started with the batch below, not after it (this route has a latency budget).
+  const followingPromise = !canManageProgram && isActiveResearcher ? isFollowingProgram(programId) : Promise.resolve(false);
   const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations, accessRequests, suggestedResearchers], { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms] =
     await perfTimed("program home: stage 2 (parallel batch)", () =>
       Promise.all([
@@ -434,6 +439,7 @@ async function renderProgramControlCenterPage({
       ]),
     );
   const policy = await policyPromise;
+  const following = await followingPromise;
   // Scope editing is no longer locked to draft (202609230001_scope_editable_after_launch):
   // an org can still fix a scope mistake, add a target, or retire one after review/launch.
   // Reaching this page as a manager already proves the identical authorization predicate
@@ -526,6 +532,20 @@ async function renderProgramControlCenterPage({
               </div>
             )}
           </>
+        )}
+
+        {!canManageProgram && isActiveResearcher && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            <ActionButton variant="secondary" action={setProgramFollowAction.bind(null, programId, !following)}>
+              {following ? "Following" : "Follow"}
+            </ActionButton>
+            <span className="text-ink-muted">{following ? "Policy and scope changes show in Settings, Subscriptions." : "Keep track of policy and scope changes."}</span>
+            {program.visibility === "public" && (
+              <Link prefetch={false} href={`/hall-of-fame?program=${programId}` as Route} className="font-medium text-action hover:text-action-hover">
+                Hall of Fame →
+              </Link>
+            )}
+          </div>
         )}
 
         {/* Public programs have no invitation gate at all -- join_public_program lets any

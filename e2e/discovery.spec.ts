@@ -45,7 +45,9 @@ test("a report draft is kept on the server, not in the browser", async ({ browse
   const second = await browser.newContext();
   const fresh = await second.newPage();
   await signIn(fresh, "e2e.hunter@unpatched.demo");
-  await fresh.goto(newReport);
+  // Since multiple drafts (202610260004), a draft is reopened from My drafts; /reports/new starts a new one.
+  await fresh.goto("/reports/drafts");
+  await fresh.getByRole("link", { name: title }).first().click();
   await expect(fresh.getByLabel("Title")).toHaveValue(title);
   await second.close();
 });

@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { getNativeEnv } from "@/lib/env";
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
 import { logIntegrationEvent, sandboxAllowed } from "@/lib/integrations/common";
-import { cardSurchargeBps, chargedWithSurcharge, selectCardProvider, type CardCurrency } from "@/lib/integrations/card";
+import { GATEWAY_CURRENCY, cardSurchargeBps, chargedWithSurcharge, selectGatewayProvider, type CardCurrency, type CheckoutGateway } from "@/lib/integrations/card";
 
 // The organization's prepaid balance (db/migrations/202610140004): it adds funds, every award
 // commits bounty + fee against them, and Unpatched pays the researcher.
@@ -22,8 +22,10 @@ export type OrganizationDeposit = {
   reviewNote: string | null;
   /** What the payer was charged (amount + processing fee) for an online payment. */
   chargedMinorUnits: number | null;
-  /** Card deposits only: who took the card (sandbox | razorpay | stripe). */
+  /** Card deposits only: who took the card (sandbox | razorpay | stripe | paypal). */
   provider: string | null;
+  /** The gateway the organization chose (stripe | paypal | razorpay), even when the sandbox stood in. */
+  gateway: CheckoutGateway | null;
   createdAt: string;
 };
 
@@ -51,10 +53,10 @@ export async function getOrganizationBalances(organizationId: string): Promise<O
 
 /** Read under RLS: finance roles of the organization only. */
 export async function listOrganizationDeposits(organizationId: string): Promise<OrganizationDeposit[]> {
-  type Row = { id: string; currency: string; amount_minor_units: string; method: DepositMethod; payer_reference: string; status: OrganizationDeposit["status"]; review_note: string | null; provider: string | null; charged_minor_units: string | null; created_at: string };
+  type Row = { id: string; currency: string; amount_minor_units: string; method: DepositMethod; payer_reference: string; status: OrganizationDeposit["status"]; review_note: string | null; provider: string | null; gateway: CheckoutGateway | null; charged_minor_units: string | null; created_at: string };
   const result = await asActor((client) =>
     client.query<Row>(
-      "select id, currency, amount_minor_units, method, payer_reference, status, review_note, provider, charged_minor_units, created_at from public.organization_deposits where organization_id = $1 order by created_at desc limit 50",
+      "select id, currency, amount_minor_units, method, payer_reference, status, review_note, provider, gateway, charged_minor_units, created_at from public.organization_deposits where organization_id = $1 order by created_at desc limit 50",
       [organizationId],
     ),
   );
@@ -68,6 +70,7 @@ export async function listOrganizationDeposits(organizationId: string): Promise<
     reviewNote: r.review_note,
     chargedMinorUnits: r.charged_minor_units === null ? null : Number(r.charged_minor_units),
     provider: r.provider,
+    gateway: r.gateway,
     createdAt: new Date(r.created_at).toISOString(),
   }));
 }
@@ -234,22 +237,34 @@ export async function listDisputedObligationsForAdmin(): Promise<DisputedObligat
 
 /** Records a pending card deposit, then asks the provider for its hosted checkout and returns
  * where to send the browser. Only the provider's signed webhook (or the sandbox page) confirms. */
-export async function startCardDeposit(input: { organizationId: string; currency: CardCurrency; amountMinorUnits: number }): Promise<{ url: string }> {
-  const provider = selectCardProvider(input.currency);
-  if (!provider) throw new OrganizationServiceError(`Card payments in ${input.currency} aren't available yet. Use a bank transfer instead.`, "NOT_AVAILABLE");
+export async function startCardDeposit(input: { organizationId: string; gateway: CheckoutGateway; amountMinorUnits: number }): Promise<{ url: string; reference: string }> {
+  const currency = GATEWAY_CURRENCY[input.gateway];
+  const provider = selectGatewayProvider(input.gateway);
+  if (!provider) throw new OrganizationServiceError("That payment method isn't connected yet. Choose another one.", "NOT_AVAILABLE");
   const charged = chargedWithSurcharge(input.amountMinorUnits, cardSurchargeBps());
   const reference = `card_${randomUUID().replace(/-/g, "")}`;
-  await asActor((client) => callRpc(client, "public.start_card_deposit", [input.organizationId, input.currency, input.amountMinorUnits, charged, provider.name, reference]));
-  const returnUrl = `${getNativeEnv().APP_ORIGIN}/organizations/${input.organizationId}/payments`;
+  await asActor((client) => callRpc(client, "public.start_card_deposit", [input.organizationId, currency, input.amountMinorUnits, charged, provider.name, reference, input.gateway]));
+  // Where the gateway sends the payer back: a page on Unpatched that reads the deposit's real
+  // status. Only the gateway's signed webhook confirms the money.
+  const base = `${getNativeEnv().APP_ORIGIN}/organizations/${input.organizationId}/payments`;
+  const returnUrl = `${base}/add-funds/return?ref=${reference}`;
   try {
-    const checkout = await provider.createCheckout({ reference, chargedMinorUnits: charged, currency: input.currency, description: "Unpatched balance top-up", returnUrl });
+    const checkout = await provider.createCheckout({
+      reference,
+      chargedMinorUnits: charged,
+      currency,
+      description: "Unpatched balance top-up",
+      returnUrl,
+      cancelUrl: `${returnUrl}&cancelled=1`,
+      sandboxUrl: `${base}/card-sandbox?ref=${reference}`,
+    });
     await logIntegrationEvent("cards", provider.name, "call", "ok");
-    return checkout;
+    return { url: checkout.url, reference };
   } catch (error) {
     // Nothing was charged: close the deposit so it doesn't sit as "pending" forever.
     await logIntegrationEvent("cards", provider.name, "call", "error", error instanceof Error ? error.message : String(error));
-    await completeCardDeposit(reference, "failed", "The card provider could not start the payment");
-    throw new OrganizationServiceError("The card provider couldn't start the payment. Try again, or use a bank transfer.", "PROVIDER_ERROR");
+    await completeCardDeposit(reference, "failed", "The payment provider could not start the payment");
+    throw new OrganizationServiceError("The payment provider couldn't start the payment. Try again, or choose another method.", "PROVIDER_ERROR");
   }
 }
 
@@ -259,9 +274,14 @@ export async function completeCardDeposit(reference: string, outcome: "confirmed
   await withServiceRoleTransaction((client) => callRpc(client, "public.complete_card_deposit", [reference, outcome, detail ?? null]));
 }
 
-export function cardFundingOptions(): { currency: CardCurrency; available: boolean; surchargeBps: number }[] {
+export type GatewayOption = { gateway: CheckoutGateway; currency: CardCurrency; available: boolean; mode: "sandbox" | "live" | null; surchargeBps: number };
+
+export function checkoutGatewayOptions(): GatewayOption[] {
   const surchargeBps = cardSurchargeBps();
-  return (["INR", "USD"] as const).map((currency) => ({ currency, available: selectCardProvider(currency) !== null, surchargeBps }));
+  return (["stripe", "paypal", "razorpay"] as const).map((gateway) => {
+    const provider = selectGatewayProvider(gateway);
+    return { gateway, currency: GATEWAY_CURRENCY[gateway], available: provider !== null, mode: provider?.mode ?? null, surchargeBps };
+  });
 }
 
 // Program budgets and low-balance alerts -----------------------------------------------

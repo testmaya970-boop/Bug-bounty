@@ -6,6 +6,9 @@ import { availableIdentityRegions, availablePhoneRoutes, getMyPhoneStatus, listM
 import { IdentityStartButtons, PhoneVerificationForm } from "../../../components/settings/identity-verification";
 import { SectionLabel } from "../../../components/ui/security-primitives";
 import { LocalTime } from "../../../components/ui/local-time";
+import { KycSettings } from "../../../components/settings/kyc-settings";
+import { TaxFormSettings } from "../../../components/settings/payout-details-settings";
+import { getMyKycStatus, getMyPayoutDetails } from "../../../services/researcher-profiles";
 
 // The shared verification vocabulary (Not started / Pending / Verified / Failed / Requires review).
 // Only the provider's own result moves a check to Verified: starting it, or finishing the
@@ -22,7 +25,7 @@ const STATUS_COPY: Record<string, { label: string; detail: string; tone: string 
  * verification, through whichever providers this deployment has configured. */
 export default async function IdentitySettingsPage({ searchParams }: { searchParams: Promise<{ returned?: string }> }) {
   await requireResearcherSettings();
-  const [verifications, phone, { returned }] = await Promise.all([listMyIdentityVerifications(), getMyPhoneStatus(), searchParams]);
+  const [verifications, phone, { returned }, kycStatus, payoutDetails] = await Promise.all([listMyIdentityVerifications(), getMyPhoneStatus(), searchParams, getMyKycStatus(), getMyPayoutDetails()]);
   const regions = availableIdentityRegions();
   const phoneRoutes = availablePhoneRoutes();
   const latest = verifications[0];
@@ -31,7 +34,7 @@ export default async function IdentitySettingsPage({ searchParams }: { searchPar
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Identity &amp; phone</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Identity &amp; Tax</h1>
         <p className="mt-1 text-sm text-ink-muted">Submitting reports, some programs, and payouts need a verified identity. Verification is done by an authorized provider; Unpatched only keeps the result.</p>
       </div>
 
@@ -81,11 +84,7 @@ export default async function IdentitySettingsPage({ searchParams }: { searchPar
             <IdentityStartButtons regions={regions} />
           ) : (
             <p className="text-sm text-ink-muted">
-              Automatic verification isn&apos;t switched on yet. You can submit your documents for manual review under{" "}
-              <Link prefetch={false} href={"/settings/payments" as Route} className="font-medium text-action hover:text-action-hover">
-                Rewards &amp; Payments
-              </Link>
-              .
+              Automatic verification isn&apos;t switched on yet. You can submit your documents for manual review below.
             </p>
           ))}
       </section>
@@ -107,6 +106,11 @@ export default async function IdentitySettingsPage({ searchParams }: { searchPar
         )}
         {(phoneRoutes.india || phoneRoutes.global) && <PhoneVerificationForm hasPending={Boolean(phone.pending)} routes={phoneRoutes} />}
       </section>
+
+      {/* PAN, Aadhaar, passport and mobile for manual review, and the tax form: identity and tax
+          details live together here; Rewards & Payments keeps only where the money goes. */}
+      <KycSettings initial={kycStatus} />
+      <TaxFormSettings initial={payoutDetails} />
     </div>
   );
 }

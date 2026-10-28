@@ -40,11 +40,11 @@ test("researcher dashboard: KPIs, distinct status colors, range filter and table
 });
 
 test("organization dashboard: KPIs and charts for owners", async ({ page }) => {
-  await signIn(page, "e2e.launch-admin@unpatched.demo");
-  await page.goto("/organizations");
-  await page.getByRole("link", { name: /E2E Launch Org/ }).first().click();
-  await page.waitForURL(/\/organizations\/[0-9a-f-]{36}$/);
-  await page.goto(`${new URL(page.url()).pathname}/analytics`);
+  // E2E Journey Org: its seeded reports are deterministic (the launch org's programs are swept
+  // by seed:e2e, so its analytics can legitimately be empty).
+  const { organizationId } = JSON.parse((await import("node:fs")).readFileSync("e2e/.seed-fixture.json", "utf-8")) as { organizationId: string };
+  await signIn(page, "e2e.admin@unpatched.demo");
+  await page.goto(`/organizations/${organizationId}/analytics`);
   await expect(page.getByRole("heading", { name: "Security overview" })).toBeVisible();
   await expectTiles(page, ["Reports received", "Validity rate", "Open backlog", "Median time to triage", "Median time to close", "Bounties awarded"]);
   await expect(page.getByRole("heading", { name: "Report inflow by severity" })).toBeVisible();

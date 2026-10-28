@@ -33,6 +33,17 @@ import { getReportJiraLink } from "../../../../../../../services/jira";
 import { getReportSla } from "../../../../../../../services/program-policy";
 import { ReportSlaPanel } from "../../../../../../../components/programs/program-policy";
 import { getReportDisclosure } from "../../../../../../../services/report-disclosures";
+import { listReportBonuses } from "../../../../../../../services/bonuses";
+import { getReportIssuePanel } from "../../../../../../../services/code-hosts";
+import { getReportServiceNowLink, organizationHasServiceNow } from "../../../../../../../services/servicenow";
+import { CreateServiceNowTicketButton } from "../../../../../../../components/integrations/servicenow-forms";
+import { CreateIssueButton } from "../../../../../../../components/integrations/code-host-forms";
+import { BonusItem, ProposeBonusForm } from "../../../../../../../components/reports/report-bonuses";
+import { getReportAcknowledgement } from "../../../../../../../services/researcher-journey";
+import { revokeAcknowledgementAction } from "../../../../../../../actions/researcher-journey";
+import { ActionButton } from "../../../../../../../components/researcher/journey-controls";
+import { ProposeAcknowledgementForm } from "../../../../../../../components/researcher/journey-forms";
+import { JourneyStatus } from "../../../../../../../components/researcher/journey-status";
 import { getReportPayoutReadiness, listPaymentAttempts, listReportPaymentObligations } from "../../../../../../../services/payments";
 import { canCreateProgram } from "../../../../../../../services/authorization";
 import { getActorMembership } from "../../../../../../../services/organization-members";
@@ -122,7 +133,7 @@ export default async function ReportDetailPage({
   // (they can't open report contents). Never program managers or triagers.
   const canManagePaymentsHere = isOrgAdmin;
 
-  const [auditEvents, messages, evidence, bountyDecision, paymentObligations, researcherBiography, disclosure, collaborators, retests, mediations, sla, assignableStaff, statusHistory, jiraLink] = await Promise.all([
+  const [auditEvents, messages, evidence, bountyDecision, paymentObligations, researcherBiography, disclosure, collaborators, retests, mediations, sla, assignableStaff, statusHistory, jiraLink, acknowledgement] = await Promise.all([
     canTriage ? getReportAuditActivity(reportId) : Promise.resolve([]),
     listReportMessages(reportId),
     listReportEvidence(reportId),
@@ -140,6 +151,8 @@ export default async function ReportDetailPage({
     // The org's internal tracker: triage staff only, never the researcher (the RPC applies
     // the same predicate and returns nothing otherwise).
     canTriage ? getReportJiraLink(reportId) : Promise.resolve(null),
+    // Hall of Fame credit (202610280001): offered by staff on accepted or resolved reports.
+    canTriage && (report.status === "accepted" || report.status === "resolved") ? getReportAcknowledgement(reportId) : Promise.resolve(null),
   ]);
   // Attempt-level detail (failure code/message, provider reference) is manager-only and
   // only needed while a payout is actually in flight -- fetched after the obligations are
@@ -151,6 +164,12 @@ export default async function ReportDetailPage({
   // Only for a finalized bounty, and only for who may see it: finance roles get every
   // recipient's blockers, a researcher only their own (get_report_payout_readiness).
   const bountyFinalized = bountyDecision?.state === "finalized";
+  // Post-award bonuses (202610290003): staff see every one; the researcher only approved ones (RLS).
+  const bonuses = bountyFinalized ? await listReportBonuses(reportId) : [];
+  // GitHub / GitLab issues (202610290004): triage staff only.
+  const issuePanel = canTriage ? await getReportIssuePanel(reportId, programId) : { links: [], providers: [] };
+  // ServiceNow (202610290005): triage staff, when the organization is connected.
+  const [snConnected, snLink] = canTriage ? await Promise.all([organizationHasServiceNow(organizationId), getReportServiceNowLink(reportId)]) : [false, null];
   const [payoutReadiness, bountyAcceptance] =
     bountyFinalized && (isOwnReport || canTriage) ? await Promise.all([getReportPayoutReadiness(reportId), getBountyAcceptance(reportId)]) : [[], null];
   // Staff see which report this duplicates; the researcher can't open someone else's report.
@@ -399,7 +418,10 @@ export default async function ReportDetailPage({
               so "what was submitted" and "what was decided" are never visually continuous.
               Sticky on desktop so the current status/action stays visible while reading a
               long communication or evidence history. */}
-          <div className="mt-6 lg:sticky lg:top-16 lg:mt-0">
+          {/* Sticky, but never taller than the window: a rail longer than the viewport (triage +
+              bounty + Hall of Fame on a resolved report) would otherwise leave its lowest
+              controls unreachable. It scrolls on its own instead. */}
+          <div className="mt-6 lg:sticky lg:top-16 lg:mt-0 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
             {/* Once the report has no legal outgoing transition, this becomes the
                 organization's FINAL decision — the eyebrow label and severity control both
                 reflect that. See docs/decisions/0012-report-resolution-and-classification.md. */}
@@ -474,6 +496,24 @@ export default async function ReportDetailPage({
                   <Cvss4Editor organizationId={organizationId} programId={programId} reportId={reportId} vector={report.cvss4Vector ?? null} score={report.cvss4Score ?? null} locked={isFinal || bountyFinalized} />
                   <PriorityControl organizationId={organizationId} programId={programId} reportId={reportId} priority={report.priority} confirmedSeverity={report.confirmedSeverity} locked={bountyFinalized} />
                   <TriageActionPanel organizationId={organizationId} programId={programId} reportId={reportId} status={report.status} allowedNext={allowedNext} />
+                  {(report.status === "accepted" || report.status === "resolved") && (
+                    <div className="space-y-2 border-t border-border pt-4">
+                      <SectionLabel>Hall of Fame</SectionLabel>
+                      {acknowledgement && acknowledgement.status !== "revoked" ? (
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+                          <JourneyStatus status={acknowledgement.status === "proposed" ? "pending" : acknowledgement.status} />
+                          {acknowledgement.status === "proposed" && "Waiting for the researcher to agree."}
+                          {acknowledgement.status === "published" && (
+                            <ActionButton variant="quiet" action={revokeAcknowledgementAction.bind(null, acknowledgement.id)} confirm="The researcher's name comes off your Hall of Fame." confirmLabel="Remove credit?">
+                              Remove
+                            </ActionButton>
+                          )}
+                        </div>
+                      ) : (
+                        <ProposeAcknowledgementForm reportId={reportId} />
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               {/* isFinal/allowedNext above are still the server-derived values (this
@@ -514,6 +554,80 @@ export default async function ReportDetailPage({
                 <div className="mt-3">
                   <BountyDecisionSection decision={bountyDecision} canCalculate={canTriage} reportIsFinal={isFinal} canFinalize={canFinalizeBounty} organizationId={organizationId} programId={programId} reportId={reportId} />
                 </div>
+              </RailSection>
+            )}
+
+            {canTriage && (snLink || snConnected) && (
+              <RailSection>
+                <SectionLabel>ServiceNow</SectionLabel>
+                {snLink ? (
+                  <p className="mt-2 text-sm">
+                    {snLink.url ? (
+                      <a href={snLink.url} target="_blank" rel="noopener noreferrer" className="font-medium text-action underline underline-offset-2">
+                        {snLink.number}
+                      </a>
+                    ) : (
+                      <span className="font-medium text-ink">{snLink.number}</span>
+                    )}
+                    <span className="text-ink-muted"> · {snLink.state}</span>
+                  </p>
+                ) : report.status === "accepted" || report.status === "resolved" ? (
+                  <div className="mt-2">
+                    <CreateServiceNowTicketButton organizationId={organizationId} programId={programId} reportId={reportId} />
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-ink-muted">A ticket can be created once the report is accepted.</p>
+                )}
+              </RailSection>
+            )}
+
+            {canTriage && (issuePanel.links.length > 0 || issuePanel.providers.length > 0) && (
+              <RailSection>
+                <SectionLabel>Code issues</SectionLabel>
+                <ul className="mt-2 space-y-2 text-sm">
+                  {issuePanel.links.map((l) => (
+                    <li key={l.provider}>
+                      <a href={l.issueUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-action underline underline-offset-2">
+                        {l.repoFullName}#{l.issueNumber}
+                      </a>
+                      <span className="text-ink-muted"> · {l.state}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {issuePanel.providers
+                    .filter((prov) => !issuePanel.links.some((l) => l.provider === prov))
+                    .map((prov) =>
+                      report.status === "accepted" || report.status === "resolved" ? (
+                        <CreateIssueButton key={prov} organizationId={organizationId} programId={programId} reportId={reportId} provider={prov} />
+                      ) : (
+                        <p key={prov} className="text-xs text-ink-muted">
+                          A {prov === "github" ? "GitHub" : "GitLab"} issue can be created once the report is accepted.
+                        </p>
+                      ),
+                    )}
+                </div>
+              </RailSection>
+            )}
+
+            {bountyFinalized && bountyDecision?.currency && bountyDecision.finalAmountMinorUnits !== null && (canFinalizeBounty || bonuses.length > 0) && (
+              <RailSection>
+                <SectionLabel>Bonuses</SectionLabel>
+                {bonuses.length > 0 && (
+                  <ul className="mt-2 divide-y divide-border">
+                    {bonuses.map((b) => (
+                      <BonusItem key={b.id} organizationId={organizationId} bonus={b} currentUserId={user.id} canDecide={isOrgAdmin} />
+                    ))}
+                  </ul>
+                )}
+                {canFinalizeBounty && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-sm font-medium text-action">Propose a bonus</summary>
+                    <div className="mt-3">
+                      <ProposeBonusForm organizationId={organizationId} reportId={reportId} currency={bountyDecision.currency} maxMinorUnits={bountyDecision.finalAmountMinorUnits} />
+                    </div>
+                  </details>
+                )}
               </RailSection>
             )}
 

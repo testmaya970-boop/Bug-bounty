@@ -2,11 +2,13 @@
 
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, IconButton } from "../ui/button";
-import { Input } from "../ui/form";
+import { IconButton } from "../ui/button";
 import { EmptyState } from "../ui/feedback";
 import { SectionLabel } from "../ui/security-primitives";
-import { addReportCollaboratorAction, removeReportCollaboratorAction } from "../../actions/reports";
+import { removeReportCollaboratorAction } from "../../actions/reports";
+import { InviteCollaboratorForm } from "../researcher/journey-forms";
+import Link from "next/link";
+import type { Route } from "next";
 import type { ReportCollaborator } from "../../types/report";
 import { LocalTime } from "../ui/local-time";
 import { Trash } from "@phosphor-icons/react";
@@ -56,9 +58,9 @@ function RemoveCollaboratorButton({ organizationId, programId, reportId, collabo
 
 /** Read-only for a collaborator or program staff; the submitter additionally gets a
  * "Remove" action per row (server-enforced -- see remove_report_collaborator) and the
- * "Add collaborator" form below. `canManage` is exactly "is the submitter," not "is
+ * invitation form below (the invitee must accept, 202610280001). `canManage` is exactly "is the submitter," not "is
  * signed in" -- a collaborator can read this list but never edit it. `locked` mirrors
- * add_report_collaborator/remove_report_collaborator's own status gate (only 'new' or
+ * invite_report_collaborator/remove_report_collaborator's own status gate (only 'new' or
  * 'triaging' accept changes) -- hidden here too so the submitter is never shown a form
  * that would just fail server-side once triage has moved past that point. */
 export function ReportCollaboratorsPanel({
@@ -99,72 +101,18 @@ export function ReportCollaboratorsPanel({
       {canManage && (locked ? (
         <p className="border-t border-border pt-4 text-xs text-ink-muted">Collaborators are locked once triage has moved past the initial review.</p>
       ) : (
-        <AddCollaboratorForm organizationId={organizationId} programId={programId} reportId={reportId} />
+        <div className="space-y-2 border-t border-border pt-4">
+          <InviteCollaboratorForm reportId={reportId} />
+          <p className="text-xs text-ink-muted">
+            They join once they accept. Track invitations in{" "}
+            <Link prefetch={false} href={"/settings/collaboration" as Route} className="font-medium text-action underline underline-offset-2">
+              Settings, Collaboration
+            </Link>
+            .
+          </p>
+        </div>
       ))}
     </div>
-  );
-}
-
-function AddCollaboratorForm({ organizationId, programId, reportId }: ReportRef) {
-  const router = useRouter();
-  const [collaboratorUsername, setCollaboratorUsername] = useState("");
-  const [bountySplitPercent, setBountySplitPercent] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (pending) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await addReportCollaboratorAction({
-        organizationId,
-        programId,
-        reportId,
-        collaboratorUsername,
-        bountySplitPercent: Number(bountySplitPercent),
-      });
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      setCollaboratorUsername("");
-      setBountySplitPercent("");
-      router.refresh();
-    });
-  }
-
-  return (
-    <form className="flex flex-wrap items-end gap-3 border-t border-border pt-4" onSubmit={handleSubmit} noValidate>
-      <Input
-        label="Collaborator's username"
-        placeholder="jane-researcher"
-        required
-        value={collaboratorUsername}
-        onChange={(event) => setCollaboratorUsername(event.target.value)}
-        className="min-w-0 flex-1"
-      />
-      <Input
-        label="Bounty split"
-        type="number"
-        min={0.01}
-        max={100}
-        step={0.01}
-        placeholder="25"
-        required
-        value={bountySplitPercent}
-        onChange={(event) => setBountySplitPercent(event.target.value)}
-        className="w-28"
-      />
-      <Button type="submit" pending={pending}>
-        Add
-      </Button>
-      {error && (
-        <p role="alert" className="w-full text-xs font-medium text-danger">
-          {error}
-        </p>
-      )}
-    </form>
   );
 }
 

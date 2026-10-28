@@ -15,6 +15,7 @@ type ObligationRow = {
   organization_id: string;
   researcher_id: string;
   bounty_decision_id: string;
+  bonus_id?: string | null;
   amount_minor_units: number;
   platform_fee_minor_units: number;
   currency: string;
@@ -44,6 +45,7 @@ function mapObligationRow(row: ObligationRow): PaymentObligation {
     reportId: row.report_id,
     researcherId: row.researcher_id,
     bountyDecisionId: row.bounty_decision_id,
+    bonusId: row.bonus_id ?? null,
     amountMinorUnits: row.amount_minor_units,
     platformFeeMinorUnits: row.platform_fee_minor_units,
     currency: row.currency,

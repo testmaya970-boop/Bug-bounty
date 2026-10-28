@@ -15,7 +15,9 @@ export type CardWebhookResult = { reference: string; outcome: "confirmed" | "fai
 export type CardProvider = {
   readonly name: "sandbox" | "razorpay" | "stripe";
   readonly mode: "sandbox" | "live";
-  createCheckout(input: { reference: string; chargedMinorUnits: number; currency: CardCurrency; description: string; returnUrl: string }): Promise<CardCheckout>;
+  /** returnUrl / cancelUrl are pages on Unpatched the gateway sends the payer back to;
+   * sandboxUrl is the stand-in checkout page (sandbox only). */
+  createCheckout(input: { reference: string; chargedMinorUnits: number; currency: CardCurrency; description: string; returnUrl: string; cancelUrl: string; sandboxUrl: string }): Promise<CardCheckout>;
   /** Verifies the signature; returns a final verdict, or null for an event that isn't one. Throws on a bad signature. */
   parseWebhook(rawBody: string, headers: Headers): Promise<CardWebhookResult | null>;
 };
@@ -36,9 +38,8 @@ const WEBHOOK_TOLERANCE_SECONDS = 300;
 const sandboxProvider: CardProvider = {
   name: "sandbox",
   mode: "sandbox",
-  async createCheckout({ reference, returnUrl }) {
-    // returnUrl is the organization's Payments page; the sandbox page sits beside it.
-    return { url: `${returnUrl}/card-sandbox?ref=${encodeURIComponent(reference)}` };
+  async createCheckout({ sandboxUrl }) {
+    return { url: sandboxUrl };
   },
   async parseWebhook() {
     throw new Error("the sandbox has no webhook; results come from the sandbox page");
@@ -82,12 +83,12 @@ function stripeProvider(): CardProvider | null {
   return {
     name: "stripe",
     mode: "live",
-    async createCheckout({ reference, chargedMinorUnits, currency, description, returnUrl }) {
+    async createCheckout({ reference, chargedMinorUnits, currency, description, returnUrl, cancelUrl }) {
       const form = new URLSearchParams({
         mode: "payment",
         client_reference_id: reference,
-        success_url: `${returnUrl}?card=done`,
-        cancel_url: `${returnUrl}?card=cancelled`,
+        success_url: returnUrl,
+        cancel_url: cancelUrl,
         "line_items[0][quantity]": "1",
         "line_items[0][price_data][currency]": currency.toLowerCase(),
         "line_items[0][price_data][unit_amount]": String(chargedMinorUnits),
@@ -131,6 +132,31 @@ export function selectCardProvider(currency: CardCurrency, env: NodeJS.ProcessEn
   if (name === "razorpay" && currency === "INR") return razorpayProvider();
   if (name === "stripe" && currency === "USD") return stripeProvider();
   return null;
+}
+
+// Gateways the organization chooses between on the Add funds page. Each settles one currency.
+export type CheckoutGateway = "stripe" | "paypal" | "razorpay";
+export const GATEWAY_CURRENCY: Record<CheckoutGateway, CardCurrency> = { stripe: "USD", paypal: "USD", razorpay: "INR" };
+
+/** Env per gateway: none | sandbox | <the gateway's own name>. */
+export function gatewayProviderName(gateway: CheckoutGateway, env: NodeJS.ProcessEnv = process.env): string {
+  const raw = gateway === "razorpay" ? env.CARD_PROVIDER_IN : gateway === "stripe" ? env.CARD_PROVIDER_GLOBAL : env.CARD_PROVIDER_PAYPAL;
+  return raw?.trim() || "none";
+}
+
+/** PayPal Checkout (USD). Not wired yet: this is where the PayPal Orders API goes (create an
+ * order with return_url/cancel_url, send the payer to its approve link, capture on return, and
+ * confirm by verified webhook). Until then PayPal is offered only in sandbox mode. */
+function paypalCheckoutProvider(): CardProvider | null {
+  return null;
+}
+
+/** The provider for a chosen gateway, or null when it is off or not connected yet. */
+export function selectGatewayProvider(gateway: CheckoutGateway, env: NodeJS.ProcessEnv = process.env): CardProvider | null {
+  const name = gatewayProviderName(gateway, env);
+  if (name === "sandbox") return sandboxAllowed(env) ? sandboxProvider : null;
+  if (name !== gateway) return null;
+  return gateway === "razorpay" ? razorpayProvider() : gateway === "stripe" ? stripeProvider() : paypalCheckoutProvider();
 }
 
 /** For the webhook route: the live adapter by name. */
