@@ -258,9 +258,10 @@ async function ensureUser(email: string, displayName: string, username: string):
   return created;
 }
 
-async function resetSettingsAccount(user: UserRow) {
+// Display names are unique, so each account resets to its own.
+async function resetSettingsAccount(user: UserRow, displayName: string) {
   const passwordHash = await argon2.hash(E2E_PASSWORD, { type: argon2.argon2id });
-  await withServiceRole((client) => client.query("update public.users set password_hash = $2, display_name = 'E2E Settings Researcher' where id = $1", [user.id, passwordHash]));
+  await withServiceRole((client) => client.query("update public.users set password_hash = $2, display_name = $3 where id = $1", [user.id, passwordHash, displayName]));
 }
 
 type OrgRow = { id: string; name: string };
@@ -789,8 +790,8 @@ async function main() {
   await ensureUser(E2E_INVITED_EMAIL, "E2E Invited Researcher", "e2e_invited");
   const veteran = await ensureUser(E2E_VETERAN_EMAIL, "E2E Veteran Researcher", "e2e_veteran");
   const newcomer = await ensureUser(E2E_NEWCOMER_EMAIL, "E2E Newcomer Researcher", "e2e_newcomer");
-  await resetSettingsAccount(await ensureUser(E2E_SETTINGS_EMAIL, "E2E Settings Researcher", "e2e_settings"));
-  await resetSettingsAccount(await ensureUser(E2E_PASSWORD_CASE_EMAIL, "E2E Settings Researcher", "e2e_password"));
+  await resetSettingsAccount(await ensureUser(E2E_SETTINGS_EMAIL, "E2E Settings Researcher", "e2e_settings"), "E2E Settings Researcher");
+  await resetSettingsAccount(await ensureUser(E2E_PASSWORD_CASE_EMAIL, "E2E Password Researcher", "e2e_password"), "E2E Password Researcher");
   const hunter = await ensureUser(E2E_HUNTER_EMAIL, "E2E Hunter Researcher", "e2e_hunter");
   // e2e/documents.spec.ts: a researcher with no verified identity, kept that way every run.
   const unverified = await ensureUser(E2E_UNVERIFIED_EMAIL, "E2E Unverified Researcher", "e2e_unverified");
