@@ -44,13 +44,21 @@ describe("startup configuration check", () => {
       expect(findConfigurationProblems(withEnv({ ...VALID, EMAIL_PROVIDER: provider }), true).join("\n")).toMatch(/EMAIL_PROVIDER/);
     }
     expect(findConfigurationProblems(withEnv({ ...VALID, EMAIL_PROVIDER: "dev" }), false)).toEqual([]);
-    expect(findConfigurationProblems(withEnv({ ...VALID, EMAIL_PROVIDER: "dev", LOCAL_PROD_TEST: "1" }), true)).toEqual([]);
+    expect(findConfigurationProblems(withEnv({ ...VALID, EMAIL_PROVIDER: "dev", LOCAL_PROD_TEST: "1", APP_ORIGIN: "https://127.0.0.1:3443" }), true)).toEqual([]);
+    // The flag only counts on a loopback origin: leaked into a real deployment, it changes nothing.
+    expect(findConfigurationProblems(withEnv({ ...VALID, EMAIL_PROVIDER: "dev", LOCAL_PROD_TEST: "1" }), true).join("\n")).toMatch(/EMAIL_PROVIDER/);
   });
 
   it("rejects the committed dev database password and MinIO root credentials in production", () => {
     const dev = withEnv({ ...VALID, DATABASE_URL: "postgres://sentinel_app_runtime:sentinel_dev_password@localhost:55432/sentinel", S3_ACCESS_KEY_ID: "sentinel_minio" });
     expect(findConfigurationProblems(dev, true).join("\n")).toMatch(/local-dev password[\s\S]*MinIO root/);
     expect(findConfigurationProblems(dev, false)).toEqual([]);
+  });
+
+  it("lets the local prod-build test (CI's throwaway database) use the dev database password", () => {
+    const ci = { ...VALID, DATABASE_URL: "postgres://sentinel_app_runtime:sentinel_dev_password@localhost:5432/sentinel", LOCAL_PROD_TEST: "1" };
+    expect(findConfigurationProblems(withEnv({ ...ci, APP_ORIGIN: "https://127.0.0.1:3443" }), true)).toEqual([]);
+    expect(findConfigurationProblems(withEnv(ci), true).join("\n")).toMatch(/local-dev password/);
   });
 
   it("requires APP_ORIGIN, as an https origin in production", () => {

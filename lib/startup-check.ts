@@ -1,9 +1,11 @@
 import { getNativeEnv } from "./env";
 
 /** Set only by playwright.config.ts: the release gate runs a real prod build against the
- * local dev database and local email setup, which legitimately use dev-only values. */
+ * local dev database and local email setup, which legitimately use dev-only values. Counts
+ * only on a loopback origin (as sandboxAllowed does), so the flag leaking into a real
+ * deployment never switches these checks off. */
 function isLocalProdTest(env: NodeJS.ProcessEnv): boolean {
-  return env.LOCAL_PROD_TEST === "1";
+  return env.LOCAL_PROD_TEST === "1" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(env.APP_ORIGIN ?? "");
 }
 
 /**
@@ -26,7 +28,7 @@ export function findConfigurationProblems(env: NodeJS.ProcessEnv, isProduction: 
     }
     // The committed local-dev credentials (db/init/01-app-role.sql, the old compose file)
     // and the MinIO root user must never reach production.
-    if (env.DATABASE_URL?.includes("sentinel_dev_password")) problems.push("DATABASE_URL still uses the committed local-dev password");
+    if (env.DATABASE_URL?.includes("sentinel_dev_password") && !isLocalProdTest(env)) problems.push("DATABASE_URL still uses the committed local-dev password");
     if (env.S3_SECRET_ACCESS_KEY === "sentinel_dev_password" || env.S3_ACCESS_KEY_ID === "sentinel_minio") {
       problems.push("S3 credentials are the MinIO root/dev credentials -- use a scoped app user (scripts/storage-app-user.sh)");
     }
