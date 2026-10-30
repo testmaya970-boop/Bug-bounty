@@ -165,12 +165,16 @@ describe("priority drives payout", () => {
 
       await db.query("select public.set_report_priority($1, 'p0')", [r.id]);
       await db.query("select public.calculate_bounty_recommendation($1)", [r.id]);
-      const explicit = await db.one<{ priority_at_calculation: string; max: string; tier_percent: number }>(
-        "select priority_at_calculation, calculated_max_amount_minor_units as max, tier_percent from public.report_bounty_decisions where report_id = $1",
+      const explicit = await db.one<{ priority_at_calculation: string; max: string; reward_group_id: string | null }>(
+        "select priority_at_calculation, calculated_max_amount_minor_units as max, reward_group_id from public.report_bounty_decisions where report_id = $1",
         [r.id],
       );
       expect(explicit.priority_at_calculation).toBe("p0");
-      expect(Number(explicit.max)).toBe(Math.round((maxFor("critical") * explicit.tier_percent) / 100));
+      // P0 pays the critical range: the asset's reward group table when it has one (202610300001), else the program's.
+      const groupMax = explicit.reward_group_id
+        ? Number((await db.one<{ max: string }>("select max_amount_minor_units as max from public.reward_group_bounties where reward_group_id = $1 and severity = 'critical'", [explicit.reward_group_id])).max)
+        : maxFor("critical");
+      expect(Number(explicit.max)).toBe(groupMax);
 
       await db.query("reset role");
       await db.query("update public.report_bounty_decisions set state = 'finalized', final_amount_minor_units = calculated_min_amount_minor_units, finalized_by = $2, finalized_at = now() where report_id = $1", [r.id, owner]);

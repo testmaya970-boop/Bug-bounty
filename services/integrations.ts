@@ -181,8 +181,8 @@ export function getIntegrationStatuses(): IntegrationStatus[] {
     status("payments", "Other currencies (PayPal)", payoutProviderName("USD"), PAYOUT_ENV),
     status("cards", "INR card top-ups (Razorpay)", cardProviderName("INR"), CARD_ENV),
     status("cards", "USD card top-ups (Stripe)", cardProviderName("USD"), CARD_ENV),
-    // PayPal checkout has no live adapter yet (lib/integrations/card.ts), so "paypal" can't be live.
-    ((s) => (s.provider === "paypal" ? { ...s, mode: "misconfigured" as const } : s))(status("cards", "USD top-ups (PayPal)", gatewayProviderName("paypal"), CARD_ENV)),
+    // PayPal's own sandbox (PAYPAL_ENV, default sandbox) shows as sandbox, not live.
+    ((s) => (s.provider === "paypal" && s.mode === "live" && process.env.PAYPAL_ENV?.trim() !== "live" ? { ...s, mode: "sandbox" as const } : s))(status("cards", "USD top-ups (PayPal)", gatewayProviderName("paypal"), CARD_ENV)),
     status("phone", "India (+91)", phoneProviderName("+91"), PHONE_ENV),
     status("phone", "Rest of world", phoneProviderName("+1"), PHONE_ENV),
   ];

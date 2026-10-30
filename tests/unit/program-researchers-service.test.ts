@@ -21,8 +21,8 @@ beforeEach(() => {
 
 describe("program-researchers service: error mapping", () => {
   const cases: { name: string; message: string; expectedCode: string; call: (services: typeof import("../../services/program-researchers")) => Promise<unknown> }[] = [
-    { name: "invite forbidden", message: "FORBIDDEN: actor cannot invite researchers to this program", expectedCode: "FORBIDDEN", call: (s) => s.inviteResearcher({ programId: "prog-1", email: "a@b.com" }) },
-    { name: "invitation pending", message: "INVITATION_PENDING: an invitation is already pending for this email", expectedCode: "INVITATION_PENDING", call: (s) => s.inviteResearcher({ programId: "prog-1", email: "a@b.com" }) },
+    { name: "invite forbidden", message: "FORBIDDEN: actor cannot invite researchers to this program", expectedCode: "FORBIDDEN", call: (s) => s.inviteResearcherByUsername({ programId: "prog-1", username: "jordan_ellis" }) },
+    { name: "invitation pending", message: "INVITATION_PENDING: this researcher already has a pending invitation", expectedCode: "INVITATION_PENDING", call: (s) => s.inviteResearcherByUsername({ programId: "prog-1", username: "jordan_ellis" }) },
     { name: "email mismatch (token accept)", message: "INVITATION_EMAIL_MISMATCH: this invitation was sent to a different email address", expectedCode: "INVITATION_EMAIL_MISMATCH", call: (s) => s.acceptProgramInvitation("some-token") },
     { name: "email mismatch (accept by id)", message: "INVITATION_EMAIL_MISMATCH: this invitation was sent to a different email address", expectedCode: "INVITATION_EMAIL_MISMATCH", call: (s) => s.acceptProgramInvitationById("invite-1") },
     { name: "researcher not found (suspend)", message: "RESEARCHER_NOT_FOUND: active participation not found", expectedCode: "RESEARCHER_NOT_FOUND", call: (s) => s.suspendResearcher({ programId: "prog-1", targetUserId: "user-9" }) },
@@ -47,9 +47,9 @@ describe("program-researchers service: error mapping", () => {
     fakeClient.query.mockImplementation(async () => {
       throw new Error('duplicate key value violates unique constraint "program_invitations_pending_unique"');
     });
-    const { inviteResearcher, OrganizationServiceError } = await import("../../services/program-researchers");
+    const { inviteResearcherByUsername, OrganizationServiceError } = await import("../../services/program-researchers");
 
-    const error: unknown = await inviteResearcher({ programId: "prog-1", email: "a@b.com" }).catch((thrown) => thrown);
+    const error: unknown = await inviteResearcherByUsername({ programId: "prog-1", username: "jordan_ellis" }).catch((thrown) => thrown);
     expect(error).toBeInstanceOf(OrganizationServiceError);
     expect((error as InstanceType<typeof OrganizationServiceError>).code).toBe("UNKNOWN");
     expect((error as Error).message).not.toContain("constraint");
@@ -80,7 +80,7 @@ describe("program-researchers service: RPC call shape", () => {
   it("invites with a hashed token, never the raw one, and returns the raw token to the caller once", async () => {
     let capturedArgs: unknown[] | undefined;
     fakeClient.query.mockImplementation(async (sql: string, params: unknown[]) => {
-      if (sql.includes("invite_researcher_to_program")) {
+      if (sql.includes("invite_researcher_by_username")) {
         capturedArgs = params;
         return queryReturning([
           { id: "invite-1", program_id: "prog-1", organization_id: "org-1", email: "a@b.com", invited_by: "actor-1", message: null, expires_at: "2026-09-02T00:00:00Z", accepted_at: null, revoked_at: null, created_at: "2026-08-26T00:00:00Z" },
@@ -88,13 +88,14 @@ describe("program-researchers service: RPC call shape", () => {
       }
       return queryReturning([]);
     });
-    const { inviteResearcher } = await import("../../services/program-researchers");
+    const { inviteResearcherByUsername } = await import("../../services/program-researchers");
     const { hashInvitationToken } = await import("../../services/invitations");
 
-    const { token, invitation } = await inviteResearcher({ programId: "prog-1", email: "A@B.com" });
+    const { token, invitation, recipientEmail } = await inviteResearcherByUsername({ programId: "prog-1", username: "@Jordan_Ellis" });
 
     expect(capturedArgs?.[0]).toBe("prog-1");
-    expect(capturedArgs?.[1]).toBe("A@B.com");
+    expect(capturedArgs?.[1]).toBe("@Jordan_Ellis"); // the database normalizes the handle
+    expect(recipientEmail).toBe("a@b.com"); // looked up by the database, kept on the server
     expect(capturedArgs?.[3]).toBe(hashInvitationToken(token));
     expect(capturedArgs?.[3]).not.toBe(token);
     expect(invitation.id).toBe("invite-1");

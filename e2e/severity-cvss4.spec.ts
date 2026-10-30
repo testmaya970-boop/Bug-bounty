@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import pg from "pg";
 import { passMfaGate } from "./mfa-gate";
 
-// CVSS 4.0 scoring and asset tiers (202610220006) through the real UI.
+// CVSS 4.0 scoring (202610220006) and asset reward groups (202610300001) through the real UI.
 
 const PASSWORD = "E2ESeed!2026";
 const OWNER = "e2e.admin@unpatched.demo";
@@ -22,7 +22,7 @@ function envUrl(): string {
   return /^MIGRATION_DATABASE_URL=(.*)$/m.exec(env)?.[1]?.trim() ?? /^DATABASE_URL=(.*)$/m.exec(env)![1].trim();
 }
 
-test("owner scores a report with CVSS 4.0 and sets an asset's tier", async ({ page }) => {
+test("owner scores a report with CVSS 4.0 and moves an asset to another reward group", async ({ page }) => {
   const { organizationId } = JSON.parse(readFileSync("e2e/.seed-fixture.json", "utf-8")) as { organizationId: string };
   const db = new pg.Client({ connectionString: envUrl() });
   await db.connect();
@@ -51,9 +51,9 @@ test("owner scores a report with CVSS 4.0 and sets an asset's tier", async ({ pa
   await expect(page.getByText("CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N")).toBeVisible();
 
   await page.goto(`/organizations/${organizationId}/assets`);
-  const tierSelect = page.getByLabel(/^Tier for /).first();
-  await tierSelect.selectOption("2");
+  const groupSelect = page.getByLabel(/^Reward group for /).first();
+  await groupSelect.selectOption({ label: "High Value Systems" });
   await page.reload();
-  await expect(page.getByLabel(/^Tier for /).first()).toHaveValue("2");
-  await page.getByLabel(/^Tier for /).first().selectOption("1"); // leave the seed as it was
+  await expect(page.getByLabel(/^Reward group for /).first().locator("option:checked")).toHaveText("High Value Systems");
+  await page.getByLabel(/^Reward group for /).first().selectOption({ label: "Core Platform" }); // leave the seed as it was
 });

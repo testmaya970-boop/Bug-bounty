@@ -36,7 +36,7 @@ export function LeaderboardTable({ rows, myResearcherId }: { rows: PublicLeaderb
   const [sortKey, setSortKey] = useState<SortKey>("score");
 
   const visibleRows = useMemo(() => {
-    const filtered = search.trim() ? rows.filter((row) => row.displayName.toLowerCase().includes(search.trim().toLowerCase())) : rows;
+    const filtered = search.trim() ? rows.filter((row) => `${row.displayName} @${row.username ?? ""}`.toLowerCase().includes(search.trim().toLowerCase())) : rows;
     return [...filtered].sort((a, b) => b[sortKey] - a[sortKey]);
   }, [rows, search, sortKey]);
 
@@ -65,7 +65,7 @@ export function LeaderboardTable({ rows, myResearcherId }: { rows: PublicLeaderb
           type="text"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name"
+          placeholder="Search by name or @username"
           className="min-h-10 min-w-0 flex-1 rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30 sm:max-w-56"
         />
         <div className="flex flex-wrap gap-1.5">
@@ -135,8 +135,9 @@ export function LeaderboardTable({ rows, myResearcherId }: { rows: PublicLeaderb
                       )}
                       {isMe && <span className="shrink-0 font-mono text-[10px] font-semibold text-ink-muted">You</span>}
                     </div>
-                    {/* A researcher who hasn't published a profile stays anonymous here (get_public_leaderboard). */}
-                    <p className="truncate font-mono text-[11px] text-ink-muted">{row.publicUsername ? `@${row.publicUsername}` : "Private profile"}</p>
+                    {/* Everyone's sign-up @username shows, so organizations can find and invite them;
+                        a researcher who opted out shows as "Anonymous researcher" (202610300004). */}
+                    {row.username && <p className="truncate font-mono text-[11px] text-ink-muted">@{row.username}</p>}
                   </div>
 
                   <span role="cell" className="text-right font-mono text-sm font-semibold tabular-nums text-ink">

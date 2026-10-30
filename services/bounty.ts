@@ -23,8 +23,7 @@ type DecisionRow = {
   currency: string | null;
   calculated_min_amount_minor_units: number | null;
   calculated_max_amount_minor_units: number | null;
-  asset_tier?: number | null;
-  tier_percent?: number | null;
+  reward_group_name?: string | null;
   final_amount_minor_units: number | null;
   finalized_at: string | null;
   finalization_note: string | null;
@@ -49,8 +48,7 @@ function mapDecisionRow(row: DecisionRow): ReportBountyDecision {
     currency: row.currency,
     calculatedMinAmountMinorUnits: row.calculated_min_amount_minor_units,
     calculatedMaxAmountMinorUnits: row.calculated_max_amount_minor_units,
-    assetTier: row.asset_tier ?? null,
-    tierPercent: row.tier_percent ?? null,
+    rewardGroupName: row.reward_group_name ?? null,
     finalAmountMinorUnits: row.final_amount_minor_units,
     finalizedAt: row.finalized_at,
     finalizationNote: row.finalization_note,

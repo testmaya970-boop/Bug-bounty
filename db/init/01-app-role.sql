@@ -17,3 +17,8 @@ grant connect on database sentinel to sentinel_app_runtime;
 -- so existing dev rows stay decryptable. Production sets its own secret and boot refuses
 -- this value (lib/startup-check.ts).
 alter database sentinel set app.settings.kyc_encryption_key = 'sentinel-local-dev-only-insecure-key-do-not-use-in-production';
+
+-- Local dev only: demo accounts (202610290012). Accounts and organizations marked is_demo skip
+-- identity verification and scope-ownership proof. Production never sets this, and boot refuses
+-- a production database that has it on (lib/startup-check.ts).
+alter database sentinel set app.settings.demo_accounts = 'on';

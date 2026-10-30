@@ -12,7 +12,8 @@ import { assetTypeLabel } from "../../lib/scope-labels";
 import { listOrganizationAssetsPageAction } from "../../actions/scope";
 import type { AssetInventoryItem, ProgramAssetType } from "../../types/scope";
 import { LocalTime } from "../ui/local-time";
-import { AssetTierControl } from "./asset-tier-control";
+import { AssetRewardGroupSelect } from "../rewards/reward-groups";
+import type { RewardColor, RewardIcon } from "../../types/reward-groups";
 
 const FILTERABLE_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
 
@@ -25,8 +26,9 @@ const FILTERABLE_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_a
 export function OrganizationAssetsTable({
   organizationId,
   initialAssets,
-  tiers = {},
-  canEditTier = false,
+  groupByAsset = {},
+  rewardGroups = [],
+  canEditGroup = false,
   initialNextCursor,
   programId,
   assetType,
@@ -35,9 +37,10 @@ export function OrganizationAssetsTable({
 }: {
   organizationId: string;
   initialAssets: AssetInventoryItem[];
-  /** Asset tiers (202610220006) and whether this viewer may change them. */
-  tiers?: Record<string, 1 | 2 | 3>;
-  canEditTier?: boolean;
+  /** Each asset's reward group (202610300001), the organization's active groups, and whether this viewer may change them. */
+  groupByAsset?: Record<string, string | null>;
+  rewardGroups?: { id: string; name: string; color: RewardColor; icon: RewardIcon }[];
+  canEditGroup?: boolean;
   initialNextCursor: string | null;
   programId: string | "all";
   assetType: ProgramAssetType | "all";
@@ -122,7 +125,7 @@ export function OrganizationAssetsTable({
             <thead className="border-b border-border bg-surface-muted text-xs text-ink-muted">
               <tr>
                 <th scope="col" className="min-w-[18rem] px-4 py-3 font-semibold">Asset</th>
-                <th scope="col" className="px-4 py-3 font-semibold">Tier</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Reward group</th>
                 <th scope="col" className="px-4 py-3 font-semibold">Engagements</th>
                 <th scope="col" className="px-4 py-3 text-right font-semibold">Open findings</th>
                 <th scope="col" className="px-4 py-3 text-right font-semibold">All findings</th>
@@ -139,7 +142,7 @@ export function OrganizationAssetsTable({
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <AssetTierControl organizationId={organizationId} assetId={asset.id} tier={tiers[asset.id] ?? 1} canEdit={canEditTier} assetName={asset.displayIdentifier} />
+                    <AssetRewardGroupSelect organizationId={organizationId} assetId={asset.id} assetName={asset.displayIdentifier} groupId={groupByAsset[asset.id] ?? null} groups={rewardGroups} canEdit={canEditGroup} />
                   </td>
                   <td className="px-4 py-3">
                     {asset.programs.length === 0 ? (

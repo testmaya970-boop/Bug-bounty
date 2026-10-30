@@ -55,7 +55,15 @@ const DEPOSIT_STATUS: Record<string, { label: string; tone: string }> = {
     label: "Did not complete",
     tone: "bg-surface-muted text-ink-muted",
   },
+  // A card checkout nobody finished within an hour (202610300003): still open at the provider,
+  // so a late payment can confirm it, but no longer counted as money on its way.
+  abandoned: { label: "Not completed", tone: "bg-surface-muted text-ink-muted" },
 };
+const ABANDONED_AFTER_MS = 60 * 60 * 1000;
+
+function depositStatus(d: { status: string; method: string; createdAt: string }, now = Date.now()): string {
+  return d.status === "pending" && d.method === "card" && now - Date.parse(d.createdAt) > ABANDONED_AFTER_MS ? "abandoned" : d.status;
+}
 
 /** One line per currency -- never blended across currencies. */
 function Figure({
@@ -98,7 +106,8 @@ async function likelyBillingCountry(currencies: string[]): Promise<string> {
 /**
  * The organization's prepaid balance and payment ledger (202610140004) -- the Billing Admin's
  * page, also open to owners and security admins. The organization adds funds; each award
- * commits bounty + fee against them; Unpatched pays the researcher. Shows each report's TITLE
+ * commits the bounty (since 202610230001 the fee comes out of the researcher's payout, not
+ * the balance); Unpatched pays the researcher. Shows each report's TITLE
  * only: billing admins never read report contents (the database enforces that too).
  */
 export default async function OrganizationPaymentsPage({ params }: { params: Promise<{ organizationId: string }> }) {
@@ -402,9 +411,9 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
                     )}
                   </span>
                   <span
-                    className={`rounded px-2 py-0.5 text-xs font-semibold ${DEPOSIT_STATUS[d.status].tone}`}
+                    className={`rounded px-2 py-0.5 text-xs font-semibold ${DEPOSIT_STATUS[depositStatus(d)].tone}`}
                   >
-                    {DEPOSIT_STATUS[d.status].label}
+                    {DEPOSIT_STATUS[depositStatus(d)].label}
                   </span>
                   {d.reviewNote && (
                     <span className="text-xs text-ink-muted">

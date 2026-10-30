@@ -32,7 +32,7 @@ import type { Page } from "@/types/pagination";
 export { OrganizationServiceError };
 
 const REPORT_SELECT_COLUMNS =
-  "r.id, r.program_id, r.organization_id, r.researcher_id, r.title, r.description, r.asset_type, r.target, r.display_target, r.matched_scope_entry_id, r.matched_scope_state, r.matched_target, r.status, r.confirmed_severity, r.priority, r.duplicate_of_report_id, r.resolution_summary, r.weakness_type, r.impact, r.researcher_severity, r.cvss_attack_vector, r.cvss_attack_complexity, r.cvss_privileges_required, r.cvss_user_interaction, r.cvss_scope, r.cvss_confidentiality_impact, r.cvss_integrity_impact, r.cvss_availability_impact, r.cvss_base_score, r.cvss4_vector, r.cvss4_score, r.researcher_cvss_version, r.researcher_cvss_vector, r.researcher_cvss_score, r.submitted_at, r.created_at, r.updated_at, u.display_name as researcher_display_name, r.assignee_id, a.display_name as assignee_display_name";
+  "r.id, r.program_id, r.organization_id, r.researcher_id, r.title, r.description, r.asset_type, r.target, r.display_target, r.matched_scope_entry_id, r.matched_scope_state, r.matched_target, r.status, r.confirmed_severity, r.priority, r.duplicate_of_report_id, r.resolution_summary, r.weakness_type, r.impact, r.researcher_severity, r.cvss_attack_vector, r.cvss_attack_complexity, r.cvss_privileges_required, r.cvss_user_interaction, r.cvss_scope, r.cvss_confidentiality_impact, r.cvss_integrity_impact, r.cvss_availability_impact, r.cvss_base_score, r.cvss4_vector, r.cvss4_score, r.researcher_cvss_version, r.researcher_cvss_vector, r.researcher_cvss_score, r.submitted_at, r.created_at, r.updated_at, u.display_name as researcher_display_name, u.username as researcher_username, r.assignee_id, a.display_name as assignee_display_name";
 
 type ReportRow = {
   id: string;
@@ -73,6 +73,7 @@ type ReportRow = {
   created_at: string;
   updated_at: string;
   researcher_display_name: string | null;
+  researcher_username?: string | null;
   assignee_id: string | null;
   assignee_display_name: string | null;
 };
@@ -106,6 +107,7 @@ function mapReportRow(row: ReportRow): Report {
     organizationId: row.organization_id,
     researcherId: row.researcher_id,
     researcherName: row.researcher_display_name ?? "Deactivated account",
+    researcherUsername: row.researcher_username ?? null,
     title: row.title,
     description: row.description,
     assetType: row.asset_type,

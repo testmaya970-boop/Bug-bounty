@@ -13,7 +13,7 @@ import { listProgramsForOrganization } from "../../../../services/programs";
 import { listOrganizationAssets } from "../../../../services/scope";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 import type { ProgramAssetType } from "../../../../types/scope";
-import { listAssetTiers } from "../../../../services/asset-tiers";
+import { listAssetRewardGroups, listRewardGroups } from "../../../../services/reward-groups";
 import { AssetPosture } from "../../../../components/organizations/asset-posture";
 
 const VALID_ASSET_TYPES: ProgramAssetType[] = ["domain", "url", "ip_cidr", "ios_app", "android_app", "source_code", "hardware", "ai_model"];
@@ -53,14 +53,16 @@ export default async function OrganizationAssetsPage({
   const programId = programParam && programs.some((program) => program.id === programParam) ? programParam : "all";
   const assetType: ProgramAssetType | "all" = typeParam && VALID_ASSET_TYPES.includes(typeParam as ProgramAssetType) ? (typeParam as ProgramAssetType) : "all";
 
-  const [{ items: assets, nextCursor }, assetTiers] = await Promise.all([
+  const [{ items: assets, nextCursor }, assetGroups, rewardGroups] = await Promise.all([
     listOrganizationAssets(organizationId, undefined, {
       programId: programId === "all" ? undefined : programId,
       assetType: assetType === "all" ? undefined : assetType,
       includeRetired,
     }),
-    actor.role === "billing_admin" ? Promise.resolve({ tiers: {}, canEdit: false }) : listAssetTiers(organizationId),
+    actor.role === "billing_admin" ? Promise.resolve({ byAsset: {}, canEdit: false }) : listAssetRewardGroups(organizationId),
+    actor.role === "billing_admin" ? Promise.resolve({ groups: [], canManage: false }) : listRewardGroups(organizationId),
   ]);
+  const activeGroups = rewardGroups.groups.filter((g) => !g.archived);
 
   return (
     <AppShell title="Assets" user={user} organizationId={organizationId}>
@@ -71,13 +73,17 @@ export default async function OrganizationAssetsPage({
 
         <p className="text-sm text-ink-muted">Every asset your engagements cover, where it is in scope, and the findings filed against it. Change scope from an engagement's Scope section.</p>
 
-        <AssetPosture assets={assets} tiers={assetTiers.tiers} more={Boolean(nextCursor)} />
+        <AssetPosture assets={assets} groupByAsset={assetGroups.byAsset} groups={activeGroups} more={Boolean(nextCursor)} />
 
         <OrganizationAssetsTable
           organizationId={organizationId}
+          // The table keeps its rows in state (for Load more); a new key per filter set remounts
+          // it, so a filter change shows the newly filtered rows instead of the first ones.
+          key={`${programId}|${assetType}|${includeRetired}`}
           initialAssets={assets}
-          tiers={assetTiers.tiers}
-          canEditTier={assetTiers.canEdit}
+          groupByAsset={assetGroups.byAsset}
+          rewardGroups={activeGroups.map((g) => ({ id: g.id, name: g.name, color: g.color, icon: g.icon }))}
+          canEditGroup={assetGroups.canEdit}
           initialNextCursor={nextCursor}
           programId={programId}
           assetType={assetType}

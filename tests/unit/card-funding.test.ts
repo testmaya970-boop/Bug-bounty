@@ -29,11 +29,9 @@ describe("card provider selection", () => {
   });
 
   it("routes Razorpay to INR only and Stripe to USD only", () => {
-    vi.stubEnv("RAZORPAY_KEY_ID", "k");
-    vi.stubEnv("RAZORPAY_KEY_SECRET", "s");
-    vi.stubEnv("RAZORPAY_WEBHOOK_SECRET", "w");
-    expect(selectCardProvider("USD", env({ CARD_PROVIDER_GLOBAL: "razorpay" }))).toBeNull();
-    expect(selectCardProvider("INR", env({ CARD_PROVIDER_IN: "razorpay" }))?.name).toBe("razorpay");
+    const keys = { RAZORPAY_KEY_ID: "k", RAZORPAY_KEY_SECRET: "s", RAZORPAY_WEBHOOK_SECRET: "w" };
+    expect(selectCardProvider("USD", env({ ...keys, CARD_PROVIDER_GLOBAL: "razorpay" }))).toBeNull();
+    expect(selectCardProvider("INR", env({ ...keys, CARD_PROVIDER_IN: "razorpay" }))?.name).toBe("razorpay");
   });
 });
 

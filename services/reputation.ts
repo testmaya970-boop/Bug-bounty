@@ -160,7 +160,7 @@ export async function getResearcherReputationScore(researcherId: string): Promis
   return Number(rows[0]?.get_researcher_reputation_score ?? 0);
 }
 
-type PublicLeaderboardRow_DB = { researcher_id: string; display_name: string; public_username: string | null; score: number; resolved_count: number; bounty_finalized_count: number };
+type PublicLeaderboardRow_DB = { researcher_id: string; display_name: string; public_username: string | null; username: string | null; score: number; resolved_count: number; bounty_finalized_count: number };
 
 /** The real, public leaderboard -- readable signed out, matching HackerOne's/Bugcrowd's
  * own public leaderboard pages. Only researchers with at least one real reputation_ledger
@@ -177,6 +177,7 @@ export async function getPublicLeaderboard(limit = 50): Promise<PublicLeaderboar
     researcherId: row.researcher_id,
     displayName: row.display_name,
     publicUsername: row.public_username,
+    username: row.username,
     score: row.score,
     resolvedCount: row.resolved_count,
     bountyFinalizedCount: row.bounty_finalized_count,
@@ -217,6 +218,26 @@ export async function getMyPublicUsername(userId: string): Promise<string | null
 /** Sets (or, with an empty string, clears) the caller's real, chosen, collision-checked
  * public username -- the prerequisite 0049 named before any public-profile page could
  * exist. Throws USERNAME_TAKEN / INVALID_USERNAME via the RPC's own error codes. */
+/** Whether the signed-in researcher appears on the public leaderboard (202610300004). */
+export async function getMyLeaderboardVisibility(): Promise<boolean> {
+  const actor = await getCurrentUser();
+  try {
+    const rows = await withActorTransaction(actor?.id ?? null, (client) => callRpc<{ get_my_leaderboard_visibility: boolean }>(client, "public.get_my_leaderboard_visibility", []));
+    return rows[0]?.get_my_leaderboard_visibility ?? true;
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+export async function setMyLeaderboardVisibility(visible: boolean): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.set_my_leaderboard_visibility", [visible]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
 export async function setMyPublicUsername(username: string): Promise<void> {
   const actor = await getCurrentUser();
   try {

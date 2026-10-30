@@ -35,6 +35,11 @@ import { ReportSlaPanel } from "../../../../../../../components/programs/program
 import { getReportDisclosure } from "../../../../../../../services/report-disclosures";
 import { listReportBonuses } from "../../../../../../../services/bonuses";
 import { getReportIssuePanel } from "../../../../../../../services/code-hosts";
+import { getMyPlatformStaff, getReportTriagePanel } from "../../../../../../../services/managed-triage";
+import { ReportTriagePanel } from "../../../../../../../components/managed-triage/forms";
+import { getReportRewardSuggestion } from "../../../../../../../services/reward-groups";
+import { RewardGroupBadge } from "../../../../../../../components/rewards/reward-groups";
+import { formatMoney } from "../../../../../../../lib/money";
 import { getReportServiceNowLink, organizationHasServiceNow } from "../../../../../../../services/servicenow";
 import { CreateServiceNowTicketButton } from "../../../../../../../components/integrations/servicenow-forms";
 import { CreateIssueButton } from "../../../../../../../components/integrations/code-host-forms";
@@ -123,7 +128,13 @@ export default async function ReportDetailPage({
   const isProgramManager = members.some((member) => member.userId === user.id && member.role === "manager");
   const isProgramTriager = members.some((member) => member.userId === user.id);
   const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
-  const canTriage = isProgramTriager || isOrgAdmin;
+  // Managed Triage analysts (202610290008): RLS already let them read this report; they triage
+  // it like the program's own triagers, but the organization's integrations, disclosure and
+  // money stay with the organization. Only asked when nothing above matched, so staff and
+  // researchers pay no extra query.
+  const isManagedAnalyst = !isOwnReport && !isProgramTriager && !isOrgAdmin && (await getMyPlatformStaff()).triageAnalyst;
+  const isOrgStaff = isProgramTriager || isOrgAdmin;
+  const canTriage = isOrgStaff || isManagedAnalyst;
   const reportPriority = effectivePriority(report);
 
   // Committing a financial figure is more sensitive than triage: org admins and the
@@ -150,7 +161,7 @@ export default async function ReportDetailPage({
     !canTriage ? getReportStatusHistory(reportId) : Promise.resolve([]),
     // The org's internal tracker: triage staff only, never the researcher (the RPC applies
     // the same predicate and returns nothing otherwise).
-    canTriage ? getReportJiraLink(reportId) : Promise.resolve(null),
+    isOrgStaff ? getReportJiraLink(reportId) : Promise.resolve(null),
     // Hall of Fame credit (202610280001): offered by staff on accepted or resolved reports.
     canTriage && (report.status === "accepted" || report.status === "resolved") ? getReportAcknowledgement(reportId) : Promise.resolve(null),
   ]);
@@ -167,9 +178,12 @@ export default async function ReportDetailPage({
   // Post-award bonuses (202610290003): staff see every one; the researcher only approved ones (RLS).
   const bonuses = bountyFinalized ? await listReportBonuses(reportId) : [];
   // GitHub / GitLab issues (202610290004): triage staff only.
-  const issuePanel = canTriage ? await getReportIssuePanel(reportId, programId) : { links: [], providers: [] };
+  const triagePanel = canTriage ? await getReportTriagePanel(reportId) : null;
+  // Asset -> reward group -> severity -> suggested range (202610300001), once the report is valid.
+  const rewardSuggestion = canTriage && (report.status === "accepted" || report.status === "resolved") && !bountyFinalized ? await getReportRewardSuggestion(reportId) : null;
+  const issuePanel = isOrgStaff ? await getReportIssuePanel(reportId, programId) : { links: [], providers: [] };
   // ServiceNow (202610290005): triage staff, when the organization is connected.
-  const [snConnected, snLink] = canTriage ? await Promise.all([organizationHasServiceNow(organizationId), getReportServiceNowLink(reportId)]) : [false, null];
+  const [snConnected, snLink] = isOrgStaff ? await Promise.all([organizationHasServiceNow(organizationId), getReportServiceNowLink(reportId)]) : [false, null];
   const [payoutReadiness, bountyAcceptance] =
     bountyFinalized && (isOwnReport || canTriage) ? await Promise.all([getReportPayoutReadiness(reportId), getBountyAcceptance(reportId)]) : [[], null];
   // Staff see which report this duplicates; the researcher can't open someone else's report.
@@ -536,6 +550,35 @@ export default async function ReportDetailPage({
               )}
             </RailSection>
 
+            {triagePanel && (isManagedAnalyst || triagePanel.claimedBy || triagePanel.escalations.length > 0 || triagePanel.assessments.length > 0) && (
+              <RailSection>
+                <SectionLabel>Managed Triage</SectionLabel>
+                <div className="mt-3">
+                  <ReportTriagePanel reportId={reportId} viewer={isManagedAnalyst ? "analyst" : "organization"} currentUserId={user.id} {...triagePanel} />
+                </div>
+              </RailSection>
+            )}
+
+            {rewardSuggestion && (
+              <RailSection>
+                <SectionLabel>Suggested reward</SectionLabel>
+                <ol className="mt-3 space-y-2 text-sm">
+                  <li className="flex items-center justify-between gap-2"><span className="text-ink-muted">Asset</span><span className="min-w-0 truncate font-mono text-xs text-ink">{rewardSuggestion.assetLabel ?? "Not matched"}</span></li>
+                  <li className="flex items-center justify-between gap-2"><span className="text-ink-muted">Reward group</span>{rewardSuggestion.groupName && rewardSuggestion.groupColor ? <RewardGroupBadge name={rewardSuggestion.groupName} color={rewardSuggestion.groupColor} /> : <span className="text-ink">None</span>}</li>
+                  <li className="flex items-center justify-between gap-2"><span className="text-ink-muted">Severity</span><span className="capitalize text-ink">{rewardSuggestion.severity === "none" ? "Informational" : rewardSuggestion.severity ?? "Not set yet"}</span></li>
+                  <li className="flex items-center justify-between gap-2 border-t border-border pt-2">
+                    <span className="font-medium text-ink">Suggested</span>
+                    <span className="font-mono font-semibold tabular-nums text-ink">
+                      {rewardSuggestion.max !== null && rewardSuggestion.currency ? (rewardSuggestion.min !== null && rewardSuggestion.min !== rewardSuggestion.max ? `${formatMoney(rewardSuggestion.min, rewardSuggestion.currency)} to ${formatMoney(rewardSuggestion.max, rewardSuggestion.currency)}` : formatMoney(rewardSuggestion.max, rewardSuggestion.currency)) : "No amount yet"}
+                    </span>
+                  </li>
+                </ol>
+                <p className="mt-2 text-xs text-ink-muted">
+                  {rewardSuggestion.source === "reward_group" ? "From the reward group's bounty table." : rewardSuggestion.source === "program" ? "The group has no amount for this severity, so the program's table applies." : !rewardSuggestion.severity ? "Confirm the severity to see the amount." : "Set a bounty table for this group or program."}
+                </p>
+              </RailSection>
+            )}
+
             {/* Bounty is a separate decision layered on top of the final report decision --
                 never a property of the report row itself. See
                 docs/decisions/0013-bounty-decision-engine.md. */}
@@ -557,7 +600,7 @@ export default async function ReportDetailPage({
               </RailSection>
             )}
 
-            {canTriage && (snLink || snConnected) && (
+            {isOrgStaff && (snLink || snConnected) && (
               <RailSection>
                 <SectionLabel>ServiceNow</SectionLabel>
                 {snLink ? (
@@ -581,7 +624,7 @@ export default async function ReportDetailPage({
               </RailSection>
             )}
 
-            {canTriage && (issuePanel.links.length > 0 || issuePanel.providers.length > 0) && (
+            {isOrgStaff && (issuePanel.links.length > 0 || issuePanel.providers.length > 0) && (
               <RailSection>
                 <SectionLabel>Code issues</SectionLabel>
                 <ul className="mt-2 space-y-2 text-sm">
@@ -666,7 +709,7 @@ export default async function ReportDetailPage({
                 <ResearcherDisclosurePanel reportId={reportId} reportTitle={report.title} initialDisclosure={disclosure} />
               </RailSection>
             )}
-            {canTriage && disclosure && (
+            {isOrgStaff && disclosure && (
               <RailSection>
                 <OrganizationDisclosureDecisionPanel reportId={reportId} disclosure={disclosure} canDecide={canFinalizeBounty} />
               </RailSection>

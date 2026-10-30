@@ -51,9 +51,8 @@ export type ReportBountyDecision = {
   currency: string | null;
   calculatedMinAmountMinorUnits: number | null;
   calculatedMaxAmountMinorUnits: number | null;
-  /** The report's asset tier and the share of the table it got (202610220006); null before calculation. */
-  assetTier?: number | null;
-  tierPercent?: number | null;
+  /** The reward group whose table set the range (202610300001); null when the program's table applied. */
+  rewardGroupName?: string | null;
   finalAmountMinorUnits: number | null;
   finalizedAt: string | null;
   finalizationNote: string | null;

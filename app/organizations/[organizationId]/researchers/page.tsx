@@ -108,6 +108,8 @@ export default async function OrganizationResearchersPage({ params }: { params: 
                           >
                             {researcher.displayName}
                           </Link>
+                          {/* Display names aren't unique; the @username is (and is what an invite takes). */}
+                          {researcher.username && <span className="block font-mono text-xs text-ink-muted">@{researcher.username}</span>}
                         </td>
                         <td className="py-3 pr-4 align-top">
                           <span className="inline-flex items-center gap-1.5 text-ink-muted">

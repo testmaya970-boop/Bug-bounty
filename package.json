@@ -35,7 +35,8 @@
     "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs",
     "seed:showcase": "tsx --env-file=.env.local scripts/seed-showcase.ts",
     "seed:launch": "tsx --env-file=.env.local scripts/seed-demo.ts",
-    "seed:e2e": "tsx --env-file=.env.local scripts/seed-e2e.ts"
+    "seed:e2e": "tsx --env-file=.env.local scripts/seed-e2e.ts",
+    "demo:mark": "node --env-file-if-exists=.env.local scripts/mark-demo.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
@@ -46,6 +47,7 @@
     "ae-cvss-calculator": "1.0.13",
     "argon2": "^0.45.1",
     "clsx": "^2.1.1",
+    "fflate": "0.8.3",
     "framer-motion": "^13.2.0",
     "gsap": "^3.15.0",
     "imapflow": "^2.2.11",

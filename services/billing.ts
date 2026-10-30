@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { getNativeEnv } from "@/lib/env";
 import { OrganizationServiceError, mapRpcError as mapError } from "@/services/rpc-error";
 import { logIntegrationEvent, sandboxAllowed } from "@/lib/integrations/common";
-import { GATEWAY_CURRENCY, cardSurchargeBps, chargedWithSurcharge, selectGatewayProvider, type CardCurrency, type CheckoutGateway } from "@/lib/integrations/card";
+import { GATEWAY_CURRENCY, cardSurchargeBps, chargedWithSurcharge, selectGatewayProvider, settlePaypalOrder, settleRazorpayLink, type CardCurrency, type CheckoutGateway } from "@/lib/integrations/card";
 
 // The organization's prepaid balance (db/migrations/202610140004): it adds funds, every award
 // commits bounty + fee against them, and Unpatched pays the researcher.
@@ -274,7 +274,30 @@ export async function completeCardDeposit(reference: string, outcome: "confirmed
   await withServiceRoleTransaction((client) => callRpc(client, "public.complete_card_deposit", [reference, outcome, detail ?? null]));
 }
 
-export type GatewayOption = { gateway: CheckoutGateway; currency: CardCurrency; available: boolean; mode: "sandbox" | "live" | null; surchargeBps: number };
+/** The gateway sent the payer back: PayPal with ?token=<order id>, Razorpay with
+ * ?razorpay_payment_link_id=. Asks the gateway itself for the result (PayPal: capture the
+ * order) and confirms the deposit only from that answer (our reference, the exact amount),
+ * never from the URL. Returns whether the deposit changed. Safe to repeat: the first verdict wins. */
+export async function settleGatewayReturn(deposit: OrganizationDeposit, query: { token?: string; razorpay_payment_link_id?: string }): Promise<boolean> {
+  if (deposit.status !== "pending" || deposit.chargedMinorUnits === null || !(deposit.currency === "USD" || deposit.currency === "INR")) return false;
+  const expected = { reference: deposit.payerReference, chargedMinorUnits: deposit.chargedMinorUnits, currency: deposit.currency as CardCurrency };
+  const settle =
+    deposit.provider === "paypal" && query.token ? () => settlePaypalOrder(query.token!, expected) : deposit.provider === "razorpay" && query.razorpay_payment_link_id ? () => settleRazorpayLink(query.razorpay_payment_link_id!, expected) : null;
+  if (!settle || !deposit.provider) return false;
+  try {
+    const verdict = await settle();
+    if (!verdict) return false;
+    await completeCardDeposit(verdict.reference, verdict.outcome, verdict.detail);
+    await logIntegrationEvent("cards", deposit.provider, "call", "ok", verdict.outcome);
+    return true;
+  } catch (error) {
+    // The page then shows "waiting"; the gateway's webhook can still confirm it.
+    await logIntegrationEvent("cards", deposit.provider, "call", "error", error instanceof Error ? error.message : String(error));
+    return false;
+  }
+}
+
+export type GatewayOption ={ gateway: CheckoutGateway; currency: CardCurrency; available: boolean; mode: "sandbox" | "live" | null; surchargeBps: number };
 
 export function checkoutGatewayOptions(): GatewayOption[] {
   const surchargeBps = cardSurchargeBps();

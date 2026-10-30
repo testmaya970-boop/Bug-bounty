@@ -52,6 +52,10 @@ import {
   Certificate,
   Package,
   ChatCircleText,
+  Detective,
+  Headset,
+  Stack,
+  Table,
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
 import { Avatar, DropdownMenu } from "./ui/navigation";
@@ -113,6 +117,7 @@ const PLATFORM_NAV: NavItem[] = [
   { href: "/platform/programs" as Route, label: "Program launches", icon: ClipboardText },
   { href: "/platform/scope-review" as Route, label: "Scope review", icon: SealCheck },
   { href: "/platform/organizations" as Route, label: "Organizations", icon: Buildings },
+  { href: "/platform/managed-triage" as Route, label: "Managed Triage", icon: Headset },
   { href: "/platform/contact-requests" as Route, label: "Contact requests", icon: ChatCircleText },
   { href: "/platform/cve-requests" as Route, label: "CVE requests", icon: Certificate },
   { href: "/platform/events" as Route, label: "Events", icon: CalendarDots },
@@ -133,6 +138,9 @@ const PLATFORM_NAV: NavItem[] = [
 const SYSTEM_NAV: NavItem[] = [
   { href: "/notifications" as Route, label: "Notifications", icon: Bell },
 ];
+// Managed Triage analysts (202610290008): platform staff, like admins, so the queue only.
+const TRIAGE_NAV: NavItem[] = [{ href: "/triage" as Route, label: "Triage queue", icon: Detective }];
+
 const PLATFORM_SYSTEM_NAV: NavItem[] = [{ href: "/notifications" as Route, label: "Notifications", icon: Bell }];
 const PLATFORM_MFA_SETUP_NAV: NavItem[] = [{ href: "/settings/security" as Route, label: "Set up two-factor", icon: ShieldCheck }];
 
@@ -174,6 +182,14 @@ function orgSections(id: string): NavSection[] {
     },
     { id: "org-insights", label: "Insights", items: [{ href: `${base}/analytics` as Route, label: "Analytics", icon: ChartLineUp, roles: ORG_ADMINS }] },
     {
+      id: "org-rewards",
+      label: "Rewards",
+      items: [
+        { href: `${base}/rewards` as Route, label: "Reward groups", icon: Stack, roles: REPORT_WORKERS, exact: true },
+        { href: `${base}/rewards/bounty-tables` as Route, label: "Bounty tables", icon: Table, roles: REPORT_WORKERS },
+      ],
+    },
+    {
       id: "org-organization",
       label: "Organization",
       items: [
@@ -184,6 +200,7 @@ function orgSections(id: string): NavSection[] {
         { href: `${base}/members` as Route, label: "Members", icon: UserList, roles: ORG_ADMINS },
         // Webhooks, Slack/Teams, GitHub/GitLab, ServiceNow, SSO/SCIM (Jira stays in Settings).
         { href: `${base}/integrations` as Route, label: "Integrations", icon: Plug, roles: ORG_ADMINS },
+        { href: `${base}/managed-triage` as Route, label: "Managed Triage", icon: Headset, roles: ORG_ADMINS },
         { href: `${base}/settings` as Route, label: "Settings", icon: Gear, roles: ORG_ADMINS },
       ],
     },
@@ -197,6 +214,7 @@ type NavContext = {
   hasResearcherParticipation: boolean;
   isPlatformAdmin: boolean;
   platformAdminNeedsMfa: boolean;
+  isTriageAnalyst: boolean;
 };
 
 /**
@@ -215,6 +233,13 @@ function buildNav(ctx: NavContext): NavSection[] {
   if (ctx.isPlatformAdmin) {
     return [
       { id: "platform", label: "Platform admin", items: PLATFORM_NAV, limit: 8 },
+      ...(ctx.isTriageAnalyst ? [{ id: "triage", label: "Managed Triage", items: TRIAGE_NAV }] : []),
+      { id: "system", label: "System", items: PLATFORM_SYSTEM_NAV },
+    ];
+  }
+  if (ctx.isTriageAnalyst) {
+    return [
+      { id: "triage", label: "Managed Triage", items: TRIAGE_NAV },
       { id: "system", label: "System", items: PLATFORM_SYSTEM_NAV },
     ];
   }
@@ -479,6 +504,7 @@ export function AppShellClient({
   unreadNotificationCount,
   isPlatformAdmin,
   platformAdminNeedsMfa = false,
+  isTriageAnalyst = false,
   initialSidebarCollapsed = false,
 }: {
   title: string;
@@ -491,6 +517,7 @@ export function AppShellClient({
   unreadNotificationCount: number;
   isPlatformAdmin: boolean;
   platformAdminNeedsMfa?: boolean;
+  isTriageAnalyst?: boolean;
   initialSidebarCollapsed?: boolean;
 }) {
   const path = usePathname();
@@ -502,8 +529,8 @@ export function AppShellClient({
   const reducedMotion = usePrefersReducedMotion();
 
   const sections = useMemo(
-    () => buildNav({ organizations, currentOrganizationId, hasResearcherParticipation, isPlatformAdmin, platformAdminNeedsMfa }),
-    [organizations, currentOrganizationId, hasResearcherParticipation, isPlatformAdmin, platformAdminNeedsMfa],
+    () => buildNav({ organizations, currentOrganizationId, hasResearcherParticipation, isPlatformAdmin, platformAdminNeedsMfa, isTriageAnalyst }),
+    [organizations, currentOrganizationId, hasResearcherParticipation, isPlatformAdmin, platformAdminNeedsMfa, isTriageAnalyst],
   );
   const showRailTip = (target: EventTarget | null) => {
     const el = (target as HTMLElement | null)?.closest<HTMLElement>("[data-rail-label]");
@@ -529,7 +556,7 @@ export function AppShellClient({
   }, [open]);
 
   const currentOrgRole = organizations.find((org) => org.id === currentOrganizationId)?.role;
-  const roleLabel = isPlatformAdmin ? "Platform admin" : currentOrgRole && (path.startsWith("/organizations/") || !hasResearcherParticipation) ? ORG_ROLE_LABELS[currentOrgRole] : "Researcher";
+  const roleLabel = isPlatformAdmin ? "Platform admin" : isTriageAnalyst ? "Triage analyst" : currentOrgRole && (path.startsWith("/organizations/") || !hasResearcherParticipation) ? ORG_ROLE_LABELS[currentOrgRole] : "Researcher";
   const quiet = `inline-flex size-8 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors duration-100 ${HOVER}:bg-surface-hover ${HOVER}:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus`;
 
   return (

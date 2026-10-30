@@ -48,7 +48,6 @@ import { LocalTime } from "../../../../../components/ui/local-time";
 import { ActionButton } from "../../../../../components/researcher/journey-controls";
 import { isFollowingProgram } from "../../../../../services/researcher-journey";
 import { setProgramFollowAction } from "../../../../../actions/researcher-journey";
-import { BountyTiersPanel } from "../../../../../components/organizations/asset-tier-control";
 
 const SCOPE_FILTERS: { value: "all" | ScopeState; label: string }[] = [
   { value: "all", label: "All" },
@@ -688,7 +687,12 @@ async function renderProgramControlCenterPage({
             {program.programType !== "vdp" && (
               <Card className="p-5">
                 <BountyPolicySection policy={bountyPolicy} />
-                {canManageProgram && <BountyTiersPanel organizationId={organizationId} programId={programId} tier2Percent={program.bountyTier2Percent ?? 100} tier3Percent={program.bountyTier3Percent ?? 100} />}
+                <p className="mt-3 text-sm text-ink-muted">
+                  When a report's asset belongs to a reward group with an amount for that severity, the group's table is used instead.{" "}
+                  <Link prefetch={false} href={`/organizations/${organizationId}/rewards/bounty-tables` as Route} className="font-medium text-action hover:text-action-hover">
+                    See bounty tables
+                  </Link>
+                </p>
               </Card>
             )}
           </div>

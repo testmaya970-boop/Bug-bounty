@@ -282,7 +282,10 @@ export function OrganizationFindingsTable({
                       <StatusBadge status={report.status} />
                     </td>
                     <td className="px-4 py-3 text-sm text-ink-muted">{report.assigneeName ?? <span className="italic">Unassigned</span>}</td>
-                    <td className="px-4 py-3 text-sm text-ink-muted">{report.researcherName}</td>
+                    <td className="px-4 py-3 text-sm text-ink-muted">
+                      {report.researcherName}
+                      {report.researcherUsername && <span className="block font-mono text-xs text-ink-muted/80">@{report.researcherUsername}</span>}
+                    </td>
                     <td className="px-4 py-3 text-sm text-ink-muted"><LocalTime value={report.updatedAt} /></td>
                     <td className="px-4 py-3 text-sm text-ink-muted">{reportNextActionLabel(report.status)}</td>
                   </tr>
@@ -320,7 +323,10 @@ export function OrganizationFindingsTable({
                     <StatusBadge status={report.status} />
                   </dd>
                   <dt className="text-ink-muted">Researcher</dt>
-                  <dd className="text-ink">{report.researcherName}</dd>
+                  <dd className="text-ink">
+                    {report.researcherName}
+                    {report.researcherUsername && <span className="ml-1.5 font-mono text-xs text-ink-muted">@{report.researcherUsername}</span>}
+                  </dd>
                   <dt className="text-ink-muted">Updated</dt>
                   <dd className="text-ink"><LocalTime value={report.updatedAt} /></dd>
                   <dt className="text-ink-muted">Next action</dt>

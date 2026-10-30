@@ -1,9 +1,12 @@
 import React from "react";
 import type { AssetInventoryItem } from "../../types/scope";
+import type { RewardGroup } from "../../types/reward-groups";
+import { RewardGroupBadge } from "../rewards/reward-groups";
 
 // Security posture over the asset inventory (Oct 22, Wiz-style): every asset placed in one
 // exposure bucket from its real findings, shown as a single stacked bar, the headline numbers,
-// and the assets that need attention first. Tier 1 = crown jewels (asset tiers, 202610220006).
+// and the assets that need attention first. The crown jewels are the assets in the reward group
+// that pays the most for a critical finding (reward groups, 202610300001).
 
 type Bucket = "critical" | "exposed" | "remediated" | "untested";
 const BUCKETS: { key: Bucket; label: string; hint: string; bar: string; text: string }[] = [
@@ -19,14 +22,19 @@ function bucketOf(a: AssetInventoryItem): Bucket {
   return a.totalReports > 0 ? "remediated" : "untested";
 }
 
-export function AssetPosture({ assets, tiers, more }: { assets: AssetInventoryItem[]; tiers: Record<string, number>; more: boolean }) {
+export function AssetPosture({ assets, groupByAsset, groups, more }: { assets: AssetInventoryItem[]; groupByAsset: Record<string, string | null>; groups: RewardGroup[]; more: boolean }) {
   if (assets.length === 0) return null;
   const counts = Object.fromEntries(BUCKETS.map((b) => [b.key, 0])) as Record<Bucket, number>;
   for (const a of assets) counts[bucketOf(a)] += 1;
   const open = assets.reduce((s, a) => s + a.openReports, 0);
-  const crownExposed = assets.filter((a) => (tiers[a.id] ?? 1) === 1 && a.openReports > 0).length;
+  const byId = new Map(groups.map((g) => [g.id, g]));
+  // Rank groups by what they pay for a critical finding; the top one holds the crown jewels.
+  const rank = new Map([...groups].sort((x, y) => (y.bounties.critical?.max ?? 0) - (x.bounties.critical?.max ?? 0)).map((g, i) => [g.id, i]));
+  const top1 = [...groups].sort((x, y) => (rank.get(x.id) ?? 0) - (rank.get(y.id) ?? 0))[0];
+  const crownExposed = top1 ? assets.filter((a) => groupByAsset[a.id] === top1.id && a.openReports > 0).length : 0;
+  const rankOf = (id: string) => rank.get(groupByAsset[id] ?? "") ?? 99;
   const tested = assets.length - counts.untested;
-  const top = [...assets].filter((a) => a.openReports > 0).sort((x, y) => y.openReports - x.openReports || (tiers[x.id] ?? 1) - (tiers[y.id] ?? 1)).slice(0, 5);
+  const top = [...assets].filter((a) => a.openReports > 0).sort((x, y) => y.openReports - x.openReports || rankOf(x.id) - rankOf(y.id)).slice(0, 5);
 
   return (
     <section aria-label="Security posture" className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -34,7 +42,7 @@ export function AssetPosture({ assets, tiers, more }: { assets: AssetInventoryIt
         {[
           ["Assets", String(assets.length), more ? "first page shown" : "in scope or retired"],
           ["Open findings", String(open), `${counts.critical + counts.exposed} assets affected`],
-          ["Tier 1 exposed", String(crownExposed), "crown-jewel assets with open findings"],
+          [top1 ? `${top1.name} exposed` : "Top group exposed", String(crownExposed), "assets in your highest-paying group with open findings"],
           ["Test coverage", `${Math.round((tested / assets.length) * 100)}%`, `${tested} of ${assets.length} assets reported on`],
         ].map(([label, value, sub]) => (
           <div key={label} className="p-4">
@@ -70,7 +78,7 @@ export function AssetPosture({ assets, tiers, more }: { assets: AssetInventoryIt
                 <li key={a.id} className="flex items-center gap-3 py-2 text-[13px]">
                   <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[11px] font-semibold ${a.openReports >= 3 ? "bg-severity-critical/10 text-severity-critical" : "bg-severity-high/10 text-severity-high"}`}>{a.openReports}</span>
                   <span className="min-w-0 flex-1 truncate font-mono text-xs text-ink">{a.displayIdentifier}</span>
-                  <span className="shrink-0 text-xs text-ink-muted">Tier {tiers[a.id] ?? 1}</span>
+                  {byId.get(groupByAsset[a.id] ?? "") && <span className="shrink-0"><RewardGroupBadge name={byId.get(groupByAsset[a.id]!)!.name} color={byId.get(groupByAsset[a.id]!)!.color} /></span>}
                 </li>
               ))}
             </ol>

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import "./handlers"; // side-effect import: registers every known event handler
 import { runForever } from "./worker";
 import { runIntegrationLoops } from "../integrations/delivery";
+import { runScheduledJobs } from "../scheduled/jobs";
 
 /**
  * The standalone entrypoint: `npm run worker:outbox` (or several of them, in several
@@ -27,6 +28,12 @@ process.on("SIGTERM", () => controller.abort());
 // Webhook, Slack and Teams deliveries and the SLA breach scan run beside the outbox loop.
 runIntegrationLoops({ signal: controller.signal, pollIntervalMs }).catch((error) => {
   console.error(`[integrations] ${workerId} delivery loop exited with a fatal error`, error);
+  process.exitCode = 1;
+});
+
+// Scheduled analytics exports and the monthly Managed Triage renewal.
+runScheduledJobs({ signal: controller.signal }).catch((error) => {
+  console.error(`[scheduled] ${workerId} job loop exited with a fatal error`, error);
   process.exitCode = 1;
 });
 

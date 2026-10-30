@@ -240,7 +240,8 @@ function BudgetRow({
   );
 }
 
-/** A cap per program on bounty + fee committed (awarded or paid). An award that would cross it
+/** A cap per program on what is committed (awarded or paid): the bounty, plus the fee only on
+ * awards from before 202610230001. An award that would cross it
  * is refused by the database, so one program can't drain the balance meant for all of them. */
 export function ProgramBudgetsList({
   organizationId,

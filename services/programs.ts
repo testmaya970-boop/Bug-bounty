@@ -16,7 +16,7 @@ export { programStatusLabel } from "@/lib/program-status";
 // own dedicated, separately-authorized RPC (getProgramAccessInstructions below), never
 // riding along on a generic programs-row fetch every caller of getProgram/
 // listProgramsForOrganization shares.
-const PROGRAM_SELECT = `p.id, p.organization_id, p.name, p.status, p.visibility, p.program_type, p.engagement_type, p.description, p.requires_kyc, p.min_signal, p.min_valid_reports, p.join_mode, p.bounty_tier2_percent, p.bounty_tier3_percent, p.created_by, p.created_at, p.updated_at, u.display_name as creator_display_name`;
+const PROGRAM_SELECT = `p.id, p.organization_id, p.name, p.status, p.visibility, p.program_type, p.engagement_type, p.description, p.requires_kyc, p.min_signal, p.min_valid_reports, p.join_mode, p.created_by, p.created_at, p.updated_at, u.display_name as creator_display_name`;
 
 type ProgramRow = {
   id: string;
@@ -31,8 +31,6 @@ type ProgramRow = {
   min_signal?: string | number | null;
   min_valid_reports?: number | null;
   join_mode?: "open" | "request";
-  bounty_tier2_percent?: number;
-  bounty_tier3_percent?: number;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -53,8 +51,6 @@ function mapProgramRow(row: ProgramRow): ProgramSummary {
     minSignal: row.min_signal == null ? null : Number(row.min_signal),
     minValidReports: row.min_valid_reports ?? null,
     joinMode: row.join_mode ?? "open",
-    bountyTier2Percent: row.bounty_tier2_percent ?? 100,
-    bountyTier3Percent: row.bounty_tier3_percent ?? 100,
     createdBy: row.created_by,
     createdByName: row.creator_display_name ?? "Unknown member",
     createdAt: row.created_at,

@@ -59,14 +59,21 @@ export function findKycEncryptionKeyProblem(key: string | null | undefined): str
 export async function exitOnDatabaseConfigurationProblems(): Promise<void> {
   if (process.env.NODE_ENV !== "production" || isLocalProdTest(process.env)) return;
   const { withClient } = await import("./db/pool");
-  const key = await withClient(async (client) => {
-    const { rows } = await client.query<{ key: string | null }>("select current_setting('app.settings.kyc_encryption_key', true) as key");
-    return rows[0]?.key ?? null;
+  const settings = await withClient(async (client) => {
+    const { rows } = await client.query<{ key: string | null; demo: string | null }>(
+      "select current_setting('app.settings.kyc_encryption_key', true) as key, current_setting('app.settings.demo_accounts', true) as demo",
+    );
+    return rows[0];
   });
-  const problem = findKycEncryptionKeyProblem(key);
-  if (!problem) return;
-  console.error(`Refusing to start -- fix the database configuration:\n  - ${problem}`);
+  const problems = [findKycEncryptionKeyProblem(settings?.key), findDemoAccountsProblem(settings?.demo)].filter((p): p is string => p !== null);
+  if (problems.length === 0) return;
+  console.error(`Refusing to start -- fix the database configuration:\n  - ${problems.join("\n  - ")}`);
   process.exit(1);
+}
+
+/** Demo accounts (202610290012) skip identity and scope-ownership proof: development only. */
+export function findDemoAccountsProblem(setting: string | null | undefined): string | null {
+  return setting === "on" ? "app.settings.demo_accounts is on: demo accounts are for development databases only (alter database ... reset app.settings.demo_accounts)" : null;
 }
 
 /** Node-only (imported from instrumentation.ts register() behind a NEXT_RUNTIME check).

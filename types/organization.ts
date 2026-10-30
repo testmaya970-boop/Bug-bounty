@@ -158,6 +158,8 @@ export type OrganizationResearcherProgramRelationship = {
 export type OrganizationResearcherContribution = {
   researcherId: string;
   displayName: string;
+  /** @username (202610300006): tells same-named researchers apart, and is what an invite takes. */
+  username?: string | null;
   programs: OrganizationResearcherProgramRelationship[];
   resolvedCount: number;
   resolvedCritical: number;

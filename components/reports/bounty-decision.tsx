@@ -315,9 +315,9 @@ export function BountyDecisionSection({
           </span>{" "}
           for priority {decision.priorityAtCalculation ? priorityLabel(decision.priorityAtCalculation) : "not set"}. This is a recommendation, not a final decision.
         </p>
-        {decision.assetTier && decision.assetTier > 1 && decision.tierPercent && decision.tierPercent < 100 && (
-          <p className="text-sm text-ink-muted">The report's asset is tier {decision.assetTier}, so the range is {decision.tierPercent}% of the program's bounty table.</p>
-        )}
+        <p className="text-sm text-ink-muted">
+          {decision.rewardGroupName ? <>From the <span className="font-medium text-ink">{decision.rewardGroupName}</span> reward group&apos;s bounty table.</> : "From the program's bounty table."}
+        </p>
         <div className="flex flex-wrap gap-2">
           {canCalculate && <CalculateBountyButton organizationId={organizationId} programId={programId} reportId={reportId} relabelAsRecalculate={true} />}
           {canFinalize && decision.currency && <FinalizeBountyDialog organizationId={organizationId} programId={programId} reportId={reportId} currency={decision.currency} />}

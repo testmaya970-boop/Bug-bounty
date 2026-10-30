@@ -11,6 +11,7 @@ import { ReputationProgramContext } from "../../components/reputation/reputation
 import { ReputationCharts } from "../../components/reputation/reputation-charts";
 import {
   getMyLeaderboardPosition,
+  getMyLeaderboardVisibility,
   getMyReputationLedger,
   getMyReputationProgramCounts,
   getMyReputationSeverityCounts,
@@ -25,6 +26,7 @@ import { MAX_PAGE_SIZE } from "../../lib/pagination";
 import { YourPositionPanel } from "../../components/researchers/your-position-panel";
 import { LeaderboardTable } from "../../components/researchers/leaderboard-table";
 import { BadgeGrid } from "../../components/researchers/badge-grid";
+import { LeaderboardVisibilityToggle } from "../../components/researchers/leaderboard-visibility-toggle";
 
 /**
  * A researcher intelligence registry, not a leaderboard (docs/decisions/0074): the same
@@ -41,7 +43,7 @@ export default async function ResearchersPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirectTo=/researchers" as Route);
 
-  const [counts, severityCounts, ledgerPage, programCounts, myReportsPage, leaderboard, myPosition, badges, ctfBadges] = await Promise.all([
+  const [counts, severityCounts, ledgerPage, programCounts, myReportsPage, leaderboard, myPosition, badges, ctfBadges, onLeaderboard] = await Promise.all([
     getMyReputationSummary(),
     getMyReputationSeverityCounts(user.id),
     getMyReputationLedger(user.id),
@@ -56,6 +58,7 @@ export default async function ResearchersPage() {
     getMyLeaderboardPosition(),
     getResearcherBadges(user.id),
     getResearcherCtfBadges(user.id),
+    user.accountType === "researcher" ? getMyLeaderboardVisibility() : Promise.resolve(null),
   ]);
 
   const evidenceByReportId: Record<string, { title: string; programName: string }> = {};
@@ -81,6 +84,7 @@ export default async function ResearchersPage() {
         {hasLeaderboard ? (
           <>
             {myPosition && <YourPositionPanel position={myPosition} leaderScore={leaderScore} />}
+            {onLeaderboard !== null && <LeaderboardVisibilityToggle visible={onLeaderboard} />}
             <LeaderboardTable rows={leaderboard} myResearcherId={user.id} />
             <BadgeGrid badges={badges} ctfBadges={ctfBadges} />
           </>

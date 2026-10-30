@@ -98,7 +98,7 @@ async function MyProgramsTab({ participationsRaw }: { participationsRaw: Awaited
   if (participations.length === 0) {
     return (
       <EmptyState title="You don't participate in any program yet">
-        A program manager invites researchers directly by email. If you were expecting an invitation, check{" "}
+        A program manager invites researchers directly by @username, and the invitation also reaches your inbox. If you were expecting an invitation, check{" "}
         <Link prefetch={false} href="/programs?tab=invitations" className="font-medium text-action hover:underline">
           Pending invitations
         </Link>

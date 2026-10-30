@@ -1,5 +1,6 @@
 import React from "react";
 import { OrganizationSla } from "../../../../components/organizations/organization-sla";
+import { AnalyticsTabs } from "../../../../components/analytics/analytics-tabs";
 import { OrganizationResponseTimes } from "../../../../components/organizations/organization-response-times";
 import { getOrganizationSlaSummary } from "../../../../services/program-policy";
 import Link from "next/link";
@@ -162,6 +163,7 @@ export default async function OrganizationAnalyticsPage({
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
         <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
+        <AnalyticsTabs organizationId={organizationId} active="overview" />
 
         {programs.length === 0 ? (
           <EmptyState title="No analytics yet">Analytics fill in once this organization has at least one program receiving reports.</EmptyState>

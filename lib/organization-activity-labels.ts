@@ -24,6 +24,21 @@ import type { OrganizationAuditEventRecord } from "@/types/organization";
  * and exercised, not theoretical.
  */
 const ACTION_LABELS: Record<string, string> = {
+  "managed_triage.requested": "requested Managed Triage",
+  "managed_triage.activated": "activated Managed Triage",
+  "managed_triage.declined": "declined the Managed Triage request",
+  "managed_triage.cancelled": "cancelled Managed Triage",
+  "managed_triage.resumed": "resumed Managed Triage",
+  "managed_triage.charged": "charged a month of Managed Triage",
+  "managed_triage.past_due": "paused Managed Triage: the renewal was not paid",
+  "report.triage_claimed": "claimed a report for triage",
+  "report.triage_released": "released a report back to the triage queue",
+  "report.triage_validated": "recorded a triage validation",
+  "report.triage_escalated": "asked the organization a triage question",
+  "report.escalation_answered": "answered a triage question",
+  "analytics.export_scheduled": "scheduled an analytics export",
+  "analytics.export_unscheduled": "stopped a scheduled analytics export",
+
   "organization.created": "created this organization",
   "organization.description_updated": "updated the organization description",
 

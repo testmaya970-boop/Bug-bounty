@@ -157,6 +157,7 @@ export async function getOrganizationProgramBountySpend(organizationId: string):
 type ResearcherContributionRow = {
   researcher_id: string;
   display_name: string;
+  username: string | null;
   programs: OrganizationResearcherProgramRelationship[];
   resolved_count: number;
   resolved_critical: number;
@@ -184,6 +185,7 @@ export async function listResearchersForOrganization(organizationId: string): Pr
   return rows.map((row) => ({
     researcherId: row.researcher_id,
     displayName: row.display_name,
+    username: row.username,
     programs: row.programs,
     resolvedCount: Number(row.resolved_count),
     resolvedCritical: Number(row.resolved_critical),

@@ -75,6 +75,8 @@ export type PublicLeaderboardRow = {
   researcherId: string | null;
   displayName: string;
   publicUsername: string | null;
+  /** The sign-up @username, shown for everyone who hasn't opted out (202610300004). */
+  username: string | null;
   score: ReputationScore;
   resolvedCount: number;
   bountyFinalizedCount: number;

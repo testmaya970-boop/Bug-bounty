@@ -23,7 +23,7 @@ function sanitizeHeaderValue(value: string): string {
 
 const LABELS = NOTIFICATION_LABELS;
 
-const BILLING_TYPES = new Set<NotificationType>(["deposit_reported", "deposit_confirmed", "deposit_rejected", "balance_low", "invoice_issued"]);
+const BILLING_TYPES = new Set<NotificationType>(["deposit_reported", "deposit_confirmed", "deposit_rejected", "balance_low", "invoice_issued", "managed_triage_requested", "managed_triage_activated", "managed_triage_declined", "managed_triage_past_due"]);
 const PLATFORM_TYPES = new Set<NotificationType>(["program_suspended", "program_reinstated", "organization_suspended", "organization_reinstated", "program_launch_approved", "program_launch_rejected"]);
 const PROGRAM_TYPES = new Set<NotificationType>(["program_paused", "program_resumed", "program_closed", "program_scope_changed"]);
 
@@ -51,7 +51,7 @@ export function renderNotificationEmail(input: NotificationEmailInput): Rendered
     // No report or program: the organization, and the database-written summary (amounts only).
     const lines = [`Hello ${recipientName},`, "", `${label}.`, "", `Organization: ${organization}`, `When: ${input.occurredAt}`];
     if (input.reason) lines.push("", input.reason);
-    lines.push("", "Sign in to Unpatched to see the details on the Payments page.");
+    lines.push("", input.notificationType.startsWith("managed_triage_") ? "Sign in to Unpatched to see the details on the Managed Triage page." : "Sign in to Unpatched to see the details on the Payments page.");
     return { subject: sanitizeHeaderValue(`Unpatched: ${label}: ${organization}`), text: lines.join("\n") };
   }
 

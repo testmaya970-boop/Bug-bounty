@@ -72,7 +72,17 @@ export type NotificationType =
   | "program_scope_changed"
   // program_recommendations (202610210005): a newly public program matching an inactive
   // researcher's hacking interests.
-  | "program_recommended";
+  | "program_recommended"
+  // report_activity, Managed Triage (202610290008): an analyst's question to the organization,
+  // and the organization's answer back to that analyst.
+  | "report_triage_escalated"
+  | "report_escalation_answered"
+  // billing_activity, Managed Triage (202610290010): a request goes to platform admins; the
+  // organization hears when it is activated, declined, or paused for an unpaid renewal.
+  | "managed_triage_requested"
+  | "managed_triage_activated"
+  | "managed_triage_declined"
+  | "managed_triage_past_due";
 
 /**
  * The durable in-app record. Deliberately content-free beyond identifiers and the fact

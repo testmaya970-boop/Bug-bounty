@@ -4,11 +4,19 @@ import { passMfaGate } from "./mfa-gate";
 
 // Black-box security checks against the real production build, over plain HTTP, as an
 // outsider would probe it. Complements tests/db (the database boundary) by checking the HTTP
-// boundary: headers, redirects, cookies, route guards and cross-tenant URLs.
-test.use({ qaDroneEnabled: false });
+// boundary: headers, redirects, cookies, route guards, cross-tenant URLs and stored XSS. The QA
+// drone rides along on headed runs so these show up in the live run like every other spec.
 
 const PASSWORD = "E2ESeed!2026";
-const fixture = () => JSON.parse(readFileSync("e2e/.seed-fixture.json", "utf-8")) as { organizationId: string; publicProgramId: string; privateProgramId: string };
+const fixture = () =>
+  JSON.parse(readFileSync("e2e/.seed-fixture.json", "utf-8")) as {
+    organizationId: string;
+    publicProgramId: string;
+    privateProgramId: string;
+    integrationsOrganizationId: string;
+    integrationsProgramId: string;
+    integrationsReportId: string | null;
+  };
 
 async function signIn(page: Page, email: string) {
   await page.goto("/sign-in");
@@ -96,6 +104,46 @@ test.describe("cross-tenant access over HTTP", () => {
     await expect(page.locator("main")).toContainText(/do not have access|Permission denied/i);
     const exportRes = await page.request.get(`/organizations/${organizationId}/analytics/export?range=90d`);
     expect(exportRes.status()).not.toBe(200);
+  });
+});
+
+test.describe("stored XSS", () => {
+  test("a comment carrying script and HTML is shown as text, never run, in the editor and on the report", async ({ page }) => {
+    const { integrationsOrganizationId, integrationsProgramId, integrationsReportId } = fixture();
+    test.skip(!integrationsReportId, "seed:e2e did not create the integrations report");
+    let dialog = false;
+    page.on("dialog", (d) => {
+      dialog = true;
+      void d.dismiss();
+    });
+    // The integrations org's own admin, posting an internal note: nobody else is notified, so
+    // the notification counts other specs assert on stay untouched.
+    await signIn(page, "e2e.integrations-admin@unpatched.demo");
+    await page.goto(`/organizations/${integrationsOrganizationId}/programs/${integrationsProgramId}/reports/${integrationsReportId}`);
+
+    const box = page.getByRole("textbox", { name: "Add a comment", exact: true });
+    const live = page.getByTestId("markdown-live");
+    // Live formatting: select a word, Ctrl+B, it turns bold in place.
+    await box.fill("make this bold");
+    await box.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(5, 9));
+    await box.press("Control+b");
+    await expect(box).toHaveValue("make **this** bold");
+    await expect(live.locator("strong")).toHaveText("**this**");
+
+    const marker = `xss-${Date.now()}`;
+    const payload = `${marker} <img src=x onerror="window.__xss=1"><script>window.__xss=1</script><a href="javascript:window.__xss=1">x</a>`;
+    await box.fill(payload);
+    await expect(live).toContainText("<script>");
+    await page.getByLabel("Visible to").selectOption("internal");
+    await page.getByRole("button", { name: "Comment", exact: true }).click();
+    await expect(page.getByText(marker).first()).toBeVisible();
+
+    await page.reload();
+    const posted = page.locator("main").getByText(marker).first();
+    await expect(posted).toContainText("<script>");
+    expect(await page.evaluate(() => (window as Window & { __xss?: number }).__xss)).toBeUndefined();
+    await expect(page.locator('main img[src="x"], main [onerror], main a[href^="javascript:"]')).toHaveCount(0);
+    expect(dialog, "no alert/confirm dialog fired").toBe(false);
   });
 });
 

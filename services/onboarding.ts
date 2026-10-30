@@ -17,6 +17,7 @@ export type OrganizationOnboarding = {
   scopeAdded: boolean;
   policyPublished: boolean;
   bountyTable: boolean;
+  rewardGroups: boolean;
   funded: boolean;
   submitted: boolean;
   inReview: boolean;
@@ -54,6 +55,7 @@ export async function getOrganizationOnboarding(organizationId: string): Promise
     scopeAdded: b("scope_added"),
     policyPublished: b("policy_published"),
     bountyTable: b("bounty_table"),
+    rewardGroups: b("reward_groups"),
     funded: b("funded"),
     submitted: b("submitted"),
     inReview: b("in_review"),

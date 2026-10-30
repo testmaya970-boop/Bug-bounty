@@ -77,6 +77,8 @@ export type Report = {
   organizationId: string;
   researcherId: string;
   researcherName: string;
+  /** The researcher's @username, so an organization can tell same-named researchers apart and invite them. Null for a deactivated account. */
+  researcherUsername?: string | null;
   title: string;
   description: string;
   assetType: ProgramAssetType;
@@ -299,6 +301,6 @@ export type PublicDisclosure = {
   organizationId: string;
   organizationName: string;
   /** Only when the researcher opted into a public profile. */
-  researcherUsername: string | null;
+  researcherUsername?: string | null;
   publishedAt: string | null;
 };

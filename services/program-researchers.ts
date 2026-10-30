@@ -159,21 +159,6 @@ export async function listPendingProgramInvitations(programId: string): Promise<
 
 // --- Manager-facing mutations (each one a single RPC call) ----------------------------
 
-export async function inviteResearcher(params: { programId: string; email: string; message?: string }): Promise<{ invitation: ProgramInvitationRecord; token: string }> {
-  const actor = await getCurrentUser();
-  const token = generateInvitationToken();
-  const tokenHash = hashInvitationToken(token);
-  let rows;
-  try {
-    rows = await withActorTransaction(actor?.id ?? null, (client) =>
-      callRpc<InvitationRow>(client, "public.invite_researcher_to_program", [params.programId, params.email, params.message ?? "", tokenHash]),
-    );
-  } catch (error) {
-    mapError(error as { message: string });
-  }
-  return { invitation: mapInvitationRow(rows[0]), token };
-}
-
 /** Invite by @username (202610230006). Returns the email for the server to send the invitation
  * to -- callers must never pass it on to the browser. */
 export async function inviteResearcherByUsername(params: { programId: string; username: string; message?: string }): Promise<{ invitation: ProgramInvitationRecord; recipientEmail: string; token: string }> {

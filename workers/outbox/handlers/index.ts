@@ -91,6 +91,11 @@ registerHandler("billing.deposit_confirmed", 1, createBillingNotificationHandler
 registerHandler("billing.deposit_rejected", 1, createBillingNotificationHandler("deposit_rejected"));
 registerHandler("billing.balance_low", 1, createBillingNotificationHandler("balance_low"));
 registerHandler("billing.invoice_issued", 1, createBillingNotificationHandler("invoice_issued"));
+// Managed Triage (202610290010): same billing-notice router.
+registerHandler("managed_triage.requested", 1, createBillingNotificationHandler("managed_triage_requested"));
+registerHandler("managed_triage.activated", 1, createBillingNotificationHandler("managed_triage_activated"));
+registerHandler("managed_triage.declined", 1, createBillingNotificationHandler("managed_triage_declined"));
+registerHandler("managed_triage.past_due", 1, createBillingNotificationHandler("managed_triage_past_due"));
 
 // Program lifecycle, scope changes and launch decisions (202610160005): audit_logs trigger.
 registerHandler("program.paused", 1, createProgramNotificationHandler("program_paused"));

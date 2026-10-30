@@ -7,7 +7,6 @@ import {
   acceptProgramInvitation as acceptProgramInvitationService,
   acceptProgramInvitationById as acceptProgramInvitationByIdService,
   cancelProgramInvitation as cancelProgramInvitationService,
-  inviteResearcher as inviteResearcherService,
   inviteResearcherByUsername as inviteResearcherByUsernameService,
   reinstateResearcher as reinstateResearcherService,
   revokeResearcher as revokeResearcherService,
@@ -35,20 +34,8 @@ function invalidInput(message = "This request could not be understood."): Action
   return { ok: false, code: "INVALID_INPUT", message };
 }
 
-const inviteSchema = z.object({
-  organizationId: uuidSchema,
-  programId: uuidSchema,
-  email: z.string().trim().toLowerCase().email(),
-  message: z.string().trim().max(500).optional(),
-});
-
-export async function inviteResearcherToProgram(input: z.infer<typeof inviteSchema>): Promise<ActionResult<{ inviteUrl: string; emailSent: boolean }>> {
-  const parsed = inviteSchema.safeParse(input);
-  if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message);
-  const result = await toResult(inviteResearcherService(parsed.data));
-  if (!result.ok) return result;
-  return { ok: true, data: await sendProgramInvitation({ ...parsed.data, to: parsed.data.email, token: result.data.token, invitationId: result.data.invitation.id }) };
-}
+// Researchers are invited by @username only (2026-10-30): the invite-by-email action was
+// removed, since an organization never sees a researcher's email.
 
 // The invitation row is written by the database; the email is sent here, directly (an
 // invitation has no report, so it doesn't fit the outbox's report-shaped notifications). The

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { DEV_KYC_ENCRYPTION_KEY, findConfigurationProblems, findKycEncryptionKeyProblem } from "../../lib/startup-check";
+import { DEV_KYC_ENCRYPTION_KEY, findConfigurationProblems, findDemoAccountsProblem, findKycEncryptionKeyProblem } from "../../lib/startup-check";
 
 const VALID = {
   APP_ORIGIN: "https://app.example.test",
@@ -73,5 +73,13 @@ describe("startup configuration check", () => {
     expect(findKycEncryptionKeyProblem("")).toMatch(/not set/);
     expect(findKycEncryptionKeyProblem(DEV_KYC_ENCRYPTION_KEY)).toMatch(/local-dev key/);
     expect(findKycEncryptionKeyProblem("a-real-secret-from-the-secret-manager")).toBeNull();
+  });
+});
+
+describe("demo accounts switch", () => {
+  it("is refused on a production database and ignored when off", () => {
+    expect(findDemoAccountsProblem("on")).toMatch(/development databases only/);
+    expect(findDemoAccountsProblem("")).toBeNull();
+    expect(findDemoAccountsProblem(null)).toBeNull();
   });
 });

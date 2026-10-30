@@ -8,6 +8,9 @@ import type { Notification } from "@/types/notifications";
 export function notificationLink(n: Pick<Notification, "organizationId" | "programId" | "reportId" | "notificationType">): { href: Route; label: string } {
   // Billing notices (202610150002): a reported deposit is for platform admins to confirm.
   if (n.notificationType === "deposit_reported") return { href: "/platform/payouts" as Route, label: "Review deposit" };
+  // Managed Triage (202610290010): a request is for platform admins to activate.
+  if (n.notificationType === "managed_triage_requested") return { href: "/platform/managed-triage" as Route, label: "Review request" };
+  if (n.notificationType.startsWith("managed_triage_")) return { href: `/organizations/${n.organizationId}/managed-triage` as Route, label: "Open Managed Triage" };
   if (["deposit_confirmed", "deposit_rejected", "balance_low", "invoice_issued"].includes(n.notificationType)) {
     return { href: `/organizations/${n.organizationId}/payments` as Route, label: "Open payments" };
   }

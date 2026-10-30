@@ -38,7 +38,8 @@ export function buildOnboardingStages(o: OrganizationOnboarding, organizationId:
         { label: "Create your first engagement", done: o.programCreated, href: `${org}/programs`, hint: "A bounty program, or a disclosure program with no payouts." },
         { label: "Add what's in scope", done: o.scopeAdded, href: `${program}#scope`, hint: "Domains, apps or APIs researchers may test. Import a CSV to add many." },
         { label: "Publish the policy and response targets", done: o.policyPublished, href: program, hint: "Rules of engagement, safe harbor, and how fast you'll respond." },
-        { label: "Set the bounty table", done: o.bountyTable, href: program, hint: "What you pay per severity. Tier-2 and tier-3 assets can pay less." },
+        { label: "Choose a reward group template", done: o.rewardGroups, href: `${org}/rewards`, hint: "SaaS, Banking, AI, E-commerce, Healthcare or Government: groups of assets that each pay their own bounty table." },
+        { label: "Set the bounty table", done: o.bountyTable, href: program, hint: "What you pay per severity. Reward groups can set their own tables per asset group." },
       ],
     },
     {

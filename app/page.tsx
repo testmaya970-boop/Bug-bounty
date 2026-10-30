@@ -97,7 +97,7 @@ const RESEARCHER_STAGES = [
   {
     label: "Join a program",
     detail:
-      "An organization invites you directly by email. There is no public application queue yet.",
+      "An organization invites you directly by your @username, and the invitation reaches your inbox. There is no public application queue yet.",
   },
   {
     label: "Understand scope",
@@ -529,7 +529,7 @@ function PublicHome() {
             <div className="mt-2">
               <FaqItem
                 question="Can I browse every program on Unpatched?"
-                answer="Some organizations open their program to the whole community, and those are listed publicly. Most programs remain invitation-only for now. An organization invites a researcher directly by email rather than through an open application queue."
+                answer="Some organizations open their program to the whole community, and those are listed publicly. Most programs remain invitation-only for now. An organization invites a researcher directly by @username rather than through an open application queue."
               />
               <FaqItem
                 question="What happens to a report after I submit it?"

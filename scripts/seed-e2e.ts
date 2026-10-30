@@ -92,6 +92,8 @@ export const E2E_UNRELATED_ORG_NAME = "E2E Unrelated Org";
 export const E2E_UNRELATED_PROGRAM_NAME = "E2E Unrelated Program";
 // e2e/jira-integration.spec.ts -- see ensureIntegrationsOrg.
 export const E2E_INTEGRATIONS_ADMIN_EMAIL = "e2e.integrations-admin@unpatched.demo";
+// e2e/managed-triage.spec.ts: an Unpatched triage analyst (platform staff, TOTP enrolled).
+export const E2E_TRIAGE_ANALYST_EMAIL = "e2e.analyst@unpatched.demo";
 export const E2E_INTEGRATIONS_ORG_NAME = "E2E Integrations Org";
 export const E2E_INTEGRATIONS_PROGRAM_NAME = "E2E Integrations Program";
 
@@ -225,6 +227,10 @@ async function submitReportAcknowledgingPolicy(client: PoolClient, args: unknown
 async function ensurePlatformAdmin(email: string, displayName: string, username: string): Promise<UserRow> {
   const user = await ensureUser(email, displayName, username);
   await withServiceRole((client) => client.query("insert into public.platform_admins (user_id) values ($1) on conflict do nothing", [user.id]));
+  return enrollTotp(user, email);
+}
+
+async function enrollTotp(user: UserRow, email: string): Promise<UserRow> {
   const totpSecret = randomBytes(20);
   await withActor(user.id, (client) => client.query("select public.begin_my_totp_enrollment($1)", [totpSecret.toString("hex")]));
   const enrolled = await withActor(user.id, (client) => callRpc<{ verify_my_totp_code: string }>(client, "public.verify_my_totp_code", [totpCode(totpSecret, Math.floor(Date.now() / 30_000))]));
@@ -747,6 +753,14 @@ async function main() {
     // leave when a run stops early.
     await owner.query("delete from public.sso_connections where organization_id in (select id from public.organizations where name = any($1))", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
     await owner.query("delete from public.organization_domains where domain like 'sso-%.example' or domain ~ '^owned-[a-z0-9]+\.com$'");
+    // Managed Triage e2e/managed-triage.spec.ts buys every run: subscription, its charges and the
+    // analysts' triage records, so each run starts unsubscribed with an untouched balance.
+    await owner.query("delete from public.managed_triage_subscriptions where organization_id in (select id from public.organizations where name = any($1))", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
+    await owner.query("delete from public.organization_service_charges where organization_id in (select id from public.organizations where name = any($1))", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
+    await owner.query("delete from public.managed_triage_claims where organization_id in (select id from public.organizations where name = any($1))", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
+    await owner.query("delete from public.report_triage_escalations where organization_id in (select id from public.organizations where name = any($1))", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
+    await owner.query("delete from public.report_triage_assessments where organization_id in (select id from public.organizations where name = any($1))", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
+    await owner.query("delete from public.analytics_export_schedules where organization_id in (select id from public.organizations where name = any($1))", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]);
     // Events and swag researcher-journey.spec.ts creates every run (requests go with their item).
     await owner.query("delete from public.hacking_events where title like 'E2E live hack %'");
     await owner.query("delete from public.swag_requests where item_id in (select id from public.swag_items where name like 'E2E sticker %')");
@@ -798,6 +812,8 @@ async function main() {
   await withServiceRole((client) => client.query("delete from public.researcher_kyc where user_id = $1", [unverified.id]));
   const platformAdmin = await ensurePlatformAdmin(E2E_PLATFORM_ADMIN_EMAIL, "E2E Platform Admin", "e2e_platform_admin");
   await ensurePlatformAdmin(E2E_PLATFORM_ADMIN_2_EMAIL, "E2E Platform Admin 2", "e2e_platform_admin_2");
+  const analyst = await enrollTotp(await ensureUser(E2E_TRIAGE_ANALYST_EMAIL, "E2E Triage Analyst", "e2e_analyst"), E2E_TRIAGE_ANALYST_EMAIL);
+  await withServiceRole((client) => client.query("insert into public.triage_analysts (user_id, added_by) values ($1, $2) on conflict (user_id) do update set active = true", [analyst.id, platformAdmin.id]));
   const launchAdmin = await ensureUser(E2E_LAUNCH_ADMIN_EMAIL, "E2E Launch Admin", "e2e_launch_admin");
   await ensureOrganization(launchAdmin.id, E2E_LAUNCH_ORG_NAME);
   console.log("");
@@ -884,6 +900,9 @@ async function main() {
   console.log("");
 
   await ensurePendingInvitation(admin.id, privateProgram.id, org.id, E2E_INVITED_EMAIL);
+  // e2e/org-journey.spec.ts invites @e2e_newcomer to the private program each run (researchers are
+  // invited by @username only); a pending invitation left by the last run would refuse the next one.
+  await withServiceRole((client) => client.query("delete from public.program_invitations where program_id = $1 and lower(email) = lower($2) and accepted_at is null", [privateProgram.id, E2E_NEWCOMER_EMAIL]));
   console.log("");
 
   await ensureReputationHistory(admin.id, org.id, veteran.id, publicProgram, "api.e2e-public.example");
@@ -1001,6 +1020,29 @@ async function main() {
     ),
   );
   console.log(`Wrote e2e/.seed-fixture.json (organizationId, publicProgramId, privateProgramId, integrations*).`);
+
+  // Reward groups (202610300001) for the E2E organizations: the three groups the tier migration
+  // creates, so a fresh database (CI) matches a migrated one. Every asset without a group joins
+  // the default. Idempotent: existing groups and assignments are left alone.
+  await withServiceRole(async (client) => {
+    const orgs = (await client.query<{ id: string }>("select id from public.organizations where name = any ($1)", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]])).rows;
+    for (const org of orgs) {
+      for (const [i, name, color, icon] of [[0, "Core Platform", "red", "server"], [1, "High Value Systems", "amber", "shield"], [2, "Standard Assets", "slate", "globe"]] as const) {
+        await client.query(
+          `insert into public.reward_groups (organization_id, name, color, icon, currency, sort_order, is_default)
+           select $1, $2, $3, $4, 'USD', $5, $5 = 0 and not exists (select 1 from public.reward_groups where organization_id = $1 and is_default)
+           where not exists (select 1 from public.reward_groups where organization_id = $1 and archived_at is null and lower(name) = lower($2))`,
+          [org.id, name, color, icon, i],
+        );
+      }
+      await client.query("update public.assets set reward_group_id = (select id from public.reward_groups where organization_id = $1 and is_default) where organization_id = $1 and reward_group_id is null", [org.id]);
+    }
+  });
+
+  // E2E accounts are never demo accounts (202610290012-13): the specs test the real identity,
+  // scope-ownership and invitation rules, and demo researchers are auto-enrolled in programs.
+  await withServiceRole((client) => client.query("update public.users set is_demo = false where is_demo and email like '%@unpatched.demo'"));
+  await withServiceRole((client) => client.query("update public.organizations set is_demo = false where is_demo and name = any ($1)", [[E2E_ORG_NAME, E2E_LAUNCH_ORG_NAME]]));
 
   await pool.end();
 

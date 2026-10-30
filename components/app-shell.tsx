@@ -5,7 +5,7 @@ import { SIDEBAR_COOKIE } from "../lib/sidebar";
 import { listCurrentUserOrganizations } from "../services/organizations";
 import { countMyUnreadNotifications } from "../services/notifications";
 import { listMyProgramParticipations } from "../services/program-researchers";
-import { isPlatformAdmin } from "../services/platform-operations";
+import { getMyPlatformStaff } from "../services/managed-triage";
 import { perfTimed } from "../lib/perf-trace";
 import { LAST_ORGANIZATION_COOKIE, PLATFORM_ADMIN_NEEDS_MFA_HEADER } from "../lib/session/middleware";
 
@@ -72,7 +72,7 @@ export async function AppShell({
   user?: ShellUser | null;
   organizationId?: string;
 }) {
-  const [organizations, hasResearcherParticipation, unreadNotificationCount, isAdmin] = await perfTimed("AppShell 4-query batch", () =>
+  const [organizations, hasResearcherParticipation, unreadNotificationCount, staff] = await perfTimed("AppShell 4-query batch", () =>
     Promise.all([
       user ? listCurrentUserOrganizations(user.id) : Promise.resolve([]),
       user ? listMyProgramParticipations().then((participations) => participations.length > 0) : Promise.resolve(false),
@@ -81,7 +81,8 @@ export async function AppShell({
       // column -- see isPlatformAdmin's own comment. Only used here to decide whether the
       // one-line "Platform" entry point below renders; every /platform/* page still
       // independently re-checks this itself server-side (never trusts this alone).
-      user ? isPlatformAdmin() : Promise.resolve(false),
+      // + triage-analyst status, in the same single query (get_my_platform_staff).
+      user ? getMyPlatformStaff() : Promise.resolve({ platformAdmin: false, triageAnalyst: false, analystNeedsMfa: false }),
     ]),
   );
 
@@ -99,7 +100,8 @@ export async function AppShell({
       currentOrganizationId={resolvedOrganizationId}
       hasResearcherParticipation={hasResearcherParticipation}
       unreadNotificationCount={unreadNotificationCount}
-      isPlatformAdmin={isAdmin}
+      isPlatformAdmin={staff.platformAdmin}
+      isTriageAnalyst={staff.triageAnalyst || staff.analystNeedsMfa}
       platformAdminNeedsMfa={platformAdminNeedsMfa}
       initialSidebarCollapsed={sidebarCollapsed}
     >

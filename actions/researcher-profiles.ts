@@ -16,7 +16,7 @@ import {
   updateMyProfessionalDetails,
   upsertMyBiography,
 } from "@/services/researcher-profiles";
-import { setMyPublicUsername } from "@/services/reputation";
+import { setMyLeaderboardVisibility, setMyPublicUsername } from "@/services/reputation";
 import { EXTERNAL_PLATFORM_ORDER, normalizeExternalHandle, type ExternalHandles, type ExternalPlatform } from "@/lib/external-profiles";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
@@ -231,6 +231,20 @@ export async function setMyPublicUsernameAction(input: z.infer<typeof publicUser
   try {
     await setMyPublicUsername(parsed.data.username);
     revalidatePath("/settings");
+    revalidatePath("/researchers");
+    return { ok: true, data: undefined };
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false, code: error.code, message: error.message };
+    throw error;
+  }
+}
+
+/** Shows or hides the caller on the public leaderboard (202610300004). */
+export async function setMyLeaderboardVisibilityAction(input: { visible: boolean }): Promise<ActionResult<void>> {
+  const parsed = z.object({ visible: z.boolean() }).safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: "Check the form and try again." };
+  try {
+    await setMyLeaderboardVisibility(parsed.data.visible);
     revalidatePath("/researchers");
     return { ok: true, data: undefined };
   } catch (error) {

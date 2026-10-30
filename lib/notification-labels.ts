@@ -46,4 +46,10 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   program_closed: "A program you take part in was closed",
   program_scope_changed: "The scope of a program you take part in changed",
   program_recommended: "A new program matches what you hunt",
+  report_triage_escalated: "A triage analyst has a question for you",
+  report_escalation_answered: "The organization answered your triage question",
+  managed_triage_requested: "An organization requested Managed Triage",
+  managed_triage_activated: "Managed Triage is active",
+  managed_triage_declined: "Your Managed Triage request was declined",
+  managed_triage_past_due: "Managed Triage is paused: the renewal was not paid",
 };

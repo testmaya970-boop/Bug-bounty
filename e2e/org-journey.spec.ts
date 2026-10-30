@@ -172,11 +172,14 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // ProgramHeader's own Researchers tab (an in-page #researchers anchor), not the org
   // header's Researchers tab (a different destination: the org-wide directory).
   await programTab(page, "Researchers").click();
-  const freshInviteEmail = `e2e.fresh-invite-${Date.now()}@unpatched.demo`;
+  // Researchers are invited by @username only; an email is refused with a hint.
   await page.getByRole("button", { name: "Invite researcher" }).click();
-  await page.getByLabel("Email").fill(freshInviteEmail);
+  await page.getByLabel("@username").fill("e2e.newcomer@unpatched.demo");
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByText(freshInviteEmail)).toBeVisible();
+  await expect(page.getByText(/Invite researchers by @username/)).toBeVisible();
+  await page.getByLabel("@username").fill("@e2e_newcomer");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("@e2e_newcomer", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Send invitation" }).click();
   // The dialog now ends on the invitation link (shown once) and whether the email went out.
   await expect(page.getByLabel("Invitation link")).toHaveValue(/\/program-invitations\/[A-Za-z0-9_-]+$/);
@@ -389,7 +392,7 @@ test("nav de-duplication: every one of the nine org routes highlights exactly on
   // case (alongside the program sub-route above) the old tab row could never match. "Manage"
   // (MemberTable's own per-row action link) is unambiguous and exact, unlike the row's own
   // name/email cell link, which is a compound accessible name.
-  await page.getByRole("link", { name: "Manage" }).first().click();
+  await page.getByRole("link", { name: "Manage", exact: true }).first().click();
   await page.waitForURL(/\/members\/[0-9a-f-]{36}$/);
   await expectSingleSidebarHighlight(page, "Members");
 
