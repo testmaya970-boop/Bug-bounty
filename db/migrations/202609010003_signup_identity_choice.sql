@@ -1,0 +1,11 @@
+-- Originally: redefined public.handle_new_auth_user() to let signup choose its own
+-- username (see docs/decisions/0050).
+--
+-- NATIVE-POSTGRES MIGRATION EDIT (see db/migrations/README.md): this migration's logic
+-- (requested-username-with-collision-fallback) has been folded directly into
+-- public.create_user(...), defined in 202608260001_organization_membership_lifecycle.sql
+-- as part of that file's own account-provisioning rewrite (there is no more
+-- `after insert on auth.users` trigger for this migration to re-target). This file is
+-- kept as an intentional no-op, not deleted, so the migration sequence/count/ordering
+-- stays stable and auditable against the original supabase/migrations/ history.
+select 1;

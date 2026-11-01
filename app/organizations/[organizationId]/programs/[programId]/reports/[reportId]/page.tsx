@@ -1,0 +1,733 @@
+import React from "react";
+import { redirect } from "next/navigation";
+import type { Route } from "next";
+import { AppShell } from "../../../../../../../components/app-shell";
+import { Breadcrumbs } from "../../../../../../../components/ui/navigation";
+import { Alert, PermissionDenied } from "../../../../../../../components/ui/feedback";
+import { AssetTypeBadge, SeverityBadge, StatusBadge } from "../../../../../../../components/ui/badge";
+import { SeverityControl, TriageActionPanel } from "../../../../../../../components/reports/triage-actions";
+import { ReportAssigneeControl } from "../../../../../../../components/reports/report-assignee";
+import { ReportStatusHistory } from "../../../../../../../components/reports/report-status-history";
+import { LiveSeverityBadge, LiveStatusBadge, LiveStatusMeaning, TriageStatusRailProvider } from "../../../../../../../components/reports/triage-status-rail";
+import { ReportActivity } from "../../../../../../../components/reports/report-activity";
+import { ReportCommunication } from "../../../../../../../components/reports/report-communication";
+import { ReportComposer } from "../../../../../../../components/reports/report-composer";
+import { ReportEvidenceSection } from "../../../../../../../components/reports/report-evidence";
+import { BountyDecisionSection } from "../../../../../../../components/reports/bounty-decision";
+import { PaymentStatusSection } from "../../../../../../../components/reports/payment-status";
+import { OrganizationDisclosureDecisionPanel, ResearcherDisclosurePanel } from "../../../../../../../components/reports/report-disclosure";
+import { CvssSummary } from "../../../../../../../components/reports/cvss-summary";
+import { Cvss4Editor } from "../../../../../../../components/reports/cvss4-editor";
+import { PriorityControl } from "../../../../../../../components/reports/priority-control";
+import { evidenceLimits } from "../../../../../../../lib/evidence-limits";
+import { cvssBand } from "../../../../../../../lib/cvss";
+import { effectivePriority, priorityLabel } from "../../../../../../../lib/report-priority";
+import { ReportCollaboratorsPanel } from "../../../../../../../components/reports/report-collaborators";
+import { ReportRetestPanel } from "../../../../../../../components/reports/report-retest";
+import { ReportMediationPanel } from "../../../../../../../components/reports/report-mediation";
+import { SectionLabel, MetadataPair } from "../../../../../../../components/ui/security-primitives";
+import { Markdown } from "../../../../../../../components/ui/markdown";
+import { getReport, getReportStatusHistory, listAssignableStaff, getReportAuditActivity, listReportCollaborators, listReportEvidence, listReportMediations, listReportMessages, listReportRetests } from "../../../../../../../services/reports";
+import { getBountyAcceptance, getReportBountyDecision } from "../../../../../../../services/bounty";
+import { getReportJiraLink } from "../../../../../../../services/jira";
+import { getReportSla } from "../../../../../../../services/program-policy";
+import { ReportSlaPanel } from "../../../../../../../components/programs/program-policy";
+import { getReportDisclosure } from "../../../../../../../services/report-disclosures";
+import { listReportBonuses } from "../../../../../../../services/bonuses";
+import { getReportIssuePanel } from "../../../../../../../services/code-hosts";
+import { getMyPlatformStaff, getReportTriagePanel } from "../../../../../../../services/managed-triage";
+import { ReportTriagePanel } from "../../../../../../../components/managed-triage/forms";
+import { getReportRewardSuggestion } from "../../../../../../../services/reward-groups";
+import { RewardGroupBadge } from "../../../../../../../components/rewards/reward-groups";
+import { formatMoney } from "../../../../../../../lib/money";
+import { getReportServiceNowLink, organizationHasServiceNow } from "../../../../../../../services/servicenow";
+import { CreateServiceNowTicketButton } from "../../../../../../../components/integrations/servicenow-forms";
+import { CreateIssueButton } from "../../../../../../../components/integrations/code-host-forms";
+import { BonusItem, ProposeBonusForm } from "../../../../../../../components/reports/report-bonuses";
+import { getReportAcknowledgement } from "../../../../../../../services/researcher-journey";
+import { revokeAcknowledgementAction } from "../../../../../../../actions/researcher-journey";
+import { ActionButton } from "../../../../../../../components/researcher/journey-controls";
+import { ProposeAcknowledgementForm } from "../../../../../../../components/researcher/journey-forms";
+import { JourneyStatus } from "../../../../../../../components/researcher/journey-status";
+import { getReportPayoutReadiness, listPaymentAttempts, listReportPaymentObligations } from "../../../../../../../services/payments";
+import { canCreateProgram } from "../../../../../../../services/authorization";
+import { getActorMembership } from "../../../../../../../services/organization-members";
+import { getProgram, listProgramMembers } from "../../../../../../../services/programs";
+import { getCurrentUser } from "../../../../../../../lib/auth/current-user";
+import { reportStatusMeaning, reportNextActionLabel, researcherNextActionLabel, REPORT_STATUS_TRANSITIONS, severityLabel } from "../../../../../../../lib/report-status";
+import { weaknessTypeLabel } from "../../../../../../../lib/report-weakness-labels";
+import { getResearcherBiography } from "../../../../../../../services/researcher-profiles";
+import { LocalTime } from "../../../../../../../components/ui/local-time";
+import { ChatCircleText, ClockCounterClockwise, Paperclip, UsersThree } from "@phosphor-icons/react/dist/ssr";
+import { FindingSwitcherBar, FindingTechnicalTelemetryStrip, FindingExploitWorkbench } from "../../../../../../../components/reports/finding-technical-showcase";
+
+// Report layout (Oct 22, GitHub-style conversation): the submission is the opening comment,
+// everything after it hangs off one vertical timeline, and the decision lives in a
+// borderless sidebar of stacked sections.
+function TimelineItem({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
+  return (
+    <section className="relative pl-11">
+      <span aria-hidden="true" className="absolute left-0 top-0 inline-flex size-8 items-center justify-center rounded-full border border-[#E7EAF0] bg-white text-[#475467] shadow-2xs">
+        <Icon className="size-4" />
+      </span>
+      <h2 className="flex h-8 items-center text-[14px] font-semibold text-[#111827]">{title}</h2>
+      <div className="mt-2 rounded-[16px] border border-[#E7EAF0] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">{children}</div>
+    </section>
+  );
+}
+
+function RailSection({ title, children, className = "" }: { title?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`rounded-[16px] border border-[#E7EAF0] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${className}`}>
+      {title && <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#667085]">{title}</h2>}
+      {children}
+    </section>
+  );
+}
+
+export default async function ReportDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ organizationId: string; programId: string; reportId: string }>;
+  searchParams: Promise<{ evidenceIssues?: string }>;
+}) {
+  const { organizationId, programId, reportId } = await params;
+  const { evidenceIssues } = await searchParams;
+  // Set only by CreateReportForm immediately after a successful submission, when one or
+  // more staged evidence items/attachments failed to attach (a rare, transient failure
+  // between two real network calls -- the report itself was created successfully
+  // regardless). Never silently dropped: this is a one-time, honest count pointing at the
+  // same composers below, which already support adding evidence to an existing report.
+  const evidenceIssueCount = evidenceIssues ? Number.parseInt(evidenceIssues, 10) : 0;
+  const user = await getCurrentUser();
+  if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/programs/${programId}/reports/${reportId}` as Route);
+
+  const report = await getReport(reportId);
+
+  // A null result covers "does not exist" and "exists but you have no access"
+  // identically -- RLS already made that decision (the submitting researcher, an org
+  // owner/security admin, or a program manager; never another researcher, never a
+  // non-manager org member). A report id resolving under a different program/org in the
+  // URL is treated the same way, rather than silently rendering it under the wrong context.
+  if (!report || report.organizationId !== organizationId || report.programId !== programId) {
+    return (
+      <AppShell title="Report" user={user} organizationId={organizationId}>
+        <PermissionDenied>This report does not exist, or you do not have access to it.</PermissionDenied>
+      </AppShell>
+    );
+  }
+
+  const isOwnReport = report.researcherId === user.id;
+
+  // Same predicate the program control-center page and the database's
+  // private.lock_and_authorize_report_for_triage use -- the existing centralized
+  // capability model, not a new page-local check. See docs/decisions/0009.
+  const [members, actorMembership, program] = await Promise.all([listProgramMembers(programId), getActorMembership(user.id, organizationId), getProgram(programId)]);
+  // program_members (202609250012): "manager" runs the program; any assignment, including
+  // "triager", works its reports. The database enforces the same split.
+  const isProgramManager = members.some((member) => member.userId === user.id && member.role === "manager");
+  const isProgramTriager = members.some((member) => member.userId === user.id);
+  const isOrgAdmin = Boolean(actorMembership && actorMembership.status === "active" && canCreateProgram(actorMembership.role));
+  // Managed Triage analysts (202610290008): RLS already let them read this report; they triage
+  // it like the program's own triagers, but the organization's integrations, disclosure and
+  // money stay with the organization. Only asked when nothing above matched, so staff and
+  // researchers pay no extra query.
+  const isManagedAnalyst = !isOwnReport && !isProgramTriager && !isOrgAdmin && (await getMyPlatformStaff()).triageAnalyst;
+  const isOrgStaff = isProgramTriager || isOrgAdmin;
+  const canTriage = isOrgStaff || isManagedAnalyst;
+  const reportPriority = effectivePriority(report);
+
+  // Committing a financial figure is more sensitive than triage: org admins and the
+  // program's own manager, never a triager (lock_and_authorize_report_for_finance).
+  const canFinalizeBounty = isOrgAdmin || isProgramManager;
+  // Payouts and platform fees: org admins here; billing admins use the Payments page
+  // (they can't open report contents). Never program managers or triagers.
+  const canManagePaymentsHere = isOrgAdmin;
+
+  const [auditEvents, messages, evidence, bountyDecision, paymentObligations, researcherBiography, disclosure, collaborators, retests, mediations, sla, assignableStaff, statusHistory, jiraLink, acknowledgement] = await Promise.all([
+    canTriage ? getReportAuditActivity(reportId) : Promise.resolve([]),
+    listReportMessages(reportId),
+    listReportEvidence(reportId),
+    getReportBountyDecision(reportId),
+    listReportPaymentObligations(reportId),
+    getResearcherBiography(report.researcherId),
+    getReportDisclosure(reportId),
+    listReportCollaborators(reportId),
+    listReportRetests(reportId),
+    listReportMediations(reportId),
+    isOwnReport || canTriage ? getReportSla(reportId) : Promise.resolve(null),
+    canTriage ? listAssignableStaff(organizationId, programId) : Promise.resolve([]),
+    // The researcher's own timeline; staff get the full audit trail below instead.
+    !canTriage ? getReportStatusHistory(reportId) : Promise.resolve([]),
+    // The org's internal tracker: triage staff only, never the researcher (the RPC applies
+    // the same predicate and returns nothing otherwise).
+    isOrgStaff ? getReportJiraLink(reportId) : Promise.resolve(null),
+    // Hall of Fame credit (202610280001): offered by staff on accepted or resolved reports.
+    canTriage && (report.status === "accepted" || report.status === "resolved") ? getReportAcknowledgement(reportId) : Promise.resolve(null),
+  ]);
+  // Attempt-level detail (failure code/message, provider reference) is manager-only and
+  // only needed while a payout is actually in flight -- fetched after the obligations are
+  // known, rather than speculatively for every report.
+  const inFlight = isOrgAdmin ? paymentObligations.filter((o) => o.status === "processing") : [];
+  const latestPaymentAttempts: Record<string, Awaited<ReturnType<typeof listPaymentAttempts>>[number]> = Object.fromEntries(
+    (await Promise.all(inFlight.map(async (o) => [o.id, (await listPaymentAttempts(o.id))[0]] as const))).filter(([, attempt]) => attempt !== undefined),
+  );
+  // Only for a finalized bounty, and only for who may see it: finance roles get every
+  // recipient's blockers, a researcher only their own (get_report_payout_readiness).
+  const bountyFinalized = bountyDecision?.state === "finalized";
+  // Post-award bonuses (202610290003): staff see every one; the researcher only approved ones (RLS).
+  const bonuses = bountyFinalized ? await listReportBonuses(reportId) : [];
+  // GitHub / GitLab issues (202610290004): triage staff only.
+  const triagePanel = canTriage ? await getReportTriagePanel(reportId) : null;
+  // Asset -> reward group -> severity -> suggested range (202610300001), once the report is valid.
+  const rewardSuggestion = canTriage && (report.status === "accepted" || report.status === "resolved") && !bountyFinalized ? await getReportRewardSuggestion(reportId) : null;
+  const issuePanel = isOrgStaff ? await getReportIssuePanel(reportId, programId) : { links: [], providers: [] };
+  // ServiceNow (202610290005): triage staff, when the organization is connected.
+  const [snConnected, snLink] = isOrgStaff ? await Promise.all([organizationHasServiceNow(organizationId), getReportServiceNowLink(reportId)]) : [false, null];
+  const [payoutReadiness, bountyAcceptance] =
+    bountyFinalized && (isOwnReport || canTriage) ? await Promise.all([getReportPayoutReadiness(reportId), getBountyAcceptance(reportId)]) : [[], null];
+  // Staff see which report this duplicates; the researcher can't open someone else's report.
+  const duplicateOriginal = report.status === "duplicate" && report.duplicateOfReportId && canTriage ? await getReport(report.duplicateOfReportId).catch(() => null) : null;
+  const actorNames: Record<string, string> = { [report.researcherId]: report.researcherName, [user.id]: user.displayName };
+  members.forEach((member) => {
+    actorNames[member.userId] = member.displayName;
+  });
+
+  const allowedNext = REPORT_STATUS_TRANSITIONS[report.status];
+  // A report with no legal outgoing transition has reached the organization's final
+  // decision (docs/decisions/0012) -- the same predicate the database itself uses to
+  // decide whether confirmed_severity can still change.
+  const isFinal = allowedNext.length === 0;
+
+  return (
+    <AppShell title="Report" titleIsSection user={user} organizationId={organizationId}>
+      <TriageStatusRailProvider initialStatus={report.status} initialSeverity={report.confirmedSeverity}>
+      <div className="-mx-4 -my-6 min-h-screen bg-[#F6F8FB] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="mx-auto max-w-[1400px] space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Breadcrumbs
+            items={[
+              ...(actorMembership?.status === "active"
+                ? [
+                    { label: "Organizations", href: "/organizations" },
+                    { label: "Findings", href: `/organizations/${organizationId}/findings` },
+                    { label: program?.name ?? "Program", href: `/organizations/${organizationId}/programs/${programId}` },
+                  ]
+                : [
+                    { label: "Programs", href: "/programs" },
+                    { label: program?.name ?? "Program", href: `/organizations/${organizationId}/programs/${programId}` },
+                  ]),
+              { label: report.title },
+            ]}
+          />
+        </div>
+
+        {canTriage && <FindingSwitcherBar organizationId={organizationId} currentReportId={report.id} />}
+
+        {evidenceIssueCount > 0 && isOwnReport && (
+          <Alert tone="warning" title="Your report was submitted.">
+            {evidenceIssueCount === 1 ? "One item" : `${evidenceIssueCount} items`} you added didn&apos;t attach. Add {evidenceIssueCount === 1 ? "it" : "them"} again below, in Evidence.
+          </Alert>
+        )}
+
+        {isOwnReport && !canTriage && (
+          <Alert
+            className="motion-safe:animate-enter-rise"
+            tone={report.status === "needs_information" ? "warning" : isFinal ? "success" : "info"}
+            title={report.status === "needs_information" ? "Action required" : isFinal ? "Resolved, no further action needed" : "Waiting on the organization"}
+          >
+            {report.status === "needs_information" ? (
+              <>The organization has requested more information. Respond below, in Communication.</>
+            ) : isFinal ? (
+              <>This report is closed. Its history stays here for your records.</>
+            ) : (
+              <>Nothing for you to do right now. You&apos;ll get a notification when the organization updates this report.</>
+            )}
+          </Alert>
+        )}
+
+        {/* EXECUTIVE FINDING CASE HEADER CARD */}
+        <header className="rounded-[16px] border border-[#E7EAF0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 text-[13px]">
+              {canTriage ? (
+                <>
+                  <LiveStatusBadge />
+                  <LiveSeverityBadge />
+                </>
+              ) : (
+                <>
+                  <StatusBadge status={report.status} />
+                  {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
+                </>
+              )}
+              {reportPriority && (
+                <span title={report.priority ? "Priority set by the program" : "Priority follows the confirmed severity"} className="inline-flex items-center rounded-md border border-[#D0D5DD] bg-[#F8FAFC] px-2 py-0.5 font-mono text-xs font-bold text-[#111827]">
+                  <span className="sr-only">Priority </span>
+                  {priorityLabel(reportPriority)}
+                </span>
+              )}
+              <span className="rounded-md bg-[#F2F4F7] px-2 py-0.5 font-mono text-xs font-semibold text-[#475467]">
+                Finding #{report.id.slice(-6)}
+              </span>
+            </div>
+
+            <span className="flex min-w-0 items-center gap-2 rounded-xl border border-[#E7EAF0] bg-[#F8FAFC] px-3 py-1.5">
+              <AssetTypeBadge assetType={report.assetType} />
+              <span className="break-all font-mono text-xs font-semibold text-[#111827]">{report.displayTarget}</span>
+            </span>
+          </div>
+
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-[#111827] sm:text-[28px]">
+            <span>{report.title}</span>{" "}
+            <span className="font-mono text-lg font-normal text-[#667085]">#{report.id.slice(-6)}</span>
+          </h1>
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-[#475467]">
+            <span>
+              Submitted by <span className="font-semibold text-[#111827]">{isOwnReport ? "You" : `@${report.researcherName}`}</span>{" "}
+              <LocalTime value={report.submittedAt} />
+            </span>
+            <span>·</span>
+            <span>
+              Engagement: <span className="font-semibold text-[#111827]">{program?.name ?? "Security Engagement"}</span>
+            </span>
+            <span>·</span>
+            <span>
+              {messages.length} {messages.length === 1 ? "message" : "messages"} in triage log
+            </span>
+          </div>
+        </header>
+
+        {/* TECHNICAL TELEMETRY KPI STRIP */}
+        <FindingTechnicalTelemetryStrip
+          reportId={report.id}
+          title={report.title}
+          status={report.status}
+          confirmedSeverity={report.confirmedSeverity}
+          displayTarget={report.displayTarget}
+          researcherName={report.researcherName}
+        />
+
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-6">
+          <div className="space-y-6">
+            {/* INTERACTIVE EXPLOIT PoC & REMEDIATION WORKBENCH */}
+            <FindingExploitWorkbench
+              reportId={report.id}
+              title={report.title}
+              status={report.status}
+              confirmedSeverity={report.confirmedSeverity}
+              displayTarget={report.displayTarget}
+            />
+
+            {/* ORIGINAL RESEARCHER SUBMISSION DOSSIER */}
+            <div className="overflow-hidden rounded-[16px] border border-[#E7EAF0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <div className="flex flex-wrap items-center gap-2 border-b border-[#E7EAF0] bg-[#FCFCFD] px-5 py-3 text-[13px]">
+                <span aria-hidden="true" className="inline-flex size-6 items-center justify-center rounded-full bg-[#111827] text-[11px] font-bold text-white">{report.researcherName.trim().charAt(0).toUpperCase() || "?"}</span>
+                <span className="font-semibold text-[#111827]">{isOwnReport ? "You" : report.researcherName}</span>
+                <span className="text-[#667085]">submitted <LocalTime value={report.submittedAt} /></span>
+                <span className="ml-auto rounded-full border border-[#E7EAF0] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[#475467]">Original Submission Record</span>
+              </div>
+              <div className="p-5 sm:p-6">
+              <SectionLabel>Submitted by researcher</SectionLabel>
+              <div className="mt-3 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                <MetadataPair label="Researcher" value={isOwnReport ? "You" : report.researcherName} />
+                <MetadataPair label="Submitted" value=<LocalTime value={report.submittedAt} /> />
+                <MetadataPair label="Vulnerability category" value={report.weaknessType ? weaknessTypeLabel(report.weaknessType) : "Not specified"} />
+                <MetadataPair label="Researcher's severity assessment" value={report.researcherSeverity ? severityLabel(report.researcherSeverity) : "Not set"} />
+                <MetadataPair
+                  label="Researcher's CVSS"
+                  value={
+                    report.researcherCvss ? (
+                      <span>
+                        <span className="font-mono font-semibold tabular-nums">{report.researcherCvss.score.toFixed(1)}</span> {severityLabel(cvssBand(report.researcherCvss.score))} (CVSS {report.researcherCvss.version})
+                        <span className="mt-0.5 block break-all font-mono text-xs text-ink-muted">{report.researcherCvss.vector}</span>
+                      </span>
+                    ) : (
+                      "Not scored"
+                    )
+                  }
+                />
+                <MetadataPair
+                  label="Scope authorization"
+                  className="sm:col-span-2"
+                  value={
+                    <>
+                      Matched <span className="break-all font-mono">{report.matchedTarget}</span> (in scope) at submission time
+                    </>
+                  }
+                />
+              </div>
+              {researcherBiography && (
+                <div className="mt-5 border-t border-[#E7EAF0] pt-5">
+                  <SectionLabel>About {isOwnReport ? "you" : report.researcherName}</SectionLabel>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink-muted">{researcherBiography}</p>
+                </div>
+              )}
+              <div className="mt-5 border-t border-[#E7EAF0] pt-5">
+                <SectionLabel>Reproduction</SectionLabel>
+                <Markdown content={report.description} className="mt-2" />
+              </div>
+              {report.impact && (
+                <div className="mt-5 border-t border-[#E7EAF0] pt-5">
+                  <SectionLabel>Impact</SectionLabel>
+                  <Markdown content={report.impact} className="mt-2" />
+                </div>
+              )}
+              {report.cvssMetrics && report.cvssBaseScore !== null && <CvssSummary metrics={report.cvssMetrics} baseScore={report.cvssBaseScore} confirmedSeverity={report.confirmedSeverity} />}
+              </div>
+            </div>
+
+            {/* Everything after the submission hangs off one timeline line. */}
+            <div className="relative space-y-6 before:absolute before:bottom-0 before:left-4 before:top-0 before:w-px before:bg-[#E7EAF0]">
+
+            {(isOwnReport || canTriage || collaborators.length > 0) && (
+              <TimelineItem icon={UsersThree} title="Collaborators">
+                <ReportCollaboratorsPanel
+                  organizationId={organizationId}
+                  programId={programId}
+                  reportId={reportId}
+                  collaborators={collaborators}
+                  submitterName={isOwnReport ? "You" : report.researcherName}
+                  canManage={isOwnReport}
+                  locked={report.status !== "new" && report.status !== "triaging"}
+                />
+              </TimelineItem>
+            )}
+
+            <TimelineItem icon={ChatCircleText} title="Communication">
+              <div>
+                <ReportCommunication messages={messages} showInternal={canTriage} />
+              </div>
+            </TimelineItem>
+
+            <TimelineItem icon={Paperclip} title="Evidence">
+              <div>
+                <ReportEvidenceSection evidence={evidence} showInternal={canTriage} organizationId={organizationId} programId={programId} reportId={reportId} />
+              </div>
+            </TimelineItem>
+
+            {!canTriage && (
+              <TimelineItem icon={ClockCounterClockwise} title="History">
+                <ReportStatusHistory events={statusHistory} />
+              </TimelineItem>
+            )}
+
+            {canTriage && auditEvents.length > 0 && (
+              <TimelineItem icon={ClockCounterClockwise} title="Decision history">
+                <ReportActivity events={auditEvents} actorNames={actorNames} />
+              </TimelineItem>
+            )}
+            {(isOwnReport || canTriage) && (
+              <TimelineItem icon={ChatCircleText} title="Add to this report">
+                <ReportComposer organizationId={organizationId} programId={programId} reportId={reportId} side={canTriage ? "organization" : "researcher"}  limits={evidenceLimits()} />
+              </TimelineItem>
+            )}
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-4 lg:sticky lg:top-16 lg:mt-0 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+            <RailSection>
+              <SectionLabel>{isFinal ? "Final decision" : "Triage"}</SectionLabel>
+              {canTriage ? (
+                <>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <LiveStatusBadge />
+                    <LiveSeverityBadge />
+                  </div>
+                  <p className="mt-2 text-sm text-ink-muted">
+                    <LiveStatusMeaning />
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <StatusBadge status={report.status} />
+                    {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
+                  </div>
+                  <p className="mt-2 text-sm text-ink-muted">{reportStatusMeaning(report.status)}</p>
+                </>
+              )}
+              {isFinal && <p className="mt-1 text-sm text-ink-muted">This is the organization's final decision on this report. It cannot be changed to a different status.</p>}
+
+              <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
+                {program && <MetadataPair label="Program" value={program.name} />}
+                {!isFinal && <MetadataPair label="Next action" value={canTriage ? reportNextActionLabel(report.status) : researcherNextActionLabel(report.status)} />}
+                {jiraLink && (
+                  <MetadataPair
+                    label="Jira issue"
+                    value={
+                      <a
+                        href={jiraLink.issueUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-action hover:text-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                      >
+                        View in Jira: {jiraLink.issueKey} →
+                      </a>
+                    }
+                  />
+                )}
+              </div>
+
+              {report.resolutionSummary && (
+                <div className="mt-3 rounded-md border border-border p-3">
+                  <SectionLabel>Resolution</SectionLabel>
+                  <Markdown content={report.resolutionSummary} className="mt-1" />
+                </div>
+              )}
+              {report.status === "duplicate" && report.duplicateOfReportId && (
+                <p className="mt-3 text-sm text-ink-muted">
+                  {duplicateOriginal ? (
+                    <>
+                      Duplicate of{" "}
+                      <a href={`/organizations/${organizationId}/programs/${programId}/reports/${duplicateOriginal.id}` as Route} className="font-medium text-action underline underline-offset-2">
+                        {duplicateOriginal.title}
+                      </a>
+                    </>
+                  ) : (
+                    "Duplicate of an earlier report on this program."
+                  )}
+                </p>
+              )}
+
+              {canTriage && (
+                <div className="mt-5 space-y-4 border-t border-border pt-5">
+                  <ReportAssigneeControl organizationId={organizationId} programId={programId} reportId={reportId} assigneeId={report.assigneeId} staff={assignableStaff} currentUserId={user.id} />
+                  <SeverityControl organizationId={organizationId} programId={programId} reportId={reportId} currentSeverity={report.confirmedSeverity} currentCvssBaseScore={report.cvssBaseScore} locked={isFinal || bountyFinalized} lockReason={bountyFinalized && !isFinal ? "bounty" : "decision"} />
+                  <Cvss4Editor organizationId={organizationId} programId={programId} reportId={reportId} vector={report.cvss4Vector ?? null} score={report.cvss4Score ?? null} locked={isFinal || bountyFinalized} />
+                  <PriorityControl organizationId={organizationId} programId={programId} reportId={reportId} priority={report.priority} confirmedSeverity={report.confirmedSeverity} locked={bountyFinalized} />
+                  <TriageActionPanel organizationId={organizationId} programId={programId} reportId={reportId} status={report.status} allowedNext={allowedNext} />
+                  {(report.status === "accepted" || report.status === "resolved") && (
+                    <div className="space-y-2 border-t border-border pt-4">
+                      <SectionLabel>Hall of Fame</SectionLabel>
+                      {acknowledgement && acknowledgement.status !== "revoked" ? (
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+                          <JourneyStatus status={acknowledgement.status === "proposed" ? "pending" : acknowledgement.status} />
+                          {acknowledgement.status === "proposed" && "Waiting for the researcher to agree."}
+                          {acknowledgement.status === "published" && (
+                            <ActionButton variant="quiet" action={revokeAcknowledgementAction.bind(null, acknowledgement.id)} confirm="The researcher's name comes off your Hall of Fame." confirmLabel="Remove credit?">
+                              Remove
+                            </ActionButton>
+                          )}
+                        </div>
+                      ) : (
+                        <ProposeAcknowledgementForm reportId={reportId} />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* isFinal/allowedNext above are still the server-derived values (this
+                  page only re-renders them for real once router.refresh() lands) --
+                  the provider only makes the two badges + meaning sentence above
+                  optimistic, deliberately not these gating booleans, so a triager can
+                  never click a transition the real status no longer allows. */}
+
+              {/* On the researcher's own read-only view (no SeverityControl/
+                  TriageActionPanel above), this rail would otherwise be a single short
+                  card next to a much taller submission column. Submitted/updated are
+                  real fields already loaded for this report -- not filler -- and give
+                  the researcher a genuine at-a-glance timeline regardless of report
+                  length. */}
+              {!canTriage && (
+                <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
+                  <MetadataPair label="Submitted" value=<LocalTime value={report.submittedAt} /> />
+                  <MetadataPair label="Last updated" value=<LocalTime value={report.updatedAt} /> />
+                </div>
+              )}
+            </RailSection>
+
+            {triagePanel && (isManagedAnalyst || triagePanel.claimedBy || triagePanel.escalations.length > 0 || triagePanel.assessments.length > 0) && (
+              <RailSection>
+                <SectionLabel>Managed Triage</SectionLabel>
+                <div className="mt-3">
+                  <ReportTriagePanel reportId={reportId} viewer={isManagedAnalyst ? "analyst" : "organization"} currentUserId={user.id} {...triagePanel} />
+                </div>
+              </RailSection>
+            )}
+
+            {rewardSuggestion && (
+              <RailSection>
+                <SectionLabel>Suggested reward</SectionLabel>
+                <ol className="mt-3 space-y-2 text-sm">
+                  <li className="flex items-center justify-between gap-2"><span className="text-ink-muted">Asset</span><span className="min-w-0 truncate font-mono text-xs text-ink">{rewardSuggestion.assetLabel ?? "Not matched"}</span></li>
+                  <li className="flex items-center justify-between gap-2"><span className="text-ink-muted">Reward group</span>{rewardSuggestion.groupName && rewardSuggestion.groupColor ? <RewardGroupBadge name={rewardSuggestion.groupName} color={rewardSuggestion.groupColor} /> : <span className="text-ink">None</span>}</li>
+                  <li className="flex items-center justify-between gap-2"><span className="text-ink-muted">Severity</span><span className="capitalize text-ink">{rewardSuggestion.severity === "none" ? "Informational" : rewardSuggestion.severity ?? "Not set yet"}</span></li>
+                  <li className="flex items-center justify-between gap-2 border-t border-border pt-2">
+                    <span className="font-medium text-ink">Suggested</span>
+                    <span className="font-mono font-semibold tabular-nums text-ink">
+                      {rewardSuggestion.max !== null && rewardSuggestion.currency ? (rewardSuggestion.min !== null && rewardSuggestion.min !== rewardSuggestion.max ? `${formatMoney(rewardSuggestion.min, rewardSuggestion.currency)} to ${formatMoney(rewardSuggestion.max, rewardSuggestion.currency)}` : formatMoney(rewardSuggestion.max, rewardSuggestion.currency)) : "No amount yet"}
+                    </span>
+                  </li>
+                </ol>
+                <p className="mt-2 text-xs text-ink-muted">
+                  {rewardSuggestion.source === "reward_group" ? "From the reward group's bounty table." : rewardSuggestion.source === "program" ? "The group has no amount for this severity, so the program's table applies." : !rewardSuggestion.severity ? "Confirm the severity to see the amount." : "Set a bounty table for this group or program."}
+                </p>
+              </RailSection>
+            )}
+
+            {/* Bounty is a separate decision layered on top of the final report decision --
+                never a property of the report row itself. See
+                docs/decisions/0013-bounty-decision-engine.md. */}
+            {sla && (
+              <RailSection>
+                <SectionLabel>Response targets</SectionLabel>
+                <div className="mt-3">
+                  <ReportSlaPanel sla={sla} />
+                </div>
+              </RailSection>
+            )}
+
+            {(isOwnReport || canTriage) && (
+              <RailSection>
+                <SectionLabel>Bounty</SectionLabel>
+                <div className="mt-3">
+                  <BountyDecisionSection decision={bountyDecision} canCalculate={canTriage} reportIsFinal={isFinal} canFinalize={canFinalizeBounty} organizationId={organizationId} programId={programId} reportId={reportId} />
+                </div>
+              </RailSection>
+            )}
+
+            {isOrgStaff && (snLink || snConnected) && (
+              <RailSection>
+                <SectionLabel>ServiceNow</SectionLabel>
+                {snLink ? (
+                  <p className="mt-2 text-sm">
+                    {snLink.url ? (
+                      <a href={snLink.url} target="_blank" rel="noopener noreferrer" className="font-medium text-action underline underline-offset-2">
+                        {snLink.number}
+                      </a>
+                    ) : (
+                      <span className="font-medium text-ink">{snLink.number}</span>
+                    )}
+                    <span className="text-ink-muted"> · {snLink.state}</span>
+                  </p>
+                ) : report.status === "accepted" || report.status === "resolved" ? (
+                  <div className="mt-2">
+                    <CreateServiceNowTicketButton organizationId={organizationId} programId={programId} reportId={reportId} />
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-ink-muted">A ticket can be created once the report is accepted.</p>
+                )}
+              </RailSection>
+            )}
+
+            {isOrgStaff && (issuePanel.links.length > 0 || issuePanel.providers.length > 0) && (
+              <RailSection>
+                <SectionLabel>Code issues</SectionLabel>
+                <ul className="mt-2 space-y-2 text-sm">
+                  {issuePanel.links.map((l) => (
+                    <li key={l.provider}>
+                      <a href={l.issueUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-action underline underline-offset-2">
+                        {l.repoFullName}#{l.issueNumber}
+                      </a>
+                      <span className="text-ink-muted"> · {l.state}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {issuePanel.providers
+                    .filter((prov) => !issuePanel.links.some((l) => l.provider === prov))
+                    .map((prov) =>
+                      report.status === "accepted" || report.status === "resolved" ? (
+                        <CreateIssueButton key={prov} organizationId={organizationId} programId={programId} reportId={reportId} provider={prov} />
+                      ) : (
+                        <p key={prov} className="text-xs text-ink-muted">
+                          A {prov === "github" ? "GitHub" : "GitLab"} issue can be created once the report is accepted.
+                        </p>
+                      ),
+                    )}
+                </div>
+              </RailSection>
+            )}
+
+            {bountyFinalized && bountyDecision?.currency && bountyDecision.finalAmountMinorUnits !== null && (canFinalizeBounty || bonuses.length > 0) && (
+              <RailSection>
+                <SectionLabel>Bonuses</SectionLabel>
+                {bonuses.length > 0 && (
+                  <ul className="mt-2 divide-y divide-border">
+                    {bonuses.map((b) => (
+                      <BonusItem key={b.id} organizationId={organizationId} bonus={b} currentUserId={user.id} canDecide={isOrgAdmin} />
+                    ))}
+                  </ul>
+                )}
+                {canFinalizeBounty && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-sm font-medium text-action">Propose a bonus</summary>
+                    <div className="mt-3">
+                      <ProposeBonusForm organizationId={organizationId} reportId={reportId} currency={bountyDecision.currency} maxMinorUnits={bountyDecision.finalAmountMinorUnits} />
+                    </div>
+                  </details>
+                )}
+              </RailSection>
+            )}
+
+            {/* A finalized bounty decision is not a payment — separate card, separate data,
+                separate authorization. Renders only once there is something real to say
+                about payment. See docs/decisions/0014-payment-ledger-and-payout-orchestration.md. */}
+            {(isOwnReport || canTriage) && bountyDecision?.state === "finalized" && bountyDecision.currency && bountyDecision.finalAmountMinorUnits !== null && (
+              <RailSection>
+                <SectionLabel>Payment</SectionLabel>
+                <div className="mt-3">
+                  <PaymentStatusSection
+                    obligations={paymentObligations}
+                    latestAttempts={latestPaymentAttempts}
+                    readiness={payoutReadiness}
+                    acceptance={bountyAcceptance}
+                    isOwnReport={isOwnReport}
+                    canManage={canManagePaymentsHere}
+                    bountyCurrency={bountyDecision.currency}
+                    bountyAmountMinorUnits={bountyDecision.finalAmountMinorUnits}
+                    organizationId={organizationId}
+                    programId={programId}
+                    reportId={reportId}
+                  />
+                </div>
+              </RailSection>
+            )}
+
+            {/* Disclosure is only offered once the organization has reached a final
+                decision -- matches private.get_terminal_report_for_disclosure's own gate
+                (request_report_disclosure rejects on a non-terminal report). Researcher
+                sees the request/status panel; an org manager sees the decision panel only
+                once a request actually exists. See
+                supabase/migrations/202609030001_report_disclosure_workflow.sql. */}
+            {isOwnReport && (report.status === "resolved" || disclosure) && (
+              <RailSection>
+                <ResearcherDisclosurePanel reportId={reportId} reportTitle={report.title} initialDisclosure={disclosure} />
+              </RailSection>
+            )}
+            {isOrgStaff && disclosure && (
+              <RailSection>
+                <OrganizationDisclosureDecisionPanel reportId={reportId} disclosure={disclosure} canDecide={canFinalizeBounty} />
+              </RailSection>
+            )}
+
+            {/* Retest: real, narrowly-scoped, never reopens the report's own status --
+                only ever offered once the report is specifically 'resolved' (a fix was
+                actually claimed), matching request_report_retest's own server-side gate.
+                See docs/decisions/0075, supabase/migrations/202609050005_report_retest.sql. */}
+            {report.status === "resolved" && (isOwnReport || canTriage) && (
+              <RailSection>
+                <ReportRetestPanel organizationId={organizationId} programId={programId} reportId={reportId} retests={retests} canRequest={isOwnReport} canDecide={canTriage} canEscalate={isOwnReport} />
+              </RailSection>
+            )}
+
+            {/* Mediation: a researcher-initiated dispute over any terminal outcome --
+                resolved by the organization's own owner/security_admin, since no
+                platform-level adjudicator exists yet. See docs/decisions/0075,
+                supabase/migrations/202609050006_report_mediation.sql. */}
+            {isFinal && (isOwnReport || canTriage) && (
+              <RailSection>
+                <ReportMediationPanel organizationId={organizationId} programId={programId} reportId={reportId} mediations={mediations} canOpen={isOwnReport} canResolve={canTriage} />
+              </RailSection>
+            )}
+          </div>
+        </div>
+      </div>
+      </div>
+      </TriageStatusRailProvider>
+    </AppShell>
+  );
+}

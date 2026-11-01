@@ -1,0 +1,464 @@
+import "server-only";
+import { headers, cookies } from "next/headers";
+import { withServiceRoleTransaction, callRpc } from "@/lib/db/pool";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { issuePasswordResetToken, consumePasswordResetToken, peekPasswordResetToken as peekPasswordResetTokenLib } from "@/lib/auth/tokens";
+import { generateSignupOtpChallenge, hashSignupOtpCode } from "@/lib/auth/signup-otp";
+import { createSession, revokeSession, SESSION_COOKIE_NAME } from "@/lib/auth/session";
+import { getCurrentSessionId } from "@/lib/auth/current-user";
+import { activeEmailProvider } from "@/lib/email-provider";
+import { randomUUID } from "node:crypto";
+import { getNativeEnv } from "@/lib/env";
+import { recordError } from "@/lib/error-tracking";
+
+export class AuthServiceError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+  ) {
+    super(message);
+    this.name = "AuthServiceError";
+  }
+}
+
+const SESSION_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
+export async function setSessionCookie(cookieValue: string): Promise<void> {
+  const cookieStore = await cookies();
+  const h = await headers();
+  const isHttps = h.get("x-forwarded-proto") === "https" || process.env.NODE_ENV === "production";
+  cookieStore.set(SESSION_COOKIE_NAME, cookieValue, {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: isHttps ? "none" : "lax",
+    path: "/",
+    maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
+  });
+}
+
+async function clearSessionCookie(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(SESSION_COOKIE_NAME);
+}
+
+async function currentUserAgentAndIp(): Promise<{ userAgent: string | null; ip: string | null }> {
+  const h = await headers();
+  // The LAST hop: the one our own server/proxy appended. The first is whatever the client
+  // sent, so keying rate limits on it let a client dodge them by rotating the header.
+  return { userAgent: h.get("user-agent"), ip: h.get("x-forwarded-for")?.split(",").at(-1)?.trim() || null };
+}
+
+/**
+ * Consumes one attempt from a rate-limit check (`select ... as ok`) in its OWN committed
+ * transaction. It used to share the attempt's transaction, so a failing attempt (a wrong
+ * password) rolled back its own increment: failed sign-ins never counted toward the limit.
+ */
+async function consumeRateLimit(sql: string, params: unknown[], message: string): Promise<void> {
+  const ok = await withServiceRoleTransaction(async (client) => (await client.query<{ ok: boolean }>(sql, params)).rows[0]?.ok);
+  if (ok === false) throw new AuthServiceError(message, "RATE_LIMITED");
+}
+
+// Always "confirm_email" now -- unlike Supabase, where a project with email confirmation
+// disabled could return an immediate session, there is no equivalent "skip confirmation"
+// mode here; every account must confirm its email before first sign-in.
+export type SignUpResult = { status: "confirm_email"; email: string };
+
+/**
+ * Creates the account (public.create_user, the same username-choice/fallback logic that
+ * used to run as an `after insert on auth.users` trigger -- see
+ * db/migrations/202608260001_organization_membership_lifecycle.sql's own edit note) and
+ * emails a real 6-digit verification code (db/migrations/202609090001_signup_email_otp_verification.sql),
+ * sent via the existing activeEmailProvider abstraction (the same one every other
+ * transactional email in this app already uses). No session is created yet -- email
+ * confirmation is required before first sign-in, matching the original Supabase-backed
+ * behavior where `data.session` was null until confirmation.
+ *
+ * This is a typed code, not a clickable link, per explicit product direction --
+ * password reset (requestPasswordReset/confirmPasswordReset below) remains link-based
+ * and unchanged; only signup verification uses a code.
+ */
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  metadata?: { displayName?: string; username?: string; intent?: "researcher" | "organization"; companyName?: string },
+): Promise<SignUpResult> {
+  const normalizedEmail = email.trim().toLowerCase();
+  await consumeRateLimit("select public.check_sign_up_rate_limit($1, $2) as ok", [normalizedEmail, (await currentUserAgentAndIp()).ip], "Too many sign-up attempts. Try again in an hour.");
+  const passwordHash = await hashPassword(password);
+  const { code, codeHash, ttlSeconds } = generateSignupOtpChallenge();
+
+  const userId = await withServiceRoleTransaction(async (client) => {
+    // An earlier signup that never entered its code (or whose code email never arrived)
+    // would otherwise lock this email out forever with EMAIL_TAKEN. Re-issue a code instead.
+    // This row is never touched before the code proves ownership of the email (an unverified
+    // row may also be a real account mid email-change, services/account.ts).
+    const { rows: existing } = await client.query<{ id: string; email_verified_at: string | null }>(
+      "select id, email_verified_at from public.users where email = $1",
+      [normalizedEmail],
+    );
+    // A registered email gets the same "check your email" answer as a new one -- telling the
+    // caller "already exists" let anyone test which emails have accounts. The owner is told
+    // instead (below), and nothing about the account changes.
+    if (existing[0]?.email_verified_at) return null;
+    if (existing[0]) {
+      // Same as resending the code: the first signup's password and account type stand.
+      // Anyone can type this email, so nothing they choose here may reach the account.
+      const { rows: latest } = await client.query<{ metadata: { intent?: string; companyName?: string } }>(
+        "select metadata from public.signup_verification_challenges where user_id = $1 order by created_at desc limit 1",
+        [existing[0].id],
+      );
+      try {
+        await callRpc(client, "public.create_signup_verification_challenge", [
+          existing[0].id,
+          codeHash,
+          ttlSeconds,
+          JSON.stringify({ intent: latest[0]?.metadata?.intent, companyName: latest[0]?.metadata?.companyName }),
+        ]);
+      } catch (error) {
+        throw mapDbError(error);
+      }
+      return existing[0].id;
+    }
+
+    let user;
+    try {
+      const { rows } = await client.query<{ id: string }>(
+        "select * from public.create_user($1, $2, $3, $4)",
+        [normalizedEmail, passwordHash, metadata?.displayName ?? null, metadata?.username ?? null],
+      );
+      user = rows[0];
+    } catch (error) {
+      throw mapDbError(error);
+    }
+    await callRpc(client, "public.create_signup_verification_challenge", [
+      user.id,
+      codeHash,
+      ttlSeconds,
+      JSON.stringify({ intent: metadata?.intent, companyName: metadata?.companyName }),
+    ]);
+    return user.id;
+  });
+
+  if (userId === null) {
+    await activeEmailProvider.send({
+      to: normalizedEmail,
+      subject: "Someone tried to sign up with your email",
+      text: `Someone tried to create an Unpatched account with this email address, which already has an account.\n\nIf it was you, sign in instead, or reset your password if you've forgotten it. If it wasn't you, you can ignore this email; nothing about your account has changed.`,
+      idempotencyKey: `signup-existing-${normalizedEmail}-${randomUUID()}`,
+    });
+    return { status: "confirm_email", email: normalizedEmail };
+  }
+
+  await activeEmailProvider.send({
+    to: normalizedEmail,
+    subject: "Confirm your Unpatched account",
+    text: `Your Unpatched verification code is: ${code}\n\nEnter this code to finish creating your account. This code expires in 15 minutes. If you did not create this account, you can ignore this email.`,
+    idempotencyKey: `signup-verify-${userId}-${randomUUID()}`,
+  });
+
+  return { status: "confirm_email", email: normalizedEmail };
+}
+
+/**
+ * Rate-limited by the normalized email being attempted (public.check_sign_in_rate_limit,
+ * unchanged/fully portable SQL -- see db/migrations/202609070003_native_auth_tokens.sql's
+ * own note). Returns `{ mfaRequired: true }` when this account has a verified email-OTP
+ * factor -- the session row is created either way (the password was correct), but
+ * remains at aal1 until a real OTP verification elevates it (services/mfa.ts); the
+ * caller must route to /mfa/verify rather than treat the account as fully signed in.
+ */
+export async function signInWithPassword(email: string, password: string): Promise<{ mfaRequired: boolean; userId: string }> {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  await consumeRateLimit("select public.check_sign_in_rate_limit($1) as ok", [normalizedEmail], "Too many sign-in attempts. Wait a moment and try again.");
+
+  // must_reset_password accounts (migrated from Supabase Auth, see
+  // scripts/migrate-users-data.mjs) carry an unguessable, never-verifiable
+  // password_hash -- verifyPassword below always returns false for them, so they
+  // correctly cannot sign in with any password, same as a wrong-password attempt.
+  // Deliberately NOT distinguished from INVALID_CREDENTIALS here: revealing
+  // "this account requires a reset" before a correct password is known would be a
+  // new account-enumeration side channel, which this codebase's existing
+  // enumeration-safety convention (see mapAuthError's own history) treats as a real
+  // security property, not a UX nicety to trade away. A migrated user's real path in
+  // is the password-reset flow, reachable the same way any user reaches it.
+  // The lookup and the session write are two short transactions; the slow argon2 check runs
+  // between them holding no pool connection. Inside one transaction it parked a connection
+  // "idle in transaction" for seconds per sign-in, and a few parallel sign-ins drained the
+  // 5-connection pool so every other request stalled (seen as 100s page-load hangs).
+  const user = await withServiceRoleTransaction(async (client) => {
+    const { rows } = await client.query<{ id: string; password_hash: string; email_verified_at: string | null; deactivated_at: string | null }>(
+      "select id, password_hash, email_verified_at, deactivated_at from public.users where email = $1",
+      [normalizedEmail],
+    );
+    return rows[0];
+  });
+  // Constant-shape failure regardless of whether the account exists -- verifyPassword
+  // against a fixed dummy hash keeps the timing profile of "no such account" close to
+  // "wrong password" rather than short-circuiting immediately, the same enumeration
+  // caution the original Supabase-backed mapAuthError already documented.
+  const passwordOk = user ? await verifyPassword(user.password_hash, password) : await verifyPassword(DUMMY_HASH_FOR_TIMING, password);
+  if (!user || !passwordOk) {
+    throw new AuthServiceError("Incorrect email or password.", "INVALID_CREDENTIALS");
+  }
+  if (!user.email_verified_at) {
+    throw new AuthServiceError("Confirm your email address before signing in.", "EMAIL_NOT_CONFIRMED");
+  }
+  // The password was already proven correct above, so naming the real reason reveals
+  // nothing an attacker could use -- "Incorrect email or password" here sent people who
+  // had just reset their password round in circles.
+  if (user.deactivated_at) {
+    throw new AuthServiceError("This account has been deactivated. Contact support to reactivate it.", "ACCOUNT_DEACTIVATED");
+  }
+
+  // Enforced single sign-on (202610290006): members on the organization's verified domains sign
+  // in through its identity provider. Owners keep their password as the break-glass way in.
+  const ssoOnly = await withServiceRoleTransaction((client) =>
+    client.query<{ blocked: boolean }>("select private.password_sign_in_blocked($1) as blocked", [user.id]).then((r) => r.rows[0]?.blocked === true),
+  );
+  if (ssoOnly) throw new AuthServiceError("Your organization signs in with single sign-on. Use Sign in with SSO.", "SSO_REQUIRED");
+
+  const { userAgent, ip } = await currentUserAgentAndIp();
+  return withServiceRoleTransaction(async (client) => {
+    const { cookieValue } = await createSession(client, { userId: user.id, userAgent, ip });
+    await setSessionCookie(cookieValue);
+
+    const { rows: mfaRows } = await client.query<{ user_id: string }>(
+      "select user_id from public.mfa_factors where user_id = $1 and status = 'verified'",
+      [user.id],
+    );
+    return { mfaRequired: mfaRows.length > 0, userId: user.id };
+  });
+}
+
+// A real argon2id hash of an unguessable, fixed placeholder -- computed once at module
+// load, never derived from any real account's data. Its only purpose is to make
+// signInWithPassword's argon2.verify() call take approximately the same amount of time
+// whether or not the email actually exists (verifyPassword's own null/"no account" fast
+// path would otherwise be measurably faster, a timing side-channel).
+const DUMMY_HASH_FOR_TIMING = "plain$dummy-timing-placeholder";
+
+function mapDbError(error: unknown): AuthServiceError {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("EMAIL_TAKEN")) return new AuthServiceError("An account with this email already exists.", "EMAIL_TAKEN");
+  // signup-verification-challenge RPC errors (create_signup_verification_challenge/
+  // verify_signup_verification_challenge) follow this schema's standard `CODE: message`
+  // convention -- parsed the same way services/rpc-error.ts's mapRpcError does for every
+  // other RPC, just producing an AuthServiceError here rather than an
+  // OrganizationServiceError, matching this file's own established convention (see this
+  // module's own historical note in services/rpc-error.ts on why auth errors are mapped
+  // separately from the rest of this schema's RPCs).
+  const match = /^([A-Z_]+): (.+)$/.exec(message);
+  if (match) return new AuthServiceError(match[2], match[1]);
+  return new AuthServiceError("The request could not be completed. Try again in a moment.", "UNKNOWN");
+}
+
+/**
+ * Always neutral to the caller regardless of whether the email belongs to a real,
+ * unconfirmed account -- looked up but never distinguished in the response; only a
+ * genuine rate limit is ever distinguishable, identical to requestPasswordReset's
+ * contract and this codebase's existing enumeration-safety convention. Re-issues a fresh
+ * 6-digit code (create_signup_verification_challenge invalidates any still-live code
+ * before issuing a new one, so only the most recently sent code is ever valid) rather
+ * than re-sending a link.
+ */
+export async function resendConfirmationEmail(email: string): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const { code, codeHash, ttlSeconds } = generateSignupOtpChallenge();
+
+  await withServiceRoleTransaction(async (client) => {
+    const { rows } = await client.query<{ id: string; email_verified_at: string | null }>(
+      "select id, email_verified_at from public.users where email = $1",
+      [normalizedEmail],
+    );
+    const user = rows[0];
+    if (!user || user.email_verified_at) return;
+
+    // Carry the latest challenge's metadata forward -- the RPC invalidates it, and "{}"
+    // here used to turn an organization signup into a researcher one on resend.
+    const { rows: latest } = await client.query<{ metadata: unknown }>(
+      "select metadata from public.signup_verification_challenges where user_id = $1 order by created_at desc limit 1",
+      [user.id],
+    );
+
+    try {
+      await callRpc(client, "public.create_signup_verification_challenge", [user.id, codeHash, ttlSeconds, JSON.stringify(latest[0]?.metadata ?? {})]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // A genuine rate limit is the one outcome this function's own caller (resendConfirmationEmailAction)
+      // still surfaces distinguishably -- everything else (including a race where the
+      // account was verified between the select above and this call) resolves to the
+      // identical neutral no-op, matching this function's own documented contract.
+      if (message.startsWith("RATE_LIMITED")) throw new AuthServiceError("Too many codes requested. Wait a few minutes and try again.", "RATE_LIMITED");
+      return;
+    }
+
+    await activeEmailProvider.send({
+      to: normalizedEmail,
+      subject: "Confirm your Unpatched account",
+      text: `Your Unpatched verification code is: ${code}\n\nEnter this code to finish creating your account. This code expires in 15 minutes.`,
+      idempotencyKey: `signup-verify-resend-${user.id}-${randomUUID()}`,
+    });
+  });
+}
+
+/**
+ * Always neutral to the caller regardless of whether the email belongs to a real
+ * account -- no enumeration signal exists to suppress here since the lookup happens
+ * before any distinguishable response is produced.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
+  // Configured origin only: a client-supplied Host header must never decide where the
+  // emailed reset link (and its token) points.
+  const origin = getNativeEnv().APP_ORIGIN;
+  // Before the account lookup, so hitting the limit reveals nothing about the account.
+  await consumeRateLimit("select public.check_password_reset_rate_limit($1, $2) as ok", [normalizedEmail, (await currentUserAgentAndIp()).ip], "Too many reset requests. Try again in an hour.");
+
+  const issued = await withServiceRoleTransaction(async (client) => {
+    // Confirmed, active accounts only: a sign-up whose code was never entered is not a
+    // registered account (signing up again re-sends its code), and a deactivated one can't
+    // sign in whatever its password -- a reset would only mislead. The caller
+    // shows the same neutral message either way, so this reveals nothing.
+    const { rows } = await client.query<{ id: string }>("select id from public.users where email = $1 and email_verified_at is not null and deactivated_at is null", [normalizedEmail]);
+    const user = rows[0];
+    if (!user) return null;
+    return { userId: user.id, token: await issuePasswordResetToken(client, user.id) };
+  });
+  if (!issued) return;
+
+  // Not awaited: sending took seconds while "no such account" returned at once, so the
+  // response time alone told an attacker which emails are registered.
+  const resetUrl = `${origin}/auth/confirm?type=recovery&token=${encodeURIComponent(issued.token)}`;
+  void activeEmailProvider
+    .send({
+      to: normalizedEmail,
+      subject: "Reset your Unpatched password",
+      text: `Reset your Unpatched password:\n\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, you can ignore this email.`,
+      idempotencyKey: `password-reset-${issued.userId}-${randomUUID()}`,
+    })
+    .catch((error) => recordError({ source: "server", message: `Password reset email failed: ${error instanceof Error ? error.message : String(error)}` }));
+}
+
+/**
+ * Verifies the emailed 6-digit code against the account's live challenge
+ * (db/migrations/202609090001_signup_email_otp_verification.sql) and establishes a real
+ * session on success -- the verify-code page/action calls this, not password-reset (that
+ * remains link-based, see peekPasswordResetToken/confirmPasswordReset below, unchanged).
+ * Requires `email` (not a session -- none exists yet) to resolve which account's
+ * challenge to check; the challenge itself is still what actually authorizes the
+ * verification (ownership is enforced by the RPC matching on the resolved user id, never
+ * by trusting the email alone) -- a wrong email simply resolves to no account, which
+ * verify_signup_verification_challenge already treats identically to "no live challenge"
+ * (the same enumeration-safe INVALID_CODE outcome).
+ */
+export async function verifySignupCode(email: string, code: string): Promise<{ userId: string; intent?: "researcher" | "organization"; companyName?: string }> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const codeHash = hashSignupOtpCode(code);
+
+  const result = await withServiceRoleTransaction(async (client) => {
+    const { rows: userRows } = await client.query<{ id: string }>("select id from public.users where email = $1", [normalizedEmail]);
+    const user = userRows[0];
+    if (!user) throw new AuthServiceError("That code didn't match or has expired. Request a new one and try again.", "INVALID_CODE");
+
+    let rows;
+    try {
+      rows = await callRpc<{ outcome: string; metadata: { intent?: "researcher" | "organization"; companyName?: string; passwordHash?: string } }>(
+        client,
+        "public.verify_signup_verification_challenge",
+        [user.id, codeHash],
+      );
+    } catch (error) {
+      throw mapDbError(error);
+    }
+    const row = rows[0];
+    // Returned, not thrown: throwing here rolls the transaction back, and with it the
+    // attempts counter the RPC just incremented -- which made the code guessable forever.
+    if (!row || row.outcome !== "valid") return null;
+
+    // A password riding on the challenge (older repeat signups) is never applied: a
+    // stranger could sign up again with someone's unverified email and have the owner's
+    // code set the stranger's password. The owner keeps their first password, or resets it.
+
+    // Organization sign-up (work email enforced in signUpAction) is the only way to get an
+    // organization account -- the only kind allowed to create an organization (202609280002).
+    if (row.metadata?.intent === "organization") {
+      await client.query("update public.users set account_type = 'organization' where id = $1", [user.id]);
+    }
+
+    return { userId: user.id, intent: row.metadata?.intent, companyName: row.metadata?.companyName };
+  });
+
+  if (!result) throw new AuthServiceError("That code didn't match or has expired. Request a new one and try again.", "INVALID_CODE");
+  return result;
+}
+
+/** Verifies a password-reset token without consuming it yet -- confirmPasswordReset
+ * below re-verifies and consumes atomically once the new password is known, so a token
+ * viewed but not used (e.g. the reset page loaded but the form never submitted) is not
+ * burned by merely checking it exists. This function is read-only: it never mutates
+ * consumed_at, matching that intent. */
+export async function peekPasswordResetToken(token: string): Promise<{ userId: string; email: string } | null> {
+  return withServiceRoleTransaction((client) => peekPasswordResetTokenLib(client, token));
+}
+
+/**
+ * Establishes a real session for a just-verified account -- replacing Supabase's own
+ * "verifyOtp establishes a session as a side effect" behavior. Called from
+ * actions/auth.ts's verifySignupCodeAction (the 6-digit signup verification path) and
+ * app/auth/confirm/route.ts (the still-link-based password-reset path, which itself
+ * never establishes a session -- see that route's own comment).
+ */
+export async function establishSessionForUser(userId: string): Promise<void> {
+  const { userAgent, ip } = await currentUserAgentAndIp();
+  await withServiceRoleTransaction(async (client) => {
+    const { cookieValue } = await createSession(client, { userId, userAgent, ip });
+    await setSessionCookie(cookieValue);
+  });
+}
+
+/**
+ * Requires a valid, unconsumed password-reset token -- unlike changeMyPassword
+ * (services/account.ts), which requires an existing authenticated session instead. Two
+ * real, distinct paths to the same underlying password change. Consumes the token
+ * atomically with the password update so it can never be replayed even if the request is
+ * somehow retried.
+ */
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+  const passwordHash = await hashPassword(newPassword);
+
+  const userId = await withServiceRoleTransaction(async (client) => {
+    const result = await consumePasswordResetToken(client, token);
+    // A link issued before the account was deactivated must not "succeed" either.
+    const { rows: active } = result
+      ? await client.query("select 1 from public.users where id = $1 and deactivated_at is null", [result.userId])
+      : { rows: [] };
+    if (!result || active.length === 0) {
+      throw new AuthServiceError("This link has expired or was already used. Request a new one.", "SESSION_EXPIRED");
+    }
+    // Using the emailed link proves inbox ownership, so it also verifies the email --
+    // otherwise a never-verified account resets fine and still can't sign in.
+    await client.query("update public.users set password_hash = $1, must_reset_password = false, email_verified_at = coalesce(email_verified_at, now()), updated_at = now() where id = $2", [passwordHash, result.userId]);
+    return result.userId;
+  });
+
+  // Every existing session is revoked on password reset -- a leaked/shared session
+  // cookie is worthless the moment the real owner resets their password, and this
+  // matches the original Supabase-backed resetPasswordAction's own "sign the recovery
+  // session out immediately after" behavior (there it was one session; here it is every
+  // session, which is strictly the safer version of the same intent). public.sessions
+  // is service_role-only (no grant to authenticated at all -- see
+  // db/migrations/202609020001_account_security_mfa_sessions.sql), so this is
+  // withServiceRoleTransaction, not withActorTransaction.
+  await withServiceRoleTransaction(async (client) => {
+    await client.query("delete from public.sessions where user_id = $1", [userId]);
+  });
+}
+
+export async function signOut(): Promise<void> {
+  const sessionId = await getCurrentSessionId();
+  if (sessionId) {
+    await withServiceRoleTransaction((client) => revokeSession(client, sessionId));
+  }
+  await clearSessionCookie();
+}

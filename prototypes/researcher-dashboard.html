@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Unpatched · Research desk</title>
+<!--
+  Unpatched researcher dashboard: design prototype (self-contained).
+  Demo data only. Nothing here talks to a server; actions give honest prototype feedback.
+
+  Motion:
+    GSAP (+ MotionPathPlugin)  choreography, the crawling beetle, scanning beam, parallax
+    Anime.js                    metric count-ups, small interface feedback (toasts, button states)
+  Both load from CDNs. If either fails, or prefers-reduced-motion is on, the page renders its
+  finished, static state and stays fully usable.
+
+  HyperFrames: NOT loaded or used here. The hero's cinematic timeline is built by a pure
+  function (buildHeroTimeline) that can be created paused and seeked deterministically, and the
+  hero is marked data-composition-id="research-hero", so a renderer such as HyperFrames could
+  drive it later. Until then it plays in the browser like any GSAP timeline.
+-->
+<style>
+  :root {
+    --canvas: #f6f6f7; --surface: #ffffff; --surface-muted: #f2f2f4; --border: #e6e6e9; --border-strong: #d2d3d8;
+    --ink: #16171a; --ink-muted: #62666d; --action: #ee0000; --action-hover: #c50000; --on-action: #ffffff;
+    --success: #15803d; --warning: #b45309; --info: #1d4ed8; --focus: #ee0000;
+    --chamber: #07080b; --chamber-2: #0d0f14; --chamber-line: rgba(255,255,255,.07); --chamber-ink: #f2f3f5; --chamber-muted: #a3a8b3;
+    --ease-out: cubic-bezier(.23,1,.32,1);
+    --radius: 10px;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; overflow-x: clip; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--canvas); color: var(--ink); font: 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; overflow-x: clip; }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+  /* ---------- Shell ---------- */
+  .shell { display: grid; grid-template-columns: 240px minmax(0,1fr); min-height: 100dvh; }
+  .sidebar { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 4px; padding: 12px 10px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; }
+  .account { display: flex; align-items: center; gap: 8px; padding: 4px; }
+  .avatar { width: 26px; height: 26px; border-radius: 7px; background: var(--action); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 12px; flex: none; }
+  .account-name { font-size: 13px; font-weight: 600; line-height: 1.2; }
+  .account-role { font-size: 11px; color: var(--ink-muted); }
+  .icon-btn { position: relative; width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: transparent; border-radius: 7px; cursor: pointer; color: var(--ink-muted); transition: background-color .12s, color .12s, transform .12s var(--ease-out); }
+  .icon-btn:hover { background: var(--surface-muted); color: var(--ink); }
+  .icon-btn:active { transform: scale(.95); }
+  .badge-dot { position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--action); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+  .search { display: flex; align-items: center; gap: 8px; height: 34px; margin: 8px 2px 10px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); color: var(--ink-muted); transition: border-color .15s; }
+  .search:focus-within { border-color: var(--ink); }
+  .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 13px var(--font); color: var(--ink); }
+  .nav-label { margin: 14px 8px 4px; font-size: 11px; font-weight: 600; color: var(--ink-muted); }
+  .nav a { position: relative; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 9px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--ink-muted); text-decoration: none; transition: background-color .12s, color .12s; }
+  .nav a:hover { background: var(--surface-muted); color: var(--ink); }
+  .nav a[aria-current="page"] { background: var(--surface-muted); color: var(--ink); }
+  .nav a[aria-current="page"]::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; border-radius: 2px; background: var(--action); }
+  .nav a[aria-current="page"] svg { color: var(--action); }
+  .nav .count { margin-left: auto; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--ink-muted); }
+  .sidebar-foot { margin-top: auto; padding: 10px 8px 2px; font-size: 11px; color: var(--ink-muted); }
+
+  .topbar { display: none; }
+  main { min-width: 0; padding: 20px clamp(16px, 3vw, 32px) 64px; }
+  .page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .page-head h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .page-head .date { font-size: 12px; color: var(--ink-muted); }
+
+  /* ---------- Hero: the observation chamber ---------- */
+  .chamber { position: relative; isolation: isolate; overflow: hidden; border-radius: 16px; background: radial-gradient(120% 90% at 78% 40%, #1b0b0d 0%, var(--chamber-2) 38%, var(--chamber) 70%); color: var(--chamber-ink); min-height: 470px; display: grid; align-items: end; box-shadow: 0 24px 60px -30px rgba(10,10,15,.55); }
+  .chamber-art { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+  .chamber-art svg { width: 100%; height: 100%; display: block; }
+  .layer { will-change: transform; }
+  .grid line { stroke: var(--chamber-line); stroke-width: 1; }
+  .rings circle { fill: none; stroke: rgba(255,255,255,.08); }
+  .rings .tick { stroke: rgba(238,0,0,.35); }
+  .sweep { transform-box: view-box; transform-origin: 880px 250px; }
+  .coords text { font: 10px var(--mono); fill: rgba(255,255,255,.28); letter-spacing: .08em; }
+  .crawl-path { fill: none; stroke: rgba(255,255,255,.07); stroke-dasharray: 2 7; }
+  .trail { fill: none; stroke: rgba(238,0,0,.55); stroke-width: 1.3; stroke-linecap: round; }
+  .beam { position: absolute; inset: 0 auto 0 0; width: 26%; z-index: -1; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(255,255,255,.055) 45%, rgba(255,90,90,.08) 50%, rgba(255,255,255,.055) 55%, transparent); mix-blend-mode: screen; transform: translateX(-120%); }
+  .scrim { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(7,8,11,.94) 0%, rgba(7,8,11,.8) 36%, rgba(7,8,11,.15) 66%, transparent 100%); pointer-events: none; }
+  .chamber-content { padding: clamp(22px, 4vw, 44px); max-width: 620px; }
+  .live { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 99px; font: 12px var(--mono); letter-spacing: .06em; color: var(--chamber-muted); background: rgba(255,255,255,.04); }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: #ff3b3b; box-shadow: 0 0 0 0 rgba(255,59,59,.6); animation: pulse 2s ease-out infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,59,59,.55); } 80%,100% { box-shadow: 0 0 0 8px rgba(255,59,59,0); } }
+  .live b { color: var(--chamber-ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .chamber h2 { margin: 18px 0 12px; font-size: clamp(30px, 4.4vw, 52px); line-height: 1.02; letter-spacing: -.03em; font-weight: 750; text-wrap: balance; }
+  .chamber h2 em { font-style: normal; color: #ff4d4d; }
+  .chamber p.lede { margin: 0; max-width: 46ch; color: var(--chamber-muted); font-size: 15.5px; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 16px; border-radius: 9px; border: 1px solid transparent; font-weight: 600; font-size: 14px; text-decoration: none; cursor: pointer; transition: transform .14s var(--ease-out), background-color .15s, border-color .15s, color .15s; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--action); color: var(--on-action); }
+  .btn-primary:hover { background: var(--action-hover); }
+  .btn-ghost { background: rgba(255,255,255,.06); color: var(--chamber-ink); border-color: rgba(255,255,255,.18); }
+  .btn-ghost:hover { background: rgba(255,255,255,.12); }
+  .btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--border-strong); }
+  .btn-secondary:hover { background: var(--surface-muted); }
+  .readouts { display: grid; grid-template-columns: repeat(3, minmax(0, max-content)); margin: 30px 0 0; border-top: 1px solid rgba(255,255,255,.1); }
+  .readout { padding: 14px 24px 0 0; }
+  .readout + .readout { padding-left: 24px; border-left: 1px solid rgba(255,255,255,.1); }
+  .readout dt { font: 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--chamber-muted); }
+  .readout dd { margin: 4px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .readout dd small { font-size: 13px; font-weight: 500; color: var(--chamber-muted); margin-left: 3px; }
+  .specimen-tag { position: absolute; right: 18px; bottom: 16px; font: 10.5px var(--mono); letter-spacing: .08em; color: rgba(255,255,255,.4); text-align: right; pointer-events: none; }
+  .specimen-tag b { color: #ff6b6b; font-weight: 500; }
+
+  /* ---------- Stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin: 18px 0 28px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; transition: border-color .15s, transform .2s var(--ease-out); }
+  .stat:hover { border-color: var(--border-strong); }
+  .stat .k { font-size: 12px; color: var(--ink-muted); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .stat .v { margin-top: 6px; font-size: 28px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .stat .d { margin-top: 2px; font-size: 12px; color: var(--ink-muted); }
+  .delta { font-size: 11.5px; font-weight: 600; color: var(--success); }
+  .spark { display: block; width: 100%; height: 28px; margin-top: 8px; }
+  .spark path { fill: none; stroke: var(--action); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .spark .area { fill: rgba(238,0,0,.07); stroke: none; }
+
+  /* ---------- Sections ---------- */
+  .section-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+  .section-head h3 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+  .section-head p { margin: 2px 0 0; font-size: 13px; color: var(--ink-muted); }
+  .two-col { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+
+  /* Program spotlight */
+  .spotlight { position: relative; isolation: isolate; overflow: hidden; border-radius: 14px; padding: 22px 24px; margin-bottom: 14px; color: #fff; background: linear-gradient(115deg, #2a0306 0%, #6b0408 42%, #c50000 100%); }
+  .spotlight::after { content: ""; position: absolute; inset: 0; z-index: -1; background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px); background-size: 28px 28px; mask-image: linear-gradient(90deg, transparent 30%, #000 85%); -webkit-mask-image: linear-gradient(90deg, transparent 30%, #000 85%); }
+  .spotlight-scan { position: absolute; z-index: -1; right: -40px; top: 50%; width: 260px; height: 260px; margin-top: -130px; border-radius: 50%; border: 1px solid rgba(255,255,255,.22); pointer-events: none; }
+  .spotlight-scan::before, .spotlight-scan::after { content: ""; position: absolute; inset: 34px; border-radius: 50%; border: 1px solid rgba(255,255,255,.16); }
+  .spotlight-scan::after { inset: 78px; border-style: dashed; }
+  .spotlight-dot { position: absolute; z-index: -1; width: 8px; height: 8px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 6px rgba(255,255,255,.15); right: 120px; top: 42%; pointer-events: none; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 7px; font: 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.8); }
+  .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .spotlight h4 { margin: 10px 0 6px; font-size: 22px; line-height: 1.15; letter-spacing: -.02em; max-width: 26ch; }
+  .spotlight p { margin: 0; max-width: 48ch; color: rgba(255,255,255,.82); font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; }
+  .chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 99px; font-size: 12px; font-weight: 600; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); }
+  .btn-light { background: #fff; color: #7a0006; }
+  .btn-light:hover { background: #ffe9e9; }
+
+  /* Program list */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .program-filter { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--ink-muted); }
+  .programs { list-style: none; margin: 0; padding: 0; }
+  .program { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--border); transition: background-color .12s; }
+  .programs .program:first-child { border-top: 0; }
+  .program:hover { background: #fafafb; }
+  .program[hidden] { display: none; }
+  .logo { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff; }
+  .program a.name { font-weight: 600; text-decoration: none; }
+  .program a.name:hover { color: var(--action); }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 2px; font-size: 12px; color: var(--ink-muted); }
+  .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; font-size: 11px; font-weight: 600; background: var(--surface-muted); color: var(--ink-muted); }
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+  .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .status.active { color: var(--success); }
+  .status.updated { color: var(--action); }
+  .status.paused { color: var(--ink-muted); }
+  .bounty { text-align: right; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .bounty small { display: block; font-size: 11px; font-weight: 500; color: var(--ink-muted); }
+  .list-foot { display: flex; justify-content: center; padding: 10px; border-top: 1px solid var(--border); }
+  .empty { padding: 26px 16px; text-align: center; font-size: 13.5px; color: var(--ink-muted); }
+  mark { background: rgba(238,0,0,.12); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+  /* Side column */
+  .rep { padding: 16px; }
+  .rep-score { display: flex; align-items: baseline; gap: 8px; }
+  .rep-score .v { font-size: 34px; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .rep-bar { height: 6px; border-radius: 99px; background: var(--surface-muted); overflow: hidden; margin: 10px 0 6px; }
+  .rep-bar span { display: block; height: 100%; width: 72%; border-radius: inherit; background: linear-gradient(90deg, #ff6b6b, var(--action)); transform-origin: left; }
+  .rep-rows { margin: 14px 0 0; padding: 0; list-style: none; font-size: 13px; }
+  .rep-rows li { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border); }
+  .rep-rows b { font-variant-numeric: tabular-nums; }
+  .challenge { padding: 14px 16px; border-top: 1px solid var(--border); display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center; }
+  .challenge:first-of-type { border-top: 0; }
+  .challenge h5 { margin: 0; font-size: 14px; }
+  .challenge .meta { margin-top: 3px; }
+  .diff { font-weight: 700; }
+  .diff.easy { color: var(--success); } .diff.medium { color: var(--warning); } .diff.hard { color: var(--action); }
+  .btn-sm { min-height: 34px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+  .btn[data-state="started"] { background: #ecfdf3; color: var(--success); border-color: #b7ebc9; }
+
+  /* Popovers, panel, toast */
+  .popover { position: absolute; z-index: 40; top: 46px; left: 10px; width: 300px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 18px 40px -16px rgba(0,0,0,.25); transform-origin: top left; }
+  .popover[hidden] { display: none; }
+  .note { display: grid; grid-template-columns: 8px minmax(0,1fr); gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13px; }
+  .note:hover { background: var(--surface-muted); }
+  .note i { width: 7px; height: 7px; border-radius: 50%; margin-top: 7px; background: var(--action); }
+  .note.read i { background: transparent; }
+  .note small { display: block; color: var(--ink-muted); }
+  .popover-foot { display: flex; justify-content: flex-end; padding: 6px 6px 2px; border-top: 1px solid var(--border); margin-top: 4px; }
+  .link-btn { border: 0; background: none; padding: 4px 6px; font-size: 12.5px; font-weight: 600; color: var(--action); cursor: pointer; border-radius: 6px; }
+  .drawer { position: fixed; z-index: 60; inset: 0 0 0 auto; width: min(420px, 100%); background: var(--surface); border-left: 1px solid var(--border); box-shadow: -24px 0 60px -30px rgba(0,0,0,.4); padding: 20px; overflow-y: auto; transform: translateX(100%); transition: transform .32s cubic-bezier(.32,.72,0,1); visibility: hidden; }
+  .drawer.open { transform: none; visibility: visible; }
+  .backdrop { position: fixed; inset: 0; z-index: 55; background: rgba(10,10,14,.35); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer h3 { margin: 0 0 4px; font-size: 18px; }
+  .scope-item { padding: 12px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+  .scope-item code { font: 12.5px var(--mono); background: var(--surface-muted); padding: 2px 6px; border-radius: 5px; }
+  .toast { position: fixed; z-index: 80; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100% - 32px); padding: 11px 14px; border-radius: 10px; background: #16171a; color: #fff; font-size: 13.5px; box-shadow: 0 16px 40px -14px rgba(0,0,0,.5); }
+  .toast[hidden] { display: none; }
+  .toast i { width: 7px; height: 7px; border-radius: 50%; background: #34d399; flex: none; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1100px) { .stats { grid-template-columns: repeat(2, minmax(0,1fr)); } .two-col { grid-template-columns: minmax(0,1fr); } }
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: minmax(0,1fr); }
+    .sidebar { position: fixed; z-index: 70; inset: 0 auto 0 0; width: 272px; transform: translateX(-100%); transition: transform .26s cubic-bezier(.32,.72,0,1); box-shadow: 0 0 60px rgba(0,0,0,.25); visibility: hidden; }
+    .sidebar.open { transform: none; visibility: visible; }
+    .topbar { display: flex; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 30; height: 54px; padding: 0 12px; background: rgba(255,255,255,.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+    .topbar .brand { font-weight: 700; letter-spacing: -.01em; }
+    .chamber { min-height: 0; }
+    .scrim { background: linear-gradient(180deg, rgba(7,8,11,.05) 0%, rgba(7,8,11,.55) 30%, rgba(7,8,11,.92) 58%, rgba(7,8,11,.97) 100%); }
+    .chamber-content { padding-top: 170px; }
+    .specimen-tag { display: none; }
+    .readout { padding-right: 12px; }
+    .readout + .readout { padding-left: 12px; }
+    .readout dt { font-size: 10.5px; letter-spacing: .06em; }
+  }
+  @media (max-width: 520px) {
+    .stats { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+    .stat .v { font-size: 22px; }
+    .stat .k { flex-direction: column; align-items: flex-start; gap: 0; }
+    .program { grid-template-columns: 30px minmax(0,1fr); }
+    .program .bounty { grid-column: 2; text-align: left; }
+    .readout dd { font-size: 21px; }
+    .spotlight h4 { font-size: 19px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live i { animation: none; }
+    *, *::before, *::after { transition-duration: 0s !important; }
+  }
+</style>
+</head>
+<body>
+<a class="sr-only" href="#main">Skip to content</a>
+
+<!-- Phone top bar -->
+<header class="topbar">
+  <button class="icon-btn" type="button" id="open-nav" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+  <span class="brand">Unpatched</span>
+</header>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="Sidebar">
+    <div class="account">
+      <span class="avatar" aria-hidden="true">A</span>
+      <span style="flex:1;min-width:0">
+        <span class="account-name" style="display:block">Aarav Mehta</span>
+        <span class="account-role">Researcher</span>
+      </span>
+      <button class="icon-btn" type="button" id="bell" aria-label="Notifications, 3 unread" aria-haspopup="true" aria-expanded="false" aria-controls="notes">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="badge-dot" id="bell-count">3</span>
+      </button>
+    </div>
+
+    <div class="popover" id="notes" role="menu" aria-label="Notifications" hidden>
+      <div class="note" role="menuitem" tabindex="-1"><i></i><span>Northwind triaged <b>IDOR on /api/invoices</b><small>12 minutes ago</small></span></div>
+      <div class="note" role="menuitem" tabindex="-1"><i></i><span>Scope update: <b>Fintrail</b> added <code>api.fintrail.io</code><small>1 hour ago</small></span></div>
+      <div class="note" role="menuitem" tabindex="-1"><i></i><span>Bounty finalized: <b>$1,500</b> from Acme Cloud<small>Yesterday</small></span></div>
+      <div class="popover-foot"><button class="link-btn" type="button" id="mark-read">Mark all read</button></div>
+    </div>
+
+    <!-- A plain search field: it filters the programs below. No shortcuts. -->
+    <form class="search" role="search" aria-label="Search programs and reports" onsubmit="return false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <label class="sr-only" for="q">Search programs and reports</label>
+      <input id="q" type="search" placeholder="Search programs, reports" autocomplete="off" />
+    </form>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="#top" aria-current="page"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+      <a href="#programs" data-nav="Programs"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Programs<span class="count">12</span></a>
+      <a href="#" data-nav="Reports"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 2v4M16 2v4M5 8h14v8a7 7 0 0 1-14 0z"/><path d="M12 12v6"/></svg>Reports<span class="count">47</span></a>
+      <a href="#" data-nav="Researchers"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 20a6.5 6.5 0 0 0-2.5-5.1"/></svg>Researchers</a>
+      <div class="nav-label">Grow</div>
+      <a href="#" data-nav="Learn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/></svg>Learn</a>
+      <a href="#challenges" data-nav="CTF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>CTF<span class="count">28</span></a>
+      <a href="#" data-nav="Bounties"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.6-1-1.7-1.5-3-1.5-1.7 0-3 .9-3 2.2 0 3 6 1.6 6 4.6 0 1.3-1.3 2.2-3 2.2-1.4 0-2.6-.6-3.1-1.6M12 6v2M12 16v2"/></svg>Bounties</a>
+    </nav>
+    <p class="sidebar-foot">Prototype · demo data</p>
+  </aside>
+
+  <main id="main">
+    <div class="page-head" id="top">
+      <h1>Research desk</h1>
+      <span class="date" id="today"></span>
+    </div>
+
+    <!-- ======== HERO: the observation chamber ======== -->
+    <section class="chamber" id="hero" aria-labelledby="hero-title" data-composition-id="research-hero">
+      <div class="chamber-art" aria-hidden="true">
+        <svg viewBox="0 0 1200 520" preserveAspectRatio="xMidYMid slice" focusable="false">
+          <defs>
+            <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff2a2a" stop-opacity=".28"/><stop offset="1" stop-color="#ff2a2a" stop-opacity="0"/></radialGradient>
+            <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff3b3b" stop-opacity="0"/><stop offset="1" stop-color="#ff3b3b" stop-opacity=".28"/></linearGradient>
+            <!-- Beetle shading: macro lighting from the upper left. -->
+            <radialGradient id="shell" cx="35%" cy="25%" r="85%"><stop offset="0" stop-color="#5a1418"/><stop offset=".45" stop-color="#22070a"/><stop offset="1" stop-color="#070203"/></radialGradient>
+            <radialGradient id="pronotum" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#3a3d45"/><stop offset="1" stop-color="#0b0c0f"/></radialGradient>
+            <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/></linearGradient>
+            <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+          </defs>
+
+          <g class="layer grid" data-depth="0.3">
+            <!-- fine grid, generated below -->
+          </g>
+          <g class="layer coords" data-depth="0.3">
+            <text x="1030" y="40">SCOPE · 51.2% COVERED</text>
+            <text x="1030" y="56">T+ <tspan id="tplus">00:00:00</tspan></text>
+          </g>
+          <g class="layer rings" data-depth="0.6">
+            <circle cx="880" cy="250" r="70"/>
+            <circle cx="880" cy="250" r="140"/>
+            <circle cx="880" cy="250" r="210" stroke-dasharray="3 9"/>
+            <circle cx="880" cy="250" r="280"/>
+            <circle cx="880" cy="250" r="214" class="tick" stroke-width="7" pathLength="360" stroke-dasharray=".4 5.6"/>
+            <g class="sweep" id="sweep"><path d="M880 250 L1160 250 A280 280 0 0 0 1122 110 Z" fill="url(#sweepGrad)"/></g>
+            <circle cx="880" cy="250" r="160" fill="url(#glow)"/>
+          </g>
+          <g class="layer" data-depth="1.1">
+            <path id="crawl-path" class="crawl-path" d="M1240 380 C 1100 420, 1020 300, 900 290 S 700 400, 620 330 S 560 170, 700 140 S 920 110, 1010 190 S 1100 330, 980 420 S 760 470, 640 440"/>
+            <path id="trail" class="trail" d=""/>
+            <!-- The beetle (CrawlingBug component). Drawn facing up (-y); the path aligns it. -->
+            <g id="bug"><g transform="scale(1.55)">
+              <ellipse cx="0" cy="8" rx="34" ry="52" fill="#000" opacity=".55" filter="url(#soft)"/>
+              <g class="legs" stroke="#121317" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                <g class="leg" data-side="L" data-pair="1"><path d="M-12 -14 L-30 -26 L-40 -46"/><path d="M-40 -46 l-4 -6" stroke-width="2"/></g>
+                <g class="leg" data-side="L" data-pair="2"><path d="M-14 4 L-38 2 L-50 -8"/><path d="M-50 -8 l-6 -3" stroke-width="2"/></g>
+                <g class="leg" data-side="L" data-pair="3"><path d="M-13 20 L-34 36 L-42 58"/><path d="M-42 58 l-2 7" stroke-width="2"/></g>
+                <g class="leg" data-side="R" data-pair="1"><path d="M12 -14 L30 -26 L40 -46"/><path d="M40 -46 l4 -6" stroke-width="2"/></g>
+                <g class="leg" data-side="R" data-pair="2"><path d="M14 4 L38 2 L50 -8"/><path d="M50 -8 l6 -3" stroke-width="2"/></g>
+                <g class="leg" data-side="R" data-pair="3"><path d="M13 20 L34 36 L42 58"/><path d="M42 58 l2 7" stroke-width="2"/></g>
+              </g>
+              <g class="antennae" stroke="#1a1b20" stroke-width="2" stroke-linecap="round" fill="none">
+                <path class="ant ant-l" d="M-5 -46 C -12 -60, -18 -66, -26 -76"/>
+                <path class="ant ant-r" d="M5 -46 C 12 -60, 18 -66, 26 -76"/>
+              </g>
+              <g class="body">
+                <ellipse cx="0" cy="-44" rx="10" ry="8" fill="#0e0f12"/>
+                <path d="M-6 -50 q-5 -8 -10 -9 M6 -50 q5 -8 10 -9" stroke="#0e0f12" stroke-width="3" stroke-linecap="round" fill="none"/>
+                <path d="M-17 -34 Q 0 -44 17 -34 L 19 -18 Q 0 -12 -19 -18 Z" fill="url(#pronotum)" stroke="#000" stroke-width="1"/>
+                <path d="M0 -16 C -24 -16 -27 8 -24 30 C -21 50 -10 62 0 64 C 10 62 21 50 24 30 C 27 8 24 -16 0 -16 Z" fill="url(#shell)" stroke="#000" stroke-width="1.2"/>
+                <path d="M0 -15 L0 63" stroke="#000" stroke-width="1.4" opacity=".7"/>
+                <path d="M-8 -12 C -18 -6 -19 14 -15 30" stroke="url(#sheen)" stroke-width="5" stroke-linecap="round" fill="none" opacity=".75"/>
+                <path d="M-13 0 C -16 18 -13 38 -6 52" stroke="#ff6b6b" stroke-opacity=".18" stroke-width="1" fill="none"/>
+                <path d="M13 0 C 16 18 13 38 6 52" stroke="#ff6b6b" stroke-opacity=".12" stroke-width="1" fill="none"/>
+                <circle cx="-5" cy="-45" r="1.6" fill="#ff4d4d" opacity=".8"/>
+                <circle cx="5" cy="-45" r="1.6" fill="#ff4d4d" opacity=".8"/>
+                <path d="M0 -16 C -24 -16 -27 8 -24 30 C -21 50 -10 62 0 64" fill="none" stroke="#ff5a5a" stroke-opacity=".45" stroke-width="1.2"/>
+              </g>
+            </g></g>
+          </g>
+        </svg>
+      </div>
+      <div class="beam" id="beam" aria-hidden="true"></div>
+      <div class="scrim" aria-hidden="true"></div>
+
+      <div class="chamber-content">
+        <span class="live"><i aria-hidden="true"></i>LIVE SESSION <b id="session-clock">00:42:17</b></span>
+        <h2 id="hero-title">Find what everyone <em>else missed.</em></h2>
+        <p class="lede">Twelve programs are watching for a researcher like you. Three widened their scope this week, and Fintrail&apos;s new payments API hasn&apos;t had a report yet.</p>
+        <div class="ctas">
+          <a class="btn btn-primary" href="#programs" id="browse">Browse programs
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <button class="btn btn-ghost" type="button" id="open-scope" aria-controls="scope-drawer" aria-expanded="false">View live scope</button>
+        </div>
+        <dl class="readouts">
+          <div class="readout"><dt>Programs tracked</dt><dd><span data-count="12">12</span></dd></div>
+          <div class="readout"><dt>Acceptance rate</dt><dd><span data-count="68">68</span><small>%</small></dd></div>
+          <div class="readout"><dt>Open scope changes</dt><dd><span data-count="3">3</span></dd></div>
+        </dl>
+      </div>
+      <p class="specimen-tag" aria-hidden="true">SPECIMEN 0x1F4 · <b>COLEOPTERA / UNPATCHED</b><br/>TRACKING ACROSS 3 SCOPE CHANGES</p>
+    </section>
+
+    <!-- ======== STATS ======== -->
+    <section class="stats" aria-label="Your numbers">
+      <div class="stat"><div class="k">Submissions <span class="delta">+6 this month</span></div><div class="v" data-count="47">47</div><svg class="spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true"><path class="area" d="M0 24 L15 22 L30 23 L45 18 L60 19 L75 14 L90 15 L105 9 L120 7 L120 28 L0 28Z"/><path d="M0 24 L15 22 L30 23 L45 18 L60 19 L75 14 L90 15 L105 9 L120 7"/></svg></div>
+      <div class="stat"><div class="k">Accepted reports <span class="delta">68%</span></div><div class="v" data-count="32">32</div><div class="d">5 resolved this week</div></div>
+      <div class="stat"><div class="k">Reputation <span class="delta">+84</span></div><div class="v" data-count="1284" data-format="thousands">1,284</div><div class="d">Top 9% of researchers</div></div>
+      <div class="stat"><div class="k">Rewards</div><div class="v" data-count="18450" data-format="usd">$18,450</div><div class="d">$2,100 awaiting payout</div></div>
+    </section>
+
+    <div class="two-col">
+      <!-- ======== PROGRAMS ======== -->
+      <section id="programs" aria-labelledby="programs-title" tabindex="-1">
+        <div class="section-head">
+          <div><h3 id="programs-title">Programs</h3><p>Where you can research right now.</p></div>
+        </div>
+
+        <article class="spotlight" aria-labelledby="spot-title">
+          <span class="spotlight-scan" aria-hidden="true"></span>
+          <span class="spotlight-dot" id="spot-dot" aria-hidden="true"></span>
+          <span class="eyebrow">Program spotlight · scope update</span>
+          <h4 id="spot-title">Fintrail opened its payments API to research.</h4>
+          <p>Card tokenization, payout scheduling and the partner webhook surface are now in scope, with up to $8,000 for critical findings. No reports filed yet.</p>
+          <div class="chips"><span class="chip">Web</span><span class="chip">API</span><span class="chip">Research ready</span><span class="chip">Up to $8,000</span></div>
+          <a class="btn btn-light" href="#program-list" id="explore">Explore programs</a>
+        </article>
+
+        <div class="panel" id="program-list">
+          <div class="program-filter" aria-live="polite"><span id="result-count">Showing 5 of 12 programs</span><span id="filter-note"></span></div>
+          <ul class="programs" id="programs-ul"></ul>
+          <p class="empty" id="empty" hidden>No program or report matches “<span id="empty-q"></span>”. Try a company name, or a scope like API or Mobile.</p>
+          <div class="list-foot"><button class="btn btn-secondary btn-sm" type="button" id="view-all" aria-expanded="false" aria-controls="programs-ul">View all programs</button></div>
+        </div>
+      </section>
+
+      <!-- ======== SIDE: reputation + challenges ======== -->
+      <div style="display:grid;gap:18px">
+        <section class="panel rep" aria-labelledby="rep-title">
+          <h3 id="rep-title" style="margin:0;font-size:15px">Reputation and rewards</h3>
+          <div class="rep-score" style="margin-top:8px"><span class="v" data-count="1284" data-format="thousands">1,284</span><span class="delta">+84 this month</span></div>
+          <div class="rep-bar" aria-hidden="true"><span id="rep-bar"></span></div>
+          <p style="margin:0;font-size:12.5px;color:var(--ink-muted)">216 points to <b style="color:var(--ink)">Elite</b> tier</p>
+          <ul class="rep-rows">
+            <li><span>Resolved reports</span><b>27</b></li>
+            <li><span>Bounties finalized</span><b>19</b></li>
+            <li><span>Paid out</span><b>$16,350</b></li>
+            <li><span>Awaiting payout</span><b>$2,100</b></li>
+          </ul>
+        </section>
+
+        <section class="panel" id="challenges" aria-labelledby="ch-title">
+          <div class="section-head" style="padding:14px 16px 4px;margin:0"><div><h3 id="ch-title" style="font-size:15px">Challenge spotlight</h3><p>Sharpen a technique between programs.</p></div></div>
+          <div class="challenge"><div><h5>Token in the referrer</h5><div class="meta"><span class="diff easy">Easy</span><span>Session exposure · 100 pts</span></div></div><button class="btn btn-secondary btn-sm start" type="button">Start</button></div>
+          <div class="challenge"><div><h5>Second-order SQLi in exports</h5><div class="meta"><span class="diff medium">Medium</span><span>Injection · 250 pts</span></div></div><button class="btn btn-secondary btn-sm start" type="button">Start</button></div>
+          <div class="challenge"><div><h5>Webhook SSRF to metadata</h5><div class="meta"><span class="diff hard">Hard</span><span>SSRF · 500 pts</span></div></div><button class="btn btn-secondary btn-sm start" type="button">Start</button></div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Live scope drawer -->
+<div class="backdrop" id="backdrop"></div>
+<aside class="drawer" id="scope-drawer" role="dialog" aria-modal="true" aria-labelledby="scope-title" aria-hidden="true">
+  <div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
+    <div><h3 id="scope-title">Live scope</h3><p style="margin:0;color:var(--ink-muted);font-size:13px">Scope changes across your programs this week.</p></div>
+    <button class="icon-btn" type="button" id="close-scope" aria-label="Close live scope">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div style="margin-top:14px">
+    <div class="scope-item"><span class="status updated">Added</span> · Fintrail<br/><code>api.fintrail.io</code> payments, payouts, webhooks</div>
+    <div class="scope-item"><span class="status updated">Added</span> · Acme Cloud<br/><code>*.console.acme.dev</code> new admin console</div>
+    <div class="scope-item"><span class="status paused">Removed</span> · Northwind<br/><code>legacy.northwind.com</code> retired, reports closed</div>
+    <div class="scope-item"><span class="status active">Bounty raised</span> · Helio Health<br/>Critical now up to $10,000</div>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><i aria-hidden="true"></i><span id="toast-text"></span></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js" defer></script>
+<script>
+/* ======================================================================
+   Demo data. Shaped like the app's program records; swap for an API later.
+   ====================================================================== */
+const PROGRAMS = [
+  { name: "Fintrail", color: "#c50000", scope: ["Web", "API"], status: "updated", note: "Scope widened 2 days ago", max: 8000, reports: 0 },
+  { name: "Acme Cloud", color: "#1d4ed8", scope: ["Web", "API", "Cloud"], status: "updated", note: "New admin console", max: 6000, reports: 14 },
+  { name: "Northwind Security", color: "#0f766e", scope: ["Web", "Mobile"], status: "active", note: "Avg. first response 9h", max: 5000, reports: 31 },
+  { name: "Helio Health", color: "#7c3aed", scope: ["API", "Mobile"], status: "active", note: "Critical raised to $10,000", max: 10000, reports: 22 },
+  { name: "Quanta Retail", color: "#b45309", scope: ["Web"], status: "active", note: "Payment flows in scope", max: 3000, reports: 48 },
+  { name: "Orbital Maps", color: "#0369a1", scope: ["API", "Mobile"], status: "active", note: "Location APIs", max: 4000, reports: 9 },
+  { name: "Kestrel Bank", color: "#be123c", scope: ["Web", "API"], status: "active", note: "Invite only", max: 12000, reports: 17 },
+  { name: "Lumen Edu", color: "#15803d", scope: ["Web"], status: "active", note: "VDP · no bounties", max: 0, reports: 6 },
+  { name: "Parcelpoint", color: "#4338ca", scope: ["Mobile", "API"], status: "active", note: "Driver app in scope", max: 3500, reports: 12 },
+  { name: "Atlas HR", color: "#0e7490", scope: ["Web"], status: "paused", note: "Paused for migration", max: 2500, reports: 20 },
+  { name: "Ferro IoT", color: "#57534e", scope: ["Hardware", "API"], status: "active", note: "Firmware research", max: 7500, reports: 3 },
+  { name: "Mosaic Media", color: "#db2777", scope: ["Web", "API"], status: "active", note: "GraphQL gateway", max: 2000, reports: 26 },
+];
+const VISIBLE_DEFAULT = 5;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+/* ---------------- Program list + search ---------------- */
+let showAll = false;
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const highlight = (text, q) => {
+  const safe = esc(text);
+  if (!q) return safe;
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  return i < 0 ? safe : esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length));
+};
+function renderPrograms() {
+  const q = $("#q").value.trim();
+  const matches = PROGRAMS.filter((p) => !q || [p.name, p.note, ...p.scope].some((t) => t.toLowerCase().includes(q.toLowerCase())));
+  const shown = q || showAll ? matches : matches.slice(0, VISIBLE_DEFAULT);
+  $("#programs-ul").innerHTML = shown.map((p) => `
+    <li class="program">
+      <span class="logo" style="background:${p.color}" aria-hidden="true">${esc(p.name[0])}</span>
+      <div style="min-width:0">
+        <a class="name" href="#" data-program="${esc(p.name)}">${highlight(p.name, q)}</a>
+        <div class="meta">
+          <span class="status ${p.status}">${p.status === "updated" ? "Scope updated" : p.status === "paused" ? "Paused" : "Active"}</span>
+          ${p.scope.map((s) => `<span class="tag">${highlight(s, q)}</span>`).join("")}
+          <span>${highlight(p.note, q)}</span>
+        </div>
+      </div>
+      <div class="bounty">${p.max ? "Up to $" + p.max.toLocaleString("en-US") : "No bounty"}<small>${p.reports} reports</small></div>
+    </li>`).join("");
+  $("#empty").hidden = matches.length > 0;
+  $("#empty-q").textContent = q;
+  $("#result-count").textContent = q ? `${matches.length} of ${PROGRAMS.length} programs match` : `Showing ${shown.length} of ${PROGRAMS.length} programs`;
+  const viewAll = $("#view-all");
+  viewAll.hidden = Boolean(q) || matches.length <= VISIBLE_DEFAULT;
+  viewAll.textContent = showAll ? "Show fewer" : "View all programs";
+  viewAll.setAttribute("aria-expanded", String(showAll));
+  if (window.anime && !reducedMotion) anime({ targets: "#programs-ul .program", opacity: [0, 1], translateY: [6, 0], delay: anime.stagger(28), duration: 360, easing: "easeOutQuart" });
+}
+$("#q").addEventListener("input", () => {
+  renderPrograms();
+  if ($("#q").value.trim() && !isInView($("#program-list"))) $("#programs").scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+});
+$("#view-all").addEventListener("click", () => { showAll = !showAll; renderPrograms(); });
+$("#programs-ul").addEventListener("click", (e) => {
+  const a = e.target.closest("[data-program]");
+  if (!a) return;
+  e.preventDefault();
+  toast(`Opens ${a.dataset.program}'s program page in the app.`);
+});
+const isInView = (el) => { const r = el.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; };
+renderPrograms();
+
+/* ---------------- CTAs ---------------- */
+function goToPrograms(e) {
+  e.preventDefault();
+  $("#programs").scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+  $("#programs").focus({ preventScroll: true });
+}
+$("#browse").addEventListener("click", goToPrograms);
+$("#explore").addEventListener("click", (e) => {
+  e.preventDefault();
+  showAll = true; renderPrograms();
+  $("#program-list").scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+});
+
+/* Live scope drawer: modal, focus-managed, Escape closes. */
+const drawer = $("#scope-drawer"), backdrop = $("#backdrop"), openScope = $("#open-scope");
+function setDrawer(open) {
+  drawer.classList.toggle("open", open); backdrop.classList.toggle("open", open);
+  drawer.setAttribute("aria-hidden", String(!open)); openScope.setAttribute("aria-expanded", String(open));
+  if (open) $("#close-scope").focus(); else openScope.focus();
+}
+openScope.addEventListener("click", () => setDrawer(true));
+$("#close-scope").addEventListener("click", () => setDrawer(false));
+backdrop.addEventListener("click", () => { setDrawer(false); setNav(false); });
+
+/* Notifications */
+const bell = $("#bell"), notes = $("#notes");
+function setNotes(open) {
+  notes.hidden = !open; bell.setAttribute("aria-expanded", String(open));
+  if (open) { $(".note", notes).focus(); if (window.anime && !reducedMotion) anime({ targets: notes, opacity: [0, 1], scale: [.97, 1], duration: 180, easing: "easeOutQuad" }); }
+}
+bell.addEventListener("click", (e) => { e.stopPropagation(); setNotes(notes.hidden); });
+document.addEventListener("click", (e) => { if (!notes.hidden && !notes.contains(e.target)) setNotes(false); });
+$("#mark-read").addEventListener("click", () => {
+  $$(".note", notes).forEach((n) => n.classList.add("read"));
+  $("#bell-count").remove(); bell.setAttribute("aria-label", "Notifications, none unread");
+  toast("All notifications marked read.");
+});
+notes.addEventListener("keydown", (e) => {
+  const items = $$(".note", notes); const i = items.indexOf(document.activeElement);
+  if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+  if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+});
+/* Escape is how any open layer is dismissed (not a shortcut: standard dialog behavior). */
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (drawer.classList.contains("open")) setDrawer(false);
+  else if (!notes.hidden) { setNotes(false); bell.focus(); }
+  else if ($("#sidebar").classList.contains("open")) setNav(false);
+});
+
+/* Navigation (prototype: only Dashboard, Programs and CTF exist on this page) */
+$$(".nav a[data-nav]").forEach((a) => a.addEventListener("click", (e) => {
+  const target = a.getAttribute("href");
+  setNav(false);
+  if (target && target !== "#") return; // in-page sections scroll normally
+  e.preventDefault();
+  toast(`${a.dataset.nav} opens its own page in the app.`);
+}));
+const sidebar = $("#sidebar"), openNav = $("#open-nav");
+function setNav(open) {
+  if (!openNav.offsetParent && open) return;
+  sidebar.classList.toggle("open", open); backdrop.classList.toggle("open", open || drawer.classList.contains("open"));
+  openNav.setAttribute("aria-expanded", String(open));
+  if (open) $("#q").focus();
+}
+openNav.addEventListener("click", () => setNav(true));
+
+/* Challenges: clear, honest feedback */
+$$(".start").forEach((btn) => btn.addEventListener("click", () => {
+  if (btn.dataset.state) return;
+  const title = btn.closest(".challenge").querySelector("h5").textContent;
+  btn.dataset.state = "starting"; btn.textContent = "Starting…"; btn.setAttribute("aria-busy", "true");
+  setTimeout(() => {
+    btn.dataset.state = "started"; btn.textContent = "Started"; btn.removeAttribute("aria-busy");
+    if (window.anime && !reducedMotion) anime({ targets: btn, scale: [1, 1.06, 1], duration: 360, easing: "easeOutBack" });
+    toast(`"${title}" started. Your attempt timer is running.`);
+  }, 650);
+}));
+
+/* Toast (Anime.js entrance; plain show/hide without it) */
+let toastTimer;
+function toast(text) {
+  const t = $("#toast"); $("#toast-text").textContent = text; t.hidden = false;
+  if (window.anime && !reducedMotion) anime({ targets: t, opacity: [0, 1], translateY: [10, 0], translateX: ["-50%", "-50%"], duration: 260, easing: "easeOutQuad" });
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 3200);
+}
+
+/* Live session clock (demo: the session started 42 minutes before the page opened) */
+const sessionStart = Date.now() - (42 * 60 + 17) * 1000, loadedAt = Date.now();
+const fmt = (ms) => { const s = Math.floor(ms / 1000); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map((n) => String(n).padStart(2, "0")).join(":"); };
+setInterval(() => { $("#session-clock").textContent = fmt(Date.now() - sessionStart); $("#tplus").textContent = fmt(Date.now() - loadedAt); }, 1000);
+
+/* Grid lines for the chamber */
+(function grid() {
+  const g = $(".grid"); const ns = "http://www.w3.org/2000/svg";
+  for (let x = 40; x < 1200; x += 40) { const l = document.createElementNS(ns, "line"); l.setAttribute("x1", x); l.setAttribute("x2", x); l.setAttribute("y1", 0); l.setAttribute("y2", 520); g.appendChild(l); }
+  for (let y = 40; y < 520; y += 40) { const l = document.createElementNS(ns, "line"); l.setAttribute("y1", y); l.setAttribute("y2", y); l.setAttribute("x1", 0); l.setAttribute("x2", 1200); g.appendChild(l); }
+})();
+
+/* ======================================================================
+   CrawlingBug: an independently animated component. Give it the beetle
+   <g> and an SVG path in the same coordinate space. Tripod gait: legs
+   L1, R2, L3 swing while R1, L2, R3 plant, then they swap; antennae
+   twitch; it pauses to "sense" every so often. Needs GSAP + MotionPath.
+   ====================================================================== */
+class CrawlingBug {
+  constructor(bug, path, { secondsPerLap = 34, pauses = [0.18, 0.47, 0.76], trail = null, onProgress = null } = {}) {
+    this.bug = bug; this.path = path; this.trail = trail; this.progress = 0;
+    this.length = path.getTotalLength();
+    const leg = (side, pair) => bug.querySelector(`.leg[data-side="${side}"][data-pair="${pair}"]`);
+    // Each leg turns about its hip (the first point of its path).
+    const hip = (el) => el.querySelector("path").getAttribute("d").match(/M(-?[\d.]+) (-?[\d.]+)/).slice(1, 3).join(" ");
+    const tripodA = [leg("L", 1), leg("R", 2), leg("L", 3)];
+    const tripodB = [leg("R", 1), leg("L", 2), leg("R", 3)];
+    const STEP = 0.17, SWING = 15;
+    // Gait: A swings forward while B pushes back, then they swap. Left legs mirror right ones.
+    this.gait = gsap.timeline({ repeat: -1, paused: true });
+    const at = (group, dir, t) => group.forEach((el) => {
+      const mirror = el.dataset.side === "L" ? -1 : 1;
+      this.gait.to(el, { rotation: SWING * dir * mirror, svgOrigin: hip(el), duration: STEP, ease: "sine.inOut" }, t);
+    });
+    at(tripodA, 1, 0); at(tripodB, -1, 0);
+    at(tripodA, -1, STEP); at(tripodB, 1, STEP);
+    // A small body sway in step with the gait reads as weight shifting.
+    this.gait.to(bug.querySelector(".body"), { rotation: 2.5, svgOrigin: "0 10", duration: STEP, yoyo: true, repeat: 1, ease: "sine.inOut" }, 0);
+    this.twitch = gsap.timeline({ repeat: -1, repeatDelay: 1.4, paused: true })
+      .to(bug.querySelector(".ant-l"), { rotation: -9, svgOrigin: "-5 -46", duration: 0.18, yoyo: true, repeat: 1, ease: "sine.inOut" })
+      .to(bug.querySelector(".ant-r"), { rotation: 8, svgOrigin: "5 -46", duration: 0.2, yoyo: true, repeat: 1, ease: "sine.inOut" }, "-=0.1");
+    // Travel: path segments between pauses. Legs move only while the beetle moves.
+    this.travel = gsap.timeline({ repeat: -1, paused: true });
+    const stops = [0, ...pauses, 1];
+    for (let i = 1; i < stops.length; i++) {
+      const from = stops[i - 1], to = stops[i];
+      this.travel
+        .call(() => this.gait.play())
+        .to(bug, {
+          motionPath: { path, align: path, alignOrigin: [0.5, 0.5], autoRotate: 90, start: from, end: to },
+          duration: (to - from) * secondsPerLap,
+          ease: "none",
+          onUpdate() { const self = this.bugRef; self.progress = from + (to - from) * this.progress(); self.drawTrail(); onProgress?.(self.progress); },
+        })
+        .call(() => this.gait.pause());
+      if (i < stops.length - 1) this.travel.to({}, { duration: 1.4 }); // stops to sense the scope
+    }
+    // GSAP calls onUpdate with the tween as `this`; give each tween a way back to us.
+    this.travel.getChildren(false, true, false).forEach((tw) => (tw.bugRef = this));
+  }
+  /** A short glowing trail: the last ~140 units of path behind the beetle. */
+  drawTrail() {
+    if (!this.trail) return;
+    const end = this.length * this.progress, start = Math.max(0, end - 140), pts = [];
+    for (let d = start; d <= end; d += 10) { const p = this.path.getPointAtLength(d); pts.push(`${p.x.toFixed(1)} ${p.y.toFixed(1)}`); }
+    this.trail.setAttribute("d", pts.length > 1 ? "M" + pts.join(" L") : "");
+  }
+  play() { this.travel.play(); this.twitch.play(); return this; }
+  pause() { this.travel.pause(); this.gait.pause(); this.twitch.pause(); return this; }
+  destroy() { this.pause(); [this.travel, this.gait, this.twitch].forEach((t) => t.kill()); }
+}
+
+/* Count-ups (Anime.js), run once when visible. Without Anime.js the final values are already in the markup. */
+function countUps() {
+  if (!window.anime || reducedMotion) return;
+  const format = (el, v) => {
+    const n = Math.round(v);
+    el.textContent = el.dataset.format === "usd" ? "$" + n.toLocaleString("en-US") : el.dataset.format === "thousands" ? n.toLocaleString("en-US") : String(n);
+  };
+  const io = new IntersectionObserver((entries) => entries.forEach((entry) => {
+    if (!entry.isIntersecting) return;
+    io.unobserve(entry.target);
+    const el = entry.target, state = { v: 0 };
+    format(el, 0);
+    anime({ targets: state, v: Number(el.dataset.count), duration: 1100, easing: "easeOutExpo", update: () => format(el, state.v) });
+  }), { threshold: 0.5 });
+  $$("[data-count]").forEach((el) => io.observe(el));
+  anime({ targets: "#rep-bar", scaleX: [0, 1], duration: 1200, delay: 300, easing: "easeOutExpo" });
+}
+
+/* ======================================================================
+   The hero's cinematic timeline. A pure builder: creatable paused and
+   seekable (deterministic), which is what an offline renderer such as
+   HyperFrames would need. HyperFrames is NOT active in this prototype.
+   ====================================================================== */
+function buildHeroTimeline({ paused = false } = {}) {
+  const tl = gsap.timeline({ paused, defaults: { ease: "power3.out" } });
+  tl.from(".chamber .live", { y: 10, opacity: 0, duration: 0.5 })
+    .from(".chamber h2", { y: 18, opacity: 0, duration: 0.7 }, "-=0.25")
+    .from(".chamber .lede", { y: 12, opacity: 0, duration: 0.6 }, "-=0.45")
+    .from(".chamber .ctas > *", { y: 10, opacity: 0, duration: 0.5, stagger: 0.08 }, "-=0.4")
+    .from(".chamber .readout", { y: 8, opacity: 0, duration: 0.5, stagger: 0.07 }, "-=0.35")
+    .from(".rings circle", { scale: 0.92, opacity: 0, transformOrigin: "880px 250px", duration: 1.2, stagger: 0.06 }, 0)
+    .from("#bug", { opacity: 0, duration: 0.6 }, 0.4);
+  return tl;
+}
+
+function cinematic() {
+  if (!window.gsap || !window.MotionPathPlugin || reducedMotion) return null;
+  gsap.registerPlugin(MotionPathPlugin);
+  buildHeroTimeline();
+  // Radar sweep and scanning beam: slow, continuous, ambient.
+  gsap.to("#sweep", { rotation: 360, duration: 9, repeat: -1, ease: "none", svgOrigin: "880 250" });
+  gsap.fromTo("#beam", { xPercent: -120 }, { xPercent: 480, duration: 7.5, repeat: -1, repeatDelay: 2.5, ease: "sine.inOut" });
+  gsap.to("#spot-dot", { x: -60, y: 26, duration: 3.6, repeat: -1, yoyo: true, ease: "sine.inOut" });
+  // The beetle.
+  const bug = new CrawlingBug($("#bug"), $("#crawl-path"), { trail: $("#trail") });
+  bug.play();
+  // Pause everything ambient when the hero is off screen or the tab is hidden.
+  const ambient = () => gsap.getTweensOf(["#sweep", "#beam", "#spot-dot"]);
+  const io = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting && !document.hidden) { bug.play(); ambient().forEach((t) => t.resume()); }
+    else { bug.pause(); ambient().forEach((t) => t.pause()); }
+  });
+  io.observe($("#hero"));
+  // Pointer depth on fine pointers: layers move by their data-depth.
+  if (finePointer) {
+    const layers = $$("#hero .layer").map((el) => ({ depth: Number(el.dataset.depth) || 1, x: gsap.quickTo(el, "x", { duration: 1.2, ease: "power3.out" }), y: gsap.quickTo(el, "y", { duration: 1.2, ease: "power3.out" }) }));
+    $("#hero").addEventListener("pointermove", (e) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      const nx = (e.clientX - r.left) / r.width - 0.5, ny = (e.clientY - r.top) / r.height - 0.5;
+      layers.forEach((l) => { l.x(nx * 18 * l.depth); l.y(ny * 12 * l.depth); });
+    });
+  }
+  return bug;
+}
+
+/* Static fallback pose: the beetle parked on its path, facing along it. */
+function parkBug() {
+  const path = $("#crawl-path"), len = path.getTotalLength(), p = path.getPointAtLength(len * 0.3), q = path.getPointAtLength(len * 0.3 + 1);
+  const angle = (Math.atan2(q.y - p.y, q.x - p.x) * 180) / Math.PI + 90;
+  $("#bug").setAttribute("transform", `translate(${p.x} ${p.y}) rotate(${angle})`);
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  let bug = null;
+  try { bug = cinematic(); } catch (err) { console.warn("Animation unavailable; showing the static scene.", err); }
+  if (!bug) parkBug();
+  try { countUps(); } catch (err) { console.warn("Count-ups unavailable; values are already final.", err); }
+  window.__researchDesk = { bug, buildHeroTimeline }; // for inspection / a future renderer
+});
+</script>
+</body>
+</html>

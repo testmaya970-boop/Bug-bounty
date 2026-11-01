@@ -1,0 +1,6 @@
+{
+  "name": "Unpatched — Bug Bounty & VDP Platform",
+  "description": "Coordinated vulnerability disclosure, bug bounty program management, triage workflows, and solvable CTF challenges.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

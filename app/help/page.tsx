@@ -1,0 +1,100 @@
+import React from "react";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import Link from "next/link";
+import type { Route } from "next";
+import { SimplePageShell } from "../../components/simple-page-shell";
+import { SectionLabel } from "../../components/ui/security-primitives";
+import { getCurrentUser } from "../../lib/auth/current-user";
+
+/**
+ * Help (Turn 6, phase/9-ia): item 12 of the 15-point nav map, minimal honest size. Real
+ * support channel (the one that already exists -- /settings/feedback, see
+ * app-shell-client.tsx's own HelpLink comment on why no dedicated support inbox exists
+ * yet), a real existing doc (/safe-harbor), and real release notes read live from
+ * docs/user-changelog.md -- a small, deliberately curated file separate from this
+ * repository's own CHANGELOG.md.
+ *
+ * That separation is load-bearing, not stylistic: CHANGELOG.md is the real engineering
+ * history and can legitimately gain an internal-implementation-detail entry (a migration
+ * name, a vendor/library reference, an infra note) at any time with no review gate before
+ * the next commit -- confirmed live as a real information-disclosure risk when this page
+ * used to read that file directly, rendering whatever it contained straight to every
+ * signed-in user with nothing curating it. docs/user-changelog.md is written and reviewed
+ * specifically for this page; nothing reads CHANGELOG.md here anymore.
+ */
+export default async function HelpPage() {
+  // Public: help and docs must be readable before you have an account. Sending feedback
+  // (a settings page) still asks a signed-out visitor to sign in.
+  const user = await getCurrentUser();
+
+  let changelog = "";
+  try {
+    changelog = await readFile(path.join(process.cwd(), "docs", "user-changelog.md"), "utf-8");
+  } catch {
+    changelog = "";
+  }
+  // A light parse of "## Heading" -> bullet lines, just enough to show the most recent
+  // section without re-implementing a markdown renderer for one file. Anything the
+  // regex can't parse simply doesn't render here -- the changelog itself, this page's
+  // one real source of truth, is still linked in full below.
+  const firstSectionMatch = changelog.match(/^## .+\n([\s\S]*?)\n## /m) ?? changelog.match(/^## .+\n([\s\S]*)/m);
+  const recentEntries: string[] = [];
+  if (firstSectionMatch) {
+    // A bullet's wrapped continuation lines (indented, no leading "- ") are joined back
+    // onto the bullet they belong to -- otherwise a two-line bullet renders as a
+    // truncated first line with its second line silently dropped.
+    for (const rawLine of firstSectionMatch[1].split("\n")) {
+      const line = rawLine.trim();
+      if (line.startsWith("- ")) recentEntries.push(line.slice(2));
+      else if (line.length > 0 && recentEntries.length > 0) recentEntries[recentEntries.length - 1] += ` ${line}`;
+    }
+  }
+
+  return (
+    <SimplePageShell title="Help" user={user}>
+      <div className="space-y-8">
+        <div>
+          <SectionLabel>Support</SectionLabel>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">Get help</h2>
+          <p className="mt-2 text-sm text-ink-muted">
+            Something not working, or have feedback? Use the feedback form -- it goes to the same place a dedicated support inbox would today.
+          </p>
+          <Link prefetch={false} href={"/settings/feedback" as Route} className="mt-3 inline-flex text-sm font-medium text-action hover:text-action-hover">
+            Send feedback →
+          </Link>
+        </div>
+
+        <div className="border-t border-border pt-6">
+          <SectionLabel>Documentation</SectionLabel>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">Docs</h2>
+          <p className="mt-2 text-sm text-ink-muted">A dedicated documentation site doesn't exist yet. What's real today:</p>
+          <ul className="mt-3 space-y-2">
+            <li>
+              <Link prefetch={false} href={"/safe-harbor" as Route} className="text-sm font-medium text-action hover:text-action-hover">
+                Safe harbor policy →
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        <div className="border-t border-border pt-6">
+          <SectionLabel>Release notes</SectionLabel>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">What's new</h2>
+          {recentEntries.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-muted">Release notes are not available right now.</p>
+          ) : (
+            <ul className="mt-3 space-y-1.5 text-sm text-ink-muted">
+              {recentEntries.map((entry, index) => (
+                <li key={index} className="flex gap-2">
+                  <span aria-hidden="true">·</span>
+                  <span>{entry}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </SimplePageShell>
+  );
+}
