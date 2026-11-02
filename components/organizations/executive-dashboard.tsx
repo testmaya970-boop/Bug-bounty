@@ -1407,7 +1407,7 @@ export function ExecutiveDashboard({
                     </h3>
                   </div>
                   <span className="rounded-full border border-[#EFF6FF] bg-[#EFF6FF] px-2 py-0.5 font-mono text-[11px] font-medium text-[#2563EB] uppercase">
-                    Live Telemetry
+                    Overview
                   </span>
                 </div>
 
