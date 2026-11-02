@@ -725,7 +725,8 @@ function AccountMenuItems({ user }: { user: ShellUser }) {
 /**
  * Top brand header
  */
-function BrandHeader({ compact = false }: { compact?: boolean }) {
+/** `rail`: the collapsed sidebar, where only the mark fits; `compact`: the phone header. */
+function BrandHeader({ compact = false, rail = false }: { compact?: boolean; rail?: boolean }) {
   return (
     <Link
       href="/"
@@ -736,7 +737,7 @@ function BrandHeader({ compact = false }: { compact?: boolean }) {
       <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#2563EB] text-white shadow-sm">
         <ShieldCheck className="size-4" />
       </div>
-      <div className={cn("flex flex-col min-w-0", compact && "hidden min-[400px]:flex")}>
+      <div className={cn("flex flex-col min-w-0", rail ? "hidden" : compact && "hidden min-[400px]:flex")}>
         <span className="truncate text-[14px] font-bold tracking-tight text-[#111827]">
           Unpatched
         </span>
@@ -864,7 +865,7 @@ export function AppShellClient({
       <div className="flex h-full flex-col">
         {/* Top Header / Account / Brand */}
         <div className="flex items-center justify-between pb-3">
-          <BrandHeader compact={isRail} />
+          <BrandHeader compact={isRail} rail={isRail} />
           {!isRail && (
             <div className="flex items-center gap-1">
               <NotificationBellDropdown initialUnreadCount={unreadNotificationCount} align="left" />
