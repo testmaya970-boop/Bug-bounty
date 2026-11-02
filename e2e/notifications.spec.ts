@@ -86,7 +86,10 @@ test("org posts a message on a report -> researcher is notified (bell, /notifica
   const orgMessageBody = `E2E notifications walk: org message ${Date.now()}`;
   await page.getByLabel("Add a comment").fill(orgMessageBody);
   await page.getByRole("button", { name: "Comment", exact: true }).click();
-  await expect(page.getByText(orgMessageBody)).toBeVisible();
+  // The posted message in the conversation, not the composer (whose live-formatting layer
+  // repeats the text while it is being written); and the composer clears once it's posted.
+  await expect(page.getByRole("listitem").filter({ hasText: orgMessageBody })).toBeVisible();
+  await expect(page.getByLabel("Add a comment")).toHaveValue("");
 
   // The admin triggered all three events (triage_started, accepted, message_posted) --
   // report_triage_started/report_accepted route only to the report's own researcher, and
@@ -122,7 +125,8 @@ test("org posts a message on a report -> researcher is notified (bell, /notifica
   const researcherMessageBody = `E2E notifications walk: researcher message ${Date.now()}`;
   await page.getByLabel("Add a comment for the organization").fill(researcherMessageBody);
   await page.getByRole("button", { name: "Comment", exact: true }).click();
-  await expect(page.getByText(researcherMessageBody)).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: researcherMessageBody })).toBeVisible();
+  await expect(page.getByLabel("Add a comment for the organization")).toHaveValue("");
 
   await page.reload();
   await expect(bellButton(page)).toHaveAttribute("aria-label", veteranUnreadBefore > 0 ? `Notifications, ${veteranUnreadBefore} unread` : "Notifications");

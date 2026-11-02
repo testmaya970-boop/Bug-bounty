@@ -14,7 +14,6 @@ import {
   Bug,
   Briefcase,
   Users,
-  UserCheck,
   Flag,
   BookOpen,
   Coins,
@@ -49,7 +48,6 @@ import {
   BadgeCheck,
   Lock,
   History,
-  CheckCircle2,
   Receipt,
   User,
   HelpCircle,
@@ -145,6 +143,7 @@ function buildOrgNavGroups(orgId: string, role?: OrganizationRole): NavGroup[] {
     // Insights: reading the program back, and the triage service working on it.
     {
       id: "org-insights",
+      defaultOpen: true,
       label: "Insights",
       icon: BarChart3,
       roles: ORG_ADMINS,
@@ -156,6 +155,7 @@ function buildOrgNavGroups(orgId: string, role?: OrganizationRole): NavGroup[] {
     // 2. Rewards: what each asset pays (202610300001)
     {
       id: "org-rewards",
+      defaultOpen: true,
       label: "Rewards",
       icon: Trophy,
       roles: REPORT_WORKERS,
@@ -165,25 +165,14 @@ function buildOrgNavGroups(orgId: string, role?: OrganizationRole): NavGroup[] {
       ],
     },
     // 3. Team & Access. Members owns invitations, roles and API tokens on one page.
-    {
-      id: "org-team-access",
-      label: "Team & Access",
-      icon: UserCheck,
-      roles: ORG_ADMINS,
-      items: [{ href: `${base}/members` as Route, label: "Members", icon: Users, exact: true }],
-    },
+    { id: "org-team-access", label: "Members", icon: Users, href: `${base}/members` as Route, exact: true, roles: ORG_ADMINS },
     // 4. Integrations: Jira, Slack, ServiceNow, GitHub/GitLab, webhooks, SSO and SCIM all
     // live on the one Integrations page.
-    {
-      id: "org-integrations",
-      label: "Integrations",
-      icon: Plug,
-      roles: ORG_ADMINS,
-      items: [{ href: `${base}/integrations` as Route, label: "All integrations", icon: Plug, exact: true }],
-    },
+    { id: "org-integrations", label: "Integrations", icon: Plug, href: `${base}/integrations` as Route, exact: true, roles: ORG_ADMINS },
     // 6. Billing & Finance
     {
       id: "org-billing",
+      defaultOpen: true,
       label: "Billing & Finance",
       icon: CreditCard,
       roles: BILLING_ROLES,
@@ -194,21 +183,9 @@ function buildOrgNavGroups(orgId: string, role?: OrganizationRole): NavGroup[] {
       ],
     },
     // 7. Audit: owner/security_admin only (audit_logs' read policy).
-    {
-      id: "org-audit",
-      label: "Audit",
-      icon: FileText,
-      roles: ORG_ADMINS,
-      items: [{ href: `${base}/activity` as Route, label: "Audit log", icon: History, exact: true }],
-    },
+    { id: "org-audit", label: "Audit log", icon: History, href: `${base}/activity` as Route, exact: true, roles: ORG_ADMINS },
     // 10. Settings
-    {
-      id: "org-settings",
-      label: "Settings",
-      icon: Settings,
-      roles: ORG_ADMINS,
-      items: [{ href: `${base}/settings` as Route, label: "Organization settings", icon: Settings, exact: true }],
-    },
+    { id: "org-settings", label: "Settings", icon: Settings, href: `${base}/settings` as Route, exact: true, roles: ORG_ADMINS },
   ];
 
   // Filter groups and sub-items based on user's authorized role
@@ -436,12 +413,8 @@ function OrganizationSwitcher({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-[13px] font-semibold text-[#111827]">{current.name}</span>
-            <CheckCircle2 className="size-3.5 shrink-0 text-blue-600" />
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="rounded bg-blue-50 px-1 py-0.2 text-[10px] font-medium text-blue-700 border border-blue-200/50">
-              Enterprise
-            </span>
             <span className="truncate text-[11px] text-[#667085] capitalize">
               {current.role ? current.role.replace("_", " ") : "Member"}
             </span>
