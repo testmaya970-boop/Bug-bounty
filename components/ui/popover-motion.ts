@@ -8,10 +8,10 @@ import { cn } from "../../lib/cn";
  * transition, so rapid open/close retargets instead of restarting. Reduced motion keeps the
  * fade and drops the scale.
  */
-export function popoverMotion(open: boolean, origin: "top-left" | "top-right") {
+export function popoverMotion(open: boolean, origin: "top-left" | "top-right" | "bottom-left" | "bottom-right") {
   return cn(
     "transition-[opacity,transform,visibility] ease-out motion-reduce:scale-100",
-    origin === "top-left" ? "origin-top-left" : "origin-top-right",
+    { "top-left": "origin-top-left", "top-right": "origin-top-right", "bottom-left": "origin-bottom-left", "bottom-right": "origin-bottom-right" }[origin],
     open ? "visible scale-100 opacity-100 duration-150" : "pointer-events-none invisible scale-[0.97] opacity-0 duration-100",
   );
 }
