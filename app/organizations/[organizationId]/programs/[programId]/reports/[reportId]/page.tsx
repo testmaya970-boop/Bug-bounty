@@ -1,4 +1,4 @@
-import React, { ViewTransition } from "react";
+import React from "react";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { AppShell } from "../../../../../../../components/app-shell";
@@ -59,6 +59,7 @@ import { weaknessTypeLabel } from "../../../../../../../lib/report-weakness-labe
 import { getResearcherBiography } from "../../../../../../../services/researcher-profiles";
 import { LocalTime } from "../../../../../../../components/ui/local-time";
 import { ChatCircleText, ClockCounterClockwise, Paperclip, UsersThree } from "@phosphor-icons/react/dist/ssr";
+import { FindingTechnicalTelemetryStrip } from "../../../../../../../components/reports/finding-technical-showcase";
 
 // Report layout (Oct 22, GitHub-style conversation): the submission is the opening comment,
 // everything after it hangs off one vertical timeline, and the decision lives in a
@@ -66,19 +67,19 @@ import { ChatCircleText, ClockCounterClockwise, Paperclip, UsersThree } from "@p
 function TimelineItem({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
   return (
     <section className="relative pl-11">
-      <span aria-hidden="true" className="absolute left-0 top-0 inline-flex size-8 items-center justify-center rounded-full border border-border bg-surface text-ink-muted">
+      <span aria-hidden="true" className="absolute left-0 top-0 inline-flex size-8 items-center justify-center rounded-full border border-[#E7EAF0] bg-white text-[#475467] shadow-2xs">
         <Icon className="size-4" />
       </span>
-      <h2 className="flex h-8 items-center text-[13px] font-semibold text-ink">{title}</h2>
-      <div className="mt-2">{children}</div>
+      <h2 className="flex h-8 items-center text-[14px] font-semibold text-[#111827]">{title}</h2>
+      <div className="mt-2 rounded-[16px] border border-[#E7EAF0] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">{children}</div>
     </section>
   );
 }
 
 function RailSection({ title, children, className = "" }: { title?: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`border-b border-border py-4 first:pt-0 last:border-0 ${className}`}>
-      {title && <h2 className="mb-2 text-xs font-semibold text-ink-muted">{title}</h2>}
+    <section className={`rounded-[16px] border border-[#E7EAF0] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${className}`}>
+      {title && <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#667085]">{title}</h2>}
       {children}
     </section>
   );
@@ -202,20 +203,25 @@ export default async function ReportDetailPage({
   return (
     <AppShell title="Report" titleIsSection user={user} organizationId={organizationId}>
       <TriageStatusRailProvider initialStatus={report.status} initialSeverity={report.confirmedSeverity}>
-      <div className="mx-auto max-w-6xl space-y-6">
-        <Breadcrumbs
-          items={[
-            // Staff get the org trail; the researcher who wrote it goes back via Programs.
-            ...(actorMembership?.status === "active"
-              ? [
-                  { label: "Organizations", href: "/organizations" },
-                  { label: "Engagements", href: `/organizations/${organizationId}/programs` },
-                ]
-              : [{ label: "Programs", href: "/programs" }]),
-            { label: program?.name ?? "Program", href: `/organizations/${organizationId}/programs/${programId}` },
-            { label: report.title },
-          ]}
-        />
+      <div className="-mx-4 -my-6 min-h-screen bg-[#F6F8FB] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="mx-auto max-w-[1400px] space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Breadcrumbs
+            items={[
+              ...(actorMembership?.status === "active"
+                ? [
+                    { label: "Organizations", href: "/organizations" },
+                    { label: "Findings", href: `/organizations/${organizationId}/findings` },
+                    { label: program?.name ?? "Program", href: `/organizations/${organizationId}/programs/${programId}` },
+                  ]
+                : [
+                    { label: "Programs", href: "/programs" },
+                    { label: program?.name ?? "Program", href: `/organizations/${organizationId}/programs/${programId}` },
+                  ]),
+              { label: report.title },
+            ]}
+          />
+        </div>
 
         {evidenceIssueCount > 0 && isOwnReport && (
           <Alert tone="warning" title="Your report was submitted.">
@@ -223,11 +229,6 @@ export default async function ReportDetailPage({
           </Alert>
         )}
 
-        {/* The single most prominent signal on this page, for the researcher's own view:
-            not a manager (who has their own Triage rail), and not merely a MetadataPair
-            buried in the sidebar — a real, actionable banner derived from the same
-            researcherNextActionLabel/REPORT_STATUS_TRANSITIONS this page's sidebar
-            already uses, never a second, competing status computation. */}
         {isOwnReport && !canTriage && (
           <Alert
             className="motion-safe:animate-enter-rise"
@@ -244,84 +245,80 @@ export default async function ReportDetailPage({
           </Alert>
         )}
 
-        {/* The case header — target is the single most important fact on this screen, a
-            security analyst scanning this page must find it in the first second, not
-            buried inside a metadata grid. A heavier bordered strip (2px, not the ordinary
-            1px card border) gives this bar more visual weight than an ordinary card --
-            deliberately not a dark inversion, since StatusBadge/SeverityBadge's semantic
-            colors are tuned for a light surface and would lose contrast on bg-ink (see
-            docs/decisions/0043). */}
-        {/* Issue-style header: the title and its short id, then status, who opened it and the
-            target (the single most important fact for a triager) on one line. */}
-        <header className="space-y-3 border-b border-border pb-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
-            {/* Paired with the Findings row title of the same name: opening a report morphs it here. */}
-            <ViewTransition name={`report-title-${report.id}`} share="report-title" default="none">
-              <span>{report.title}</span>
-            </ViewTransition>{" "}
-            <span className="font-normal text-ink-muted">#{report.id.slice(0, 8)}</span>
-          </h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
-            {canTriage ? (
-              <>
-                <LiveStatusBadge />
-                <LiveSeverityBadge />
-              </>
-            ) : (
-              <>
-                <StatusBadge status={report.status} />
-                {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
-              </>
-            )}
-            {reportPriority && (
-              <span title={report.priority ? "Priority set by the program" : "Priority follows the confirmed severity"} className="inline-flex items-center rounded border border-border-strong px-1.5 py-0.5 font-mono text-xs font-semibold text-ink">
-                <span className="sr-only">Priority </span>
-                {priorityLabel(reportPriority)}
+        {/* EXECUTIVE FINDING CASE HEADER CARD */}
+        <header className="rounded-[16px] border border-[#E7EAF0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 text-[13px]">
+              {canTriage ? (
+                <>
+                  <LiveStatusBadge />
+                  <LiveSeverityBadge />
+                </>
+              ) : (
+                <>
+                  <StatusBadge status={report.status} />
+                  {report.confirmedSeverity && <SeverityBadge severity={report.confirmedSeverity} />}
+                </>
+              )}
+              {reportPriority && (
+                <span title={report.priority ? "Priority set by the program" : "Priority follows the confirmed severity"} className="inline-flex items-center rounded-md border border-[#D0D5DD] bg-[#F8FAFC] px-2 py-0.5 font-mono text-xs font-bold text-[#111827]">
+                  <span className="sr-only">Priority </span>
+                  {priorityLabel(reportPriority)}
+                </span>
+              )}
+              <span className="rounded-md bg-[#F2F4F7] px-2 py-0.5 font-mono text-xs font-semibold text-[#475467]">
+                Finding #{report.id.slice(-6)}
               </span>
-            )}
-            <span className="text-ink-muted">
-              <span className="font-semibold text-ink">{isOwnReport ? "You" : report.researcherName}</span> submitted this report <LocalTime value={report.submittedAt} /> · {messages.length} {messages.length === 1 ? "message" : "messages"}
-            </span>
-            <span className="flex min-w-0 items-center gap-2">
+            </div>
+
+            <span className="flex min-w-0 items-center gap-2 rounded-xl border border-[#E7EAF0] bg-[#F8FAFC] px-3 py-1.5">
               <AssetTypeBadge assetType={report.assetType} />
-              <span className="break-all font-mono text-xs text-ink">{report.displayTarget}</span>
+              <span className="break-all font-mono text-xs font-semibold text-[#111827]">{report.displayTarget}</span>
+            </span>
+          </div>
+
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-[#111827] sm:text-[28px]">
+            <span>{report.title}</span>{" "}
+            <span className="font-mono text-lg font-normal text-[#667085]">#{report.id.slice(-6)}</span>
+          </h1>
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-[#475467]">
+            <span>
+              Submitted by <span className="font-semibold text-[#111827]">{isOwnReport ? "You" : report.researcherName}</span>{" "}
+              <LocalTime value={report.submittedAt} />
+            </span>
+            <span>·</span>
+            <span>
+              Engagement: <span className="font-semibold text-[#111827]">{program?.name ?? "Security Engagement"}</span>
+            </span>
+            <span>·</span>
+            <span>
+              {messages.length} {messages.length === 1 ? "message" : "messages"} in triage log
             </span>
           </div>
         </header>
 
-        {/* Main column: what the researcher submitted, then the supporting record built on
-            top of it (communication, evidence, history) — reading order matches how a
-            triager actually works through a report. The organization's own decision lives
-            in the contextual rail to the right, never mixed into this column, so the two
-            are never mistaken for one continuous narrative. */}
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6">
+        {/* TECHNICAL TELEMETRY KPI STRIP */}
+        <FindingTechnicalTelemetryStrip report={report} sla={sla} bountyDecision={bountyDecision} />
+
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-6">
           <div className="space-y-6">
-            {/* The researcher's original claim, presented as a document header rather than
-                a boxed card — nothing here is ever rewritten by triage (submitted_at,
-                target, scope match, and text are exactly what was submitted). See
-                docs/decisions/0009-report-triage-state-machine.md and 0043. */}
-            <div className="overflow-hidden rounded-lg border border-border bg-surface">
-              <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-hover px-4 py-2 text-[13px]">
-                <span aria-hidden="true" className="inline-flex size-5 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-canvas">{report.researcherName.trim().charAt(0).toUpperCase() || "?"}</span>
-                <span className="font-semibold text-ink">{isOwnReport ? "You" : report.researcherName}</span>
-                <span className="text-ink-muted">submitted <LocalTime value={report.submittedAt} /></span>
-                <span className="ml-auto rounded-full border border-border px-2 py-px text-[11px] font-medium text-ink-muted">Author</span>
+
+            {/* ORIGINAL RESEARCHER SUBMISSION DOSSIER */}
+            <div className="overflow-hidden rounded-[16px] border border-[#E7EAF0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <div className="flex flex-wrap items-center gap-2 border-b border-[#E7EAF0] bg-[#FCFCFD] px-5 py-3 text-[13px]">
+                <span aria-hidden="true" className="inline-flex size-6 items-center justify-center rounded-full bg-[#111827] text-[11px] font-bold text-white">{report.researcherName.trim().charAt(0).toUpperCase() || "?"}</span>
+                <span className="font-semibold text-[#111827]">{isOwnReport ? "You" : report.researcherName}</span>
+                <span className="text-[#667085]">submitted <LocalTime value={report.submittedAt} /></span>
+                <span className="ml-auto rounded-full border border-[#E7EAF0] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[#475467]">Original Submission Record</span>
               </div>
-              <div className="p-4 sm:p-5">
+              <div className="p-5 sm:p-6">
               <SectionLabel>Submitted by researcher</SectionLabel>
               <div className="mt-3 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <MetadataPair label="Researcher" value={isOwnReport ? "You" : report.researcherName} />
                 <MetadataPair label="Submitted" value=<LocalTime value={report.submittedAt} /> />
-                {/* weaknessType/researcherSeverity are null for a report submitted before
-                    docs/decisions/0047 — degrade to "Not specified" rather than hiding
-                    the field entirely, so the layout doesn't shift between old and new
-                    reports. researcherSeverity is deliberately labeled distinctly from
-                    the decision rail's "Confirmed severity" — see that field's own
-                    comment for why this is advisory-only, never authoritative. */}
                 <MetadataPair label="Vulnerability category" value={report.weaknessType ? weaknessTypeLabel(report.weaknessType) : "Not specified"} />
                 <MetadataPair label="Researcher's severity assessment" value={report.researcherSeverity ? severityLabel(report.researcherSeverity) : "Not set"} />
-                {/* Scored by the server from the vector at submission; advisory, like the
-                    severity assessment above. Older reports have none. */}
                 <MetadataPair
                   label="Researcher's CVSS"
                   value={
@@ -345,23 +342,18 @@ export default async function ReportDetailPage({
                   }
                 />
               </div>
-              {/* A real credibility signal for an organization triaging this report --
-                  who is this researcher — using the researcher's own real, self-written
-                  bio (see docs/decisions/0049). Never shown when absent: no placeholder
-                  "This researcher hasn't written a bio yet," which would be noise on
-                  every report from every researcher who has not opted in. */}
               {researcherBiography && (
-                <div className="mt-5 border-t border-border pt-5">
+                <div className="mt-5 border-t border-[#E7EAF0] pt-5">
                   <SectionLabel>About {isOwnReport ? "you" : report.researcherName}</SectionLabel>
                   <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink-muted">{researcherBiography}</p>
                 </div>
               )}
-              <div className="mt-5 border-t border-border pt-5">
+              <div className="mt-5 border-t border-[#E7EAF0] pt-5">
                 <SectionLabel>Reproduction</SectionLabel>
                 <Markdown content={report.description} className="mt-2" />
               </div>
               {report.impact && (
-                <div className="mt-5 border-t border-border pt-5">
+                <div className="mt-5 border-t border-[#E7EAF0] pt-5">
                   <SectionLabel>Impact</SectionLabel>
                   <Markdown content={report.impact} className="mt-2" />
                 </div>
@@ -371,14 +363,8 @@ export default async function ReportDetailPage({
             </div>
 
             {/* Everything after the submission hangs off one timeline line. */}
-            <div className="relative space-y-6 before:absolute before:bottom-0 before:left-4 before:top-0 before:w-px before:bg-border">
+            <div className="relative space-y-6 before:absolute before:bottom-0 before:left-4 before:top-0 before:w-px before:bg-[#E7EAF0]">
 
-            {/* Collaborators: visible to the submitter, any listed collaborator, and
-                program staff -- RLS on report_collaborators already gates who can reach
-                this data at all, so rendering here whenever the list is non-empty or the
-                submitter could add to it is never overexposing anything. Only the
-                submitter gets the manage actions (add/remove) -- a collaborator sees the
-                same list read-only. See docs/decisions/0064-report-collaboration-scope.md. */}
             {(isOwnReport || canTriage || collaborators.length > 0) && (
               <TimelineItem icon={UsersThree} title="Collaborators">
                 <ReportCollaboratorsPanel
@@ -393,9 +379,6 @@ export default async function ReportDetailPage({
               </TimelineItem>
             )}
 
-            {/* Communication is supporting data, never an edit to the researcher's claim or
-                the organization's decision — its own card, its own visibility rules. See
-                docs/decisions/0010-report-evidence-and-communication.md. */}
             <TimelineItem icon={ChatCircleText} title="Communication">
               <div>
                 <ReportCommunication messages={messages} showInternal={canTriage} />
@@ -427,18 +410,7 @@ export default async function ReportDetailPage({
             </div>
           </div>
 
-          {/* Contextual rail: the organization's decision and its financial consequences --
-              deliberately a separate column, not a separate card in the same reading flow,
-              so "what was submitted" and "what was decided" are never visually continuous.
-              Sticky on desktop so the current status/action stays visible while reading a
-              long communication or evidence history. */}
-          {/* Sticky, but never taller than the window: a rail longer than the viewport (triage +
-              bounty + Hall of Fame on a resolved report) would otherwise leave its lowest
-              controls unreachable. It scrolls on its own instead. */}
-          <div className="mt-6 lg:sticky lg:top-16 lg:mt-0 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
-            {/* Once the report has no legal outgoing transition, this becomes the
-                organization's FINAL decision — the eyebrow label and severity control both
-                reflect that. See docs/decisions/0012-report-resolution-and-classification.md. */}
+          <div className="mt-6 space-y-4 lg:sticky lg:top-16 lg:mt-0 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
             <RailSection>
               <SectionLabel>{isFinal ? "Final decision" : "Triage"}</SectionLabel>
               {canTriage ? (
@@ -736,6 +708,7 @@ export default async function ReportDetailPage({
             )}
           </div>
         </div>
+      </div>
       </div>
       </TriageStatusRailProvider>
     </AppShell>

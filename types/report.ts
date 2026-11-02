@@ -304,3 +304,22 @@ export type PublicDisclosure = {
   researcherUsername?: string | null;
   publishedAt: string | null;
 };
+
+/** Filter and label vocabularies for the organization Findings view. */
+export const REPORT_SEVERITIES: readonly ReportSeverity[] = ["critical", "high", "medium", "low", "none"] as const;
+
+export const REPORT_STATUSES: readonly ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"] as const;
+
+export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+  new: "New",
+  triaging: "Triaging",
+  needs_information: "Needs information",
+  accepted: "Accepted",
+  resolved: "Resolved",
+  duplicate: "Duplicate",
+  informative: "Informative",
+  not_applicable: "Not applicable",
+  rejected: "Rejected",
+};
+
+export type OrganizationReportSummary = Report & { programName: string };

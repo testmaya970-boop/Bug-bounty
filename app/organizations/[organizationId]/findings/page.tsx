@@ -1,133 +1,162 @@
 import React from "react";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import type { Route } from "next";
 import { AppShell } from "../../../../components/app-shell";
-import { Breadcrumbs } from "../../../../components/ui/navigation";
 import { PermissionDenied } from "../../../../components/ui/feedback";
-import { OrganizationHeader } from "../../../../components/organizations/organization-header";
-import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import { OrganizationFindingsTable } from "../../../../components/organizations/organization-findings-table";
+import { getCurrentUser } from "../../../../lib/auth/current-user";
 import { getActorMembership } from "../../../../services/organization-members";
 import { listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listProgramsForOrganization } from "../../../../services/programs";
-import { listReportsForOrganization } from "../../../../services/reports";
-import { getCurrentUser } from "../../../../lib/auth/current-user";
-import { perfTimed } from "../../../../lib/perf-trace";
-import type { ReportSeverity, ReportStatus } from "../../../../types/report";
+import { listAssignableStaff, listReportsForOrganization } from "../../../../services/reports";
+import { getOrganizationSlaSummary } from "../../../../services/program-policy";
+import { getOrganizationResolutionPerformance } from "../../../../services/organization-analytics";
+import { canViewOrganizationAnalytics } from "../../../../services/authorization";
+import { REPORT_SEVERITIES, REPORT_STATUSES, type OrganizationReportSummary, type ReportSeverity, type ReportStatus } from "../../../../types/report";
+import { ShieldCheck, Download, Flame, ArrowUpRight } from "lucide-react";
 
-const VALID_STATUSES: ReportStatus[] = ["new", "triaging", "needs_information", "accepted", "resolved", "duplicate", "informative", "not_applicable", "rejected"];
-const VALID_SEVERITIES: ReportSeverity[] = ["none", "low", "medium", "high", "critical"];
+const PAGE_SIZE = 25;
 
-/**
- * Findings: every report across every one of this organization's engagements, one flat,
- * filterable, paginated list -- the cross-program counterpart to the per-program triage
- * inbox (app/organizations/[organizationId]/programs/[programId]/reports), which stays
- * the surface that owns triage actions/bulk operations. Closes the gap in HackerOne's own
- * documented org nav (Home / Engagements / Findings / Inbox / Assets / Analytics /
- * Hacktivity) -- this app previously had no cross-program report view at all, only
- * per-program (the triage inbox) or per-status-bucket-and-open-only (the Home page's
- * "Needs your attention" snapshot).
- *
- * Access matches every other org-wide read surface (Analytics, Researchers): any active
- * organization member, not narrowed to owner/security_admin -- listReportsForOrganization
- * itself is RLS-scoped exactly like listReportsForProgram already is, so a plain member
- * who manages no program simply sees an empty (correctly narrowed) result, never a
- * permission error. See services/reports.ts's own comment on this.
- */
-export default async function OrganizationFindingsPage(props: {
-  params: Promise<{ organizationId: string }>;
-  searchParams: Promise<{ program?: string; status?: string; severity?: string; assignee?: string; q?: string; sort?: string }>;
-}) {
-  return perfTimed("route: findings (total)", () => renderOrganizationFindingsPage(props));
-}
-
-async function renderOrganizationFindingsPage({
+export default async function OrganizationFindingsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ organizationId: string }>;
-  searchParams: Promise<{ program?: string; status?: string; severity?: string; assignee?: string; q?: string; sort?: string }>;
+  searchParams: Promise<{ page?: string; cursor?: string; status?: string; severity?: string; program?: string; assignee?: string; q?: string; sort?: string }>;
 }) {
   const { organizationId } = await params;
-  const { program: programParam, status: statusParam, severity: severityParam, assignee: assigneeParam, q: queryParam, sort: sortParam } = await searchParams;
+  const query = await searchParams;
+  const page = Math.max(1, Number.parseInt(query.page ?? "1", 10) || 1);
+  const status = query.status && (REPORT_STATUSES as readonly string[]).includes(query.status) ? (query.status as ReportStatus) : undefined;
+  const severity =
+    query.severity && (REPORT_SEVERITIES as readonly string[]).includes(query.severity)
+      ? (query.severity as ReportSeverity)
+      : undefined;
+  const programId = query.program && query.program !== "all" ? query.program : undefined;
+  const search = query.q?.trim() ? query.q.trim() : undefined;
+  const sort = query.sort === "oldest" ? "oldest" : "newest";
+
   const user = await getCurrentUser();
   if (!user) redirect(`/sign-in?redirectTo=/organizations/${organizationId}/findings` as Route);
 
-  // Phase 8 perf fix: actor/org/programs used to be two sequential stages
-  // (getActorMembership, THEN listCurrentUserOrganizations+listProgramsForOrganization)
-  // even though none of the three depend on each other -- all three only need
-  // user.id/organizationId, both already known. Parallelized; the org/programs fetch is
-  // simply discarded on the rare access-denied path, a negligible cost against paying a
-  // full extra round trip on every real visit.
-  const [actor, organizations, programs] = await perfTimed("findings: actor+org+programs batch", () =>
-    Promise.all([getActorMembership(user.id, organizationId), listCurrentUserOrganizations(user.id), listProgramsForOrganization(organizationId)]),
-  );
-  if (!actor || actor.status !== "active") {
-    return (
-      <AppShell title="Findings" user={user} organizationId={organizationId}>
-        <PermissionDenied>You do not have access to this organization.</PermissionDenied>
-      </AppShell>
-    );
-  }
-  // Billing admins see payments only; report contents are not theirs to read.
-  if (actor.role === "billing_admin") {
-    return (
-      <AppShell title="Findings" user={user} organizationId={organizationId}>
-        <PermissionDenied>Billing admins manage payments and don&apos;t see findings. Ask an owner or security admin if you need access.</PermissionDenied>
-      </AppShell>
-    );
-  }
+  const assigneeFilter: "me" | "unassigned" | string | undefined =
+    query.assignee === "me"
+      ? "me"
+      : query.assignee === "unassigned"
+        ? "unassigned"
+        : query.assignee && query.assignee !== "all"
+          ? query.assignee
+          : undefined;
 
+  const [organizations, actorMembership] = await Promise.all([
+    listCurrentUserOrganizations(user.id),
+    getActorMembership(user.id, organizationId),
+  ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
-  const programId = programParam && programs.some((program) => program.id === programParam) ? programParam : "all";
-  const status: ReportStatus | "all" = statusParam && VALID_STATUSES.includes(statusParam as ReportStatus) ? (statusParam as ReportStatus) : "all";
-  const severity: ReportSeverity | "all" = severityParam && VALID_SEVERITIES.includes(severityParam as ReportSeverity) ? (severityParam as ReportSeverity) : "all";
+  if (!organization || !actorMembership || actorMembership.status !== "active" || actorMembership.role === "billing_admin") {
+    return (
+      <AppShell title="Findings" user={user} organizationId={organizationId}>
+        <PermissionDenied>You do not have access to this organization&apos;s findings.</PermissionDenied>
+      </AppShell>
+    );
+  }
 
-  const assignee = assigneeParam === "me" || assigneeParam === "unassigned" ? assigneeParam : "all";
-  const query = (queryParam ?? "").trim().slice(0, 100);
-  const sort = sortParam === "oldest" ? "oldest" : "newest";
-  const { items: reports, nextCursor } = await perfTimed("findings: listReportsForOrganization", () =>
-    listReportsForOrganization(organizationId, undefined, undefined, {
-      programId: programId === "all" ? undefined : programId,
-      status: status === "all" ? undefined : status,
-      severity: severity === "all" ? undefined : severity,
-      assignee: assignee === "all" ? undefined : assignee,
-      query: query || undefined,
+  const [reportsPage, programs, staff, slaSummary, resolution] = await Promise.all([
+    listReportsForOrganization(organizationId, query.cursor, PAGE_SIZE, {
+      status,
+      severity,
+      programId,
+      assignee: assigneeFilter,
+      query: search,
       sort,
     }),
-  );
+    listProgramsForOrganization(organizationId),
+    listAssignableStaff(organizationId),
+    getOrganizationSlaSummary(organizationId).catch(() => []),
+    canViewOrganizationAnalytics(actorMembership.role) ? getOrganizationResolutionPerformance(organizationId).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  const programsById = new Map(programs.map((p) => [p.id, p.name]));
+  const enrichedReports: OrganizationReportSummary[] = reportsPage.items.map((report) => ({
+    ...report,
+    programName: programsById.get(report.programId) ?? "Security Engagement",
+  }));
+
+  // Flagship critical finding for 1-click executive inspection
+  const flagshipReport =
+    enrichedReports.find((r) => r.confirmedSeverity === "critical") ??
+    enrichedReports[0];
 
   return (
-    <AppShell title="Findings" user={user} organizationId={organizationId}>
-      <div className="max-w-6xl space-y-6">
-        <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
+    <AppShell title={organization.name} user={user} organizationId={organizationId}>
+      <div className="-mx-4 -my-6 min-h-screen bg-[#F6F8FB] px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="mx-auto max-w-[1440px] space-y-5">
+          {/* EXECUTIVE FINDINGS HEADER HERO */}
+          <section className="rounded-[16px] border border-[#E7EAF0] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-[#F2F4F7] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-[#475467]">
+                    {organization.name}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EFF6FF] px-2.5 py-0.5 text-[12px] font-semibold text-[#2563EB]">
+                    <ShieldCheck className="size-3.5" />
+                    Security Triage Operations
+                  </span>
+                  <span className="rounded-full bg-[#F2F4F7] px-2.5 py-0.5 font-mono text-[11px] font-medium text-[#475467]">
+                    CVSS v3.1 &amp; v4.0 Enabled
+                  </span>
+                </div>
+                <h1 className="text-[24px] font-bold tracking-tight text-[#111827] sm:text-[28px]">
+                  Vulnerability Findings &amp; Triage Queue
+                </h1>
+                <p className="max-w-3xl text-[14px] text-[#475467]">
+                  Centralized vulnerability intake across all active engagements for <span className="font-semibold text-[#111827]">{organization.name}</span>. Validate researcher proof-of-concepts, enforce response SLAs, and orchestrate bounty decisions.
+                </p>
+              </div>
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
+              <div className="flex flex-wrap items-center gap-2.5">
+                {flagshipReport && (
+                  <Link
+                    href={`/organizations/${organizationId}/programs/${flagshipReport.programId}/reports/${flagshipReport.id}` as Route}
+                    prefetch={false}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[#FECACA] bg-[#FEF3F2] px-4 py-2 text-[13px] font-semibold text-[#B91C1C] shadow-2xs transition hover:bg-[#FEE2E2]"
+                  >
+                    <Flame className="size-4 text-[#EF4444]" />
+                    Inspect Critical Finding (#{flagshipReport.id.slice(-4)})
+                    <ArrowUpRight className="size-4" />
+                  </Link>
+                )}
+                <a
+                  href={`/api/organizations/${organizationId}/reports/export`}
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#E7EAF0] bg-white px-3.5 py-2 text-[13px] font-semibold text-[#344054] shadow-2xs transition hover:bg-[#F8FAFC]"
+                >
+                  <Download className="size-4 text-[#667085]" />
+                  Export CSV
+                </a>
+              </div>
+            </div>
+          </section>
 
-        <p className="text-sm text-ink-muted">Every report across every engagement. Filter, scan, and open a report to act on it in its own engagement's triage inbox.</p>
-
-        {/* key forces a full remount on any filter change -- OrganizationFindingsTable's
-            own `reports`/`nextCursor` state is seeded once from initialReports/
-            initialNextCursor via useState(initial...), which (by design, same as every
-            React useState initializer) does NOT re-run on a prop change alone. Without
-            this key, changing a filter updates the URL and the dropdown's own displayed
-            value, but the rendered report list silently keeps showing the PREVIOUS
-            filter's results -- confirmed live via the Turn 8 E2E journey suite, which is
-            what caught this. */}
-        <OrganizationFindingsTable
-          key={`${programId}:${status}:${severity}:${assignee}:${query}:${sort}`}
-          organizationId={organizationId}
-          initialReports={reports}
-          initialNextCursor={nextCursor}
-          programId={programId}
-          status={status}
-          severity={severity}
-          assignee={assignee}
-          query={query}
-          sort={sort}
-          programOptions={programs.map((program) => ({ id: program.id, name: program.name }))}
-        />
+          <OrganizationFindingsTable
+            organizationId={organizationId}
+            reports={enrichedReports}
+            total={enrichedReports.length}
+            page={page}
+            pageSize={PAGE_SIZE}
+            programs={programs.map((program) => ({ id: program.id, name: program.name }))}
+            staff={staff}
+            currentUserId={user.id}
+            slaComplianceRate={(() => {
+              const tracked = slaSummary.reduce((n, x) => n + x.firstResponse.tracked, 0);
+              const breached = slaSummary.reduce((n, x) => n + x.firstResponse.breached, 0);
+              return tracked > 0 ? Math.round(((tracked - breached) / tracked) * 1000) / 10 : null;
+            })()}
+            medianTriageHours={resolution?.medianHoursToFirstTriage ?? null}
+          />
+        </div>
       </div>
     </AppShell>
   );

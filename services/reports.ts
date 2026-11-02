@@ -1499,3 +1499,5 @@ export async function deleteMyReportDraft(draftId: string): Promise<void> {
   }
   await Promise.all(rows.map((row) => evidenceObjectStore.deleteObject(row.delete_my_report_draft).catch(() => {})));
 }
+
+export type AssignableStaffMember = AssignableStaff;
