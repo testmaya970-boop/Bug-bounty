@@ -73,6 +73,20 @@ function programTab(page: Page, name: string) {
   return page.getByRole("navigation", { name: "Program sections" }).getByRole("link", { name });
 }
 
+/** Creates a draft through the Launch Program Studio (the Engagements create path) and opens it. */
+async function createViaStudio(page: Page, orgPath: string, name: string, visibility: "Public" | "Private") {
+  await page.goto(`${orgPath}/programs/new?step=details`);
+  await page.getByPlaceholder("e.g. Cloud Platform Bug Bounty").fill(name);
+  await page.getByRole("button", { name: new RegExp(`^${visibility}`) }).click();
+  await expect(page.getByRole("button", { name: new RegExp(`^${visibility}`) })).toHaveAttribute("aria-pressed", "true");
+  await page.goto(`${orgPath}/programs/new?step=launch`);
+  await page.getByRole("button", { name: "Create as Draft" }).click();
+  await expect(page.getByText("Program saved as a draft")).toBeVisible({ timeout: 60_000 });
+  await page.getByRole("link", { name: /View Program/ }).click();
+  await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { name })).toBeVisible();
+}
+
 async function signOut(page: Page) {
   // AccountMenu (components/app-shell-client.tsx) -- opened via the avatar button in the
   // header, which carries "Account menu" as its accessible name (sr-only span).
@@ -109,23 +123,13 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await expect(page.getByText(PUBLIC_PROGRAM_NAME).first()).toBeVisible();
   await expect(page.getByText(PRIVATE_PROGRAM_NAME).first()).toBeVisible();
 
-  // --- Create a public program ---------------------------------------------------------
-  // CreateProgramDialog's trigger label is "Create engagement" with zero existing
-  // programs, "Create another engagement" once any exist (both seeded programs already
-  // do) -- the dialog's own submit button is always exactly "Create engagement".
+  // --- Create a public program through the Launch Program Studio ------------------------
+  const orgPath = new URL(page.url()).pathname.replace(/\/programs$/, "");
   const publicName = `E2E Live Public ${Date.now()}`;
-  await page.getByRole("button", { name: /Create (another )?engagement/ }).click();
-  await page.getByLabel("Engagement name").fill(publicName);
-  await page.getByRole("button", { name: "Create engagement" }).click();
-  await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole("heading", { name: publicName })).toBeVisible();
-  // Fresh programs start private -- toggle it public via the real visibility switch, which
-  // lives on the program's Settings tab since 48db446. That page has a second switch (KYC
-  // requirement) -- scope by the visibility switch's own accessible name (its label reads
-  // "Private: ..." while unchecked). Then back to Overview, where scope is managed.
+  await createViaStudio(page, orgPath, publicName, "Public");
+  // The studio applied the visibility; Settings shows it.
   await programTab(page, "Settings").click();
   await page.waitForURL(/\/settings$/);
-  await page.getByRole("switch", { name: /^Private:/ }).click();
   await expect(page.getByText(/Public: researchers can discover this program/)).toBeVisible();
   await programTab(page, "Overview").click();
   await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
@@ -147,15 +151,8 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await expect(page.getByText("api.e2e-live-public.example")).not.toBeVisible();
 
   // --- Create a private program ---------------------------------------------------------
-  await breadcrumbEngagements(page).click();
   const privateName = `E2E Live Private ${Date.now()}`;
-  await page.getByRole("button", { name: /Create (another )?engagement/ }).click();
-  await page.getByLabel("Engagement name").fill(privateName);
-  await page.getByRole("button", { name: "Create engagement" }).click();
-  await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole("heading", { name: privateName })).toBeVisible();
-  // Left private (the schema default) -- no visibility toggle needed; the visibility label
-  // lives on the Settings tab.
+  await createViaStudio(page, orgPath, privateName, "Private");
   await programTab(page, "Settings").click();
   await page.waitForURL(/\/settings$/);
   await expect(page.getByText(/Private: not listed publicly/)).toBeVisible();
@@ -297,9 +294,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   await expect(page.getByText(/USD 500\.00/).first()).toBeVisible();
 
   // --- Activity shows the transitions --------------------------------------------------
-  // Currently on the Inbox page (ProgramHeader) -- breadcrumb back to Engagements, then
-  // the org header's own Activity tab (Activity itself is org-scoped, not per-program).
-  await breadcrumbEngagements(page).click();
+  // Still on the report page; the audit log is org-scoped and always in the sidebar.
   await sidebarNav(page, "Audit log").click();
   // .first(): the audit log keeps every past run's events for this seeded report.
   await expect(page.getByText(/started triage/i).first()).toBeVisible();
@@ -368,9 +363,9 @@ test("nav de-duplication: every one of the nine org routes highlights exactly on
   await page.waitForURL(/\/findings$/);
   await expectSingleSidebarHighlight(page, "Findings");
 
-  await sidebarNav(page, "Assets").click();
+  await sidebarNav(page, "Attack Surface").click();
   await page.waitForURL(/\/assets$/);
-  await expectSingleSidebarHighlight(page, "Assets");
+  await expectSingleSidebarHighlight(page, "Attack Surface");
 
   await sidebarNav(page, "Researchers").click();
   await page.waitForURL(/\/researchers$/);

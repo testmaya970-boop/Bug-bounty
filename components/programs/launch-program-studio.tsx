@@ -1325,6 +1325,7 @@ export function LaunchProgramStudio({
                             <button
                               key={mode}
                               type="button"
+                              aria-pressed={active}
                               onClick={() => setState((prev) => ({ ...prev, visibility: mode }))}
                               className={`rounded-[12px] border p-3.5 text-left transition-all ${
                                 active

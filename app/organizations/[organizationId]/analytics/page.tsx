@@ -158,11 +158,11 @@ export default async function OrganizationAnalyticsPage({
     : null;
 
   return (
-    <AppShell title="Analytics" user={user} organizationId={organizationId}>
+    <AppShell titleIsSection title="Analytics" user={user} organizationId={organizationId}>
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
+        <OrganizationHeader title="Analytics" organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
         <AnalyticsTabs organizationId={organizationId} active="overview" />
 
         {programs.length === 0 ? (

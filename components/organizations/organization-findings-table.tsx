@@ -394,7 +394,7 @@ export function OrganizationFindingsTable({
               />
             </div>
             <div className="w-full sm:w-48">
-              <Select label="Order" value={sortOrder} onChange={(event) => updateParams({ sort: event.target.value })}>
+              <Select label="Order" value={sortOrder} onChange={(event) => updateParams({ sort: event.target.value, q: queryInput.trim() || null })}>
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
               </Select>

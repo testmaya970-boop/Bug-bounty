@@ -75,11 +75,11 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
   return (
     // AppShell's title is the page-level landmark, not a second copy of the organization
     // name -- OrganizationHeader's own h2, right below, already shows it once.
-    <AppShell title="Settings" user={user} organizationId={organizationId}>
+    <AppShell titleIsSection title="Settings" user={user} organizationId={organizationId}>
       <div className="max-w-2xl space-y-8">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization", href: `/organizations/${organizationId}` }, { label: "Settings" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
+        <OrganizationHeader title="Settings" organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <div>
           <p className="text-sm text-ink-muted">

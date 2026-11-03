@@ -166,7 +166,7 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
   const pendingDeposits = balances.filter((b) => b.pendingDeposits > 0);
 
   return (
-    <AppShell title="Payments" user={user} organizationId={organizationId}>
+    <AppShell titleIsSection title="Payments" user={user} organizationId={organizationId}>
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs
           items={[
@@ -174,7 +174,7 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
             { label: organization?.name ?? "Organization" },
           ]}
         />
-        <OrganizationHeader
+        <OrganizationHeader title="Payments"
           organizationName={organization?.name ?? "Organization"}
           organizationId={organizationId}
           logoVersion={await getOrganizationLogoVersion(organizationId)}

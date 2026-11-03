@@ -133,7 +133,7 @@ function buildOrgNavGroups(orgId: string, role?: OrganizationRole): NavGroup[] {
       icon: LayoutDashboard,
       defaultOpen: true,
       items: [
-        { href: base as Route, label: "Overview", icon: LayoutDashboard, exact: true },
+        { href: base as Route, label: "Home", icon: LayoutDashboard, exact: true },
         { href: `${base}/programs` as Route, label: "Engagements", icon: Briefcase, badge: "Live", roles: REPORT_WORKERS },
         { href: `${base}/findings` as Route, label: "Findings", icon: Bug, roles: REPORT_WORKERS },
         { href: `${base}/assets` as Route, label: "Attack Surface", icon: Target, roles: REPORT_WORKERS },
@@ -165,10 +165,10 @@ function buildOrgNavGroups(orgId: string, role?: OrganizationRole): NavGroup[] {
       ],
     },
     // 3. Team & Access. Members owns invitations, roles and API tokens on one page.
-    { id: "org-team-access", label: "Members", icon: Users, href: `${base}/members` as Route, exact: true, roles: ORG_ADMINS },
+    { id: "org-team-access", label: "Members", icon: Users, href: `${base}/members` as Route, roles: ORG_ADMINS },
     // 4. Integrations: Jira, Slack, ServiceNow, GitHub/GitLab, webhooks, SSO and SCIM all
     // live on the one Integrations page.
-    { id: "org-integrations", label: "Integrations", icon: Plug, href: `${base}/integrations` as Route, exact: true, roles: ORG_ADMINS },
+    { id: "org-integrations", label: "Integrations", icon: Plug, href: `${base}/integrations` as Route, roles: ORG_ADMINS },
     // 6. Billing & Finance
     {
       id: "org-billing",
@@ -183,9 +183,9 @@ function buildOrgNavGroups(orgId: string, role?: OrganizationRole): NavGroup[] {
       ],
     },
     // 7. Audit: owner/security_admin only (audit_logs' read policy).
-    { id: "org-audit", label: "Audit log", icon: History, href: `${base}/activity` as Route, exact: true, roles: ORG_ADMINS },
+    { id: "org-audit", label: "Audit log", icon: History, href: `${base}/activity` as Route, roles: ORG_ADMINS },
     // 10. Settings
-    { id: "org-settings", label: "Settings", icon: Settings, href: `${base}/settings` as Route, exact: true, roles: ORG_ADMINS },
+    { id: "org-settings", label: "Settings", icon: Settings, href: `${base}/settings` as Route, roles: ORG_ADMINS },
   ];
 
   // Filter groups and sub-items based on user's authorized role
@@ -533,6 +533,7 @@ function CollapsibleNavGroup({
         href={group.href}
         prefetch={false}
         onClick={onNavigate}
+        aria-current={active ? "page" : undefined}
         data-rail-label={group.label}
         className={cn(
           "group relative flex h-8 items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-150",
@@ -648,6 +649,7 @@ function CollapsibleNavGroup({
                 href={item.href}
                 prefetch={false}
                 onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "group/sub relative flex h-7 items-center justify-between rounded-md px-2 text-[12.5px] transition-all",
                   active
@@ -893,43 +895,44 @@ export function AppShellClient({
           />
         )}
 
-        {/* Global Search / Jump-to filter */}
+        {/* Global search: typing filters the nav below, Enter searches programs and reports. */}
         {!isRail ? (
-          <div className="relative mb-3">
-            <div className="flex h-8.5 items-center gap-2 rounded-lg border border-[#E7EAF0] bg-white px-2.5 text-xs text-[#667085] shadow-[0_1px_2px_rgba(16,24,40,0.02)] transition-all focus-within:border-[#2563EB] focus-within:ring-2 focus-within:ring-blue-500/10">
-              <Search className="size-3.5 shrink-0 text-[#98A2B3]" />
+          <form action="/search" method="get" role="search" aria-label="Search programs and reports" className="relative mb-3">
+            <label className="flex h-8.5 items-center gap-2 rounded-lg border border-[#E7EAF0] bg-white px-2.5 text-xs text-[#667085] shadow-[0_1px_2px_rgba(16,24,40,0.02)] transition-all focus-within:border-[#2563EB] focus-within:ring-2 focus-within:ring-blue-500/10">
+              <Search aria-hidden="true" className="size-3.5 shrink-0 text-[#98A2B3]" />
+              <span className="sr-only">Search programs and reports</span>
               <input
                 suppressHydrationWarning
-                type="text"
+                type="search"
+                name="q"
+                maxLength={100}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Jump to or search..."
-                className="w-full bg-transparent text-[12.5px] text-[#111827] placeholder:text-[#98A2B3] focus:outline-none"
+                placeholder="Search programs and reports"
+                className="w-full min-w-0 bg-transparent text-[12.5px] text-[#111827] placeholder:text-[#98A2B3] focus:outline-none [&::-webkit-search-cancel-button]:hidden"
               />
-              {searchQuery ? (
+              {searchQuery && (
                 <button
                   type="button"
+                  aria-label="Clear search"
                   onClick={() => setSearchQuery("")}
                   className="rounded p-0.5 text-[#98A2B3] hover:text-[#111827]"
                 >
                   <X className="size-3" />
                 </button>
-              ) : (
-                <kbd className="hidden rounded bg-[#F4F6F8] border border-[#E7EAF0] px-1.5 py-0.5 font-mono text-[10px] text-[#98A2B3] min-[1280px]:inline">
-                  ⌘K
-                </kbd>
               )}
-            </div>
-          </div>
+            </label>
+          </form>
         ) : (
-          <button
-            type="button"
-            onClick={toggleSidebar}
+          <Link
+            href={"/search" as Route}
+            prefetch={false}
+            aria-label="Search"
             data-rail-label="Search"
             className="mx-auto mb-3 flex size-8 items-center justify-center rounded-lg border border-[#E7EAF0] bg-white text-[#667085] hover:border-[#D0D5DD] hover:text-[#111827]"
           >
-            <Search className="size-4" />
-          </button>
+            <Search aria-hidden="true" className="size-4" />
+          </Link>
         )}
 
         {/* Main Navigation Items Tree */}

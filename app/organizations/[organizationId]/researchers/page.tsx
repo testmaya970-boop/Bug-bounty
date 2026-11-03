@@ -70,11 +70,11 @@ export default async function OrganizationResearchersPage({ params }: { params: 
   const organization = organizations.find((org) => org.id === organizationId);
 
   return (
-    <AppShell title="Researchers" user={user} organizationId={organizationId}>
+    <AppShell titleIsSection title="Researchers" user={user} organizationId={organizationId}>
       <div className="max-w-6xl space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
+        <OrganizationHeader title="Researchers" organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <div>
           <div className="flex items-baseline justify-between gap-3">

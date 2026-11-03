@@ -6,9 +6,8 @@ import { cn } from "../../lib/cn";
 type ButtonVariant = "primary" | "secondary" | "quiet" | "destructive";
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; pending?: boolean };
 
-// Netras buttons: 0.4rem corners (rounded-md, remapped in globals.css), solid #ee0000
-// primary with white text (4.53:1) hovering to #c50000 (6.2:1); secondary is the Netras
-// ghost (hairline border, #fff5f5 hover wash, border tints red). Press feedback is
+// Buttons: rounded-md corners (remapped in globals.css), solid --action primary with white
+// text (5.2:1) hovering to --action-hover (6.7:1); secondary is a hairline ghost. Press feedback is
 // `active:scale-[0.97]`, within the
 // 150-250ms micro-interaction budget. `motion-reduce:` guards every transform/transition
 // so a reduced-motion user gets the resting/pressed states with no animation.

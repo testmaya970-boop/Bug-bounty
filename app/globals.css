@@ -27,12 +27,11 @@
      0.6rem, logo mark 0.25rem, chips 999px (rounded-full, unchanged). Remapping Tailwind's
      own radius scale here re-tunes the ~290 existing rounded-* call sites in one place
      (rounded-md = buttons/inputs, rounded-lg = cards, rounded-xl = tiles). */
-  --radius: 0.25rem; --radius-sm: 0.25rem; --radius-md: 0.4rem; --radius-lg: 0.5rem; --radius-xl: 0.6rem; --radius-2xl: 0.6rem;
-  /* Netras shadows: card at rest 0 1px 3px /4%; raised/hover 0 12px 30px -12px /12%. The
-     larger utilities (menus, dialogs) share the hover value, a touch deeper for 2xl. */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04); --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 12px 30px -12px rgba(0, 0, 0, 0.12); --shadow-lg: 0 12px 30px -12px rgba(0, 0, 0, 0.12);
-  --shadow-xl: 0 12px 30px -12px rgba(0, 0, 0, 0.12); --shadow-2xl: 0 24px 48px -16px rgba(0, 0, 0, 0.18);
+  --radius: 0.375rem; --radius-sm: 0.25rem; --radius-md: 0.5rem; --radius-lg: 0.625rem; --radius-xl: 0.75rem; --radius-2xl: 1rem;
+  /* Slate-tinted shadows, as on the redesigned pages: card at rest, raised on hover, menus and dialogs deeper. */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04); --shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.06); --shadow-lg: 0 10px 24px rgba(16, 24, 40, 0.08);
+  --shadow-xl: 0 16px 32px -8px rgba(16, 24, 40, 0.12); --shadow-2xl: 0 24px 48px -16px rgba(16, 24, 40, 0.18);
 }
 
 /* Vermilion/pine-teal theme (docs/decisions/0079), replacing 0073's flat monochrome
@@ -83,38 +82,28 @@
    learning-section.tsx, program-header.tsx) referenced var(--glow-action)/
    var(--glow-accent-2) for a shadow effect the global rule was already nullifying;
    removing the token is the same no-op made explicit, not a behavior change. */
-/* Netras rebrand (supersedes Tactical Telemetry above). Values extracted from netras.ai's
-   live stylesheet, not guessed: white page, #f3f6f9 alternate ground, #e5e7eb borders,
-   ONE red accent #ee0000 (hover #c50000), #0a0a0a high-emphasis ink, #4b5563 body ink.
-   Same token NAMES as before -- only values change. Netras itself has no status colors;
-   --info/--success/--warning/--danger/--severity-* carry real product meaning (report
-   severity, status badges) so they stay independent semantic tokens, re-tuned from the
-   dark-substrate values (which were all too pale for a white ground).
+/* Nov 2026 theme: the redesigned pages' palette (cool grey page, white cards, slate ink,
+   one blue action) applied through the same token names, so every page follows it.
+   --info/--success/--warning/--danger/--severity-* stay separate semantic tokens.
 
-   Contrast, computed (WCAG relative luminance) on --canvas #ffffff / --surface-muted #f3f6f9:
-   ink #0a0a0a 19.8:1 / 18.3:1; ink-muted #4b5563 7.6:1 / 7.0:1;
-   action #ee0000 4.53:1 / 4.18:1 -- passes AA as text on white; on the muted ground it
-     only clears the 3:1 large-text/UI bar, so small red text belongs on white surfaces;
-   on-action #ffffff on #ee0000 4.53:1, on hover #c50000 6.2:1;
-   info #1d4ed8 6.7:1 / 6.2:1; success #15803d 5.0:1 / 4.6:1; warning #b45309 5.0:1 / 4.6:1;
-   danger/severity-critical #c50000 6.2:1 / 5.7:1 (darker than --action so a critical
-   finding never reads as a mere brand-red link); severity-high #c2410c 5.2:1 / 4.8:1;
-   severity-medium #7a6b1a 5.3:1 / 4.9:1; severity-low = info; severity-none #4b5563 7.6:1.
-   --accent-2 is now the near-black secondary fill (white text on it 19.8:1). */
-/* Oct 22 product-UI rebuild (Linear for navigation/sidebar/keyboard, GitHub for reports,
-   Stripe for finance, Wiz for posture, Datadog for platform ops): neutral cool grays with
-   quiet hairlines, Inter everywhere, and Unpatched red kept as the ONE accent. Contrast on
-   white: ink #16171a 18.4:1; ink-muted #62666d 5.8:1 (5.5:1 on #f7f7f8, the sidebar). */
+   Contrast, computed (WCAG relative luminance) on --surface #ffffff / --canvas #f6f8fb:
+   ink #111827 17.7:1 / 16.7:1; ink-muted #586174 6.2:1 / 5.8:1;
+   action #2563eb 5.2:1 / 4.9:1; on-action #ffffff on action 5.2:1, on hover #1d4ed8 6.7:1;
+   info #1d4ed8 6.7:1 / 6.3:1; success #027a48 5.4:1 / 5.1:1; warning #b54708 5.4:1 / 5.1:1;
+   danger/severity-critical #b42318 6.6:1 / 6.2:1; severity-high #c2410c 5.2:1 / 4.9:1;
+   severity-medium #7a6b1a 5.3:1 / 5.0:1. */
 :root {
   color-scheme: light;
-  --canvas: #ffffff; --surface: #ffffff; --surface-muted: #f2f2f4; --surface-raised: #ffffff; --surface-hover: #f6f6f7;
-  --ink: #16171a; --ink-muted: #62666d;
-  --border: #e6e6e9; --border-strong: #d2d3d8;
-  --action: #ee0000; --action-hover: #c50000; --on-action: #ffffff; --focus: #ee0000;
-  --accent-2: #0a0a0a; --on-accent-2: #ffffff;
-  --info: #1d4ed8; --success: #15803d; --warning: #b45309; --danger: #c50000; --on-danger: #ffffff;
-  --severity-critical: #c50000; --severity-high: #c2410c; --severity-medium: #7a6b1a; --severity-low: #1d4ed8; --severity-none: #4b5563;
-  --glass-border: #e5e7eb; --glass-border-strong: #d1d5db;
+  /* Cool grey page, white cards, slate ink, blue action: the redesigned pages' palette. */
+  --canvas: #f6f8fb; --surface: #ffffff; --surface-muted: #f8fafc; --surface-raised: #ffffff; --surface-hover: #f4f6f8;
+  /* ink-muted is a step darker than the redesign's #667085 so it keeps 4.5:1 on the grey canvas. */
+  --ink: #111827; --ink-muted: #586174;
+  --border: #e7eaf0; --border-strong: #d0d5dd;
+  --action: #2563eb; --action-hover: #1d4ed8; --on-action: #ffffff; --focus: #2563eb;
+  --accent-2: #111827; --on-accent-2: #ffffff;
+  --info: #1d4ed8; --success: #027a48; --warning: #b54708; --danger: #b42318; --on-danger: #ffffff;
+  --severity-critical: #b42318; --severity-high: #c2410c; --severity-medium: #7a6b1a; --severity-low: #1d4ed8; --severity-none: #4b5563;
+  --glass-border: #e7eaf0; --glass-border-strong: #d0d5dd;
   /* Chart identity colors (dataviz reference palette, fixed order -- never cycled, never
      re-ordered: the order is what keeps neighbours colorblind-distinct). Validated on this
      white surface: adjacent CVD dE >= 9.1, normal-vision dE >= 19.6. Slots 3/4/5 sit below
@@ -128,7 +117,7 @@
    darker again. Same token names re-valued inside it, so nav components just use
    surface/ink/border. The raised surface stays white for menus that open from it. */
 .nav-scope {
-  --surface: #f7f7f8; --surface-muted: #e9e9ec; --surface-hover: #efeff1; --surface-raised: #ffffff;
+  --surface: #f8fafc; --surface-muted: #eef1f5; --surface-hover: #f4f6f8; --surface-raised: #ffffff;
   color: var(--ink);
 }
 
@@ -223,8 +212,7 @@ body {
   min-width: 320px; margin: 0; color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; overflow-x: clip;
   background: var(--canvas);
 }
-/* netras.ai's selection highlight: 18% red wash under #0a0a0a text. */
-::selection { background: rgba(238, 0, 0, 0.18); color: #0a0a0a; }
+::selection { background: rgba(37, 99, 235, 0.18); color: #111827; }
 /* In @layer base: unlayered, this beat every text-size utility on a button (they rendered 16px). */
 @layer base { button, input, textarea, select { font: inherit; } }
 code, pre, kbd, samp { font-family: var(--font-mono); }

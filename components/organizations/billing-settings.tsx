@@ -320,7 +320,8 @@ export function BillingProfileForm({
         />
         <Select label="Country" required {...field("country")}>
           {BILLING_COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>
+            // Node's and the browser's ICU name a few regions differently; keep the server's text.
+            <option key={c.code} value={c.code} suppressHydrationWarning>
               {c.name}
             </option>
           ))}

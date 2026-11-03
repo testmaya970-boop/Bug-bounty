@@ -60,7 +60,7 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
     // name -- the profile card's own h2, right below, already shows it once (and matches
     // this page's own error/permission-denied branches above, which already use the
     // static "Member" title).
-    <AppShell title="Member" user={user} organizationId={organizationId}>
+    <AppShell titleIsSection title="Member" user={user} organizationId={organizationId}>
       <div className="space-y-6">
         <Breadcrumbs
           items={[
@@ -71,7 +71,7 @@ export default async function OrganizationMemberDetailPage({ params }: { params:
           ]}
         />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
+        <OrganizationHeader title="Member" organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <Card className="flex flex-wrap items-center gap-4 p-5">
           <Avatar name={target.displayName} />

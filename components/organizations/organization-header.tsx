@@ -17,7 +17,22 @@ import { OrgLogo } from "../ui/org-logo";
  * page still shows once, directly under its own breadcrumb. No `active` prop, because
  * there is no second nav here anymore to highlight anything in.
  */
-export function OrganizationHeader({ organizationName, organizationId, logoVersion }: { organizationName: string; organizationId?: string; logoVersion?: string }) {
+export function OrganizationHeader({ organizationName, organizationId, logoVersion, title, description }: { organizationName: string; organizationId?: string; logoVersion?: string; title?: string; description?: string }) {
+  const logo = organizationId && logoVersion ? <OrgLogo organizationId={organizationId} name={organizationName} version={logoVersion} /> : null;
+  // With a page title (the redesigned layout): the page leads, the organization is context above it.
+  // This is the page's h1, so its AppShell passes titleIsSection (the top bar then shows plain text).
+  if (title) {
+    return (
+      <div className="min-w-0 border-b border-border pb-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {logo}
+          <span className="truncate text-[13px] font-medium text-ink-muted">{organizationName}</span>
+        </div>
+        <h1 className="mt-2 break-words text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">{title}</h1>
+        {description && <p className="mt-1 max-w-3xl text-sm text-ink-muted">{description}</p>}
+      </div>
+    );
+  }
   return (
     <div className="flex min-w-0 items-center gap-3 border-b border-border pb-4">
       {organizationId && logoVersion && <OrgLogo organizationId={organizationId} name={organizationName} version={logoVersion} size="lg" />}

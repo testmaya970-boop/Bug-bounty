@@ -55,11 +55,11 @@ export default async function OrganizationMembersPage({ params }: { params: Prom
   return (
     // AppShell's title is the page-level landmark, not a second copy of the organization
     // name -- OrganizationHeader's own h2, right below, already shows it once.
-    <AppShell title="Members" user={user} organizationId={organizationId}>
+    <AppShell titleIsSection title="Members" user={user} organizationId={organizationId}>
       <div className="space-y-6">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization", href: `/organizations/${organizationId}` }, { label: "Members" }]} />
 
-        <OrganizationHeader organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
+        <OrganizationHeader title="Members" organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-ink-muted">
