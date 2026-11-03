@@ -96,7 +96,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
 
   // --- Org Home: KPIs + one action queue, no record shown twice -----------------------
   await expect(page.getByText("Active engagements")).toBeVisible();
-  await expect(page.getByText("Open reports")).toBeVisible();
+  await expect(page.getByText("Open reports", { exact: true })).toBeVisible();
   await expect(page.getByText("Median time to first triage")).toBeVisible();
   await expect(page.getByText("Total paid")).toBeVisible();
   // The one seeded `new` report must appear exactly once on Home, in the action queue --
@@ -322,7 +322,7 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // --- Help / profile menu / switchers reachable ---------------------------------------
   // Help lives in the account menu; there is no top bar on desktop.
   await page.getByRole("button", { name: /Account menu/ }).first().click();
-  await page.getByRole("link", { name: "Help & docs" }).first().click();
+  await page.getByRole("link", { name: "Help & documentation" }).first().click();
   await expect(page.getByRole("heading", { name: "Get help" })).toBeVisible();
   // Help has its own minimal header (Back to workspace / Sign out), no account menu.
   await page.getByRole("link", { name: "Back to workspace" }).click();
@@ -331,8 +331,8 @@ test("org journey: admin sign-in through Home, Engagements, invite, triage, boun
   // Scoped to the open dropdown: the sidebar has its own Settings link.
   const accountMenu = page.getByRole("group", { name: "Account" });
   await expect(accountMenu.getByRole("link", { name: "Profile" })).toBeVisible();
-  await expect(accountMenu.getByRole("link", { name: "Settings" })).toBeVisible();
-  await expect(accountMenu.getByRole("link", { name: "Help & docs" })).toBeVisible();
+  await expect(accountMenu.getByRole("link", { name: "Account settings" })).toBeVisible();
+  await expect(accountMenu.getByRole("link", { name: "Help & documentation" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   // --- Sign out --------------------------------------------------------------------------

@@ -187,8 +187,8 @@ export function ExecutiveDashboard({
   const totalResearchersCount = researcherCount ?? "-";
 
   // Health score computation (Green >= 90, Yellow 75-89, Red < 75)
-  const mttaHours = medianHoursToFirstTriage ?? 3.4;
-  const mttrDays = medianDaysToResolution ?? 6.2;
+  const mttaHours = medianHoursToFirstTriage;
+  const mttrDays = medianDaysToResolution;
   // Composite of the three things the card names: reports aging past 30 days, first triage
   // slower than 4 hours, and first-response SLA misses (when an SLA tracks any reports).
   const healthScore = Math.min(
@@ -199,7 +199,7 @@ export function ExecutiveDashboard({
         (
           100 -
           agingOver30DaysCount * 4.5 -
-          Math.max(0, mttaHours - 4) * 0.4 -
+          Math.max(0, (mttaHours ?? 0) - 4) * 0.4 -
           (slaAdherencePercent === null ? 0 : (100 - slaAdherencePercent) * 0.5)
         ).toFixed(1),
       ),
@@ -208,6 +208,14 @@ export function ExecutiveDashboard({
   const healthTier: "green" | "yellow" | "red" =
     healthScore >= 90 ? "green" : healthScore >= 75 ? "yellow" : "red";
   const slaPercent = slaAdherencePercent === null ? "No data" : `${slaAdherencePercent}%`;
+
+  // Platform Insights: each line is a fact from the data above, shown only when it has a source.
+  const pendingDomains = domains.filter((d) => d.status === "pending").length;
+  const insights: { title: string; detail: string; icon: typeof TrendUp; tone: string }[] = [];
+  if (mttaHours !== null) insights.push({ title: "First triage", detail: `Median ${mttaHours.toFixed(1)}h from submission to first triage.`, icon: TrendUp, tone: "border-[#A6F4C5] bg-[#ECFDF3] text-[#12B76A]" });
+  if (mttrDays !== null) insights.push({ title: "Resolution", detail: `Median ${mttrDays.toFixed(1)} days to resolve, across ${totalAwardCount} bounty ${totalAwardCount === 1 ? "award" : "awards"}.`, icon: Lightning, tone: "border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB]" });
+  if (agingOver30DaysCount > 0) insights.push({ title: "Aging reports", detail: `${agingOver30DaysCount} open ${agingOver30DaysCount === 1 ? "report is" : "reports are"} older than 30 days.`, icon: UsersThree, tone: "border-[#FEDF89] bg-[#FFFAEB] text-[#F59E0B]" });
+  if (pendingDomains > 0) insights.push({ title: "Domains awaiting verification", detail: `${pendingDomains} ${pendingDomains === 1 ? "domain is" : "domains are"} waiting for the DNS TXT record.`, icon: Globe, tone: "border-[#FEDF89] bg-[#FFFAEB] text-[#F59E0B]" });
 
   // Severity distribution math
   const totalSeverityCount = Math.max(
@@ -223,7 +231,7 @@ export function ExecutiveDashboard({
   const averageCvss =
     cvssScores.length > 0
       ? (cvssScores.reduce((a, b) => a + b, 0) / cvssScores.length).toFixed(1)
-      : "7.8";
+      : "--";
 
   const verifiedDomains = domains.map((d) => ({
     domain: d.domain,
@@ -623,7 +631,7 @@ export function ExecutiveDashboard({
               </p>
             </div>
             <p className="mt-2 text-[12px] text-[#98A2B3]">
-              {verifiedDomainsCount} verified production domains
+              {verifiedDomainsCount} verified {verifiedDomainsCount === 1 ? "domain" : "domains"}
             </p>
           </div>
 
@@ -862,19 +870,19 @@ export function ExecutiveDashboard({
                 <span className="mt-1 block font-mono text-[18px] font-bold tabular-nums text-[#111827]">
                   {medianHoursToFirstTriage !== null
                     ? `${medianHoursToFirstTriage.toFixed(1)}h`
-                    : "3.4h"}
+                    : "--"}
                 </span>
                 <span className="mt-0.5 block text-[12px] text-[#98A2B3]">
-                  Avg MTTA (&lt;12h target)
+                  Submission to first triage
                 </span>
               </div>
 
               <div className="rounded-[12px] border border-[#E7EAF0] bg-[#F8FAFC]/70 p-3 transition-colors duration-150 hover:bg-[#F8FAFC]">
                 <span className="block text-[12px] font-medium text-[#667085]">
-                  Average MTTR
+                  Median time to resolve
                 </span>
                 <span className="mt-1 block font-mono text-[18px] font-bold tabular-nums text-[#111827]">
-                  {mttrDays.toFixed(1)}d
+                  {mttrDays === null ? "--" : `${mttrDays.toFixed(1)}d`}
                 </span>
                 <span className="mt-0.5 block text-[12px] text-[#98A2B3]">
                   Resolution velocity
@@ -1411,63 +1419,23 @@ export function ExecutiveDashboard({
                   </span>
                 </div>
 
-                <ul className="mt-3.5 space-y-2.5">
-                  <li className="flex items-start gap-3 rounded-[12px] border border-[#E7EAF0] bg-[#F8FAFC]/80 p-3 transition-colors duration-150 hover:bg-[#F8FAFC]">
-                    <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] border border-[#A6F4C5] bg-[#ECFDF3] text-[#12B76A]">
-                      <TrendUp className="size-4" />
-                    </span>
-                    <div>
-                      <p className="text-[13px] font-semibold text-[#111827]">
-                        Program health improved 8%
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-[#667085]">
-                        First-response triage is averaging {mttaHours.toFixed(1)}h, well inside your 12h target.
-                      </p>
-                    </div>
-                  </li>
-
-                  <li className="flex items-start gap-3 rounded-[12px] border border-[#E7EAF0] bg-[#F8FAFC]/80 p-3 transition-colors duration-150 hover:bg-[#F8FAFC]">
-                    <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB]">
-                      <Lightning className="size-4" />
-                    </span>
-                    <div>
-                      <p className="text-[13px] font-semibold text-[#111827]">
-                        Critical reports resolved faster
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-[#667085]">
-                        Median remediation cycle improved to {mttrDays.toFixed(1)} days across {totalAwardCount} bounty awards.
-                      </p>
-                    </div>
-                  </li>
-
-                  <li className="flex items-start gap-3 rounded-[12px] border border-[#E7EAF0] bg-[#F8FAFC]/80 p-3 transition-colors duration-150 hover:bg-[#F8FAFC]">
-                    <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB]">
-                      <UsersThree className="size-4" />
-                    </span>
-                    <div>
-                      <p className="text-[13px] font-semibold text-[#111827]">
-                        New researchers joined
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-[#667085]">
-                        8 high-signal researchers joined your continuous scopes this month.
-                      </p>
-                    </div>
-                  </li>
-
-                  <li className="flex items-start gap-3 rounded-[12px] border border-[#E7EAF0] bg-[#F8FAFC]/80 p-3 transition-colors duration-150 hover:bg-[#F8FAFC]">
-                    <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] border border-[#FEDF89] bg-[#FFFAEB] text-[#F59E0B]">
-                      <Globe className="size-4" />
-                    </span>
-                    <div>
-                      <p className="text-[13px] font-semibold text-[#111827]">
-                        Domains awaiting verification
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-[#667085]">
-                        1 staging domain is awaiting DNS TXT verification in Asset Posture.
-                      </p>
-                    </div>
-                  </li>
-                </ul>
+                {insights.length === 0 ? (
+                  <p className="mt-3.5 text-[13px] text-[#667085]">Insights appear once your engagements have report activity.</p>
+                ) : (
+                  <ul className="mt-3.5 space-y-2.5">
+                    {insights.map((item) => (
+                      <li key={item.title} className="flex items-start gap-3 rounded-[12px] border border-[#E7EAF0] bg-[#F8FAFC]/80 p-3 transition-colors duration-150 hover:bg-[#F8FAFC]">
+                        <span className={`mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] border ${item.tone}`}>
+                          <item.icon className="size-4" />
+                        </span>
+                        <div>
+                          <p className="text-[13px] font-semibold text-[#111827]">{item.title}</p>
+                          <p className="mt-0.5 text-[12px] text-[#667085]">{item.detail}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="mt-4 border-t border-[#E7EAF0] pt-3.5">

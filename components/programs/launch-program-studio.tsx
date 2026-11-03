@@ -128,17 +128,7 @@ export function LaunchProgramStudio({
   const searchParams = useSearchParams();
 
   const [viewMode, setViewMode] = useState<"studio" | "directory">(initialMode);
-  const [state, setState] = useState<LaunchStudioState>(() => {
-    const initial = createInitialStudioState();
-    // Include staging-id.northwind.cloud by default so Scope Studio and Review Checklist
-    // showcase real-world advisory telemetry (e.g. 94% Readiness Score) out of the box,
-    // which the user can resolve with 1 click!
-    return {
-      ...initial,
-      selectedAssetIds: [...initial.selectedAssetIds, "asset-dom-3"],
-      enabledModuleIds: initial.enabledModuleIds.filter((id) => id !== "slack"),
-    };
-  });
+  const [state, setState] = useState<LaunchStudioState>(createInitialStudioState);
 
   const [lastSavedLabel, setLastSavedLabel] = useState<string>("Autosaved just now");
   const [isSavingDraft, setIsSavingDraft] = useState<boolean>(false);

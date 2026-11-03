@@ -23,10 +23,13 @@ export function ProgramHealthSection({
   severityStatusBreakdown,
   weeklyVolume,
   resolutionPerformance,
+  summarizedAbove = false,
 }: {
   severityStatusBreakdown: OrganizationSeverityStatusCount[];
   weeklyVolume: OrganizationWeeklyReportVolume[];
   resolutionPerformance: OrganizationResolutionPerformance;
+  /** Staff see status counts and medians in the program command strip; skip repeating them. */
+  summarizedAbove?: boolean;
 }) {
   const hasAnyReports = severityStatusBreakdown.length > 0;
   if (!hasAnyReports) return null;
@@ -53,7 +56,7 @@ export function ProgramHealthSection({
 
   return (
     <div className="space-y-8">
-      <div>
+      {!summarizedAbove && <div>
         <div className="flex items-baseline justify-between gap-3">
           <SectionLabel>Reports by status</SectionLabel>
           <span className="font-mono text-xs text-ink-muted">
@@ -63,7 +66,7 @@ export function ProgramHealthSection({
         <div className="mt-3">
           <SegmentedBar data={statusData} />
         </div>
-      </div>
+      </div>}
 
       <div>
         <SectionLabel>Weekly activity</SectionLabel>
@@ -73,7 +76,7 @@ export function ProgramHealthSection({
         </div>
       </div>
 
-      <OrganizationResolutionPerformanceTiles performance={resolutionPerformance} />
+      {!summarizedAbove && <OrganizationResolutionPerformanceTiles performance={resolutionPerformance} />}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
         <div>

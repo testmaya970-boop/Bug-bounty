@@ -24,6 +24,9 @@ import { JoinPublicProgramButton } from "../../../../../components/programs/join
 import { AccessRequestsPanel, RequestToJoinPanel } from "../../../../../components/programs/program-access-request";
 import { getProgramJoinInfo, listProgramAccessRequests } from "../../../../../services/program-access";
 import { ProgramHealthSection } from "../../../../../components/programs/program-health-section";
+import { ProgramCommandStrip } from "../../../../../components/programs/program-command-strip";
+import { getOrganizationSlaSummary } from "../../../../../services/program-policy";
+import { getOrganizationProgramBountySpend } from "../../../../../services/organization-analytics";
 import { ProgramReportList } from "../../../../../components/reports/program-report-list";
 import { PrimaryActionPanel, RegistryList, SectionLabel } from "../../../../../components/ui/security-primitives";
 import { ProgramAccessInstructionsNotice } from "../../../../../components/programs/program-access-instructions-panel";
@@ -390,6 +393,11 @@ async function renderProgramControlCenterPage({
   // both already known above. Collapsed into one Promise.all so the whole page pays for
   // exactly the slowest single query in this batch, not the sum of all of them.
   const policyPromise = getProgramPolicy(programId);
+  // The command strip's SLA and spend: org-wide reads filtered to this program. Either can be
+  // refused for a role without analytics access; the strip then shows "--".
+  const isStaffView = canManageProgram;
+  const slaPromise = isStaffView ? getOrganizationSlaSummary(organizationId).then((rows) => rows.find((r) => r.programId === programId) ?? null).catch(() => null) : Promise.resolve(null);
+  const spendPromise = isStaffView ? getOrganizationProgramBountySpend(organizationId).then((rows) => rows.filter((r) => r.programId === programId)).catch(() => []) : Promise.resolve([]);
   // Started with the batch below, not after it (this route has a latency budget).
   const followingPromise = !canManageProgram && isActiveResearcher ? isFollowingProgram(programId) : Promise.resolve(false);
   const [scopeEntries, accessFile, accessInstructions, [researchers, pendingInvitations, accessRequests, suggestedResearchers], { items: reports, nextCursor: nextCursorPreview }, bountyPolicy, [severityStatusBreakdown, weeklyVolume, resolutionPerformance], organizationPrograms] =
@@ -439,6 +447,7 @@ async function renderProgramControlCenterPage({
     );
   const policy = await policyPromise;
   const following = await followingPromise;
+  const [programSla, programSpend] = await Promise.all([slaPromise, spendPromise]);
   // Scope editing is no longer locked to draft (202609230001_scope_editable_after_launch):
   // an org can still fix a scope mistake, add a target, or retire one after review/launch.
   // Reaching this page as a manager already proves the identical authorization predicate
@@ -476,6 +485,25 @@ async function renderProgramControlCenterPage({
           canWorkReports={canManageProgram || isProgramTriager}
           siblingPrograms={canManageProgram ? organizationPrograms.filter((p) => p.id !== programId).map((p) => ({ id: p.id, name: p.name, status: p.status })) : undefined}
         />
+
+        {isStaffView && (
+          <ProgramCommandStrip
+            organizationId={organizationId}
+            program={program}
+            facts={{
+              breakdown: severityStatusBreakdown,
+              resolution: resolutionPerformance,
+              sla: programSla,
+              spend: programSpend,
+              activeResearchers: researchers.filter((r) => r.status === "active").length,
+              scopeCount: scopeEntries.length,
+              accessRequests: accessRequests.length,
+              pendingInvitations: pendingInvitations.length,
+              hasPolicy: Boolean(policy),
+              policyVersion: policy?.versionNumber ?? null,
+            }}
+          />
+        )}
 
         {canManageProgram ? (
           <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
@@ -707,7 +735,7 @@ async function renderProgramControlCenterPage({
             {severityStatusBreakdown.length === 0 ? (
               <EmptyState title="No analytics yet">Analytics fill in once this program has received at least one report.</EmptyState>
             ) : (
-              <ProgramHealthSection severityStatusBreakdown={severityStatusBreakdown} weeklyVolume={weeklyVolume} resolutionPerformance={resolutionPerformance} />
+              <ProgramHealthSection severityStatusBreakdown={severityStatusBreakdown} weeklyVolume={weeklyVolume} resolutionPerformance={resolutionPerformance} summarizedAbove={isStaffView} />
             )}
           </div>
         )}
