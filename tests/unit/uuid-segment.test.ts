@@ -7,6 +7,7 @@ describe("hasMalformedIdSegment", () => {
   it("flags a non-uuid in any id position", () => {
     expect(hasMalformedIdSegment("/organizations/not-a-uuid")).toBe(true);
     expect(hasMalformedIdSegment(`/organizations/${ID}/programs/nope`)).toBe(true);
+    expect(hasMalformedIdSegment(`/organizations/${ID}/programs/new/reports`)).toBe(true);
     expect(hasMalformedIdSegment(`/organizations/${ID}/programs/${ID}/reports/nope`)).toBe(true);
     expect(hasMalformedIdSegment(`/organizations/${ID}/members/nope`)).toBe(true);
     expect(hasMalformedIdSegment(`/organizations/${ID}/researchers/nope/extra`)).toBe(true);
@@ -19,6 +20,7 @@ describe("hasMalformedIdSegment", () => {
       `/organizations/${ID}`,
       `/organizations/${ID}/findings`,
       `/organizations/${ID}/programs`,
+      `/organizations/${ID}/programs/new`,
       `/organizations/${ID}/programs/${ID}/inbox`,
       `/organizations/${ID}/programs/${ID}/reports`,
       `/organizations/${ID}/programs/${ID}/reports/new`,

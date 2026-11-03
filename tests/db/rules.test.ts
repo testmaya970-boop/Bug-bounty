@@ -152,3 +152,20 @@ describe("trust signals (202610220001)", () => {
     });
   });
 });
+
+describe("draft deletion (202611020001)", () => {
+  it("deletes a draft with a published policy, but a policy version itself stays undeletable", async () => {
+    await inTx(async (db) => {
+      const owner = await userId(db, "e2e.admin@unpatched.demo");
+      await db.as({ user: owner });
+      const program = await db.one<{ id: string }>("select id from public.create_program($1, 'Draft delete dbtest')", [fixture.organizationId]);
+      await db.query("select public.publish_program_policy($1, 'Be nice.', true, 'coordinated', 90, 24, 72, 30, null)", [program.id]);
+      await db.query("reset role");
+      expect(await db.fails("delete from public.program_policy_versions where program_id = $1", [program.id])).toMatch(/IMMUTABLE_POLICY/);
+      await db.as({ user: owner });
+      await db.query("select public.delete_draft_program($1)", [program.id]);
+      await db.query("reset role");
+      expect((await db.one<{ n: number }>("select count(*)::int as n from public.program_policy_versions where program_id = $1", [program.id])).n).toBe(0);
+    });
+  });
+});
