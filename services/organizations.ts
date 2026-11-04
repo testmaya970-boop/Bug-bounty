@@ -7,23 +7,23 @@ import type { OrganizationStatus, PendingInvitationForUser } from "@/types/organ
 import type { OrganizationSettings, OrganizationSettingsRecord } from "@/lib/organization-settings";
 import { toSettingsPayload } from "@/lib/organization-settings";
 
-export type OrganizationSummary = { id: string; slug: string; name: string; role: OrganizationRole; status: OrganizationStatus };
+export type OrganizationSummary = { id: string; slug: string; name: string; role: OrganizationRole; status: OrganizationStatus; createdAt?: string };
 
-type OrganizationRow = { role: OrganizationRole; id: string; slug: string; name: string; status: OrganizationStatus };
+type OrganizationRow = { role: OrganizationRole; id: string; slug: string; name: string; status: OrganizationStatus; created_at: string | Date };
 
 /** Organizations the signed-in user actively belongs to. Never a query parameterized by a client-supplied user id -- the userId param here is only ever the already-verified caller's own id (see callers), RLS still independently scopes this to rows `organization_members.user_id = auth.uid()` regardless. */
 export async function listCurrentUserOrganizations(userId: string): Promise<OrganizationSummary[]> {
   try {
     const rows = await withActorTransaction(userId, (client) =>
       client.query<OrganizationRow>(
-        `select m.role, o.id, o.slug, o.name, o.status
+        `select m.role, o.id, o.slug, o.name, o.status, o.created_at
          from public.organization_members m
          join public.organizations o on o.id = m.organization_id
          where m.user_id = $1 and m.status = 'active'`,
         [userId],
       ).then((r) => r.rows),
     );
-    return rows.map((row) => ({ id: row.id, slug: row.slug, name: row.name, role: row.role, status: row.status }));
+    return rows.map((row) => ({ id: row.id, slug: row.slug, name: row.name, role: row.role, status: row.status, createdAt: new Date(row.created_at).toISOString() }));
   } catch {
     throw new Error("Organizations could not be loaded.");
   }
