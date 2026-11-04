@@ -55,6 +55,7 @@ export default async function OrganizationEngagementsPage({
             researchers={studio.researchers}
             connectedModuleIds={studio.connectedModuleIds}
             members={studio.members}
+            defaults={studio.defaults}
             canCreate={canCreate}
             initialMode={programs.length > 0 ? "directory" : "studio"}
           />

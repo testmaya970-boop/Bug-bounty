@@ -53,7 +53,7 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
     { href: `${base}/integrations/chat`, title: "Slack and Teams", category: "Chat", icon: MessageSquare, body: "Alerts for new reports, critical findings, status changes and SLA breaches.", status: chats.length ? `${chats.length} channel${chats.length === 1 ? "" : "s"}` : "Not set up", on: chats.some((c) => c.status === "active") },
     { href: `${base}/integrations/code`, title: "GitHub and GitLab", category: "Source control", icon: GitBranch, body: "Issues for accepted reports, in private repositories only.", status: providers.length ? providers.join(" and ") : "Not connected", on: providers.length > 0 },
     { href: `${base}/integrations/servicenow`, title: "ServiceNow", category: "ITSM", icon: Wrench, body: "Remediation tickets in your own instance.", status: sn ? sn.instanceUrl.replace(/^https?:\/\//, "") : "Not connected", on: Boolean(sn) },
-    { href: `${base}/settings#integrations`, title: "Jira Cloud", category: "Issue tracking", icon: Ticket, body: "Two-way issue sync.", status: jira ? jira.projectKey : "Not connected", on: Boolean(jira) },
+    { href: `${base}/integrations/jira`, title: "Jira Cloud", category: "Issue tracking", icon: Ticket, body: "Two-way issue sync.", status: jira ? jira.projectKey : "Not connected", on: Boolean(jira) },
     { href: `${base}/integrations/sso`, title: "Single sign-on", category: "Identity", icon: KeyRound, body: "SAML sign-in and SCIM provisioning with your identity provider.", status: sso ? (sso.status === "active" ? (sso.enforced ? "Required" : "On") : "Set up, off") : "Not set up", on: sso?.status === "active" },
   ];
 

@@ -57,6 +57,7 @@ import {
   calculateRewardForecast,
   calculateScopeTelemetry,
   createInitialStudioState,
+  type StudioDefaults,
   type AssetCategory,
   type AutomationCategory,
   type LaunchStudioState,
@@ -85,6 +86,8 @@ export interface LaunchProgramStudioProps {
   connectedModuleIds: string[];
   /** Active organization members, for the product owner picker. */
   members: { id: string; name: string }[];
+  /** Organization-wide defaults a new engagement starts from. */
+  defaults: StudioDefaults & { rewardCurrency: "USD" | "INR" };
   canCreate: boolean;
   initialMode?: "studio" | "directory";
   onCloseModal?: () => void;
@@ -125,6 +128,7 @@ export function LaunchProgramStudio({
   researchers,
   connectedModuleIds,
   members,
+  defaults,
   canCreate,
   initialMode = "studio",
   onCloseModal,
@@ -132,7 +136,7 @@ export function LaunchProgramStudio({
   const searchParams = useSearchParams();
 
   const [viewMode, setViewMode] = useState<"studio" | "directory">(initialMode);
-  const [state, setState] = useState<LaunchStudioState>(createInitialStudioState);
+  const [state, setState] = useState<LaunchStudioState>(() => createInitialStudioState(defaults));
 
   const [lastSavedLabel, setLastSavedLabel] = useState<string>("Autosaved just now");
   const [isSavingDraft, setIsSavingDraft] = useState<boolean>(false);
@@ -287,7 +291,7 @@ export function LaunchProgramStudio({
       // Ignore storage issues
     }
     setCustomAssets([]);
-    setState(createInitialStudioState());
+    setState(createInitialStudioState(defaults));
     setConfirmReset(false);
   }
 
@@ -456,7 +460,7 @@ export function LaunchProgramStudio({
         engagementType: welcomeOption.engagementType,
         visibility: state.visibility === "Public" || isVdp ? "public" : "private",
         scope: selected.map((a) => ({ assetType: a.targetType, target: a.identifier })),
-        rewards: isVdp ? null : { currency: "USD", ...state.rewardMatrix },
+        rewards: isVdp ? null : { currency: defaults.rewardCurrency, ...state.rewardMatrix },
         policy: {
           rulesOfEngagement: rules,
           safeHarbor: state.policy.safeHarborType !== "Standard Authorization",
@@ -1305,7 +1309,7 @@ export function LaunchProgramStudio({
                             placeholder="One line on what researchers will test"
                             className="mt-1.5 h-10 w-full rounded-[10px] border border-[#D0D5DD] bg-white px-3.5 text-[13px] text-[#111827] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
                           />
-                          <p className="mt-1 text-[12px] text-[#667085]">{state.blueprintId ? "Filled in from the template you picked. Change it to describe your own program." : "Shown on the program card and at the top of the program page."}</p>
+                          <p className="mt-1 text-[12px] text-[#667085]">{state.shortDescription && state.shortDescription === selectedBlueprint?.recommendedDescription ? "Filled in from the template you picked. Change it to describe your own program." : "Shown on the program card and at the top of the program page."}</p>
                         </div>
 
                         <div>

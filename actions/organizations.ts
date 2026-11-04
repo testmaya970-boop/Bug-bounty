@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { OrganizationServiceError } from "@/services/rpc-error";
-import { createOrganization, updateOrganizationDescription } from "@/services/organizations";
+import { createOrganization, updateOrganizationDescription, updateOrganizationSettings } from "@/services/organizations";
+import { organizationSettingsSchema, type OrganizationSettings } from "@/lib/organization-settings";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { withRequestLogging } from "@/lib/request-context";
 
@@ -43,7 +44,23 @@ export async function updateOrganizationDescriptionAction(input: { organizationI
     await withRequestLogging("organization.update_description", { actorId: user?.id }, () =>
       updateOrganizationDescription(parsed.data.organizationId, parsed.data.description),
     );
-    revalidatePath(`/organizations/${parsed.data.organizationId}/settings`);
+    revalidatePath(`/organizations/${parsed.data.organizationId}/branding`);
+    return { ok: true as const, data: null };
+  } catch (error) {
+    if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };
+    throw error;
+  }
+}
+
+export async function updateOrganizationSettingsAction(input: { organizationId: string; settings: OrganizationSettings }) {
+  const organizationId = z.string().uuid().safeParse(input.organizationId);
+  const parsed = organizationSettingsSchema.safeParse(input.settings);
+  if (!organizationId.success || !parsed.success) return { ok: false as const, code: "INVALID_INPUT", message: parsed.success ? "Unknown organization." : parsed.error.issues[0]?.message ?? "Check the settings and try again." };
+
+  const user = await getCurrentUser();
+  try {
+    await withRequestLogging("organization.update_settings", { actorId: user?.id }, () => updateOrganizationSettings(organizationId.data, parsed.data));
+    revalidatePath(`/organizations/${organizationId.data}/settings`);
     return { ok: true as const, data: null };
   } catch (error) {
     if (error instanceof OrganizationServiceError) return { ok: false as const, code: error.code, message: error.message };

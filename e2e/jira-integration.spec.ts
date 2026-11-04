@@ -74,9 +74,9 @@ const shot = async (page: Page, name: string, target?: ReturnType<Page["locator"
 test("owner connects Jira, sees it persisted and masked, edits it, receives a signed status change, and disconnects", async ({ page, request }) => {
   const { integrationsOrganizationId: orgId, integrationsProgramId: programId, integrationsReportId: reportId } = fixture();
   await signIn(page, ADMIN);
-  await page.goto(`/organizations/${orgId}/settings`);
+  await page.goto(`/organizations/${orgId}/integrations/jira`);
 
-  const section = page.locator("#integrations");
+  const section = page.locator("#jira");
   await expect(section.getByRole("heading", { name: "Jira Cloud" })).toBeVisible();
   await expect(section.getByRole("button", { name: "Connect Jira" })).toBeVisible();
   await shot(page, "jira-settings-empty", section);
@@ -115,12 +115,12 @@ test("owner connects Jira, sees it persisted and masked, edits it, receives a si
   const html = await page.content();
   expect(html).not.toContain(TOKEN);
   expect(html).not.toContain(secret);
-  await shot(page, "jira-settings-connected", page.locator("#integrations"));
+  await shot(page, "jira-settings-connected", page.locator("#jira"));
 
   // Edit in place: blank token keeps the stored one; site is immutable.
   await page.getByRole("button", { name: "Edit connection" }).click();
-  await expect(page.locator("#integrations").getByLabel("Jira site URL")).toBeDisabled();
-  await page.locator("#integrations").getByLabel("Project key").fill("APPSEC");
+  await expect(page.locator("#jira").getByLabel("Jira site URL")).toBeDisabled();
+  await page.locator("#jira").getByLabel("Project key").fill("APPSEC");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByTestId("jira-connection-status").getByText("APPSEC", { exact: true })).toBeVisible();
   await expect(page.getByTestId("jira-connection-status").getByText("•••• WXYZ")).toBeVisible();
@@ -170,12 +170,12 @@ test("owner connects Jira, sees it persisted and masked, edits it, receives a si
   expect(audit.rows[0]?.email).toBe(ADMIN);
 
   // Disconnect through the real confirm dialog.
-  await page.goto(`/organizations/${orgId}/settings`);
+  await page.goto(`/organizations/${orgId}/integrations/jira`);
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Disconnect Jira?" });
   await expect(dialog.getByText("links from 1 report to their issues are removed")).toBeVisible();
   await dialog.getByRole("button", { name: "Disconnect Jira" }).click();
-  await expect(page.locator("#integrations").getByRole("button", { name: "Connect Jira" })).toBeVisible();
+  await expect(page.locator("#jira").getByRole("button", { name: "Connect Jira" })).toBeVisible();
 
   const remaining = await asServiceRole((db) =>
     db.query<{ connections: string; links: string }>(
@@ -188,12 +188,10 @@ test("owner connects Jira, sees it persisted and masked, edits it, receives a si
   expect((await request.post(url, { data: body, headers: { "content-type": "application/json", "x-hub-signature": signature } })).status()).toBe(401);
 });
 
-test("a triager sees no Jira controls in organization settings", async ({ page }) => {
+test("a triager sees no Jira controls", async ({ page }) => {
   const { organizationId } = JSON.parse(readFileSync(path.join(process.cwd(), "e2e", ".seed-fixture.json"), "utf-8")) as { organizationId: string };
   await signIn(page, "e2e.triager@unpatched.demo");
-  await page.goto(`/organizations/${organizationId}/settings`);
-  const section = page.locator("#integrations");
-  await expect(section.getByText("Only an owner or security admin can connect or manage integrations.")).toBeVisible();
-  await expect(section.getByRole("button")).toHaveCount(0);
-  await expect(section.getByLabel("API token")).toHaveCount(0);
+  await page.goto(`/organizations/${organizationId}/integrations/jira`);
+  await expect(page.getByText("Only an owner or security admin can manage Jira.")).toBeVisible();
+  await expect(page.getByLabel("API token")).toHaveCount(0);
 });

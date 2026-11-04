@@ -843,25 +843,37 @@ export interface LaunchStudioState {
   enabledModuleIds: string[];
 }
 
-export function createInitialStudioState(): LaunchStudioState {
-  const defaultBlueprint = PROGRAM_BLUEPRINTS[0]; // SaaS Platform
+/** The organization defaults a new engagement starts from (organization settings). */
+export type StudioDefaults = { visibility: "public" | "private"; firstResponseHours: number; triageHours: number; resolutionDays: number; disclosureDays: number; safeHarbor: boolean };
+
+/** A blank engagement: no template text, the organization's defaults for policy and visibility. */
+export function createInitialStudioState(defaults?: StudioDefaults): LaunchStudioState {
+  const defaultBlueprint = PROGRAM_BLUEPRINTS[0]; // reward and policy shape only; no template text
+  const policy = structuredClone(defaultBlueprint.policy);
+  if (defaults) {
+    policy.responseSlaHours = defaults.firstResponseHours;
+    policy.triageSlaHours = defaults.triageHours;
+    policy.resolutionSlaDays = defaults.resolutionDays;
+    policy.disclosureTimelineDays = defaults.disclosureDays;
+    policy.safeHarborType = defaults.safeHarbor ? "Full Legal Safe Harbor" : "Standard Authorization";
+  }
   return {
     currentStep: "welcome",
     welcomeChoice: "continuous_bug_bounty",
     blueprintId: defaultBlueprint.id,
-    programName: defaultBlueprint.recommendedProgramName,
-    shortDescription: defaultBlueprint.recommendedDescription,
-    businessUnit: defaultBlueprint.businessUnit,
+    programName: "",
+    shortDescription: "",
+    businessUnit: "",
     productOwner: "",
     securityContact: "",
-    visibility: "Public",
+    visibility: defaults?.visibility === "private" ? "Private" : "Public",
     lifecycle: "Active",
     launchDate: new Date().toISOString().slice(0, 10),
     endDate: "",
     selectedAssetIds: [...defaultBlueprint.defaultAssetIds],
     rewardMatrix: structuredClone(defaultBlueprint.rewardMatrix),
     monthlyBudgetReserve: defaultBlueprint.monthlyBudgetEstimate,
-    policy: structuredClone(defaultBlueprint.policy),
+    policy,
     invitedResearcherIds: [],
     invitedEmails: [],
     inviteLinkEnabled: false,

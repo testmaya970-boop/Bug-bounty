@@ -186,3 +186,24 @@ describe("program ownership details (202611040001)", () => {
     });
   });
 });
+
+describe("organization settings (202611040002)", () => {
+  it("members read defaults; admins save and are validated; others can't write", async () => {
+    await inTx(async (db) => {
+      const owner = await userId(db, "e2e.admin@unpatched.demo");
+      const triager = await userId(db, "e2e.triager@unpatched.demo");
+      await db.as({ user: triager });
+      const first = await db.one<{ time_zone: string; default_first_response_hours: number }>("select time_zone, default_first_response_hours from public.get_organization_settings($1)", [fixture.organizationId]);
+      expect(first.default_first_response_hours).toBeGreaterThan(0);
+      expect(await db.fails("select public.update_organization_settings($1, '{\"time_zone\":\"Asia/Kolkata\"}')", [fixture.organizationId])).toMatch(/FORBIDDEN/);
+
+      await db.as({ user: owner });
+      const saved = await db.one<{ time_zone: string; support_email: string; working_days: number[]; default_visibility: string }>(
+        "select time_zone, support_email, working_days, default_visibility from public.update_organization_settings($1, $2::jsonb)",
+        [fixture.organizationId, JSON.stringify({ time_zone: "Asia/Kolkata", support_email: " Sec@Example.com ", working_days: [5, 1, 2], default_visibility: "public" })]);
+      expect(saved).toEqual({ time_zone: "Asia/Kolkata", support_email: "sec@example.com", working_days: [1, 2, 5], default_visibility: "public" });
+      expect(await db.fails("select public.update_organization_settings($1, '{\"business_hours_start\":\"18:00\",\"business_hours_end\":\"09:00\"}')", [fixture.organizationId])).toMatch(/INVALID_SETTINGS/);
+      expect(await db.fails("select public.update_organization_settings($1, '{\"currency\":\"EUR\"}')", [fixture.organizationId])).toMatch(/currency/);
+    });
+  });
+});

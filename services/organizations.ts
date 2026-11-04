@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { mapRpcError as mapError } from "@/services/rpc-error";
 import type { OrganizationRole } from "@/types/auth";
 import type { OrganizationStatus, PendingInvitationForUser } from "@/types/organization";
+import type { OrganizationSettings, OrganizationSettingsRecord } from "@/lib/organization-settings";
+import { toSettingsPayload } from "@/lib/organization-settings";
 
 export type OrganizationSummary = { id: string; slug: string; name: string; role: OrganizationRole; status: OrganizationStatus };
 
@@ -130,6 +132,52 @@ export async function updateOrganizationDescription(organizationId: string, desc
   const actor = await getCurrentUser();
   try {
     await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.update_organization_description", [organizationId, description]));
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+}
+
+type SettingsRow = {
+  default_language: OrganizationSettings["defaultLanguage"]; time_zone: string; date_format: OrganizationSettings["dateFormat"]; currency: "USD" | "INR";
+  business_hours_start: string; business_hours_end: string; support_email: string | null; country: string | null; working_days: number[];
+  default_visibility: "public" | "private"; default_first_response_hours: number; default_triage_hours: number; default_resolution_days: number;
+  default_reward_currency: "USD" | "INR"; default_safe_harbor: boolean; default_disclosure_days: number; default_hall_of_fame: boolean;
+  updated_by: string | null; updated_at: string | Date;
+};
+
+function mapSettings(r: SettingsRow, updatedByName: string | null): OrganizationSettingsRecord {
+  return {
+    defaultLanguage: r.default_language, timeZone: r.time_zone, dateFormat: r.date_format, currency: r.currency,
+    businessHoursStart: r.business_hours_start.slice(0, 5), businessHoursEnd: r.business_hours_end.slice(0, 5),
+    supportEmail: r.support_email ?? "", country: r.country ?? "", workingDays: r.working_days.map(Number),
+    defaultVisibility: r.default_visibility, defaultFirstResponseHours: r.default_first_response_hours, defaultTriageHours: r.default_triage_hours,
+    defaultResolutionDays: r.default_resolution_days, defaultRewardCurrency: r.default_reward_currency, defaultSafeHarbor: r.default_safe_harbor,
+    defaultDisclosureDays: r.default_disclosure_days, defaultHallOfFame: r.default_hall_of_fame,
+    updatedAt: r.updated_by ? new Date(r.updated_at).toISOString() : null, updatedByName,
+  };
+}
+
+/** Any active member; the row is created with platform defaults on first read. */
+export async function getOrganizationSettings(organizationId: string): Promise<OrganizationSettingsRecord> {
+  const actor = await getCurrentUser();
+  let result;
+  try {
+    result = await withActorTransaction(actor?.id ?? null, async (client) => {
+      const [row] = await callRpc<SettingsRow>(client, "public.get_organization_settings", [organizationId]);
+      const name = row.updated_by ? (await client.query<{ display_name: string }>("select display_name from public.users where id = $1", [row.updated_by])).rows[0]?.display_name ?? null : null;
+      return mapSettings(row, name);
+    });
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return result;
+}
+
+/** Owner/security_admin only, enforced inside update_organization_settings. */
+export async function updateOrganizationSettings(organizationId: string, settings: OrganizationSettings): Promise<void> {
+  const actor = await getCurrentUser();
+  try {
+    await withActorTransaction(actor?.id ?? null, (client) => callRpc(client, "public.update_organization_settings", [organizationId, JSON.stringify(toSettingsPayload(settings))]));
   } catch (error) {
     mapError(error as { message: string });
   }
