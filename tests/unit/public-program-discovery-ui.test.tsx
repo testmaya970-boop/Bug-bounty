@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { PublicProgramList } from "../../components/programs/public-program-list";
-import { PublicProgramGrid } from "../../components/programs/public-program-grid";
+import { ProgramDiscoveryGrid as PublicProgramGrid } from "../../components/programs/program-discovery-grid";
 import { PublicProgramTable } from "../../components/programs/public-program-table";
 import { TopBountyProgramsList } from "../../components/programs/top-bounty-programs-list";
 import { JoinPublicProgramButton } from "../../components/programs/join-public-program-button";

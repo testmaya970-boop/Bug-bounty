@@ -5,7 +5,7 @@ import { SquaresFour, Rows } from "@phosphor-icons/react";
 import { ErrorState, Skeleton } from "../ui/feedback";
 import { Button, IconButton } from "../ui/button";
 import { listPublicProgramsPageAction } from "../../actions/programs";
-import { PublicProgramGrid } from "./public-program-grid";
+import { ProgramDiscoveryGrid, type DiscoveryHints } from "./program-discovery-grid";
 import { PublicProgramTable } from "./public-program-table";
 import type { PublicProgramSummary } from "../../types/program";
 import type { PublicProgramFilters } from "../../lib/program-filters";
@@ -26,10 +26,13 @@ export function PublicProgramList({
   initialPrograms,
   initialNextCursor,
   filters = {},
+  hints,
 }: {
   initialPrograms: PublicProgramSummary[];
   initialNextCursor: string | null;
   filters?: PublicProgramFilters;
+  /** Real facts for card badges: recommended, top reward, already joined. */
+  hints?: DiscoveryHints;
 }) {
   const [programs, setPrograms] = useState(initialPrograms);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
@@ -76,7 +79,7 @@ export function PublicProgramList({
         </div>
       </div>
 
-      {view === "grid" ? <PublicProgramGrid programs={programs} /> : <PublicProgramTable programs={programs} />}
+      {view === "grid" ? <ProgramDiscoveryGrid programs={programs} hints={hints} /> : <PublicProgramTable programs={programs} />}
 
       {pending && (
         <div className="mt-3 space-y-2" role="status" aria-label="Loading more programs">

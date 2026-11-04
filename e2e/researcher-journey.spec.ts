@@ -116,8 +116,16 @@ test("collaboration needs consent: the invitee accepts in settings and only then
 test("Hall of Fame: the organization offers credit, the researcher agrees, the public page shows only a name", async ({ page, browser }) => {
   const veteran = await userByEmail("e2e.veteran@unpatched.demo");
   const report = await as(null, async (db) => (await db.query<{ id: string }>("select id from public.reports where researcher_id = $1 and status = 'resolved' and program_id = $2 limit 1", [veteran.id, fixture.publicProgramId])).rows[0]);
-  // Start clean: a previous run may have left this report's acknowledgement in place.
-  await as(null, (db) => db.query("delete from public.program_acknowledgements where report_id = $1", [report.id]).catch(() => null));
+  // Start clean: a previous run may have left this report's acknowledgement in place. Owner
+  // connection: service_role can't delete acknowledgements, and a swallowed failure here left
+  // every rerun stuck on "Waiting for the researcher to agree."
+  const owner = new pg.Client({ connectionString: process.env.MIGRATION_DATABASE_URL ?? env("DATABASE_URL") });
+  await owner.connect();
+  try {
+    await owner.query("delete from public.program_acknowledgements where report_id = $1", [report.id]);
+  } finally {
+    await owner.end();
+  }
 
   const staff = await newSignedInPage(browser, "e2e.admin@unpatched.demo");
   await staff.goto(`/organizations/${fixture.organizationId}/programs/${fixture.publicProgramId}/reports/${report.id}`);

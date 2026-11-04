@@ -36,7 +36,7 @@ function sortValue(program: PublicProgramSummary, key: SortKey): number | string
 }
 
 /** The sortable table view -- client-side sort over the already-fetched page (the same
- * data PublicProgramGrid renders, just laid out for comparing many programs at once).
+ * data ProgramDiscoveryGrid renders, just laid out for comparing many programs at once).
  * Client-side, not a re-query per column click: sorting an already-loaded page needs no
  * round trip, and "Load more" simply appends to the same array these sort keys already
  * read from. */

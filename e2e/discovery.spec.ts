@@ -24,7 +24,7 @@ test("signed out, the program registry filters by program type on the server", a
   // Every listed program is disclosure-only (or nothing matches) -- never the bounty program.
   await expect(page.getByRole("link", { name: "E2E Public Program" })).toHaveCount(0);
   if ((await page.getByText("No matching public programs").count()) === 0) {
-    await expect(page.locator("main span", { hasText: "Disclosure only" }).first()).toBeVisible();
+    await expect(page.locator("main article").getByText("Disclosure only").first()).toBeVisible();
   }
 });
 

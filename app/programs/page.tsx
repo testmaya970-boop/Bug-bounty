@@ -8,12 +8,16 @@ import { PendingProgramInvitationCard } from "../../components/programs/pending-
 import { ProgramParticipationCard } from "../../components/programs/program-participation-card";
 import { PublicProgramList } from "../../components/programs/public-program-list";
 import { PublicProgramSearchForm } from "../../components/programs/public-program-search-form";
-import { RecommendedProgramsList } from "../../components/programs/recommended-programs-list";
 import { TopBountyProgramsList } from "../../components/programs/top-bounty-programs-list";
 import { listMyPendingProgramInvitations, listMyProgramParticipations } from "../../services/program-researchers";
 import { listPublicPrograms, listTopBountyPrograms } from "../../services/programs";
 import { listRecommendedPrograms } from "../../services/researcher-profiles";
 import { getCurrentUser } from "../../lib/auth/current-user";
+import { ProgramFilterChips, ProgramsHero, ProgressRail, RecommendedStrip, rewardLabel, type ResearcherProgress } from "../../components/programs/program-discovery";
+import { getMyHomeDashboardSummary } from "../../services/home-dashboard";
+import { listMyAwardsAwaitingPayment, listMyPaymentObligations } from "../../services/payments";
+import { formatBountyRange } from "../../lib/money";
+import type { ProgramParticipation } from "../../types/researcher";
 import { hasActiveProgramFilter, parsePublicProgramFilters } from "../../lib/program-filters";
 
 type ProgramsTab = "all" | "mine" | "invitations";
@@ -29,45 +33,28 @@ function parseTabParam(value: string | undefined): ProgramsTab {
  * fetched-then-filtered here. A plain GET form: the URL is the only state, so
  * search -> reload -> identical results, and the filters survive a bookmark/share.
  */
-async function AllProgramsTab({ searchParams }: { searchParams: ProgramsSearchParams }) {
+async function AllProgramsTab({ searchParams, researcher }: { searchParams: ProgramsSearchParams; researcher?: { participations: ProgramParticipation[]; invitations: number } }) {
   const filters = parsePublicProgramFilters(searchParams);
-  const [{ items: programs, nextCursor }, topBounty, recommended] = await Promise.all([
+  const [{ items: programs, nextCursor }, topBounty, recommended, progress] = await Promise.all([
     listPublicPrograms(filters),
     listTopBountyPrograms(),
     listRecommendedPrograms(),
+    researcher ? loadResearcherProgress() : Promise.resolve(null),
   ]);
   const isFiltered = hasActiveProgramFilter(filters);
+  const rewardById = new Map(programs.map((p) => [p.id, rewardLabel(p)] as const).filter((e): e is readonly [string, string] => e[1] !== null));
+  for (const t of topBounty) if (!rewardById.has(t.id)) rewardById.set(t.id, formatBountyRange(t.bountyMinMinorUnits, t.bountyMaxMinorUnits, t.bountyCurrency));
+  const hints = {
+    recommendedIds: recommended.map((r) => r.id),
+    topRewardIds: topBounty.slice(0, 3).map((t) => t.id),
+    joinedIds: researcher?.participations.map((p) => p.programId),
+  };
 
-  return (
-    <div className="space-y-8">
-      <PublicProgramSearchForm tab="all" filters={filters} />
-
-      {!isFiltered && topBounty.length > 0 && (
-        <div className="space-y-3">
-          <div>
-            <SectionLabel>Real, configured payouts</SectionLabel>
-            <h2 className="mt-1 text-lg font-semibold text-ink">Highest-paying programs</h2>
-          </div>
-          <TopBountyProgramsList programs={topBounty} />
-        </div>
-      )}
-
-      {!isFiltered && recommended.length > 0 && (
-        <div className="space-y-3">
-          <div>
-            <SectionLabel>Matched to your interests</SectionLabel>
-            <h2 className="mt-1 text-lg font-semibold text-ink">Recommended for you</h2>
-            <p className="mt-0.5 text-sm text-ink-muted">Public programs whose focus areas overlap what you set in Settings. A literal match, not a ranking.</p>
-          </div>
-          <RecommendedProgramsList programs={recommended} />
-        </div>
-      )}
-
-      <div className="space-y-3">
-        <div>
-          <SectionLabel>Registry</SectionLabel>
-          <h2 className="mt-1 text-lg font-semibold text-ink">{isFiltered ? "Results" : "Every public program"}</h2>
-        </div>
+  const registry = (
+    <div className="min-w-0 space-y-5">
+      <ProgramFilterChips filters={filters} />
+      <div>
+        <h2 className="sr-only">{isFiltered ? "Results" : "Every public program"}</h2>
         {programs.length === 0 ? (
           <EmptyState title={isFiltered ? "No matching public programs" : "No public programs right now"}>
             {isFiltered
@@ -75,11 +62,49 @@ async function AllProgramsTab({ searchParams }: { searchParams: ProgramsSearchPa
               : "Organizations occasionally open a program to the whole community. Check back later, or ask an organization to invite you directly."}
           </EmptyState>
         ) : (
-          <PublicProgramList key={JSON.stringify(filters)} initialPrograms={programs} initialNextCursor={nextCursor} filters={filters} />
+          <PublicProgramList key={JSON.stringify(filters)} initialPrograms={programs} initialNextCursor={nextCursor} filters={filters} hints={hints} />
         )}
       </div>
     </div>
   );
+
+  return (
+    <div className="space-y-6">
+      <ProgramsHero filters={filters} liveCount={programs.length} liveIsLowerBound={Boolean(nextCursor)} />
+      {!isFiltered && <RecommendedStrip programs={recommended} rewardById={rewardById} />}
+      {researcher && progress ? (
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
+          {registry}
+          <ProgressRail
+            progress={progress}
+            invitations={researcher.invitations}
+            programs={researcher.participations.filter((p) => p.status === "active").map((p) => ({ id: p.programId, organizationId: p.organizationId, name: p.programName, organizationName: p.organizationName }))}
+          />
+        </div>
+      ) : (
+        registry
+      )}
+    </div>
+  );
+}
+
+/** Reports and awards for the progress rail: the researcher's own, read under RLS. */
+async function loadResearcherProgress(): Promise<ResearcherProgress | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const [summary, obligations, awaiting] = await Promise.all([
+    getMyHomeDashboardSummary().catch(() => null),
+    listMyPaymentObligations(user.id).catch(() => []),
+    listMyAwardsAwaitingPayment(user.id).catch(() => []),
+  ]);
+  const counts = new Map((summary?.reportStatusCounts ?? []).map((c) => [c.status, c.count] as const));
+  const total = [...counts.values()].reduce((a, b) => a + b, 0);
+  const accepted = (counts.get("accepted") ?? 0) + (counts.get("resolved") ?? 0);
+  const evaluated = accepted + (counts.get("duplicate") ?? 0) + (counts.get("informative") ?? 0) + (counts.get("not_applicable") ?? 0) + (counts.get("rejected") ?? 0);
+  const byCurrency = new Map<string, number>();
+  for (const o of obligations) if (o.status !== "failed" && o.status !== "cancelled") byCurrency.set(o.currency, (byCurrency.get(o.currency) ?? 0) + o.amountMinorUnits);
+  for (const a of awaiting) byCurrency.set(a.currency, (byCurrency.get(a.currency) ?? 0) + a.amountMinorUnits);
+  return { reports: total, accepted, evaluated, awarded: [...byCurrency].map(([currency, minor]) => ({ currency, minor })) };
 }
 
 /** Only programs this researcher has a real, current row for in program_researchers --
@@ -261,7 +286,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
         <Tabs items={tabs} active={tab} />
 
         <div>
-          {tab === "all" && <AllProgramsTab searchParams={resolvedSearchParams} />}
+          {tab === "all" && <AllProgramsTab searchParams={resolvedSearchParams} researcher={{ participations, invitations: invitations.length }} />}
           {tab === "mine" && <MyProgramsTab participationsRaw={participations} />}
           {tab === "invitations" && <PendingInvitationsTab invitations={invitations} />}
         </div>
