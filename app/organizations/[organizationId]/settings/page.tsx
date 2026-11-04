@@ -8,19 +8,13 @@ import { PermissionDenied } from "../../../../components/ui/feedback";
 import { MetadataPair, SectionLabel } from "../../../../components/ui/security-primitives";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
 import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
-import { OrganizationDescriptionForm } from "../../../../components/organizations/organization-description-form";
-import { OrganizationLogoForm } from "../../../../components/organizations/organization-logo-form";
-import { OrgLogo } from "../../../../components/ui/org-logo";
-import { getOrganizationLogoVersions } from "../../../../services/organization-logos";
 import { JiraConnectionSettings } from "../../../../components/organizations/jira-connection-settings";
 import { canManageIntegrations, canManageMembers } from "../../../../services/authorization";
 import { getJiraConnection, jiraWebhookUrl } from "../../../../services/jira";
 import { getActorMembership, listOrganizationMembers, listPendingInvitations } from "../../../../services/organization-members";
-import { getOrganizationDescription, listCurrentUserOrganizations } from "../../../../services/organizations";
+import { listCurrentUserOrganizations } from "../../../../services/organizations";
 import { listProgramsForOrganization } from "../../../../services/programs";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
-import { listOrganizationDomains } from "../../../../services/organization-domains";
-import { VerifiedDomainsSettings } from "../../../../components/organizations/verified-domains-settings";
 
 /**
  * The final page in the organization workspace hierarchy (Overview / Programs / Members
@@ -55,17 +49,14 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
   // member would silently come back empty, which would misrepresent "0" as a real count
   // rather than "you aren't authorized to see this." So that fetch only happens at all
   // when `canManage` is true.
-  const [organizations, members, programs, invitations, description, jiraConnection, logoVersions, domains] = await Promise.all([
+  const [organizations, members, programs, invitations, jiraConnection] = await Promise.all([
     listCurrentUserOrganizations(user.id),
     listOrganizationMembers(organizationId),
     listProgramsForOrganization(organizationId),
     canManage ? listPendingInvitations(organizationId) : Promise.resolve(null),
-    getOrganizationDescription(organizationId),
     // Owner/security_admin only (get_jira_connection_for_org raises FORBIDDEN otherwise),
     // so only fetched for them -- same reasoning as invitations above.
     canIntegrate ? getJiraConnection(organizationId) : Promise.resolve(null),
-    getOrganizationLogoVersions([organizationId]),
-    listOrganizationDomains(organizationId),
   ]);
   const organization = organizations.find((org) => org.id === organizationId);
 
@@ -76,7 +67,7 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
     // AppShell's title is the page-level landmark, not a second copy of the organization
     // name -- OrganizationHeader's own h2, right below, already shows it once.
     <AppShell titleIsSection title="Settings" user={user} organizationId={organizationId}>
-      <div className="max-w-2xl space-y-8">
+      <div className="max-w-3xl space-y-8">
         <Breadcrumbs items={[{ label: "Organizations", href: "/organizations" }, { label: organization?.name ?? "Organization", href: `/organizations/${organizationId}` }, { label: "Settings" }]} />
 
         <OrganizationHeader title="Settings" organizationName={organization?.name ?? "Organization"} organizationId={organizationId} logoVersion={await getOrganizationLogoVersion(organizationId)} />
@@ -96,28 +87,17 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
         </div>
 
         <div className="border-t border-border pt-6">
-          <SectionLabel>Logo</SectionLabel>
-          <p className="mt-1 text-sm text-ink-muted">Shown on this organization's programs, in search and on its pages.</p>
-          <div className="mt-3">
-            {canManage ? (
-              <OrganizationLogoForm organizationId={organizationId} name={organization?.name ?? "Organization"} version={logoVersions[organizationId]} />
-            ) : (
-              <OrgLogo organizationId={organizationId} name={organization?.name ?? "Organization"} version={logoVersions[organizationId]} size="lg" />
-            )}
-          </div>
-        </div>
-
-        <div className="border-t border-border pt-6">
-          <SectionLabel>Description</SectionLabel>
-          {canManage ? (
-            <div className="mt-3">
-              <OrganizationDescriptionForm organizationId={organizationId} initialDescription={description ?? ""} />
-            </div>
-          ) : description ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{description}</p>
-          ) : (
-            <p className="mt-2 text-sm text-ink-muted">No description set yet.</p>
-          )}
+          <SectionLabel>Moved</SectionLabel>
+          <ul className="mt-2 space-y-1.5 text-sm">
+            <li>
+              <Link prefetch={false} href={`/organizations/${organizationId}/branding` as Route} className="font-medium text-action hover:text-action-hover">Branding →</Link>
+              <span className="text-ink-muted"> Logo and description.</span>
+            </li>
+            <li>
+              <Link prefetch={false} href={`/organizations/${organizationId}/trust` as Route} className="font-medium text-action hover:text-action-hover">Trust →</Link>
+              <span className="text-ink-muted"> Verified domains and scope ownership.</span>
+            </li>
+          </ul>
         </div>
 
         <div className="border-t border-border pt-6">
@@ -156,14 +136,6 @@ export default async function OrganizationSettingsPage({ params }: { params: Pro
           </Link>
         </div>
         )}
-
-        <div className="border-t border-border pt-6" id="verified-domains">
-          <SectionLabel>Verified domains</SectionLabel>
-          <p className="mt-1 text-sm text-ink-muted">Prove you control a domain before researchers may test it. Hosts under a verified domain become testable; anything else you add to scope stays hidden until it is verified.</p>
-          <div className="mt-3">
-            <VerifiedDomainsSettings organizationId={organizationId} domains={domains} canManage={canManage} />
-          </div>
-        </div>
 
         <div className="border-t border-border pt-6" id="integrations">
           <SectionLabel>Integrations</SectionLabel>

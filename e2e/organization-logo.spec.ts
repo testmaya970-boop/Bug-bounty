@@ -37,7 +37,7 @@ test.describe.serial("organization logo", () => {
   test("owner uploads wide and tall logos; both fit the same box on program cards; a disguised SVG is refused", async ({ page }) => {
     const { organizationId } = fixture();
     await signIn(page, "e2e.admin@unpatched.demo");
-    await page.goto(`/organizations/${organizationId}/settings`);
+    await page.goto(`/organizations/${organizationId}/branding`);
     const fileInput = page.locator('input[type="file"][accept*="image/png"]');
 
     // An SVG renamed to .png with a PNG MIME type: only the server's byte check can catch it.
@@ -62,7 +62,7 @@ test.describe.serial("organization logo", () => {
         const size = await monogram.evaluate((el) => Math.round(el.parentElement!.getBoundingClientRect().width));
         expect(size, `${label} logo box matches the monogram box`).toBe(36);
       }
-      await page.goto(`/organizations/${organizationId}/settings`);
+      await page.goto(`/organizations/${organizationId}/branding`);
     }
 
     // Removing it brings the monogram back.

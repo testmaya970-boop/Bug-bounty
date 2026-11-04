@@ -1,7 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { createProgramAction, setProgramVisibilityAction, submitProgramForReviewAction, updateProgramDescriptionAction } from "./programs";
+import { createProgramAction, setProgramVisibilityAction, submitProgramForReviewAction, updateProgramDescriptionAction, updateProgramOwnershipAction } from "./programs";
+import { BUSINESS_UNIT_VALUES } from "../lib/business-units";
 import { addScopeEntryAction } from "./scope";
 import { createBountyPolicyVersionAction } from "./bounty";
 import { publishProgramPolicyAction } from "./program-policy";
@@ -16,6 +17,9 @@ const launchSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string().trim().min(1).max(160),
   description: z.string().max(20000),
+  businessUnit: z.enum(BUSINESS_UNIT_VALUES).nullable(),
+  productOwnerId: z.string().uuid().nullable(),
+  securityContact: z.string().trim().max(254).email("Enter a valid security contact email.").nullable(),
   programType: z.enum(["bounty", "vdp"]),
   engagementType: z.enum(["bug_bounty", "response", "pentest", "code_audit", "challenge", "campaign", "spot_check"]),
   visibility: z.enum(["public", "private"]),
@@ -50,6 +54,9 @@ export async function launchProgramFromStudioAction(input: z.infer<typeof launch
   const record = (step: string, result: { ok: boolean; message?: string }) => steps.push({ step, ok: result.ok, message: result.ok ? undefined : result.message });
 
   if (p.description.trim()) record("Description", await updateProgramDescriptionAction({ ...ref, programId, description: p.description }));
+  if (p.businessUnit || p.productOwnerId || p.securityContact) {
+    record("Business unit, owner and security contact", await updateProgramOwnershipAction({ ...ref, programId, businessUnit: p.businessUnit, productOwnerId: p.productOwnerId, securityContact: p.securityContact }));
+  }
   record(`Visibility: ${p.visibility}`, await setProgramVisibilityAction({ ...ref, programId, visibility: p.visibility }));
 
   for (const entry of p.scope) {

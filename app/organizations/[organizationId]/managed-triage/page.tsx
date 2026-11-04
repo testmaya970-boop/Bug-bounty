@@ -8,7 +8,7 @@ import { Alert, PermissionDenied } from "../../../../components/ui/feedback";
 import { ToneBadge, TONE } from "../../../../components/ui/badge";
 import { LocalTime } from "../../../../components/ui/local-time";
 import { SectionLabel } from "../../../../components/ui/security-primitives";
-import { StatTile } from "../../../../components/charts/stat-tile";
+import { PageSummary, type SummaryBadge } from "../../../../components/ui/page-summary";
 import { CancelSubscription, EscalationItem, PlanPicker, ResumeSubscription } from "../../../../components/managed-triage/forms";
 import { getCurrentUser } from "../../../../lib/auth/current-user";
 import { getActorMembership } from "../../../../services/organization-members";
@@ -23,6 +23,8 @@ const STATUS = {
   declined: { label: "Declined", tone: TONE.muted },
 } as const;
 const pct = (met: number, of: number) => (of > 0 ? `${Math.round((met / of) * 100)}%` : "--");
+const BADGE_TONE = { requested: "warning", active: "success", past_due: "warning", cancelled: "neutral", declined: "neutral" } as const;
+const STEPS = ["Validate the report", "Reproduce it", "Check for duplicates", "Set severity", "Ask you when it needs your call"];
 
 /** Managed Triage: buy it, watch how it performs, and answer the analysts' questions. */
 export default async function ManagedTriagePage({ params }: { params: Promise<{ organizationId: string }> }) {
@@ -43,19 +45,34 @@ export default async function ManagedTriagePage({ params }: { params: Promise<{ 
     ? await Promise.all([getPerformance(organizationId), listOrganizationEscalations(organizationId), listServiceCharges(organizationId)])
     : [null, [], sub ? await listServiceCharges(organizationId) : []];
   const plan = plans.find((p) => p.code === sub?.planCode);
+  const summaryBadges: SummaryBadge[] = sub && live
+    ? [{ label: `${plan?.name ?? sub.planCode} plan`, tone: "info" }, { label: STATUS[sub.status].label, tone: BADGE_TONE[sub.status] }]
+    : [{ label: "Not subscribed", tone: "neutral" }];
 
   return (
     <AppShell title="Managed Triage" user={user} organizationId={organizationId}>
-      <div className="max-w-5xl space-y-6">
+      <div className="space-y-6">
         <Breadcrumbs items={[{ label: "Organization", href: `/organizations/${organizationId}` }, { label: "Managed Triage" }]} />
 
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold text-ink">Unpatched analysts triage your reports</h2>
-          <p className="max-w-3xl text-sm text-ink-muted">
-            Analysts validate every new report, reproduce it, check for duplicates, set severity, talk to the researcher and move the report through triage on agreed response times.
-            Anything that needs your judgement comes to you as a question. They never decide or pay bounties, change program settings, or use your integrations; every action they take is in your audit log.
-          </p>
-        </section>
+        <PageSummary
+          description="Unpatched analysts validate, reproduce and triage your reports on agreed response times. They never decide or pay bounties, change program settings, or use your integrations; every action they take is in your audit log."
+          badges={summaryBadges}
+          metrics={performance ? [
+            { label: "First response on time", value: pct(performance.firstResponseMet, performance.firstResponseMeasured), detail: `${performance.firstResponseMet} of ${performance.firstResponseMeasured} reports` },
+            { label: "Triaged on time", value: pct(performance.triageMet, performance.triageMeasured), detail: `${performance.triageMet} of ${performance.triageMeasured} reports` },
+            { label: "Reports handled", value: String(performance.reportsHandled), detail: `${performance.assessments} validations recorded` },
+            { label: "Waiting for you", value: String(performance.openEscalations), detail: "Questions from analysts", tone: performance.openEscalations > 0 ? "warning" : "neutral" },
+          ] : []}
+        />
+
+        <ol aria-label="How analysts work a report" className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 lg:grid-cols-5">
+          {STEPS.map((step, i) => (
+            <li key={step} className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] font-medium text-ink">
+              <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#EFF6FF] font-mono text-[11px] font-semibold text-[#1D4ED8]">{i + 1}</span>
+              {step}
+            </li>
+          ))}
+        </ol>
 
         {sub && live ? (
           <section className="space-y-4 rounded-lg border border-border bg-surface p-5">
@@ -93,15 +110,6 @@ export default async function ManagedTriagePage({ params }: { params: Promise<{ 
             {sub?.status === "declined" && sub.decisionNote && <Alert tone="warning" title="Your last request was declined">{sub.decisionNote}</Alert>}
             <PlanPicker organizationId={organizationId} plans={plans} defaultCurrency={sub?.currency ?? "USD"} />
           </section>
-        )}
-
-        {performance && (
-          <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
-            <StatTile label="First response on time" value={pct(performance.firstResponseMet, performance.firstResponseMeasured)} hint={`${performance.firstResponseMet} of ${performance.firstResponseMeasured} reports`} />
-            <StatTile label="Triaged on time" value={pct(performance.triageMet, performance.triageMeasured)} hint={`${performance.triageMet} of ${performance.triageMeasured} reports`} />
-            <StatTile label="Reports handled" value={String(performance.reportsHandled)} hint={`${performance.assessments} validations recorded`} />
-            <StatTile label="Waiting for you" value={String(performance.openEscalations)} hint="Questions from analysts" />
-          </div>
         )}
 
         {escalations.length > 0 && (

@@ -4,6 +4,7 @@ import { listOrganizationAssets } from "@/services/scope";
 import { listOrganizationDomains } from "@/services/organization-domains";
 import { getPublicLeaderboard } from "@/services/reputation";
 import { listResearchersForOrganization } from "@/services/organization-analytics";
+import { listOrganizationMembers } from "@/services/organization-members";
 import { getJiraConnection } from "@/services/jira";
 import { organizationHasServiceNow } from "@/services/servicenow";
 import { listChatConnections, listWebhookEndpoints } from "@/services/org-integrations";
@@ -39,8 +40,8 @@ function researcher(id: string, username: string, name: string, cohort: StudioRe
   };
 }
 
-export async function loadLaunchStudioData(organizationId: string): Promise<{ assets: StudioAsset[]; researchers: StudioResearcher[]; connectedModuleIds: string[] }> {
-  const [assetPage, domains, leaderboard, pastResearchers, jira, servicenow, chats, webhooks, codeHosts] = await Promise.all([
+export async function loadLaunchStudioData(organizationId: string): Promise<{ assets: StudioAsset[]; researchers: StudioResearcher[]; connectedModuleIds: string[]; members: { id: string; name: string }[] }> {
+  const [assetPage, domains, leaderboard, pastResearchers, jira, servicenow, chats, webhooks, codeHosts, orgMembers] = await Promise.all([
     settle(listOrganizationAssets(organizationId), { items: [], nextCursor: null }),
     settle(listOrganizationDomains(organizationId), []),
     settle(getPublicLeaderboard(30), []),
@@ -50,6 +51,7 @@ export async function loadLaunchStudioData(organizationId: string): Promise<{ as
     settle(listChatConnections(organizationId), []),
     settle(listWebhookEndpoints(organizationId), []),
     settle(getCodeHostState(organizationId), { connections: [], repositories: [] }),
+    settle(listOrganizationMembers(organizationId), []),
   ]);
 
   const verified = domains.filter((d) => d.status === "verified").map((d) => d.domain);
@@ -76,5 +78,6 @@ export async function loadLaunchStudioData(organizationId: string): Promise<{ as
   for (const c of chats) if (c.status === "active") connected.push(c.provider);
   if (webhooks.length > 0) connected.push("webhooks");
   for (const c of codeHosts.connections) if (c.status === "active") connected.push(c.provider);
-  return { assets, researchers, connectedModuleIds: [...new Set(connected)] };
+  const members = orgMembers.filter((m) => m.status === "active").map((m) => ({ id: m.userId, name: m.displayName }));
+  return { assets, researchers, connectedModuleIds: [...new Set(connected)], members };
 }

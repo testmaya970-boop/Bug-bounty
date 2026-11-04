@@ -71,6 +71,7 @@ import { engagementTypeLabel } from "../../lib/program-status";
 import type { ProgramSummary } from "../../types/program";
 import { ProgramStatusBadge } from "../ui/badge";
 import { DeleteDraftProgramDialog } from "./delete-draft-program-dialog";
+import { BUSINESS_UNITS, type BusinessUnit } from "../../lib/business-units";
 
 export interface LaunchProgramStudioProps {
   organizationId: string;
@@ -82,6 +83,8 @@ export interface LaunchProgramStudioProps {
   researchers: StudioResearcher[];
   /** Integration modules the organization has connected. */
   connectedModuleIds: string[];
+  /** Active organization members, for the product owner picker. */
+  members: { id: string; name: string }[];
   canCreate: boolean;
   initialMode?: "studio" | "directory";
   onCloseModal?: () => void;
@@ -121,6 +124,7 @@ export function LaunchProgramStudio({
   assets: inventoryAssets,
   researchers,
   connectedModuleIds,
+  members,
   canCreate,
   initialMode = "studio",
   onCloseModal,
@@ -267,6 +271,26 @@ export function LaunchProgramStudio({
     [state.currentStep],
   );
 
+  const businessUnitLabel = BUSINESS_UNITS.find((b) => b.value === state.businessUnit)?.label ?? "";
+  const productOwnerName = members.find((m) => m.id === state.productOwner)?.name ?? "";
+  const [confirmReset, setConfirmReset] = useState(false);
+  // Clears the saved draft and any targets added to it, so the next program starts clean.
+  function handleStartOver() {
+    if (!confirmReset) {
+      setConfirmReset(true);
+      return;
+    }
+    try {
+      window.localStorage.removeItem(`${STORAGE_KEY_PREFIX}${organizationId}`);
+      window.localStorage.removeItem(`${STORAGE_KEY_PREFIX}${organizationId}:targets`);
+    } catch {
+      // Ignore storage issues
+    }
+    setCustomAssets([]);
+    setState(createInitialStudioState());
+    setConfirmReset(false);
+  }
+
   const selectedBlueprint = useMemo(
     () => PROGRAM_BLUEPRINTS.find((b) => b.id === state.blueprintId) ?? PROGRAM_BLUEPRINTS[0],
     [state.blueprintId],
@@ -350,11 +374,7 @@ export function LaunchProgramStudio({
       blueprintId: blueprint.id,
       programName: blueprint.recommendedProgramName,
       shortDescription: blueprint.recommendedDescription,
-      businessUnit: blueprint.businessUnit,
-      selectedAssetIds:
-        blueprint.id === "saas"
-          ? [...blueprint.defaultAssetIds, "asset-dom-3"]
-          : [...blueprint.defaultAssetIds],
+      selectedAssetIds: [...blueprint.defaultAssetIds],
       rewardMatrix: structuredClone(blueprint.rewardMatrix),
       monthlyBudgetReserve: blueprint.monthlyBudgetEstimate,
       policy: structuredClone(blueprint.policy),
@@ -428,6 +448,10 @@ export function LaunchProgramStudio({
         organizationId,
         name: trimmedName,
         description: state.shortDescription,
+        // Drafts saved before these became pickers can hold free text; send only real values.
+        businessUnit: businessUnitLabel ? (state.businessUnit as BusinessUnit) : null,
+        productOwnerId: productOwnerName ? state.productOwner : null,
+        securityContact: state.securityContact.trim() || null,
         programType: isVdp ? "vdp" : welcomeOption.programType,
         engagementType: welcomeOption.engagementType,
         visibility: state.visibility === "Public" || isVdp ? "public" : "private",
@@ -799,6 +823,15 @@ export function LaunchProgramStudio({
                 </span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleStartOver}
+              onBlur={() => setConfirmReset(false)}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-3 text-[12px] font-semibold transition-colors ${confirmReset ? "border-[#FECDCA] bg-[#FEF3F2] text-[#B42318]" : "border-[#E7EAF0] bg-white text-[#475467] hover:bg-[#F8FAFC]"}`}
+            >
+              {confirmReset ? "Click again to clear the draft" : "Start over"}
+            </button>
 
             <button
               type="button"
@@ -1269,39 +1302,51 @@ export function LaunchProgramStudio({
                             type="text"
                             value={state.shortDescription}
                             onChange={(e) => setState((prev) => ({ ...prev, shortDescription: e.target.value }))}
-                            placeholder="Brief one-line scope summary shown on the program card..."
+                            placeholder="One line on what researchers will test"
                             className="mt-1.5 h-10 w-full rounded-[10px] border border-[#D0D5DD] bg-white px-3.5 text-[13px] text-[#111827] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
                           />
+                          <p className="mt-1 text-[12px] text-[#667085]">{state.blueprintId ? "Filled in from the template you picked. Change it to describe your own program." : "Shown on the program card and at the top of the program page."}</p>
                         </div>
 
                         <div>
-                          <label className="block text-[13px] font-semibold text-[#111827]">Business Unit</label>
-                          <input
-                            type="text"
+                          <label htmlFor="studio-business-unit" className="block text-[13px] font-semibold text-[#111827]">Business Unit</label>
+                          <select
+                            id="studio-business-unit"
                             value={state.businessUnit}
                             onChange={(e) => setState((prev) => ({ ...prev, businessUnit: e.target.value }))}
                             className="mt-1.5 h-10 w-full rounded-[10px] border border-[#D0D5DD] bg-white px-3.5 text-[13px] text-[#111827] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
-                          />
+                          >
+                            <option value="">Choose a category</option>
+                            {BUSINESS_UNITS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+                          </select>
+                          <p className="mt-1 text-[12px] text-[#667085]">The part of your company that owns what is being tested. Used to group findings.</p>
                         </div>
 
                         <div>
-                          <label className="block text-[13px] font-semibold text-[#111827]">Product Owner</label>
-                          <input
-                            type="text"
+                          <label htmlFor="studio-product-owner" className="block text-[13px] font-semibold text-[#111827]">Product Owner</label>
+                          <select
+                            id="studio-product-owner"
                             value={state.productOwner}
                             onChange={(e) => setState((prev) => ({ ...prev, productOwner: e.target.value }))}
                             className="mt-1.5 h-10 w-full rounded-[10px] border border-[#D0D5DD] bg-white px-3.5 text-[13px] text-[#111827] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
-                          />
+                          >
+                            <option value="">No owner yet</option>
+                            {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                          </select>
+                          <p className="mt-1 text-[12px] text-[#667085]">The member responsible for fixing what researchers find.</p>
                         </div>
 
                         <div className="sm:col-span-2">
-                          <label className="block text-[13px] font-semibold text-[#111827]">Security Contact</label>
+                          <label htmlFor="studio-security-contact" className="block text-[13px] font-semibold text-[#111827]">Security Contact</label>
                           <input
-                            type="text"
+                            id="studio-security-contact"
+                            type="email"
+                            placeholder="security@yourcompany.com"
                             value={state.securityContact}
                             onChange={(e) => setState((prev) => ({ ...prev, securityContact: e.target.value }))}
                             className="mt-1.5 h-10 w-full rounded-[10px] border border-[#D0D5DD] bg-white px-3.5 font-mono text-[13px] text-[#111827] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
                           />
+                          <p className="mt-1 text-[12px] text-[#667085]">Where Unpatched sends urgent security notices about this program.</p>
                         </div>
                       </div>
                     </section>
@@ -1440,15 +1485,15 @@ export function LaunchProgramStudio({
                         </div>
                         <div className="flex items-center justify-between">
                           <dt className="text-[#667085]">Business Unit</dt>
-                          <dd className="font-semibold text-[#111827]">{state.businessUnit || "—"}</dd>
+                          <dd className="font-semibold text-[#111827]">{businessUnitLabel || "Not set"}</dd>
                         </div>
                         <div className="flex items-center justify-between">
                           <dt className="text-[#667085]">Product Owner</dt>
-                          <dd className="max-w-[180px] truncate font-medium text-[#111827]">{state.productOwner}</dd>
+                          <dd className="max-w-[180px] truncate font-medium text-[#111827]">{productOwnerName || "Not set"}</dd>
                         </div>
                         <div className="flex items-center justify-between">
                           <dt className="text-[#667085]">Security Contact</dt>
-                          <dd className="font-mono text-[12px] text-[#111827]">{state.securityContact}</dd>
+                          <dd className="font-mono text-[12px] text-[#111827]">{state.securityContact || "Not set"}</dd>
                         </div>
                         <div className="flex items-center justify-between">
                           <dt className="text-[#667085]">Program Type</dt>
@@ -2779,13 +2824,13 @@ export function LaunchProgramStudio({
                           title: "Program",
                           step: "details" as StudioStepId,
                           primary: state.programName,
-                          secondary: `${selectedBlueprint.name} Blueprint · ${state.businessUnit}`,
+                          secondary: `${selectedBlueprint.name} Blueprint${businessUnitLabel ? ` · ${businessUnitLabel}` : ""}`,
                         },
                         {
                           title: "Visibility",
                           step: "details" as StudioStepId,
                           primary: `${state.visibility} (${state.lifecycle})`,
-                          secondary: `Owner: ${state.productOwner}`,
+                          secondary: `Owner: ${productOwnerName || "not set"}`,
                         },
                         {
                           title: "Assets",

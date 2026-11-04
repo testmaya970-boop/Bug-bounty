@@ -169,3 +169,20 @@ describe("draft deletion (202611020001)", () => {
     });
   });
 });
+
+describe("program ownership details (202611040001)", () => {
+  it("saves business unit, owner and contact; rejects a non-member owner and a bad email", async () => {
+    await inTx(async (db) => {
+      const owner = await userId(db, "e2e.admin@unpatched.demo");
+      const outsider = await newUser(db, "organization");
+      await db.as({ user: owner });
+      const program = await db.one<{ id: string }>("select id from public.create_program($1, 'Ownership dbtest')", [fixture.organizationId]);
+      const saved = await db.one<{ business_unit: string; product_owner_id: string; security_contact: string }>(
+        "select business_unit, product_owner_id, security_contact from public.update_program_ownership($1, 'cloud_platform', $2, ' Security@Example.com ')", [program.id, owner]);
+      expect(saved).toEqual({ business_unit: "cloud_platform", product_owner_id: owner, security_contact: "security@example.com" });
+      expect(await db.fails("select public.update_program_ownership($1, 'cloud_platform', $2, null)", [program.id, outsider])).toMatch(/INVALID_PRODUCT_OWNER/);
+      expect(await db.fails("select public.update_program_ownership($1, null, null, 'not-an-email')", [program.id])).toMatch(/security_contact/);
+      expect(await db.fails("select public.update_program_ownership($1, 'Core Cloud Platform', null, null)", [program.id])).toMatch(/business_unit/);
+    });
+  });
+});

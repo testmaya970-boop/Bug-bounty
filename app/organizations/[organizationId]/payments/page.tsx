@@ -12,6 +12,7 @@ import {
 import { SectionLabel } from "../../../../components/ui/security-primitives";
 import { PaymentObligationStatusBadge } from "../../../../components/ui/badge";
 import { OrganizationHeader } from "../../../../components/organizations/organization-header";
+import { PageSummary } from "../../../../components/ui/page-summary";
 import { getOrganizationLogoVersion } from "../../../../services/organization-logos";
 import {
   CancelPaymentObligationDialog,
@@ -88,7 +89,7 @@ function Figure({
           key={b.currency}
           className={`text-2xl font-semibold tracking-tight tabular-nums ${pick(b) < 0 ? "text-danger" : "text-ink"}`}
         >
-          {b.currency} {minorUnitsToDecimalString(pick(b))}
+          {b.currency} {(pick(b) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
       ))}
     </div>
@@ -179,13 +180,9 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
           organizationId={organizationId}
           logoVersion={await getOrganizationLogoVersion(organizationId)}
         />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <p className="max-w-2xl text-sm text-ink-muted">
-            Add funds to your balance; each bounty you award is taken from it
-            and Unpatched pays the researcher. There is no fee on top: the
-            platform fee comes out of the researcher&apos;s bounty.
-          </p>
-          <div className="flex flex-wrap gap-2">
+        <PageSummary
+          description="Add funds to your balance; each bounty you award is taken from it and Unpatched pays the researcher. There is no fee on top: the platform fee comes out of the researcher's bounty."
+          actions={<>
             <HowPayingWorks routes={payoutRoutes} />
             <Link
               prefetch={false}
@@ -195,8 +192,8 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
               <Plus aria-hidden="true" weight="bold" className="size-4" />
               Add funds
             </Link>
-          </div>
-        </div>
+          </>}
+        />
         {pendingBonuses.length > 0 && (
           <section aria-label="Bonuses awaiting approval" className="rounded-xl border border-warning/40 bg-surface px-5 py-4">
             <SectionLabel>Bonuses awaiting approval</SectionLabel>
@@ -208,7 +205,7 @@ export default async function OrganizationPaymentsPage({ params }: { params: Pro
           </section>
         )}
 
-        <div className="grid grid-cols-1 divide-y divide-border rounded-xl border border-border bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 [&>div]:rounded-xl [&>div]:border [&>div]:border-border [&>div]:bg-surface [&>div]:shadow-sm">
           <div className="p-5">
             <SectionLabel>Available to award</SectionLabel>
             <Figure

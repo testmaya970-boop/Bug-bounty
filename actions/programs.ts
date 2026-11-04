@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { BUSINESS_UNIT_VALUES } from "../lib/business-units";
 import { OrganizationServiceError } from "@/services/rpc-error";
 import {
   assignProgramMember,
@@ -20,6 +21,7 @@ import {
   unassignProgramMember,
   updateProgramAccessInstructions,
   updateProgramDescription,
+  updateProgramOwnership,
 } from "@/services/programs";
 import type { EngagementType, ProgramSummary, ProgramType, PublicProgramSummary } from "@/types/program";
 import type { Page } from "@/types/pagination";
@@ -169,6 +171,23 @@ export async function setProgramTrackRecordRequirementAction(input: z.infer<type
 }
 
 const updateDescriptionSchema = z.object({ organizationId: z.string().uuid(), programId: z.string().uuid(), description: z.string().max(20000, "Use 20000 characters or fewer.") });
+
+const updateOwnershipSchema = z.object({
+  organizationId: z.string().uuid(),
+  programId: z.string().uuid(),
+  businessUnit: z.enum(BUSINESS_UNIT_VALUES).nullable(),
+  productOwnerId: z.string().uuid().nullable(),
+  securityContact: z.string().trim().max(254).email("Enter a valid email address.").nullable().or(z.literal("").transform(() => null)),
+});
+
+export async function updateProgramOwnershipAction(input: { organizationId: string; programId: string; businessUnit: string | null; productOwnerId: string | null; securityContact: string | null }): Promise<ActionResult<ProgramSummary>> {
+  const parsed = updateOwnershipSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  const { programId, businessUnit, productOwnerId, securityContact } = parsed.data;
+  const result = await toLifecycleResult(updateProgramOwnership(programId, businessUnit, productOwnerId, securityContact ?? null));
+  if (result.ok) revalidateProgramPaths(parsed.data.organizationId, programId);
+  return result;
+}
 
 export async function updateProgramDescriptionAction(input: { organizationId: string; programId: string; description: string }): Promise<ActionResult<ProgramSummary>> {
   const parsed = updateDescriptionSchema.safeParse(input);

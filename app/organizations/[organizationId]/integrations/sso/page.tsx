@@ -50,7 +50,7 @@ export default async function SsoPage({ params }: { params: Promise<{ organizati
         {verified.length === 0 ? (
           <Alert tone="warning" title="Verify an email domain first.">
             Single sign-on only covers domains you have proved you own.{" "}
-            <Link prefetch={false} href={`/organizations/${organizationId}/settings#verified-domains` as Route} className="font-medium underline underline-offset-2">
+            <Link prefetch={false} href={`/organizations/${organizationId}/trust#verified-domains` as Route} className="font-medium underline underline-offset-2">
               Verify a domain
             </Link>
           </Alert>

@@ -239,7 +239,7 @@ function ClearanceNotice({ organizationId, entry }: { organizationId: string; en
       {clearance === "pending_verification" && (
         <>
           Not testable yet: hidden from researchers until you{" "}
-          <Link href={`/organizations/${organizationId}/settings#verified-domains` as Route} className="underline underline-offset-2">
+          <Link href={`/organizations/${organizationId}/trust#verified-domains` as Route} className="underline underline-offset-2">
             verify you own this domain
           </Link>
           .

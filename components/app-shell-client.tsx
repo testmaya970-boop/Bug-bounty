@@ -8,6 +8,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard,
   ShieldCheck,
+  Palette,
+  Workflow,
   ShieldAlert,
   Crosshair,
   Target,
@@ -169,6 +171,19 @@ function buildOrgNavGroups(orgId: string, role?: OrganizationRole): NavGroup[] {
     // 4. Integrations: Jira, Slack, ServiceNow, GitHub/GitLab, webhooks, SSO and SCIM all
     // live on the one Integrations page.
     { id: "org-integrations", label: "Integrations", icon: Plug, href: `${base}/integrations` as Route, roles: ORG_ADMINS },
+    // 5. Organization: ownership proof, how researchers see you, what runs on its own.
+    {
+      id: "org-organization",
+      defaultOpen: true,
+      label: "Organization",
+      icon: ShieldCheck,
+      roles: ORG_ADMINS,
+      items: [
+        { href: `${base}/trust` as Route, label: "Trust", icon: ShieldCheck },
+        { href: `${base}/branding` as Route, label: "Branding", icon: Palette },
+        { href: `${base}/automation` as Route, label: "Automation", icon: Workflow },
+      ],
+    },
     // 6. Billing & Finance
     {
       id: "org-billing",

@@ -277,6 +277,19 @@ export async function setProgramKycRequirement(programId: string, requiresKyc: b
   return mapProgramRpcResult(rows[0]);
 }
 
+export async function updateProgramOwnership(programId: string, businessUnit: string | null, productOwnerId: string | null, securityContact: string | null): Promise<ProgramSummary> {
+  const actor = await getCurrentUser();
+  let rows;
+  try {
+    rows = await withActorTransaction(actor?.id ?? null, (client) =>
+      callRpc<Omit<ProgramRow, "creator_display_name">>(client, "public.update_program_ownership", [programId, businessUnit, productOwnerId, securityContact]),
+    );
+  } catch (error) {
+    mapError(error as { message: string });
+  }
+  return mapProgramRpcResult(rows[0]);
+}
+
 export async function updateProgramDescription(programId: string, description: string): Promise<ProgramSummary> {
   const actor = await getCurrentUser();
   let rows;

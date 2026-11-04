@@ -25,10 +25,13 @@ test("an unverified domain in scope is flagged, blocks launch, and the domain sh
   const orgUrl = /\/organizations\/[0-9a-f-]{36}/.exec(page.url())![0];
 
   // A draft engagement whose only in-scope asset is somebody else's domain.
-  await page.goto(`${orgUrl}/programs`);
-  await page.getByRole("button", { name: /Create (another )?engagement/ }).first().click();
-  await page.getByLabel("Engagement name").fill(`Ownership ${t}`);
-  await page.getByRole("dialog").getByRole("button", { name: "Create engagement" }).click();
+  // Created through the Launch Program Studio, the Engagements create path.
+  await page.goto(`${orgUrl}/programs/new?step=details`);
+  await page.getByPlaceholder("e.g. Cloud Platform Bug Bounty").fill(`Ownership ${t}`);
+  await page.goto(`${orgUrl}/programs/new?step=launch`);
+  await page.getByRole("button", { name: "Create as Draft" }).click();
+  await expect(page.getByText("Program saved as a draft")).toBeVisible({ timeout: 60_000 });
+  await page.getByRole("link", { name: /View Program/ }).click();
   await page.waitForURL(/\/programs\/[0-9a-f-]{36}$/);
 
   const foreign = `api.not-ours-${t}.com`;
@@ -43,9 +46,9 @@ test("an unverified domain in scope is flagged, blocks launch, and the domain sh
   await page.getByRole("button", { name: "Submit for review" }).first().click();
   await expect(page.getByText(/prove ownership of at least one in-scope asset first/i).first()).toBeVisible();
 
-  // The notice links to the domain proof in organization settings.
+  // The notice links to the domain proof on the Trust page.
   await page.getByRole("link", { name: "verify you own this domain" }).click();
-  await page.waitForURL(/\/settings#verified-domains$/);
+  await page.waitForURL(/\/trust#verified-domains$/);
   const domain = `owned-${t}.com`;
   await page.getByRole("textbox", { name: "Domain" }).fill(`https://${domain}/`);
   await page.getByRole("button", { name: "Add domain" }).click();
@@ -80,7 +83,10 @@ test("an organization contacts Unpatched before signing up; platform staff see i
 
   const admin = await (await browser.newContext()).newPage();
   await signIn(admin, "e2e.platform-admin@unpatched.demo");
-  await admin.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Contact requests" }).click();
+  // Contact requests sit in the platform sidebar's Community group, collapsed by default.
+  const platformNav = admin.getByRole("navigation", { name: "Primary navigation" });
+  await platformNav.getByRole("button", { name: "Community" }).click();
+  await platformNav.getByRole("link", { name: "Contact requests" }).click();
   await admin.waitForURL(/\/platform\/contact-requests$/);
   const item = admin.getByRole("listitem").filter({ hasText: company });
   await expect(item).toContainText("Launching a bug bounty or VDP");

@@ -210,7 +210,7 @@ test("program manager edits scope on the live program: add, edit, flip state, re
 test("owner: organization description saves and survives a reload", async ({ page }) => {
   const { organizationId } = await fixture();
   await signIn(page, "e2e.admin@unpatched.demo");
-  await page.goto(`/organizations/${organizationId}/settings`);
+  await page.goto(`/organizations/${organizationId}/branding`);
   const field = page.getByLabel("Description");
   const original = await field.inputValue();
   const text = `Functional case ${stamp()}`;
