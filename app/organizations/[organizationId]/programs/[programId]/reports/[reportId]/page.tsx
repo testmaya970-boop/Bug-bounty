@@ -391,6 +391,12 @@ export default async function ReportDetailPage({
               </div>
             </TimelineItem>
 
+            {(isOwnReport || canTriage) && (
+              <TimelineItem icon={ChatCircleText} title="Add to this report">
+                <ReportComposer organizationId={organizationId} programId={programId} reportId={reportId} side={canTriage ? "organization" : "researcher"}  limits={evidenceLimits()} />
+              </TimelineItem>
+            )}
+
             {!canTriage && (
               <TimelineItem icon={ClockCounterClockwise} title="History">
                 <ReportStatusHistory events={statusHistory} />
@@ -400,11 +406,6 @@ export default async function ReportDetailPage({
             {canTriage && auditEvents.length > 0 && (
               <TimelineItem icon={ClockCounterClockwise} title="Decision history">
                 <ReportActivity events={auditEvents} actorNames={actorNames} />
-              </TimelineItem>
-            )}
-            {(isOwnReport || canTriage) && (
-              <TimelineItem icon={ChatCircleText} title="Add to this report">
-                <ReportComposer organizationId={organizationId} programId={programId} reportId={reportId} side={canTriage ? "organization" : "researcher"}  limits={evidenceLimits()} />
               </TimelineItem>
             )}
             </div>

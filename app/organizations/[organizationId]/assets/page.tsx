@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import type { Route } from "next";
 import Link from "next/link";
 import { AppShell } from "../../../../components/app-shell";
-import { Breadcrumbs } from "../../../../components/ui/navigation";
+import { Breadcrumbs, DropdownMenu } from "../../../../components/ui/navigation";
 import { PermissionDenied } from "../../../../components/ui/feedback";
 import { OrganizationAssetsTable } from "../../../../components/organizations/organization-assets-table";
 import { getActorMembership } from "../../../../services/organization-members";
@@ -103,7 +103,7 @@ export default async function OrganizationAssetsPage({
                 Attack Surface Workspace
               </h1>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF5] px-2.5 py-0.5 text-xs font-semibold text-[#059669] border border-[#A7F3D0]">
-                <span className="size-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                <span className="size-1.5 rounded-full bg-[#10B981]" />
                 Inventory
               </span>
             </div>
@@ -114,15 +114,21 @@ export default async function OrganizationAssetsPage({
 
           {/* Quick Header Actions */}
           <div className="flex flex-wrap items-center gap-2.5">
-            {programs[0] && (
-              <Link
-                href={`/organizations/${organizationId}/programs/${programs[0].id}#scope` as Route}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-3.5 py-2 text-xs font-semibold text-[#FFFFFF] shadow-sm hover:bg-[#1D4ED8] transition-colors"
-              >
-                <Plus className="size-3.5" />
-                Add Scope Target
-              </Link>
-            )}
+            {/* Scope belongs to a program, so the target's program is chosen, never assumed. */}
+            <DropdownMenu
+              menuLabel="Add a scope target to"
+              triggerClassName="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-3.5 py-2 text-xs font-semibold text-[#FFFFFF] shadow-sm hover:bg-[#1D4ED8] hover:text-white transition-colors"
+              label={<><Plus aria-hidden className="size-3.5" />Add Scope Target</>}
+            >
+              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Choose a program</p>
+              {programs.filter((p) => p.status !== "closed").length === 0 ? (
+                <Link prefetch={false} href={`/organizations/${organizationId}/programs/new` as Route} className="block rounded-md px-3 py-2 text-sm text-ink hover:bg-surface-muted">No open program yet. Create one</Link>
+              ) : (
+                programs.filter((p) => p.status !== "closed").map((p) => (
+                  <Link key={p.id} prefetch={false} href={`/organizations/${organizationId}/programs/${p.id}#scope` as Route} className="block max-w-72 truncate rounded-md px-3 py-2 text-sm text-ink hover:bg-surface-muted">{p.name}</Link>
+                ))
+              )}
+            </DropdownMenu>
           </div>
         </div>
 
